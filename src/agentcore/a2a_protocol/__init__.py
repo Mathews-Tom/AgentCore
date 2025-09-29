@@ -1,0 +1,1 @@
+"""A2A Protocol Layer - Agent2Agent communication infrastructure."""
