@@ -318,7 +318,7 @@ The DSPy Optimization Engine provides systematic AI optimization capabilities us
 ### Technical Assumptions
 
 - DSPy framework and supporting libraries for optimization algorithms
-- Python 3.11+ with machine learning libraries (numpy, scipy, scikit-learn)
+- Python 3.12+ with machine learning libraries (numpy, scipy, scikit-learn)
 - GPU compute resources for intensive optimization workloads
 - PostgreSQL for optimization history and performance data storage
 - Redis for optimization job queuing and distributed coordination

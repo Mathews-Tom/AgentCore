@@ -3248,13 +3248,13 @@ description = "Open-source agent orchestration framework based on A2A protocol"
 readme = "README.md"
 authors = [{name = "AgentCore Team", email = "team@agentcore.ai"}]
 license = {text = "Apache-2.0"}
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = ["ai", "agents", "orchestration", "a2a", "multi-agent"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -3355,7 +3355,7 @@ multi_line_output = 3
 line_length = 88
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

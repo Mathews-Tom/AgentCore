@@ -248,7 +248,7 @@ X-Client-Version: <version>
 
 ### Technical Assumptions
 - FastAPI framework with Uvicorn/Gunicorn for high-performance async web serving
-- Python 3.11+ with asyncio for concurrent request processing
+- Python 3.12+ with asyncio for concurrent request processing
 - Redis for session state, rate limiting, and distributed caching
 - SSL/TLS certificates for secure communication
 - Load balancer (nginx, HAProxy, or cloud load balancer) for production deployment

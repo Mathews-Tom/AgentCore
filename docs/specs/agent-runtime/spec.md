@@ -278,7 +278,7 @@ The Agent Runtime Layer provides secure, isolated execution environments for mul
 
 - Docker 24.0+ with advanced security features and resource constraints
 - Kubernetes or similar container orchestration platform for production deployment
-- Python 3.11+ runtime with asyncio support for concurrent agent management
+- Python 3.12+ runtime with asyncio support for concurrent agent management
 - Redis cluster for distributed state management and coordination
 - PostgreSQL for persistent agent metadata and execution history
 
