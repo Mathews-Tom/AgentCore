@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: a2a-protocol
+  namespace: agentcore
+  labels:
+    app: a2a-protocol
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: a2a-protocol
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

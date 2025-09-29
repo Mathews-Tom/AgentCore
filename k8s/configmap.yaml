@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: a2a-protocol-config
+  namespace: agentcore
+data:
+  DEBUG: "False"
+  LOG_LEVEL: "INFO"
+  HOST: "0.0.0.0"
+  PORT: "8001"
+  A2A_PROTOCOL_VERSION: "0.2"
+  MAX_CONCURRENT_CONNECTIONS: "1000"
+  MESSAGE_TIMEOUT_SECONDS: "30"
+  AGENT_DISCOVERY_TTL: "300"
+  TASK_EXECUTION_TIMEOUT: "3600"
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRATION_HOURS: "24"
+  DATABASE_POOL_SIZE: "20"
+  DATABASE_MAX_OVERFLOW: "40"
+  DATABASE_POOL_TIMEOUT: "30"
+  DATABASE_POOL_RECYCLE: "3600"
+  ENABLE_METRICS: "True"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "agentcore"
+  REDIS_URL: "redis://redis-service:6379/0"
