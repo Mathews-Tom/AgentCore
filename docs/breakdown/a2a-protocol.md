@@ -231,7 +231,7 @@ Relations:
 
 ### Technology Stack
 
-**Runtime:** Python 3.11+ with asyncio support
+**Runtime:** Python 3.12+ with asyncio support
 **Framework:** FastAPI 0.104+ with Uvicorn/Gunicorn production deployment
 **Communication:** fastapi-websocket-rpc for JSON-RPC over WebSocket
 **State Management:** Redis Cluster 7.0+ with Sentinel (minimum 3 masters)

@@ -285,7 +285,7 @@ workflow:
 ### Technical Assumptions
 - Redis Cluster for distributed workflow state management and event streaming
 - PostgreSQL for persistent workflow definitions and execution history
-- Python 3.11+ with asyncio for high-performance async coordination
+- Python 3.12+ with asyncio for high-performance async coordination
 - Kubernetes for container orchestration and resource management
 - Event streaming platform (Redis Streams or Apache Kafka) for real-time coordination
 

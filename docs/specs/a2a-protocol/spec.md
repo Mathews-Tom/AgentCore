@@ -260,7 +260,7 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 
 ### Technical Assumptions
 
-- Python 3.11+ runtime environment with asyncio support
+- Python 3.12+ runtime environment with asyncio support
 - Redis cluster for distributed session state and caching
 - PostgreSQL database for persistent data storage
 - Docker containerization for deployment and scaling

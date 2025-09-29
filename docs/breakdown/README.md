@@ -119,7 +119,7 @@ graph TD
 ## Getting Started
 
 ### Prerequisites
-- Python 3.11+ with asyncio support
+- Python 3.12+ with asyncio support
 - Docker 24.0+ with security features
 - Kubernetes 1.28+ with Pod Security Standards
 - UV package manager for dependency management

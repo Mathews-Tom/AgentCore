@@ -207,7 +207,7 @@ Autonomous Pattern:
 
 ```yaml
 SecurityProfile:
-  base_image: "agentcore/hardened-python:3.11"
+  base_image: "agentcore/hardened-python:3.12"
   user_namespace: true
   read_only_filesystem: true
   no_new_privileges: true
@@ -261,7 +261,7 @@ Relations:
 
 **Containerization:** Docker 24.0+ with hardened security profiles and distroless base images
 **Orchestration:** Kubernetes 1.28+ with Pod Security Standards and custom resource definitions
-**Runtime:** Python 3.11+ with asyncio for concurrent agent management
+**Runtime:** Python 3.12+ with asyncio for concurrent agent management
 **Security:** Custom seccomp profiles, user namespace remapping, read-only filesystems
 **State Management:** Redis Cluster for coordination, PostgreSQL for persistence
 **Rationale:** Research shows Docker hardened images provide 95% attack surface reduction, Kubernetes Pod Security Standards enforce container isolation, Python asyncio enables 1000+ concurrent agent execution
@@ -280,7 +280,7 @@ Relations:
 # Environment variables
 KUBERNETES_NAMESPACE: agentcore-runtime
 CONTAINER_REGISTRY: agentcore.azurecr.io
-AGENT_IMAGE_BASE: agentcore/hardened-python:3.11
+AGENT_IMAGE_BASE: agentcore/hardened-python:3.12
 MAX_CONCURRENT_AGENTS: 1000
 AGENT_STARTUP_TIMEOUT: 30
 TOOL_EXECUTION_TIMEOUT: 60

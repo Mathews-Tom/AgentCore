@@ -27,7 +27,7 @@ The Agent Runtime Layer provides secure, isolated execution environments for mul
 - **Rationale:** Industry-standard isolation with 95% attack surface reduction through Docker Hardened Images (DHI), enterprise-grade security with STIG compliance
 - **Research Citation:** 2025 Docker security research shows hardened images provide near-zero CVEs with 7-day patch SLA and enhanced isolation features
 
-**Runtime Environment:** Python 3.11+ with asyncio for concurrent execution
+**Runtime Environment:** Python 3.12+ with asyncio for concurrent execution
 
 - **Rationale:** Native async support for 1000+ concurrent agents, rich AI/ML ecosystem, excellent debugging and monitoring capabilities
 - **Research Citation:** Python remains dominant AI development language with 80%+ market share and mature containerization support
@@ -318,7 +318,7 @@ class ToolExecutionRequest(BaseModel):
 
 **Required Tools and Versions:**
 
-- Python 3.11.5+ with asyncio and comprehensive typing support
+- Python 3.12.5+ with asyncio and comprehensive typing support
 - Docker 24.0+ with BuildKit, hardened images, and security scanning
 - Kubernetes 1.28+ with Pod Security Standards and network policies
 - UV 0.4+ for rapid dependency management and virtual environment handling

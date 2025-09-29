@@ -22,7 +22,7 @@ The A2A Protocol Layer serves as the foundational communication infrastructure i
 
 ### Recommended
 
-**Runtime:** Python 3.11+ with asyncio
+**Runtime:** Python 3.12+ with asyncio
 
 - **Rationale:** Native async support required for 10,000+ msg/sec throughput, excellent JSON-RPC libraries (jsonrpcserver), strong typing with Pydantic v2
 - **Research Citation:** FastAPI 2025 benchmarks show 60,000+ req/sec capability with proper async implementation
@@ -281,7 +281,7 @@ class A2AMessage(BaseModel):
 
 **Required Tools and Versions:**
 
-- Python 3.11.5+ with asyncio and type hints
+- Python 3.12.5+ with asyncio and type hints
 - Docker 24.0+ with BuildKit and multi-stage builds
 - UV 0.4+ for dependency management and virtual environments
 - PostgreSQL 14+ with pg_stat_statements extension
@@ -340,7 +340,7 @@ volumes:
 
 **CI/CD Pipeline Requirements:**
 
-- GitHub Actions with matrix testing across Python 3.11-3.12
+- GitHub Actions with matrix testing across Python 3.12+
 - Automated A2A protocol compliance testing against Google reference implementation
 - Security scanning with Trivy and SAST tools
 - Performance regression testing with k6 load tests
