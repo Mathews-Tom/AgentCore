@@ -8,18 +8,21 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 
 **Business Value:**
 
-- First-to-market advantage with native A2A protocol support
-- 6-9 month competitive moat before competitors achieve similar capabilities
+- First-to-market advantage with native A2A protocol support enhanced by semantic capability matching
+- 9-12 month competitive moat through unique combination of A2A + semantic discovery + context engineering
 - Cross-platform agent interoperability enabling ecosystem growth
 - Enterprise-grade security and reliability for production AI deployments
+- 20-30% cost reduction through intelligent agent routing with cost optimization
 
 ### Success Metrics
 
 - **Protocol Compliance:** 99.9% compliance with A2A v0.2 specification
-- **Performance:** <50ms agent discovery latency, <10ms message routing
+- **Performance:** <50ms agent discovery latency (including semantic search), <10ms message routing, <50ms embedding generation
 - **Scalability:** Support 1000+ concurrent agent connections per instance
 - **Reliability:** 99.9% uptime SLA with automatic failover
 - **Interoperability:** 100% compatibility with Google's A2A reference implementation
+- **Semantic Matching:** >90% recall rate vs exact string matching, >0.75 similarity threshold accuracy
+- **Cost Optimization:** 20-30% reduction in routing costs through intelligent agent selection
 
 ### Target Users
 
@@ -38,6 +41,9 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - The system shall provide automatic agent discovery through /.well-known/agent.json endpoints
 - The system shall maintain a real-time registry of active agents with health status monitoring
 - The system shall support agent capability filtering and search functionality
+- The system shall support semantic capability matching using vector embeddings for flexible agent discovery
+- The system shall generate and store 768-dimensional embeddings from capability descriptions
+- The system shall enable similarity-based agent search with configurable threshold (default 0.75)
 
 **JSON-RPC 2.0 Communication**
 
@@ -59,6 +65,21 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - The system shall implement Server-Sent Events for unidirectional status streaming
 - The system shall provide connection pooling and automatic reconnection handling
 - The system shall enforce connection limits and rate limiting per agent
+
+**Intelligent Agent Routing**
+
+- The system shall implement cost-biased optimization for agent selection considering similarity, latency, cost, and quality
+- The system shall support multi-objective scoring: similarity (40%), latency (30%), cost (20%), quality (10%)
+- The system shall enforce hard constraints for maximum latency and cost thresholds
+- The system shall maintain backward compatibility with exact string-based capability matching
+- The system shall track and report cost optimization metrics per routing decision
+
+**Context Engineering Support**
+
+- The system shall support optional structured context fields in AgentCard (system_context, interaction_examples)
+- The system shall enable context lineage tracking in TaskArtifact for debugging multi-stage workflows
+- The system shall provide context_summary field for documenting context used in artifact generation
+- The system shall support structured metadata in artifacts for downstream context propagation
 
 ### User Stories
 
@@ -101,19 +122,23 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 
 **Performance Constraints**
 
-- Agent discovery requests must complete within 100ms p95 latency
+- Agent discovery requests must complete within 100ms p95 latency (including semantic search)
 - Message routing must not exceed 50ms p95 latency
+- Embedding generation must complete within 50ms per capability description
+- Vector similarity search must complete within 20ms for 1000+ agent registry
 - The system must support minimum 1000 concurrent WebSocket connections
 - Memory usage per agent connection shall not exceed 10MB
+- Additional vector storage: 1-2GB per 1000 agents for embeddings
 
 ## 3. Non-Functional Requirements
 
 ### Performance Targets
 
 - **Throughput:** 10,000 messages per second per instance
-- **Latency:** <10ms p95 for message routing, <50ms p95 for agent discovery
+- **Latency:** <10ms p95 for message routing, <50ms p95 for agent discovery, <50ms for embedding generation, <20ms for vector search
 - **Concurrent Connections:** 1000+ WebSocket connections per instance
-- **Resource Usage:** <2GB memory per 1000 concurrent agents
+- **Resource Usage:** <2GB memory per 1000 concurrent agents (base) + 1-2GB for vector embeddings
+- **Semantic Search:** <100ms p95 end-to-end for capability-based discovery with semantic matching
 
 ### Security Requirements
 
@@ -157,6 +182,14 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - Performance optimization and caching
 - Multi-tenancy and isolation
 
+**Priority 1.5 (Semantic Enhancements - Week 7-8):**
+
+- Semantic capability matching with vector embeddings
+- Cost-biased agent selection optimization
+- Context engineering patterns and utilities
+- Enhanced AgentCard metadata (cost, latency, quality scores)
+- ContextChain utility for multi-stage workflows
+
 ### Key User Flows
 
 **Agent Registration Flow**
@@ -179,10 +212,22 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 **Agent Discovery Flow**
 
 1. Agent queries discovery endpoint with capability filters
-2. System searches registry for matching agents
-3. System returns list of compatible agents with connection details
-4. Requesting agent establishes connection to selected target agent
-5. Agents exchange capability handshake per A2A protocol
+2. System performs parallel search: exact string matching + semantic similarity matching
+3. System generates embedding for query capability if semantic search enabled
+4. System queries vector database with configurable similarity threshold (default 0.75)
+5. System applies cost-biased optimization to rank matching agents
+6. System returns list of compatible agents with connection details and match scores
+7. Requesting agent establishes connection to selected target agent
+8. Agents exchange capability handshake per A2A protocol
+
+**Context-Enriched Workflow Flow**
+
+1. Requesting agent initiates multi-stage workflow with initial context
+2. First agent processes request and generates artifact with context_summary
+3. System tracks context_lineage across workflow stages
+4. Each subsequent agent receives accumulated context from previous stages
+5. Final agent synthesizes results with complete context history
+6. System stores context lineage for debugging and auditing
 
 ### Input/Output Specifications
 
@@ -246,6 +291,10 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - [ ] Integration tests pass with Google's A2A reference implementation
 - [ ] Documentation covers all public APIs and integration patterns
 - [ ] Production deployment procedures are validated
+- [ ] Semantic capability matching achieves >90% recall vs exact matching
+- [ ] Cost-biased routing demonstrates 20-30% cost reduction in benchmarks
+- [ ] Context engineering patterns documented with examples
+- [ ] Backward compatibility maintained for agents without enhanced metadata
 
 ### Validation Approach
 
@@ -262,9 +311,11 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 
 - Python 3.12+ runtime environment with asyncio support
 - Redis cluster for distributed session state and caching
-- PostgreSQL database for persistent data storage
+- PostgreSQL 14+ database with pgvector extension for vector similarity search
+- Embedding model service (sentence-transformers/all-MiniLM-L6-v2) for capability embeddings
 - Docker containerization for deployment and scaling
 - Kubernetes or similar orchestration platform for production deployment
+- Additional storage: 1-2GB per 1000 agents for vector embeddings
 
 ### External Integrations
 
@@ -273,6 +324,8 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - **Pydantic:** Data validation and serialization library
 - **JWT Libraries:** Authentication token generation and validation
 - **Prometheus/Grafana:** Metrics collection and monitoring
+- **pgvector:** PostgreSQL extension for efficient vector similarity search
+- **sentence-transformers:** Lightweight embedding model for semantic capability matching
 
 ### Related Components
 
