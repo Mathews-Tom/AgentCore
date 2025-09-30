@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Redis for session state and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL for persistent storage
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: agentcore
+      POSTGRES_USER: agentcore
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentcore -d agentcore"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # A2A Protocol Layer (development)
+  a2a-protocol:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - DEBUG=true
+      - DATABASE_URL=postgresql://agentcore:password@postgres:5432/agentcore
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    command: >
+      sh -c "python -m uvicorn agentcore.a2a_protocol.main:app
+             --host 0.0.0.0 --port 8001 --reload"
+
+volumes:
+  redis_data:
+  postgres_data:
