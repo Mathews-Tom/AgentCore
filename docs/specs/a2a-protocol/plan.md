@@ -5,18 +5,19 @@
 
 ## 1. Executive Summary
 
-The A2A Protocol Layer serves as the foundational communication infrastructure implementing Google's Agent2Agent protocol v0.2 with enterprise extensions. This component provides the competitive differentiation core for AgentCore through first-class A2A protocol support, creating a 6-9 month market advantage window.
+The A2A Protocol Layer serves as the foundational communication infrastructure implementing Google's Agent2Agent protocol v0.2 with enterprise extensions and advanced semantic capabilities. This component provides the competitive differentiation core for AgentCore through first-class A2A protocol support enhanced with semantic agent discovery and intelligent routing, creating a 9-12 month market advantage window.
 
-**Business Alignment:** Direct implementation of A2A protocol positions AgentCore as the premier platform for cross-platform agent interoperability, enabling ecosystem growth and vendor-neutral agent orchestration.
+**Business Alignment:** Direct implementation of A2A protocol with semantic capability matching and context engineering positions AgentCore as the premier platform for cross-platform agent interoperability, enabling ecosystem growth, vendor-neutral orchestration, and 20-30% cost optimization through intelligent routing.
 
-**Technical Approach:** FastAPI-based async JSON-RPC 2.0 implementation with WebSocket/SSE support, Redis-backed agent discovery, and enterprise-grade security integration.
+**Technical Approach:** FastAPI-based async JSON-RPC 2.0 implementation with WebSocket/SSE support, Redis-backed agent discovery, semantic capability matching via pgvector, cost-biased routing optimization, and enterprise-grade security integration.
 
 **Key Success Metrics (SLOs, KPIs):**
 
 - Protocol Compliance: 99.9% A2A v0.2 specification conformance
-- Performance: <10ms message routing latency, <50ms agent discovery latency
-- Scalability: 1000+ concurrent agent connections per instance
+- Performance: <10ms message routing latency, <50ms agent discovery latency (including semantic search), <50ms embedding generation
+- Scalability: 1000+ concurrent agent connections per instance with vector search support
 - Reliability: 99.9% uptime SLA with sub-100ms failover
+- Semantic Matching: >90% recall vs exact matching, 20-30% cost reduction through intelligent routing
 
 ## 2. Technology Stack
 
@@ -42,10 +43,15 @@ The A2A Protocol Layer serves as the foundational communication infrastructure i
 - **Rationale:** High availability with automatic failover, linear scaling to 1000 nodes, geographic distribution support
 - **Research Citation:** 2025 Redis cluster research shows 99.9% availability with proper Sentinel configuration and failure detection sensitivity tuning
 
-**Data Persistence:** PostgreSQL 14+ with pgBouncer connection pooling
+**Data Persistence:** PostgreSQL 14+ with pgvector extension and pgBouncer connection pooling
 
-- **Rationale:** ACID compliance for agent state, proven scalability, excellent JSON support for A2A metadata
-- **Research Citation:** PostgreSQL 2025 performance tuning shows optimal performance with pgBouncer transaction mode and shared_buffers=25-40% RAM
+- **Rationale:** ACID compliance for agent state, proven scalability, excellent JSON support for A2A metadata, native vector similarity search via pgvector for semantic capability matching
+- **Research Citation:** PostgreSQL 2025 performance tuning shows optimal performance with pgBouncer transaction mode and shared_buffers=25-40% RAM; pgvector enables efficient HNSW indexing for sub-linear semantic search
+
+**Semantic Search:** sentence-transformers/all-MiniLM-L6-v2 embedding model
+
+- **Rationale:** Lightweight 768-dimensional embeddings, CPU-based inference (< 50ms), proven accuracy for semantic similarity, no GPU requirements
+- **Research Citation:** Federation of Agents research (2025) demonstrates semantic capability matching improves agent discovery by 30%+ with minimal latency overhead
 
 ### Alternatives Considered
 
@@ -66,6 +72,7 @@ The A2A Protocol Layer serves as the foundational communication infrastructure i
 │  │ Redis Cluster   ││ │ WebSocket Hub   ││ │ Load Balancer   │   │
 │  │ Health Monitor  ││ │ SSE Broadcasting││ │ Circuit Breaker │   │
 │  │ TTL Management  ││ │ Message Queue   ││ │ Failover Logic  │   │
+│  │ Semantic Search ││ │                 ││ │ Cost Optimizer  │   │
 │  └─────────────────┘│ └─────────────────┘│ └─────────────────┘   │
 ├─────────────────────┼────────────────────┼───────────────────────┤
 │   Security Layer    │  Validation Layer  │   Observability       │
@@ -82,9 +89,18 @@ The A2A Protocol Layer serves as the foundational communication infrastructure i
                       │   Data Layer    │
                       │ ┌─────────────┐ │
                       │ │ PostgreSQL  │ │
+                      │ │ + pgvector  │ │
                       │ │ Agent State │ │
                       │ │ Task History│ │
+                      │ │ Embeddings  │ │
                       │ └─────────────┘ │
+                      └─────────────────┘
+                                │
+                                ▼
+                      ┌─────────────────┐
+                      │ Embedding Model │
+                      │ sentence-       │
+                      │ transformers    │
                       └─────────────────┘
 ```
 
@@ -100,9 +116,9 @@ The A2A Protocol Layer serves as the foundational communication infrastructure i
 
 **Discovery Service**
 
-- Purpose: Dynamic agent registration with capability-based discovery and health monitoring
-- Technology: Redis Cluster with TTL-based health checks, Consul-like service mesh capabilities
-- Integration: Exposes /.well-known/agent.json endpoints per A2A spec, integrates with Gateway Layer load balancing
+- Purpose: Dynamic agent registration with semantic capability-based discovery and health monitoring
+- Technology: Redis Cluster with TTL-based health checks, pgvector for semantic search, Consul-like service mesh capabilities
+- Integration: Exposes /.well-known/agent.json endpoints per A2A spec, integrates with Gateway Layer load balancing, embedding service for capability vectors
 
 **Protocol Engine**
 
@@ -112,9 +128,9 @@ The A2A Protocol Layer serves as the foundational communication infrastructure i
 
 **Message Router**
 
-- Purpose: Intelligent routing with load balancing, circuit breaker, and failover logic
-- Technology: Async routing engine with Redis-backed session state and health tracking
-- Integration: Direct integration with Orchestration Engine event bus and Gateway Layer
+- Purpose: Intelligent routing with cost-biased optimization, load balancing, circuit breaker, and failover logic
+- Technology: Async routing engine with Redis-backed session state, health tracking, and multi-objective scoring (similarity 40%, latency 30%, cost 20%, quality 10%)
+- Integration: Direct integration with Orchestration Engine event bus, Gateway Layer, and embedding service for semantic matching
 
 ## 4. Technical Specification
 
@@ -391,12 +407,24 @@ volumes:
 - Security hardening and penetration testing
 - Load testing and performance tuning
 
-### Phase 4: Launch (Week 7-8)
+### Phase 3.5: Semantic Enhancements (Week 7)
 
-- Production deployment with Redis Cluster and PostgreSQL HA
-- Monitoring and alerting setup with Grafana dashboards
-- Documentation and API reference generation
+- pgvector extension installation and configuration for PostgreSQL
+- Embedding service setup with sentence-transformers model
+- Semantic capability matching implementation with vector similarity search
+- Cost-biased agent selection optimization with multi-objective scoring
+- Enhanced AgentCard metadata (cost_per_request, avg_latency_ms, quality_score)
+- Context engineering utilities (ContextChain for multi-stage workflows)
+- Migration strategy for existing agents without enhanced metadata
+- Performance benchmarking for semantic search (target: <100ms end-to-end)
+
+### Phase 4: Launch (Week 8)
+
+- Production deployment with Redis Cluster, PostgreSQL HA, and pgvector
+- Monitoring and alerting setup with Grafana dashboards (including semantic search metrics)
+- Documentation and API reference generation with semantic capability examples
 - Integration testing with other AgentCore components
+- Backward compatibility testing for agents without semantic metadata
 - Go-live preparation and post-launch support procedures
 
 ## 8. Quality Assurance

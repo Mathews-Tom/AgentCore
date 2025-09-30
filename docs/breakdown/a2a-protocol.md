@@ -10,11 +10,12 @@
 ```yaml
 complexity: High
 risk_level: High
-team_size: 3-4 engineers
-duration: 6-8 weeks
+team_size: 3-4 engineers (+ 0.5 ML engineer, Week 7-8)
+duration: 8 weeks
 dependencies:
   - Redis Cluster (distributed state)
-  - PostgreSQL (persistence)
+  - PostgreSQL 14+ with pgvector extension (persistence + vector similarity)
+  - Embedding model service (sentence-transformers/all-MiniLM-L6-v2)
   - External A2A agents (interoperability testing)
 ```
 
@@ -25,17 +26,20 @@ dependencies:
 **Key Capabilities:**
 
 - JSON-RPC 2.0 message processing with A2A protocol compliance
-- Agent discovery and registration with capability-based matching
+- Agent discovery and registration with semantic capability matching
 - Real-time bidirectional communication via WebSocket and SSE
-- Task lifecycle management with artifact generation
+- Task lifecycle management with artifact generation and context engineering
+- Intelligent agent routing with cost-biased optimization
 - Enterprise-grade security and audit trails
 
 **Success Metrics:**
 
 - **Protocol Compliance:** 99.9% A2A v0.2 specification conformance
-- **Performance:** <10ms message routing latency, <50ms agent discovery
+- **Performance:** <10ms message routing latency, <50ms agent discovery, <50ms embedding generation, <20ms vector search
 - **Scalability:** 1000+ concurrent WebSocket connections per instance
 - **Reliability:** 99.9% uptime SLA with sub-100ms failover
+- **Semantic Matching:** >90% recall rate vs exact string matching, >0.75 similarity threshold accuracy
+- **Cost Optimization:** 20-30% reduction in routing costs through intelligent agent selection
 
 ## System Context
 
@@ -48,7 +52,8 @@ graph LR
     B -->|External APIs| F[Integration Layer]
     G[Enterprise Systems] -->|Authentication| B
     B -->|State| H[(Redis Cluster)]
-    B -->|Persistence| I[(PostgreSQL)]
+    B -->|Persistence + Vectors| I[(PostgreSQL + pgvector)]
+    B -->|Embeddings| J[Embedding Model Service]
 ```
 
 **Integration Points:**
@@ -72,6 +77,7 @@ graph TD
             DISC[Discovery Service]
             ROUTE[Message Router]
             TASK[Task Manager]
+            SEM[Semantic Search Service]
         end
 
         subgraph "Cross-Cutting"
@@ -86,6 +92,8 @@ graph TD
     RPC --> DISC
     RPC --> ROUTE
     RPC --> TASK
+    DISC --> SEM
+    ROUTE --> SEM
 
     AUTH --> API
     AUTH --> WS
@@ -98,9 +106,9 @@ graph TD
 
 **Module 1: Discovery Service**
 
-- **Responsibility:** Agent registration, capability matching, health monitoring
-- **Dependencies:** Redis Cluster for agent registry, PostgreSQL for audit trails
-- **Complexity:** Medium
+- **Responsibility:** Agent registration, semantic capability matching, health monitoring
+- **Dependencies:** Redis Cluster for agent registry, PostgreSQL for audit trails, Semantic Search Service
+- **Complexity:** Medium-High
 
 **Module 2: JSON-RPC Engine**
 
@@ -110,14 +118,20 @@ graph TD
 
 **Module 3: Message Router**
 
-- **Responsibility:** Intelligent routing, load balancing, circuit breaker patterns
-- **Dependencies:** Redis for session state, health check integration
+- **Responsibility:** Intelligent routing with cost-biased optimization, load balancing, circuit breaker patterns
+- **Dependencies:** Redis for session state, health check integration, Semantic Search Service
 - **Complexity:** High
 
 **Module 4: Task Manager**
 
-- **Responsibility:** Stateful task lifecycle, artifact generation, status streaming
+- **Responsibility:** Stateful task lifecycle, artifact generation with context engineering, status streaming
 - **Dependencies:** PostgreSQL for task persistence, WebSocket for real-time updates
+- **Complexity:** Medium
+
+**Module 5: Semantic Search Service**
+
+- **Responsibility:** Vector embedding generation, similarity-based capability matching, agent ranking
+- **Dependencies:** PostgreSQL with pgvector extension, sentence-transformers embedding model
 - **Complexity:** Medium
 
 ## Interface Contracts
@@ -235,8 +249,9 @@ Relations:
 **Framework:** FastAPI 0.104+ with Uvicorn/Gunicorn production deployment
 **Communication:** fastapi-websocket-rpc for JSON-RPC over WebSocket
 **State Management:** Redis Cluster 7.0+ with Sentinel (minimum 3 masters)
-**Database:** PostgreSQL 14+ with pgBouncer connection pooling
-**Rationale:** Research shows FastAPI can handle 3,200+ concurrent WebSocket connections, fastapi-websocket-rpc provides mature A2A-compatible JSON-RPC implementation, Redis Cluster with odd number of masters prevents split-brain scenarios
+**Database:** PostgreSQL 14+ with pgvector extension, pgBouncer connection pooling
+**Semantic Search:** sentence-transformers/all-MiniLM-L6-v2 embedding model (768-dimensional vectors)
+**Rationale:** Research shows FastAPI can handle 3,200+ concurrent WebSocket connections, fastapi-websocket-rpc provides mature A2A-compatible JSON-RPC implementation, Redis Cluster with odd number of masters prevents split-brain scenarios, pgvector enables efficient HNSW indexing for sub-linear semantic search, lightweight embedding model supports <50ms CPU-based inference
 
 ### Design Patterns
 
@@ -258,6 +273,18 @@ MAX_CONCURRENT_CONNECTIONS: 1000
 MESSAGE_TIMEOUT_SECONDS: 30
 AGENT_DISCOVERY_TTL: 300
 TASK_EXECUTION_TIMEOUT: 3600
+
+# Semantic search configuration
+EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_DIMENSION: 768
+SIMILARITY_THRESHOLD: 0.75
+ENABLE_SEMANTIC_SEARCH: true
+
+# Cost-biased routing weights
+ROUTING_WEIGHT_SIMILARITY: 0.40
+ROUTING_WEIGHT_LATENCY: 0.30
+ROUTING_WEIGHT_COST: 0.20
+ROUTING_WEIGHT_QUALITY: 0.10
 ```
 
 ## Testing Strategy
@@ -268,8 +295,10 @@ TASK_EXECUTION_TIMEOUT: 3600
 
 - JSON-RPC 2.0 message parsing and validation
 - A2A protocol envelope handling
-- Agent capability matching algorithms
-- Task state transition logic
+- Agent capability matching algorithms (exact + semantic)
+- Vector embedding generation and similarity search
+- Cost-biased agent selection optimization
+- Task state transition logic with context engineering
 - Authentication and authorization flows
 
 **Tools:** pytest with asyncio support, pytest-cov for coverage
@@ -279,12 +308,15 @@ TASK_EXECUTION_TIMEOUT: 3600
 **Scenarios:**
 
 1. Agent registration and discovery flow with Redis
-2. Task creation and execution with PostgreSQL persistence
-3. WebSocket connection management and message routing
-4. A2A protocol compliance with Google's reference implementation
-5. Redis Cluster failover and split-brain prevention
+2. Semantic capability matching with pgvector and embedding generation
+3. Cost-biased routing optimization with multiple agent candidates
+4. Task creation and execution with PostgreSQL persistence
+5. Context engineering across multi-stage workflows
+6. WebSocket connection management and message routing
+7. A2A protocol compliance with Google's reference implementation
+8. Redis Cluster failover and split-brain prevention
 
-**Tools:** pytest-asyncio, testcontainers for Redis/PostgreSQL
+**Tools:** pytest-asyncio, testcontainers for Redis/PostgreSQL, pgvector test fixtures
 
 ### End-to-End Tests
 
@@ -309,7 +341,9 @@ TASK_EXECUTION_TIMEOUT: 3600
 **SLA Targets:**
 
 - Message routing latency: <10ms p95
-- Agent discovery latency: <50ms p95
+- Agent discovery latency: <50ms p95 (including semantic search)
+- Embedding generation: <50ms per capability description
+- Vector similarity search: <20ms for 1000+ agent registry
 - Task creation response: <200ms p95
 - WebSocket connection establishment: <100ms p95
 
@@ -330,12 +364,14 @@ TASK_EXECUTION_TIMEOUT: 3600
 ```yaml
 Compute:
   - Container: 4 vCPU, 8GB RAM (WebSocket memory overhead)
+  - Embedding Service: 2 vCPU, 4GB RAM (CPU-based inference)
   - Auto-scaling: 2-10 instances based on connection count
   - Health checks: /health, /ready endpoints
 
 Storage:
   - Redis Cluster: 3 masters, 3 replicas, 16GB total
   - PostgreSQL: 200GB with automated backups
+  - Vector Storage: Additional 1-2GB per 1000 agents for embeddings
   - Logs: 30-day retention with structured JSON format
 
 Networking:
@@ -349,13 +385,18 @@ Networking:
 **Metrics:**
 
 - A2A Protocol KPIs: message_rate, discovery_latency, protocol_errors
+- Semantic Search KPIs: embedding_generation_latency, similarity_search_latency, semantic_match_recall
+- Routing KPIs: cost_optimization_percentage, routing_score, capability_match_rate
 - WebSocket metrics: connection_count, connection_duration, message_throughput
-- Task metrics: creation_rate, completion_rate, execution_duration
-- Infrastructure: CPU, memory, Redis cluster health, PostgreSQL connections
+- Task metrics: creation_rate, completion_rate, execution_duration, context_lineage_depth
+- Infrastructure: CPU, memory, Redis cluster health, PostgreSQL connections, pgvector index size
 
 **Alerts:**
 
 - Message routing latency >50ms for 5min
+- Embedding generation latency >100ms p95 for 5min
+- Vector search latency >50ms p95 for 5min
+- Semantic match recall <85% for 10min
 - WebSocket connections >800 (80% capacity)
 - Redis cluster node failure
 - Agent discovery failure rate >1%
@@ -364,7 +405,8 @@ Networking:
 **Dashboards:**
 
 - A2A Protocol Health: Real-time protocol compliance and performance
-- Agent Ecosystem: Active agents, capabilities, task distribution
+- Semantic Search Performance: Embedding latency, similarity search performance, match quality
+- Agent Ecosystem: Active agents, capabilities, task distribution, cost optimization metrics
 - System Performance: Latency percentiles, throughput, error rates
 
 ### Security
@@ -494,10 +536,23 @@ Stages:
 - [ ] Error handling and graceful degradation
 - [ ] Connection pooling optimization
 
-**Phase 4: Launch Preparation (Weeks 7-8)**
+**Phase 4: Semantic Enhancements (Week 7)**
+
+- [ ] pgvector PostgreSQL extension installation and configuration
+- [ ] Embedding service deployment (sentence-transformers)
+- [ ] Semantic capability matching implementation
+- [ ] Cost-biased agent selection optimization
+- [ ] Enhanced AgentCard metadata (cost, latency, quality scores)
+- [ ] Context engineering utilities (ContextChain)
+- [ ] Migration strategy for existing agents
+- [ ] Performance benchmarking (semantic vs exact matching)
+
+**Phase 5: Launch Preparation (Week 8)**
 
 - [ ] A2A protocol compliance testing (100% conformance)
-- [ ] Load testing validation (1000+ concurrent connections)
+- [ ] Load testing validation (1000+ concurrent connections, semantic search)
+- [ ] Semantic search performance validation (<50ms embedding, <20ms search)
+- [ ] Cost optimization benchmarking (20-30% reduction target)
 - [ ] Security penetration testing and vulnerability assessment
 - [ ] Production deployment automation
 - [ ] Monitoring dashboards and alerting setup

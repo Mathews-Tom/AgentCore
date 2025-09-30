@@ -1,16 +1,17 @@
 # Tasks: A2A Protocol Layer
 
 **From:** `spec.md` + `plan.md`
-**Timeline:** 6 weeks, 3 sprints
-**Team:** 2-3 developers (1 senior, 1-2 mid-level)
+**Timeline:** 8 weeks, 4 sprints
+**Team:** 2-3 developers (1 senior, 1-2 mid-level) + 0.5 ML engineer (Week 7-8)
 **Created:** 2025-09-27
+**Updated:** 2025-09-30 (added Phase 4 semantic enhancements)
 
 ## Summary
 
-- Total tasks: 15
-- Estimated effort: 65 story points
-- Critical path duration: 6 weeks
-- Key risks: Protocol complexity, JSON-RPC edge cases, WebSocket scaling
+- Total tasks: 18
+- Estimated effort: 83 story points
+- Critical path duration: 8 weeks
+- Key risks: Protocol complexity, JSON-RPC edge cases, WebSocket scaling, embedding service integration
 
 ## Phase Breakdown
 
@@ -185,18 +186,72 @@
 - **Priority:** P1 (High)
 - **Notes:** Hardened multi-stage Dockerfile with non-root user (UID 1000), minimal attack surface (python:3.12-slim), security labels, proper healthchecks (30s interval, 30s start period), production CMD with 4 uvicorn workers and uvloop. Kubernetes manifests in k8s/ directory: namespace, configmap for environment variables, secrets for sensitive data, deployment with 3 replicas, rolling updates, pod anti-affinity, resource limits, security context (non-root, read-only filesystem, seccomp, dropped capabilities), init container for database migrations, liveness/readiness probes. HPA for autoscaling (3-10 replicas based on CPU 70%/memory 80%), ClusterIP service, headless service for StatefulSet-like discovery, ServiceAccount with RBAC, ServiceMonitor for Prometheus scraping. Prometheus instrumentation with prometheus-fastapi-instrumentator exposing /metrics endpoint. Structlog for production-ready JSON logging.
 
+### Phase 4: Semantic Enhancements (Sprint 4, 18 story points)
+
+**Goal:** Semantic capability matching and context engineering patterns
+**Deliverable:** Vector-based agent discovery with cost-optimization routing
+
+#### Tasks
+
+**[A2A-016] Semantic Capability Matching**
+
+- **Description:** Implement vector embeddings for agent capabilities with similarity search using pgvector
+- **Acceptance:**
+  - [ ] pgvector PostgreSQL extension installed and configured
+  - [ ] Embedding service generates 768-dimensional vectors from capability descriptions
+  - [ ] Vector similarity search returns agents with >0.75 similarity threshold
+  - [ ] Backward compatibility maintained with exact string matching
+  - [ ] Query latency <100ms p95 for semantic search (including embedding generation)
+  - [ ] Migration script for existing agents adds embeddings
+- **Effort:** 8 story points (5-8 days)
+- **Owner:** Senior Developer
+- **Dependencies:** A2A-009
+- **Priority:** P1 (Phase 1 enhancement)
+- **Notes:** Use sentence-transformers/all-MiniLM-L6-v2 model for CPU-based embedding generation. Implement HNSW indexing in pgvector for efficient similarity search. Add embedding generation on agent registration and capability updates. Store embeddings in separate column with vector type. Support both semantic and exact matching in parallel for fallback.
+
+**[A2A-017] Cost-Biased Agent Selection**
+
+- **Description:** Implement multi-objective optimization for intelligent agent routing
+- **Acceptance:**
+  - [ ] AgentCapability model extended with cost_per_request, avg_latency_ms, quality_score fields
+  - [ ] Routing algorithm implements multi-objective scoring: similarity (40%), latency (30%), cost (20%), quality (10%)
+  - [ ] Hard constraints enforced for max_latency_ms and max_cost thresholds
+  - [ ] Cost optimization metrics tracked and reported per routing decision
+  - [ ] Benchmark demonstrates 20-30% cost reduction vs random routing
+- **Effort:** 5 story points (3-5 days)
+- **Owner:** Mid-level Developer
+- **Dependencies:** A2A-016
+- **Priority:** P1 (High)
+- **Notes:** Extend message_router.py with _optimize_agent_selection method. Add cost tracking to routing statistics. Support configurable weight parameters for different optimization profiles (cost-focused, quality-focused, balanced). Implement agent capability reporting endpoint for agents to update their cost/performance metadata.
+
+**[A2A-018] Context Engineering Patterns**
+
+- **Description:** Add structured context fields and ContextChain utility for multi-stage workflows
+- **Acceptance:**
+  - [ ] AgentCard includes optional system_context and interaction_examples fields
+  - [ ] TaskArtifact includes context_lineage and context_summary fields
+  - [ ] ContextChain utility class implemented for multi-stage workflow orchestration
+  - [ ] Developer documentation with context engineering examples and best practices
+  - [ ] Migration ensures existing agents work without new context fields
+- **Effort:** 5 story points (3-5 days)
+- **Owner:** Mid-level Developer
+- **Dependencies:** A2A-003, A2A-004
+- **Priority:** P2 (Medium)
+- **Notes:** ContextChain utility tracks context accumulation across workflow stages, supports input_transform lambdas for stage-specific context extraction, maintains context lineage for debugging. Add template examples for common patterns (calendar analysis, research synthesis, multi-step reasoning). Document context engineering best practices in developer guide.
+
 ## Critical Path
 
 ```text
-A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010
-  (3d)      (5d)      (5d)      (8d)      (8d)      (8d)
-                            [41 days total]
+A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010 → A2A-016 → A2A-017
+  (3d)      (5d)      (5d)      (8d)      (8d)      (8d)      (8d)      (5d)
+                            [54 days total / ~8 weeks]
 ```
 
 **Bottlenecks:**
 
 - A2A-004: Task management complexity (highest risk)
 - A2A-009: Database integration and performance
+- A2A-016: pgvector integration and embedding service setup
 - A2A-006: Security implementation complexity
 
 **Parallel Tracks:**
@@ -204,6 +259,7 @@ A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010
 - Security: A2A-006 (can start after A2A-001)
 - Routing: A2A-005 (parallel with A2A-004)
 - Monitoring: A2A-008 (parallel with A2A-007)
+- Context Patterns: A2A-018 (parallel with A2A-017)
 
 ## Quick Wins (Week 1-2)
 
@@ -242,12 +298,21 @@ A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010
 - Core protocol implementation (A2A-001, A2A-002, A2A-004, A2A-006)
 - Database integration (A2A-009)
 - Performance optimization (A2A-010)
+- Semantic capability matching (A2A-016)
 
 **Mid-level Developer (1-2 FTE)**
 
 - Agent management (A2A-003)
 - Message routing (A2A-005)
 - Event system (A2A-007, A2A-008)
+- Cost-biased routing (A2A-017)
+- Context engineering (A2A-018)
+
+**ML Engineer (0.5 FTE, Week 7-8 only)**
+
+- Embedding model setup and optimization
+- Performance tuning for semantic search
+- Support for A2A-016 implementation
 
 ## Sprint Planning
 
@@ -258,6 +323,7 @@ A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010
 | Sprint 1 | Foundation | 13 SP | FastAPI app, JSON-RPC, agent registration |
 | Sprint 2 | Core Features | 21 SP | Task management, routing, security |
 | Sprint 3 | Production | 31 SP | Events, monitoring, database, testing |
+| Sprint 4 | Semantic Enhancement | 18 SP | Vector search, cost optimization, context patterns |
 
 ## Task Import Format
 
@@ -276,6 +342,9 @@ A2A-008,Health Monitoring,Agent health checks...,5,P1,Mid-level Dev,A2A-003,3
 A2A-009,PostgreSQL Integration,Database persistence...,8,P0,Senior Dev,A2A-004,3
 A2A-010,Integration Testing,Testing and performance...,8,P1,Senior Dev,A2A-009,3
 A2A-011,Production Deployment,Docker and monitoring...,5,P1,Senior Dev,A2A-010,3
+A2A-016,Semantic Capability Matching,Vector embeddings with pgvector...,8,P1,Senior Dev,A2A-009,4
+A2A-017,Cost-Biased Agent Selection,Multi-objective routing optimization...,5,P1,Mid-level Dev,A2A-016,4
+A2A-018,Context Engineering Patterns,Structured context and ContextChain...,5,P2,Mid-level Dev,"A2A-003,A2A-004",4
 ```
 
 ## Appendix
