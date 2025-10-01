@@ -314,6 +314,71 @@ A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010 → A2A-016 
 - Performance tuning for semantic search
 - Support for A2A-016 implementation
 
+### Phase 5: Session Management (Sprint 5, 13 story points)
+
+**Goal:** Long-running workflow persistence and resumption
+**Deliverable:** Full session lifecycle management
+
+#### Tasks
+
+**[A2A-019] Session Snapshot Creation**
+
+- **Description:** Implement session save with full context serialization
+- **Acceptance:**
+  - [ ] SessionSnapshot Pydantic model with all required fields
+  - [ ] Context serialization (tasks, agents, events)
+  - [ ] PostgreSQL session_snapshots table and Alembic migration
+  - [ ] JSON-RPC method: session.save
+  - [ ] Save operation <500ms p95 latency
+  - [ ] Support metadata (name, description, tags)
+  - [ ] Unit tests for serialization logic (95%+ coverage)
+  - [ ] Integration tests with task and agent managers
+- **Effort:** 5 story points (3-5 days)
+- **Owner:** Senior Developer
+- **Dependencies:** A2A-009 (PostgreSQL Integration)
+- **Priority:** P1 (High)
+- **Notes:** Serialization must handle circular references, large contexts (>10MB), and async task states. Consider using MessagePack for efficient binary serialization if JSON proves too slow.
+
+**[A2A-020] Session Resumption**
+
+- **Description:** Restore workflow state from saved session
+- **Acceptance:**
+  - [ ] Load session snapshot from PostgreSQL by session_id
+  - [ ] Deserialize and validate session data
+  - [ ] Restore task execution states to task manager
+  - [ ] Restore agent assignments to agent manager
+  - [ ] Optional event history replay with validation
+  - [ ] JSON-RPC method: session.resume
+  - [ ] Resume operation <1s p95 latency
+  - [ ] Handle missing agents gracefully (reconnection or skip)
+  - [ ] Unit tests for deserialization logic
+  - [ ] Integration tests for full save/resume cycle
+- **Effort:** 5 story points (3-5 days)
+- **Owner:** Senior Developer
+- **Dependencies:** A2A-019
+- **Priority:** P1 (High)
+- **Notes:** Resume must be idempotent (multiple resume calls = same state). Implement rollback mechanism if resume fails partway through. Consider using transaction for atomic state restoration.
+
+**[A2A-021] Session Management API**
+
+- **Description:** Complete session lifecycle operations
+- **Acceptance:**
+  - [ ] JSON-RPC method: session.list (with filtering by state, tags, date range)
+  - [ ] JSON-RPC method: session.info (full session details)
+  - [ ] JSON-RPC method: session.delete (with cascade to related data)
+  - [ ] Pagination support for session.list (default 10, max 100 per page)
+  - [ ] Session filtering by state (ACTIVE, PAUSED, COMPLETED)
+  - [ ] Session search by tags (array intersection)
+  - [ ] Session metadata update (patch operation)
+  - [ ] Session export to JSON file (for debugging)
+  - [ ] Unit tests for all API methods
+  - [ ] API documentation in OpenAPI spec
+- **Effort:** 3 story points (2-3 days)
+- **Owner:** Mid-level Developer
+- **Dependencies:** A2A-019, A2A-020
+- **Priority:** P1 (High)
+- **Notes:** session.delete should support soft delete (mark as deleted) and hard delete (remove from DB). Add admin-only flag for hard delete to prevent accidental data loss.
+
 ## Sprint Planning
 
 **2-week sprints, 20-25 SP velocity per developer**
@@ -324,6 +389,7 @@ A2A-001 → A2A-002 → A2A-003 → A2A-004 → A2A-009 → A2A-010 → A2A-016 
 | Sprint 2 | Core Features | 21 SP | Task management, routing, security |
 | Sprint 3 | Production | 31 SP | Events, monitoring, database, testing |
 | Sprint 4 | Semantic Enhancement | 18 SP | Vector search, cost optimization, context patterns |
+| Sprint 5 | Session Management | 13 SP | Session save/resume, lifecycle API |
 
 ## Task Import Format
 
@@ -345,6 +411,9 @@ A2A-011,Production Deployment,Docker and monitoring...,5,P1,Senior Dev,A2A-010,3
 A2A-016,Semantic Capability Matching,Vector embeddings with pgvector...,8,P1,Senior Dev,A2A-009,4
 A2A-017,Cost-Biased Agent Selection,Multi-objective routing optimization...,5,P1,Mid-level Dev,A2A-016,4
 A2A-018,Context Engineering Patterns,Structured context and ContextChain...,5,P2,Mid-level Dev,"A2A-003,A2A-004",4
+A2A-019,Session Snapshot Creation,Implement session save with full context...,5,P1,Senior Dev,A2A-009,5
+A2A-020,Session Resumption,Restore workflow state from saved session...,5,P1,Senior Dev,A2A-019,5
+A2A-021,Session Management API,Complete session lifecycle operations...,3,P1,Mid-level Dev,"A2A-019,A2A-020",5
 ```
 
 ## Appendix
