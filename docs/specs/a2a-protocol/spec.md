@@ -81,6 +81,16 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - The system shall provide context_summary field for documenting context used in artifact generation
 - The system shall support structured metadata in artifacts for downstream context propagation
 
+**Session Management**
+
+- The system shall enable saving long-running workflow sessions with full state preservation
+- The system shall capture session snapshots including task states, agent assignments, and event history
+- The system shall store session data in PostgreSQL with JSONB columns for flexible context storage
+- The system shall support session resumption with context restoration within 1 second (p95)
+- The system shall maintain session metadata (name, description, tags) for organization
+- The system shall provide session lifecycle operations (create, save, resume, list, info, delete)
+- The system shall support 1000+ active sessions concurrently per instance
+
 ### User Stories
 
 **As an Agent Developer, I want to register my agent with the platform so that other agents can discover and communicate with it**
@@ -190,6 +200,14 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 - Enhanced AgentCard metadata (cost, latency, quality scores)
 - ContextChain utility for multi-stage workflows
 
+**Priority 0.5 (Session Management - Week 8-9):**
+
+- Long-running workflow session persistence
+- Session save and resume capabilities
+- Session state snapshots with full context preservation
+- Session metadata and tagging
+- Session lifecycle management (list, info, delete)
+
 ### Key User Flows
 
 **Agent Registration Flow**
@@ -228,6 +246,23 @@ The A2A Protocol Layer provides the foundational communication infrastructure fo
 4. Each subsequent agent receives accumulated context from previous stages
 5. Final agent synthesizes results with complete context history
 6. System stores context lineage for debugging and auditing
+
+**Session Save and Resume Flow**
+
+1. User/agent initiates session save during active workflow execution
+2. System captures current state snapshot including:
+   - Active tasks and their execution states
+   - Agent assignments and connection states
+   - Event history (last 1000 events)
+   - Workflow graph position and dependencies
+   - Custom metadata (name, description, tags)
+3. System serializes state to PostgreSQL with JSONB storage
+4. System returns session ID and confirmation
+5. User/agent later requests session resume with session ID
+6. System loads session snapshot from database
+7. System restores task execution states and agent assignments
+8. System optionally replays event history for context reconstruction
+9. Workflow continues from saved checkpoint with full context preserved
 
 ### Input/Output Specifications
 

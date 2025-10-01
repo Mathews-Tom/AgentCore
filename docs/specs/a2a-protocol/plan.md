@@ -427,6 +427,140 @@ volumes:
 - Backward compatibility testing for agents without semantic metadata
 - Go-live preparation and post-launch support procedures
 
+### Phase 5: Session Management Enhancement (Week 9-10)
+
+**Goal:** Enable long-running workflow persistence and resumption
+**Duration:** 2 weeks
+**Team:** 1 senior developer
+**Deliverable:** Full session lifecycle management with <1s resume time
+
+**Week 1: Session Persistence (Days 1-5)**
+
+- **Database Schema (Days 1-2)**
+  - Create session_snapshots table with JSONB columns for flexible context storage
+  - Add indexes for session_id, state, created_at, tags (GIN index for array)
+  - Create Alembic migration with proper constraints and foreign keys
+  - Add session state enum (ACTIVE, PAUSED, RESUMED, COMPLETED)
+
+- **Session Model (Days 2-3)**
+  - Implement SessionSnapshot Pydantic model with full validation
+  - Add TaskSnapshot and AgentState nested models
+  - Create session serialization logic with compression support
+  - Implement deserialization with validation and error handling
+
+- **Session Save Logic (Days 4-5)**
+  - Capture task execution states from task manager
+  - Serialize agent assignments and connection states
+  - Store event history (last 1000 events) for replay capability
+  - Add metadata support (name, description, tags, custom key-value)
+  - Implement JSON-RPC method: session.save
+
+**Week 2: Session Resumption (Days 6-10)**
+
+- **Session Restore Logic (Days 6-7)**
+  - Load session snapshot from PostgreSQL by session_id
+  - Deserialize and validate session data structure
+  - Restore task states to task manager (with status reconciliation)
+  - Restore agent assignments (with agent availability checks)
+  - Optional event replay with validation and conflict resolution
+  - Implement JSON-RPC method: session.resume
+
+- **Session Lifecycle API (Days 8-9)**
+  - Implement session.list with filtering (state, tags, date range)
+  - Implement session.info for detailed session inspection
+  - Implement session.delete with soft/hard delete options
+  - Add session metadata update (PATCH operation)
+  - Support pagination (default 10, max 100 per page)
+
+- **Testing & Optimization (Days 9-10)**
+  - Unit tests for serialization/deserialization (95%+ coverage)
+  - Integration tests for complete save/resume cycle
+  - Performance optimization (target: save <500ms, resume <1s)
+  - Load testing with 1000+ concurrent sessions
+  - Error handling tests (missing agents, corrupted data)
+
+**Technical Design:**
+
+**Database Schema:**
+```sql
+CREATE TABLE session_snapshots (
+    session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    tags TEXT[],
+    state VARCHAR(50) NOT NULL,
+    context JSONB NOT NULL,
+    tasks JSONB NOT NULL,
+    agents JSONB NOT NULL,
+    event_history JSONB,
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    resumed_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    CONSTRAINT valid_state CHECK (state IN ('ACTIVE', 'PAUSED', 'RESUMED', 'COMPLETED'))
+);
+
+CREATE INDEX idx_session_state ON session_snapshots(state);
+CREATE INDEX idx_session_created_at ON session_snapshots(created_at DESC);
+CREATE INDEX idx_session_tags ON session_snapshots USING GIN(tags);
+```
+
+**Session Snapshot Model:**
+```python
+class SessionSnapshot(BaseModel):
+    session_id: UUID
+    name: str
+    description: str = ""
+    tags: List[str] = []
+    state: Literal["ACTIVE", "PAUSED", "RESUMED", "COMPLETED"]
+    context: Dict[str, Any]
+    tasks: List[TaskSnapshot]
+    agents: List[AgentState]
+    event_history: List[Event] = Field(max_items=1000)
+    metadata: Dict[str, Any] = {}
+    created_at: datetime
+    updated_at: datetime
+    resumed_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+class TaskSnapshot(BaseModel):
+    task_id: str
+    status: TaskStatus
+    execution_state: Dict[str, Any]
+    assigned_agent_id: Optional[str]
+    progress: float = Field(ge=0.0, le=1.0)
+    checkpoints: List[Dict[str, Any]] = []
+
+class AgentState(BaseModel):
+    agent_id: str
+    connection_state: Literal["CONNECTED", "DISCONNECTED", "RECONNECTING"]
+    assigned_tasks: List[str]
+    context: Dict[str, Any]
+```
+
+**Integration Points:**
+- Task Manager: session_service.capture_tasks() / session_service.restore_tasks()
+- Agent Manager: session_service.capture_agents() / session_service.restore_agents()
+- Event Manager: session_service.get_recent_events() for history capture
+- CLI Layer: session save/resume/list/info/delete commands
+
+**Success Metrics:**
+- Save operation: <500ms p95 latency
+- Resume operation: <1s p95 latency
+- Support 1000+ active sessions concurrently
+- Zero data loss on save/resume cycle
+- 100% test coverage for serialization logic
+
+**Risk Mitigation:**
+| Risk | Mitigation |
+|------|------------|
+| Large session context (>10MB) causing slow saves | Implement incremental checkpoints, context compression with zlib |
+| Event replay causing state inconsistencies | Make replay optional, validate state after replay, rollback on failure |
+| Database storage limits for JSONB | Implement context pruning, archive old sessions to cold storage |
+| Resume failures due to missing agents | Graceful degradation with agent reconnection logic, skip unavailable agents |
+| Concurrent session modifications | Implement optimistic locking with version field, detect conflicts |
+
 ## 8. Quality Assurance
 
 **Testing Strategy (unit/integration/e2e targets):**

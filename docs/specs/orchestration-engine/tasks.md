@@ -8,9 +8,9 @@
 ## Summary
 
 - Total tasks: 16
-- Estimated effort: 89 story points
+- Estimated effort: 94 story points
 - Critical path duration: 8 weeks
-- Key risks: Redis Streams complexity, graph algorithm optimization, saga pattern implementation
+- Key risks: Redis Streams complexity, graph algorithm optimization, saga pattern implementation, hooks system integration
 
 ## Phase Breakdown
 
@@ -172,18 +172,28 @@
 - **Dependencies:** ORCH-007
 - **Priority:** P0 (Critical)
 
-**[ORCH-011] Custom Pattern Framework**
+**[ORCH-011] Custom Pattern Framework with Hooks System**
 
-- **Description:** Framework for defining and registering custom orchestration patterns
+- **Description:** Framework for custom orchestration patterns + automated workflow enhancement via hooks
 - **Acceptance:**
   - [ ] Custom pattern definition interface
   - [ ] Pattern registration and validation
   - [ ] Template system for common patterns
   - [ ] Pattern library management
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** Mid-level Developer
-- **Dependencies:** ORCH-009
-- **Priority:** P2 (Medium)
+  - [ ] Hook configuration model (pre/post/session types)
+  - [ ] Hook registration and event matching
+  - [ ] PostgreSQL workflow_hooks table and Alembic migration
+  - [ ] Async hook execution via Redis Streams queue
+  - [ ] Hook error handling and retry logic
+  - [ ] Hook execution monitoring and logging
+  - [ ] Integration with A2A-007 Event System
+  - [ ] Unit tests for hook execution (95% coverage)
+  - [ ] Integration tests with real hooks
+- **Effort:** 10 story points (8-10 days)
+- **Owner:** Senior Developer + Mid-level Developer
+- **Dependencies:** ORCH-009, A2A-007 (Event System)
+- **Priority:** P1 (High)
+- **Notes:** Enhanced to include full hooks system based on competitive analysis. Hooks enable automated agent assignment, code formatting, neural training, and session management without custom code. See spec.md section 4.1 for complete hooks architecture.
 
 **[ORCH-012] PostgreSQL State Management**
 
@@ -282,7 +292,7 @@ ORCH-002 ↗           ↓
 | Sprint 1 | Event Processing | 16 SP | Redis Streams, graph engine |
 | Sprint 2 | Core Orchestration | 21 SP | Supervisor, hierarchical, CQRS |
 | Sprint 3 | Advanced Patterns | 26 SP | Handoff, swarm, saga patterns |
-| Sprint 4 | Production Features | 26 SP | Fault tolerance, performance, custom patterns |
+| Sprint 4 | Production Features | 31 SP | Fault tolerance, performance, custom patterns + hooks |
 
 ## Task Import Format
 
@@ -300,7 +310,7 @@ ORCH-007,Swarm Pattern,Distributed coordination...,8,P1,Senior Dev,ORCH-005,3
 ORCH-008,Saga Pattern,Long-running transactions...,13,P0,Senior Dev,ORCH-005,3
 ORCH-009,Fault Tolerance,Circuit breakers...,8,P0,Senior Dev,ORCH-008,4
 ORCH-010,Performance,Scalability optimization...,8,P0,Senior Dev,ORCH-007,4
-ORCH-011,Custom Patterns,Pattern framework...,5,P2,Mid-level Dev,ORCH-009,4
+ORCH-011,Custom Patterns + Hooks,Pattern framework + hooks system...,10,P1,Senior Dev + Mid-level Dev,"ORCH-009,A2A-007",4
 ORCH-012,PostgreSQL State,State persistence...,5,P1,Mid-level Dev,ORCH-005,4
 ```
 

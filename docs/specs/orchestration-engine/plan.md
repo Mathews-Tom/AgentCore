@@ -187,7 +187,61 @@ services:
 
 - Saga pattern compensation
 - Performance optimization
-- Custom pattern framework
+- Custom pattern framework with hooks system
+
+**Week 1: Custom Pattern Framework (Days 1-3)**
+
+1. **Pattern Definition Interface (Days 1-2)**
+   - Create pattern registration API
+   - Pattern validation framework
+   - Template system for common patterns
+   - Pattern versioning and migration
+
+2. **Pattern Library Management (Day 3)**
+   - Built-in pattern catalog
+   - Custom pattern storage in PostgreSQL
+   - Pattern discovery and selection logic
+
+**Week 2-3: Hooks System Implementation (Days 4-10)**
+
+3. **Hook Configuration Model (Days 4-5)**
+   - HookConfig Pydantic model (see spec.md section 4.1)
+   - HookTrigger enum with all trigger types
+   - PostgreSQL workflow_hooks table creation
+   - Hook registration API endpoint
+
+4. **Hook Execution Engine (Days 6-7)**
+   - Event-driven hook matching by trigger type
+   - Priority-based hook ordering
+   - Sequential execution with timeout protection
+   - Result collection and error handling
+   - Integration with A2A-007 Event System
+
+5. **Redis Hook Queue (Days 8-9)**
+   - Async hook execution via Redis Streams
+   - Hook execution logging with 7-day retention
+   - Dead letter queue for failed hooks
+   - Hook performance monitoring
+
+6. **Hook Integration & Testing (Day 10)**
+   - Pre/post task hooks integration with TaskManager
+   - Session hooks integration with SessionManager
+   - Unit tests for hook execution (95% coverage)
+   - Integration tests with real hooks
+
+**Technical Details:**
+- Extend A2A-007 Event System for hook triggers
+- PostgreSQL workflow_hooks table (see spec.md for schema)
+- Redis Streams for async hook execution queue
+- Support for shell commands and Python function references
+- Hook timeout protection (default 30s)
+- Priority-based execution order
+
+**Success Metrics:**
+- Hook execution latency <100ms p95
+- Support 100+ registered hooks
+- Zero hook execution impact on critical path
+- 95%+ test coverage
 
 ### Phase 4: Production Readiness (Week 7-8)
 

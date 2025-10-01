@@ -142,7 +142,8 @@ The Orchestration Engine provides hybrid event-driven and graph-based workflow c
 - Real-time workflow monitoring and metrics
 
 **Priority 3 (Advanced):**
-- Custom orchestration pattern framework
+- Custom orchestration pattern framework with hooks system
+- Event-driven workflow automation hooks (pre/post/session)
 - Dynamic workflow modification during execution
 - Advanced optimization algorithms for agent allocation
 - Cross-cluster workflow coordination
@@ -258,6 +259,114 @@ workflow:
 }
 ```
 
+## 4.1 Hooks System Architecture
+
+### Overview
+Event-driven hooks enable automated workflow enhancement without custom code. Inspired by git hooks and Claude Code hooks, the hooks system provides extensibility points throughout the orchestration lifecycle for automated agent assignment, code formatting, neural pattern training, session management, and real-time notifications.
+
+### Hook Types
+
+#### Pre-Operation Hooks
+- **pre-task**: Auto-assign agents based on task analysis
+- **pre-search**: Cache searches for performance optimization
+- **pre-edit**: Validate files and prepare resources
+- **pre-command**: Security validation before command execution
+
+#### Post-Operation Hooks
+- **post-edit**: Auto-format code (language-specific formatting)
+- **post-task**: Train neural patterns from successful task completions
+- **post-command**: Update memory with execution context
+- **notification**: Real-time progress updates to external systems
+
+#### Session Hooks
+- **session-start**: Restore previous context automatically on workflow start
+- **session-end**: Generate summaries and persist state
+- **session-restore**: Load memory from previous sessions
+
+### Hook Configuration
+
+```python
+from enum import Enum
+from typing import List
+from pydantic import BaseModel
+
+class HookTrigger(str, Enum):
+    PRE_TASK = "pre_task"
+    POST_TASK = "post_task"
+    PRE_SEARCH = "pre_search"
+    PRE_EDIT = "pre_edit"
+    POST_EDIT = "post_edit"
+    PRE_COMMAND = "pre_command"
+    POST_COMMAND = "post_command"
+    SESSION_START = "session_start"
+    SESSION_END = "session_end"
+    SESSION_RESTORE = "session_restore"
+    NOTIFICATION = "notification"
+
+class HookConfig(BaseModel):
+    name: str
+    trigger: HookTrigger
+    command: str  # Shell command or Python function reference
+    args: List[str] = []
+    always_run: bool = False  # Run even if previous hooks fail
+    timeout_ms: int = 30000
+    enabled: bool = True
+    priority: int = 100  # Lower numbers run first
+```
+
+### Hook Execution Flow
+
+1. **Event Publication**: Orchestration engine publishes event to hook system
+2. **Hook Matching**: System matches registered hooks by trigger type
+3. **Priority Ordering**: Hooks are sorted by priority (ascending)
+4. **Sequential Execution**: Each hook executes in order with timeout protection
+5. **Result Collection**: Results and errors are collected for each hook
+6. **Workflow Control**: Critical failures can abort workflow, warnings continue execution
+
+### Storage
+
+**PostgreSQL Table: workflow_hooks**
+```sql
+CREATE TABLE workflow_hooks (
+    hook_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    trigger VARCHAR(50) NOT NULL,
+    command TEXT NOT NULL,
+    args JSONB DEFAULT '[]',
+    always_run BOOLEAN DEFAULT FALSE,
+    timeout_ms INTEGER DEFAULT 30000,
+    enabled BOOLEAN DEFAULT TRUE,
+    priority INTEGER DEFAULT 100,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_hooks_trigger ON workflow_hooks(trigger) WHERE enabled = TRUE;
+CREATE INDEX idx_hooks_priority ON workflow_hooks(priority);
+```
+
+**Redis Hook Execution Queue**
+- Async hook execution via Redis Streams
+- Hook execution logs stored with 7-day retention
+- Event history for debugging and auditing
+
+### Use Cases
+
+1. **Automated Agent Assignment**: Analyze task requirements and auto-assign best-suited agents based on capabilities and cost
+2. **Code Formatting and Linting**: Automatically format and lint code after edit operations
+3. **Neural Pattern Training**: Train optimization patterns from successful task completions
+4. **Session Context Management**: Restore previous context on session start, save state on session end
+5. **Real-Time Notifications**: Push workflow status updates to external systems (Slack, webhooks)
+6. **Security Validation**: Pre-command hooks validate security policies before execution
+7. **Performance Optimization**: Pre-search hooks implement caching layers
+
+### Integration Points
+
+- **Event System (A2A-007)**: Hooks consume events from the event system
+- **Task Manager (A2A-004)**: Pre/post task hooks integrate with task lifecycle
+- **Agent Manager (A2A-003)**: Hook execution can trigger agent operations
+- **Session Management (A2A-019)**: Session hooks integrate with save/resume operations
+
 ## 5. Acceptance Criteria
 
 ### Definition of Done
@@ -265,6 +374,8 @@ workflow:
 - [ ] At least 5 built-in orchestration patterns are implemented and tested
 - [ ] Workflow definition language supports complex multi-agent coordination scenarios
 - [ ] Fault tolerance mechanisms (circuit breaker, saga pattern) handle agent failures gracefully
+- [ ] Hooks system enables automated workflow enhancement with pre/post/session hooks
+- [ ] Hook execution integrates with event system for extensible automation
 - [ ] Performance targets are met for workflow planning and execution coordination
 - [ ] Integration with A2A Protocol Layer enables seamless agent communication
 - [ ] Real-time monitoring and metrics provide visibility into workflow execution
