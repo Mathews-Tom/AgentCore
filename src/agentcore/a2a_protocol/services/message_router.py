@@ -17,6 +17,7 @@ import structlog
 from agentcore.a2a_protocol.models.agent import AgentStatus
 from agentcore.a2a_protocol.models.jsonrpc import MessageEnvelope, JsonRpcRequest
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
+from agentcore.a2a_protocol.services.session_manager import session_manager
 
 
 logger = structlog.get_logger()
@@ -516,6 +517,137 @@ class MessageRouter:
             "oldest_message": queue[0].queued_at.isoformat() if queue else None,
             "current_load": self._agent_load.get(agent_id, 0),
         }
+
+    async def route_with_session(
+        self,
+        envelope: MessageEnvelope,
+        session_id: str,
+        required_capabilities: Optional[List[str]] = None,
+        strategy: RoutingStrategy = RoutingStrategy.CAPABILITY_MATCH,
+        priority: MessagePriority = MessagePriority.NORMAL
+    ) -> Optional[str]:
+        """
+        Route message with session context preservation.
+
+        Args:
+            envelope: Message envelope to route
+            session_id: Session ID for context preservation
+            required_capabilities: Required agent capabilities
+            strategy: Routing strategy
+            priority: Message priority
+
+        Returns:
+            Selected agent ID, or None if no agent available
+
+        Raises:
+            ValueError: If session not found or routing fails
+        """
+        # Get session
+        session = await session_manager.get_session(session_id)
+        if not session:
+            raise ValueError(f"Session not found: {session_id}")
+
+        if session.is_terminal:
+            raise ValueError(f"Session {session_id} is in terminal state: {session.state}")
+
+        # Prefer routing to participant agents in the session
+        candidates = []
+
+        if session.participant_agents:
+            # Try to route to existing session participants first
+            for agent_id in session.participant_agents:
+                agent = await agent_manager.get_agent(agent_id)
+                if agent and agent.is_active() and await self._is_agent_available(agent_id):
+                    # Check capabilities if required
+                    if required_capabilities:
+                        if all(agent.has_capability(cap) for cap in required_capabilities):
+                            candidates.append(agent_id)
+                    else:
+                        candidates.append(agent_id)
+
+        # If no participant agents available, find new capable agents
+        if not candidates and required_capabilities:
+            candidates = await self._find_capable_agents(required_capabilities)
+
+        if not candidates:
+            self.logger.warning(
+                "No agents available for session routing",
+                session_id=session_id,
+                required_capabilities=required_capabilities
+            )
+            return None
+
+        # Select agent
+        selected_agent = await self._select_agent(candidates, strategy)
+
+        if selected_agent:
+            # Deliver message
+            await self._deliver_message(envelope, selected_agent)
+
+            # Add agent as session participant if not already
+            if selected_agent not in session.participant_agents:
+                await session_manager.set_agent_state(
+                    session_id,
+                    selected_agent,
+                    {"joined_at": datetime.utcnow().isoformat()}
+                )
+
+            # Record routing event in session
+            await session_manager.record_event(
+                session_id,
+                "message_routed",
+                {
+                    "message_id": envelope.message_id,
+                    "agent_id": selected_agent,
+                    "source": envelope.source,
+                    "strategy": strategy.value
+                }
+            )
+
+            self._routing_stats["total_routed"] += 1
+            self._routing_stats["session_routed"] = self._routing_stats.get("session_routed", 0) + 1
+
+            self.logger.info(
+                "Message routed with session context",
+                message_id=envelope.message_id,
+                session_id=session_id,
+                target=selected_agent,
+                strategy=strategy.value
+            )
+
+            return selected_agent
+
+        return None
+
+    async def preserve_session_context(
+        self,
+        session_id: str,
+        agent_id: str,
+        context_updates: Dict[str, Any]
+    ) -> bool:
+        """
+        Preserve context updates in session after message processing.
+
+        Args:
+            session_id: Session ID
+            agent_id: Agent ID that processed the message
+            context_updates: Context updates from agent
+
+        Returns:
+            True if preserved successfully
+        """
+        # Update session context
+        success = await session_manager.update_context(session_id, context_updates)
+
+        if success:
+            self.logger.debug(
+                "Session context preserved",
+                session_id=session_id,
+                agent_id=agent_id,
+                update_keys=list(context_updates.keys())
+            )
+
+        return success
 
 
 # Global message router instance

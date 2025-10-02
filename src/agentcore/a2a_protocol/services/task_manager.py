@@ -372,6 +372,85 @@ class TaskManager:
             self.logger.error("Task progress update failed", error=str(e))
             return False
 
+    async def add_task_artifact(
+        self,
+        execution_id: str,
+        name: str,
+        artifact_type: str,
+        content: Any,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Add an artifact to a task execution.
+
+        Args:
+            execution_id: Task execution ID
+            name: Artifact name
+            artifact_type: Artifact type (file, data, url, etc.)
+            content: Artifact content
+            metadata: Optional artifact metadata
+
+        Returns:
+            True if added successfully, False otherwise
+        """
+        execution = self._task_executions.get(execution_id)
+        if not execution:
+            return False
+
+        try:
+            execution.add_artifact(name, artifact_type, content, metadata)
+
+            self.logger.debug(
+                "Task artifact added",
+                execution_id=execution_id,
+                task_id=execution.task_id,
+                artifact_name=name,
+                artifact_type=artifact_type
+            )
+
+            return True
+
+        except ValueError as e:
+            self.logger.error("Task artifact addition failed", error=str(e))
+            return False
+
+    async def get_task_artifacts(self, execution_id: str) -> Optional[List[TaskArtifact]]:
+        """
+        Get all artifacts for a task execution.
+
+        Args:
+            execution_id: Task execution ID
+
+        Returns:
+            List of artifacts or None if task not found
+        """
+        execution = self._task_executions.get(execution_id)
+        if not execution:
+            return None
+
+        return execution.artifacts
+
+    async def get_task_status_transitions(self, execution_id: str) -> Optional[List[TaskStatus]]:
+        """
+        Get valid status transitions for a task execution.
+
+        Args:
+            execution_id: Task execution ID
+
+        Returns:
+            List of valid next statuses or None if task not found
+        """
+        execution = self._task_executions.get(execution_id)
+        if not execution:
+            return None
+
+        valid_next = []
+        for status in TaskStatus:
+            if execution.can_transition_to(status):
+                valid_next.append(status)
+
+        return valid_next
+
     async def query_tasks(self, query: TaskQuery) -> TaskQueryResponse:
         """
         Query tasks with filtering and pagination.

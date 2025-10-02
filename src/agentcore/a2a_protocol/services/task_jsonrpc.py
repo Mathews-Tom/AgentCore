@@ -519,10 +519,123 @@ async def handle_task_summary(request: JsonRpcRequest) -> Dict[str, Any]:
     return summary
 
 
+@register_jsonrpc_method("task.add_artifact")
+async def handle_task_add_artifact(request: JsonRpcRequest) -> Dict[str, Any]:
+    """
+    Add an artifact to a task execution.
+
+    Method: task.add_artifact
+    Params:
+        - execution_id: string
+        - name: string
+        - type: string (file, data, url, json, text, binary, image, document)
+        - content: any
+        - metadata: object (optional)
+
+    Returns:
+        Artifact addition result
+    """
+    if not request.params or not isinstance(request.params, dict):
+        raise ValueError("Parameters required: execution_id, name, type, content")
+
+    execution_id = request.params.get("execution_id")
+    name = request.params.get("name")
+    artifact_type = request.params.get("type")
+    content = request.params.get("content")
+    metadata = request.params.get("metadata")
+
+    if not execution_id or not name or not artifact_type or content is None:
+        raise ValueError("Missing required parameters: execution_id, name, type, and/or content")
+
+    success = await task_manager.add_task_artifact(execution_id, name, artifact_type, content, metadata)
+
+    if not success:
+        raise ValueError(f"Artifact addition failed: {execution_id}")
+
+    logger.debug("Artifact added via JSON-RPC", execution_id=execution_id, name=name, type=artifact_type, method="task.add_artifact")
+
+    return {
+        "success": True,
+        "execution_id": execution_id,
+        "artifact_name": name,
+        "artifact_type": artifact_type,
+        "message": "Artifact added successfully"
+    }
+
+
+@register_jsonrpc_method("task.get_artifacts")
+async def handle_task_get_artifacts(request: JsonRpcRequest) -> Dict[str, Any]:
+    """
+    Get all artifacts for a task execution.
+
+    Method: task.get_artifacts
+    Params:
+        - execution_id: string
+
+    Returns:
+        List of task artifacts
+    """
+    if not request.params or not isinstance(request.params, dict):
+        raise ValueError("Parameter required: execution_id")
+
+    execution_id = request.params.get("execution_id")
+    if not execution_id:
+        raise ValueError("Missing required parameter: execution_id")
+
+    artifacts = await task_manager.get_task_artifacts(execution_id)
+
+    if artifacts is None:
+        raise ValueError(f"Task not found: {execution_id}")
+
+    logger.debug("Artifacts retrieved via JSON-RPC", execution_id=execution_id, count=len(artifacts), method="task.get_artifacts")
+
+    return {
+        "execution_id": execution_id,
+        "artifacts": [artifact.model_dump() for artifact in artifacts],
+        "count": len(artifacts)
+    }
+
+
+@register_jsonrpc_method("task.status_transitions")
+async def handle_task_status_transitions(request: JsonRpcRequest) -> Dict[str, Any]:
+    """
+    Get valid status transitions for a task execution.
+
+    Method: task.status_transitions
+    Params:
+        - execution_id: string
+
+    Returns:
+        Current status and list of valid next statuses
+    """
+    if not request.params or not isinstance(request.params, dict):
+        raise ValueError("Parameter required: execution_id")
+
+    execution_id = request.params.get("execution_id")
+    if not execution_id:
+        raise ValueError("Missing required parameter: execution_id")
+
+    execution = await task_manager.get_task(execution_id)
+    if not execution:
+        raise ValueError(f"Task not found: {execution_id}")
+
+    valid_transitions = await task_manager.get_task_status_transitions(execution_id)
+
+    logger.debug("Status transitions retrieved via JSON-RPC", execution_id=execution_id, method="task.status_transitions")
+
+    return {
+        "execution_id": execution_id,
+        "current_status": execution.status.value,
+        "valid_transitions": [status.value for status in valid_transitions] if valid_transitions else [],
+        "is_terminal": execution.is_terminal
+    }
+
+
 # Log registration on import
 logger.info("Task JSON-RPC methods registered",
            methods=[
                "task.create", "task.get", "task.assign", "task.start",
                "task.complete", "task.fail", "task.cancel", "task.update_progress",
-               "task.query", "task.dependencies", "task.ready", "task.cleanup", "task.summary"
+               "task.query", "task.dependencies", "task.ready", "task.cleanup", "task.summary",
+               "task.add_artifact", "task.get_artifacts", "task.status_transitions"
            ])

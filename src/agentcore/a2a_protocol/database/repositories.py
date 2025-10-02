@@ -17,9 +17,11 @@ from agentcore.a2a_protocol.database.models import (
     AgentHealthMetricDB,
     MessageQueueDB,
     EventSubscriptionDB,
+    SessionSnapshotDB,
 )
 from agentcore.a2a_protocol.models.agent import AgentCard, AgentStatus
 from agentcore.a2a_protocol.models.task import TaskDefinition, TaskExecution, TaskStatus
+from agentcore.a2a_protocol.models.session import SessionSnapshot, SessionState, SessionPriority
 
 logger = structlog.get_logger()
 
@@ -350,3 +352,191 @@ class HealthMetricRepository:
 
 # Import timedelta for cleanup_old_metrics
 from datetime import timedelta
+
+
+class SessionRepository:
+    """Repository for session snapshot database operations."""
+
+    @staticmethod
+    async def create(session: AsyncSession, snapshot: SessionSnapshot) -> SessionSnapshotDB:
+        """Create session snapshot."""
+        session_db = SessionSnapshotDB(
+            session_id=snapshot.session_id,
+            name=snapshot.name,
+            description=snapshot.description,
+            state=snapshot.state,
+            priority=snapshot.priority,
+            owner_agent=snapshot.owner_agent,
+            participant_agents=snapshot.participant_agents,
+            context=snapshot.context.model_dump(mode="json"),
+            task_ids=snapshot.task_ids,
+            artifact_ids=snapshot.artifact_ids,
+            created_at=snapshot.created_at,
+            updated_at=snapshot.updated_at,
+            expires_at=snapshot.expires_at,
+            completed_at=snapshot.completed_at,
+            timeout_seconds=snapshot.timeout_seconds,
+            max_idle_seconds=snapshot.max_idle_seconds,
+            tags=snapshot.tags,
+            session_metadata=snapshot.metadata,
+            checkpoint_interval_seconds=snapshot.checkpoint_interval_seconds,
+            last_checkpoint_at=snapshot.last_checkpoint_at,
+            checkpoint_count=snapshot.checkpoint_count,
+        )
+        session.add(session_db)
+        await session.flush()
+        return session_db
+
+    @staticmethod
+    async def get_by_id(session: AsyncSession, session_id: str) -> Optional[SessionSnapshotDB]:
+        """Get session by ID."""
+        result = await session.execute(
+            select(SessionSnapshotDB).where(SessionSnapshotDB.session_id == session_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def update(session: AsyncSession, snapshot: SessionSnapshot) -> bool:
+        """Update existing session snapshot."""
+        result = await session.execute(
+            update(SessionSnapshotDB)
+            .where(SessionSnapshotDB.session_id == snapshot.session_id)
+            .values(
+                name=snapshot.name,
+                description=snapshot.description,
+                state=snapshot.state,
+                priority=snapshot.priority,
+                participant_agents=snapshot.participant_agents,
+                context=snapshot.context.model_dump(mode="json"),
+                task_ids=snapshot.task_ids,
+                artifact_ids=snapshot.artifact_ids,
+                updated_at=snapshot.updated_at,
+                expires_at=snapshot.expires_at,
+                completed_at=snapshot.completed_at,
+                tags=snapshot.tags,
+                session_metadata=snapshot.metadata,
+                last_checkpoint_at=snapshot.last_checkpoint_at,
+                checkpoint_count=snapshot.checkpoint_count,
+            )
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def delete(session: AsyncSession, session_id: str) -> bool:
+        """Delete session snapshot."""
+        result = await session.execute(
+            delete(SessionSnapshotDB).where(SessionSnapshotDB.session_id == session_id)
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def list_by_state(
+        session: AsyncSession,
+        state: SessionState,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[SessionSnapshotDB]:
+        """List sessions by state with pagination."""
+        result = await session.execute(
+            select(SessionSnapshotDB)
+            .where(SessionSnapshotDB.state == state)
+            .order_by(SessionSnapshotDB.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_by_owner(
+        session: AsyncSession,
+        owner_agent: str,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[SessionSnapshotDB]:
+        """List sessions by owner agent with pagination."""
+        result = await session.execute(
+            select(SessionSnapshotDB)
+            .where(SessionSnapshotDB.owner_agent == owner_agent)
+            .order_by(SessionSnapshotDB.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_expired(session: AsyncSession) -> List[SessionSnapshotDB]:
+        """Get all expired sessions."""
+        result = await session.execute(
+            select(SessionSnapshotDB)
+            .where(
+                and_(
+                    SessionSnapshotDB.expires_at.is_not(None),
+                    SessionSnapshotDB.expires_at < datetime.utcnow(),
+                    SessionSnapshotDB.state.notin_([SessionState.COMPLETED, SessionState.FAILED, SessionState.EXPIRED])
+                )
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_idle(session: AsyncSession, max_idle_seconds: int = 300) -> List[SessionSnapshotDB]:
+        """Get sessions that have been idle longer than threshold."""
+        idle_threshold = datetime.utcnow() - timedelta(seconds=max_idle_seconds)
+        result = await session.execute(
+            select(SessionSnapshotDB)
+            .where(
+                and_(
+                    SessionSnapshotDB.state == SessionState.ACTIVE,
+                    SessionSnapshotDB.updated_at < idle_threshold
+                )
+            )
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def cleanup_old_sessions(
+        session: AsyncSession,
+        days_to_keep: int = 30
+    ) -> int:
+        """Delete terminal sessions older than specified days."""
+        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+        result = await session.execute(
+            delete(SessionSnapshotDB)
+            .where(
+                and_(
+                    SessionSnapshotDB.state.in_([SessionState.COMPLETED, SessionState.FAILED, SessionState.EXPIRED]),
+                    SessionSnapshotDB.completed_at.is_not(None),
+                    SessionSnapshotDB.completed_at < cutoff_date
+                )
+            )
+        )
+        return result.rowcount
+
+    @staticmethod
+    def to_snapshot(session_db: SessionSnapshotDB) -> SessionSnapshot:
+        """Convert database model to SessionSnapshot."""
+        from agentcore.a2a_protocol.models.session import SessionContext
+
+        return SessionSnapshot(
+            session_id=session_db.session_id,
+            name=session_db.name,
+            description=session_db.description,
+            state=session_db.state,
+            priority=session_db.priority,
+            owner_agent=session_db.owner_agent,
+            participant_agents=session_db.participant_agents or [],
+            context=SessionContext.model_validate(session_db.context) if session_db.context else SessionContext(),
+            task_ids=session_db.task_ids or [],
+            artifact_ids=session_db.artifact_ids or [],
+            created_at=session_db.created_at,
+            updated_at=session_db.updated_at,
+            expires_at=session_db.expires_at,
+            completed_at=session_db.completed_at,
+            timeout_seconds=session_db.timeout_seconds,
+            max_idle_seconds=session_db.max_idle_seconds,
+            tags=session_db.tags or [],
+            metadata=session_db.session_metadata or {},
+            checkpoint_interval_seconds=session_db.checkpoint_interval_seconds,
+            last_checkpoint_at=session_db.last_checkpoint_at,
+            checkpoint_count=session_db.checkpoint_count,
+        )
