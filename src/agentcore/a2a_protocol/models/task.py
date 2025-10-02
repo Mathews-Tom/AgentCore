@@ -55,6 +55,16 @@ class TaskArtifact(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Artifact metadata")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
 
+    # A2A-018: Context engineering fields
+    context_lineage: Optional[List[str]] = Field(
+        None,
+        description="Lineage of context transformations (task_ids that contributed)"
+    )
+    context_summary: Optional[str] = Field(
+        None,
+        description="Summary of accumulated context for this artifact"
+    )
+
     @field_validator('type')
     @classmethod
     def validate_artifact_type(cls, v: str) -> str:

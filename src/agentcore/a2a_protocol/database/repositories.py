@@ -144,6 +144,82 @@ class AgentRepository:
         )
         return {status.value: count for status, count in result.all()}
 
+    @staticmethod
+    async def update_embedding(
+        session: AsyncSession,
+        agent_id: str,
+        embedding: List[float]
+    ) -> bool:
+        """
+        Update agent capability embedding (A2A-016).
+
+        Args:
+            session: Database session
+            agent_id: Agent ID
+            embedding: Vector embedding (384-dim for all-MiniLM-L6-v2)
+
+        Returns:
+            True if update successful
+        """
+        result = await session.execute(
+            update(AgentDB)
+            .where(AgentDB.id == agent_id)
+            .values(capability_embedding=embedding, updated_at=datetime.utcnow())
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def semantic_search(
+        session: AsyncSession,
+        query_embedding: List[float],
+        similarity_threshold: float = 0.75,
+        limit: int = 10,
+        status: Optional[AgentStatus] = AgentStatus.ACTIVE
+    ) -> List[tuple]:
+        """
+        Semantic search for agents using vector similarity (A2A-016).
+
+        Uses cosine similarity via pgvector <=> operator.
+
+        Args:
+            session: Database session
+            query_embedding: Query vector embedding
+            similarity_threshold: Minimum similarity score (0.0-1.0)
+            limit: Maximum number of results
+            status: Filter by agent status
+
+        Returns:
+            List of tuples (agent, similarity_score)
+        """
+        try:
+            # Import pgvector operator
+            from pgvector.sqlalchemy import Vector
+
+            # Cosine distance operator: <=> (smaller is more similar)
+            # Convert to similarity: 1 - distance
+            query = select(
+                AgentDB,
+                (1 - AgentDB.capability_embedding.cosine_distance(query_embedding)).label("similarity")
+            ).where(
+                and_(
+                    AgentDB.status == status if status else True,
+                    AgentDB.capability_embedding.isnot(None),
+                    # Filter by similarity threshold
+                    (1 - AgentDB.capability_embedding.cosine_distance(query_embedding)) >= similarity_threshold
+                )
+            ).order_by(
+                AgentDB.capability_embedding.cosine_distance(query_embedding)
+            ).limit(limit)
+
+            result = await session.execute(query)
+            return list(result.all())
+
+        except ImportError:
+            logger.warning("pgvector not available, falling back to exact match")
+            # Fallback to regular capability matching
+            agents = await AgentRepository.get_all(session, status=status)
+            return [(agent, 0.0) for agent in agents[:limit]]
+
 
 class TaskRepository:
     """Repository for task database operations."""

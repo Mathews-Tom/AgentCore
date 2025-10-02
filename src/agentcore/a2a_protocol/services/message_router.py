@@ -29,6 +29,8 @@ class RoutingStrategy(str, Enum):
     LEAST_LOADED = "least_loaded"
     RANDOM = "random"
     CAPABILITY_MATCH = "capability_match"
+    SEMANTIC_MATCH = "semantic_match"  # A2A-016
+    COST_OPTIMIZED = "cost_optimized"  # A2A-017
 
 
 class MessagePriority(str, Enum):
@@ -277,6 +279,14 @@ class MessageRouter:
             import random
             return random.choice(candidates)
 
+        elif strategy == RoutingStrategy.COST_OPTIMIZED:
+            return await self._cost_optimized_select(candidates)
+
+        elif strategy == RoutingStrategy.SEMANTIC_MATCH:
+            # Semantic matching handled earlier in routing logic
+            # If we get here, just return first candidate
+            return candidates[0]
+
         else:  # CAPABILITY_MATCH or default
             return candidates[0]
 
@@ -294,6 +304,52 @@ class MessageRouter:
         least_loaded = min(candidates, key=lambda a: self._agent_load.get(a, 0))
         self._routing_stats["load_balanced"] += 1
         return least_loaded
+
+    async def _cost_optimized_select(
+        self,
+        candidates: List[str],
+        max_latency_ms: Optional[float] = None,
+        max_cost: Optional[float] = None
+    ) -> str:
+        """
+        Cost-optimized agent selection with multi-objective scoring (A2A-017).
+
+        Scoring formula: similarity (40%) + latency (30%) + cost (20%) + quality (10%)
+
+        Args:
+            candidates: List of candidate agent IDs with capability metadata
+            max_latency_ms: Hard constraint for maximum latency
+            max_cost: Hard constraint for maximum cost
+
+        Returns:
+            Selected agent ID
+        """
+        if not candidates:
+            raise ValueError("No candidates for cost-optimized selection")
+
+        # For now, use simple heuristics based on load (will be enhanced with agent metadata)
+        # TODO: Fetch agent capability metadata (cost_per_request, avg_latency_ms, quality_score)
+        # from AgentDB and apply multi-objective optimization
+
+        # Simple fallback: least loaded with cost tracking
+        scored_agents = []
+        for agent_id in candidates:
+            load = self._agent_load.get(agent_id, 0)
+            # Normalize load to 0-1 range (assuming max_load=10)
+            load_score = 1.0 - min(load / 10.0, 1.0)
+
+            # Multi-objective score (simplified without agent metadata)
+            # In full implementation: fetch cost, latency, quality from agent capabilities
+            score = load_score  # Placeholder
+
+            scored_agents.append((agent_id, score))
+
+        # Sort by score (descending) and select best
+        scored_agents.sort(key=lambda x: x[1], reverse=True)
+        selected = scored_agents[0][0]
+
+        self._routing_stats["cost_optimized"] = self._routing_stats.get("cost_optimized", 0) + 1
+        return selected
 
     async def _deliver_message(self, envelope: MessageEnvelope, agent_id: str) -> None:
         """

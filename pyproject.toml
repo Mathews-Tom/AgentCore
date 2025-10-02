@@ -26,6 +26,8 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "uvloop>=0.21.0",
     "prometheus-fastapi-instrumentator>=7.1.0",
+    "sentence-transformers>=5.1.1",
+    "pgvector>=0.4.1",
 ]
 
 [project.optional-dependencies]
