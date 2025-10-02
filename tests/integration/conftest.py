@@ -105,14 +105,19 @@ def sample_task_definition():
     """Sample TaskDefinition for testing."""
     return {
         "task_id": "test-task-001",
-        "name": "Test Task",
+        "task_type": "text.generation",
+        "title": "Test Task",
         "description": "Test task for integration tests",
-        "required_capabilities": ["text-generation"],
+        "input_data": {
+            "input": "Test input"
+        },
         "parameters": {
-            "input": "Test input",
             "max_tokens": 100
         },
-        "priority": 5
+        "requirements": {
+            "required_capabilities": ["text-generation"]
+        },
+        "priority": "normal"
     }
 
 
@@ -127,3 +132,17 @@ def jsonrpc_request_template():
             "id": request_id
         }
     return make_request
+
+
+@pytest.fixture(scope="function")
+async def init_test_db():
+    """Initialize test database for session tests."""
+    from agentcore.a2a_protocol.database import init_db, close_db
+
+    # Initialize database connection
+    await init_db()
+
+    yield
+
+    # Cleanup
+    await close_db()
