@@ -94,6 +94,11 @@ class AgentCapability(BaseModel):
     output_schema: Optional[Dict[str, Any]] = Field(None, description="Output schema (JSON Schema)")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="Capability parameters")
 
+    # A2A-017: Cost-biased agent selection fields
+    cost_per_request: Optional[float] = Field(None, ge=0.0, description="Cost per request in USD")
+    avg_latency_ms: Optional[float] = Field(None, ge=0.0, description="Average latency in milliseconds")
+    quality_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Quality score (0.0-1.0)")
+
     @field_validator('name')
     @classmethod
     def validate_capability_name(cls, v: str) -> str:
@@ -153,6 +158,13 @@ class AgentCard(BaseModel):
 
     # Metadata
     metadata: Optional[AgentMetadata] = Field(None, description="Additional metadata")
+
+    # A2A-018: Context engineering fields
+    system_context: Optional[str] = Field(None, description="System context for agent behavior and instructions")
+    interaction_examples: Optional[List[Dict[str, str]]] = Field(
+        None,
+        description="Example interactions for few-shot learning (input/output pairs)"
+    )
 
     # Timestamps (managed by the system)
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Registration timestamp")

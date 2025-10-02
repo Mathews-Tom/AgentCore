@@ -24,6 +24,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+try:
+    from pgvector.sqlalchemy import Vector
+    PGVECTOR_AVAILABLE = True
+except ImportError:
+    PGVECTOR_AVAILABLE = False
+    # Define a placeholder for Vector type when pgvector is not available
+    Vector = None
+
 from agentcore.a2a_protocol.database.connection import Base
 from agentcore.a2a_protocol.models.agent import AgentStatus
 from agentcore.a2a_protocol.models.task import TaskStatus
@@ -45,11 +53,19 @@ class AgentDB(Base):
     # Capabilities stored as JSON array
     capabilities = Column(JSON, nullable=False, default=list)
 
+    # A2A-016: Semantic capability matching - vector embeddings
+    # 384 dimensions for sentence-transformers/all-MiniLM-L6-v2
+    capability_embedding = Column(Vector(384) if PGVECTOR_AVAILABLE else JSON, nullable=True)
+
     # Requirements stored as JSON object
     requirements = Column(JSON, nullable=True)
 
     # Metadata stored as JSON object
     agent_metadata = Column(JSON, nullable=True)
+
+    # A2A-018: Context engineering fields
+    system_context = Column(Text, nullable=True)
+    interaction_examples = Column(JSON, nullable=True)
 
     # Contact information
     endpoint = Column(String(512), nullable=True)
@@ -70,6 +86,8 @@ class AgentDB(Base):
     __table_args__ = (
         Index("idx_agent_status_load", "status", "current_load"),
         Index("idx_agent_capabilities", "capabilities", postgresql_using="gin"),
+        # A2A-016: HNSW index for vector similarity search (created by migration)
+        # Index("idx_agent_capability_embedding", "capability_embedding", postgresql_using="hnsw", postgresql_with={"m": 16, "ef_construction": 64}),
     )
 
 
