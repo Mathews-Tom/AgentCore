@@ -27,6 +27,7 @@ from sqlalchemy.orm import relationship
 from agentcore.a2a_protocol.database.connection import Base
 from agentcore.a2a_protocol.models.agent import AgentStatus
 from agentcore.a2a_protocol.models.task import TaskStatus
+from agentcore.a2a_protocol.models.session import SessionState, SessionPriority
 
 
 class AgentDB(Base):
@@ -37,7 +38,8 @@ class AgentDB(Base):
     id = Column(String(255), primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     version = Column(String(50), nullable=False)
-    status = Column(SQLEnum(AgentStatus), nullable=False, default=AgentStatus.INACTIVE, index=True)
+    # Use native PostgreSQL enum (created by migrations)
+    status = Column(SQLEnum(AgentStatus, name='agentstatus', create_type=False), nullable=False, default=AgentStatus.INACTIVE, index=True)
     description = Column(Text, nullable=True)
 
     # Capabilities stored as JSON array
@@ -79,7 +81,8 @@ class TaskDB(Base):
     id = Column(String(255), primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(SQLEnum(TaskStatus), nullable=False, default=TaskStatus.PENDING, index=True)
+    # Use native PostgreSQL enum (created by migrations)
+    status = Column(SQLEnum(TaskStatus, name='taskstatus', create_type=False), nullable=False, default=TaskStatus.PENDING, index=True)
     priority = Column(Integer, nullable=False, default=5, index=True)
 
     # Task requirements
@@ -272,4 +275,57 @@ class AgentPublicKeyDB(Base):
 
     __table_args__ = (
         Index("idx_public_key_active", "agent_id", "is_active"),
+    )
+
+
+class SessionSnapshotDB(Base):
+    """Session snapshot database model for workflow persistence."""
+
+    __tablename__ = "session_snapshots"
+
+    session_id = Column(String(255), primary_key=True, index=True)
+
+    # Session metadata
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    # Use native PostgreSQL enums (created by migrations)
+    state = Column(SQLEnum(SessionState, name='sessionstate', create_type=False), nullable=False, default=SessionState.ACTIVE, index=True)
+    priority = Column(SQLEnum(SessionPriority, name='sessionpriority', create_type=False), nullable=False, default=SessionPriority.NORMAL)
+
+    # Participants
+    owner_agent = Column(String(255), nullable=False, index=True)
+    participant_agents = Column(JSON, nullable=False, default=list)  # Array of agent IDs
+
+    # Context and state (stored as JSON)
+    context = Column(JSON, nullable=False, default=dict)  # SessionContext serialized
+
+    # Associated resources
+    task_ids = Column(JSON, nullable=False, default=list)  # Array of task IDs
+    artifact_ids = Column(JSON, nullable=False, default=list)  # Array of artifact IDs
+
+    # Lifecycle tracking
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    # Session configuration
+    timeout_seconds = Column(Integer, nullable=False, default=3600)
+    max_idle_seconds = Column(Integer, nullable=False, default=300)
+
+    # Metadata and tags
+    tags = Column(JSON, nullable=False, default=list)  # Array of strings
+    session_metadata = Column(JSON, nullable=False, default=dict)
+
+    # Checkpointing
+    checkpoint_interval_seconds = Column(Integer, nullable=False, default=60)
+    last_checkpoint_at = Column(DateTime, nullable=True)
+    checkpoint_count = Column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index("idx_session_state", "state"),
+        Index("idx_session_owner", "owner_agent"),
+        Index("idx_session_created_at", "created_at", postgresql_ops={"created_at": "DESC"}),
+        Index("idx_session_expires_at", "expires_at"),
+        Index("idx_session_tags", "tags", postgresql_using="gin"),
     )

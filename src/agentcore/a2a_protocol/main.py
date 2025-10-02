@@ -23,6 +23,7 @@ from agentcore.a2a_protocol.database import init_db, close_db
 from agentcore.a2a_protocol.services import (
     agent_jsonrpc,
     task_jsonrpc,
+    session_jsonrpc,
     routing_jsonrpc,
     security_jsonrpc,
     event_jsonrpc,
