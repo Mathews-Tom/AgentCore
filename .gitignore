@@ -213,5 +213,6 @@ __marimo__/
 .claude/
 .opencode/
 
-# Temporary development files
-TEMP_DOCS/
+# Developer workspace (Sage-Dev generated files)"
+.sage/
+.docs/

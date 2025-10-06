@@ -1,0 +1,124 @@
+"""
+Multi-stage Docker build for AgentCore Agent Runtime Layer.
+
+This Dockerfile creates hardened container images for secure agent execution
+with custom seccomp profiles, minimal attack surface, and resource isolation.
+"""
+
+# Builder stage - prepare dependencies
+FROM python:3.12-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install UV package manager
+RUN pip install --no-cache-dir uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+COPY src/ ./src/
+
+# Install dependencies
+RUN uv sync --frozen --no-dev
+
+# Hardened agent runtime stage
+FROM python:3.12-slim AS agent-runtime
+
+# Security labels
+LABEL maintainer="AgentCore Team"
+LABEL version="0.1.0"
+LABEL description="Agent Runtime Layer - Hardened Production Image"
+LABEL org.opencontainers.image.source="https://github.com/agentcore/agentcore"
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    libpq5 \
+    ca-certificates \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && groupadd -r -g 1000 agentcore \
+    && useradd -r -u 1000 -g agentcore -d /app -s /sbin/nologin agentcore
+
+# Set working directory
+WORKDIR /app
+
+# Copy virtual environment and application from builder
+COPY --from=builder --chown=agentcore:agentcore /app/.venv /app/.venv
+COPY --from=builder --chown=agentcore:agentcore /app/src /app/src
+
+# Copy security profiles
+COPY --chown=agentcore:agentcore security/seccomp/ /app/security/seccomp/
+
+# Set up environment
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/src" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEBUG=False \
+    LOG_LEVEL=INFO \
+    AGENT_RUNTIME_PORT=8002
+
+# Create required directories with proper permissions
+RUN mkdir -p /app/storage /app/logs /tmp/agent-workspace \
+    && chown -R agentcore:agentcore /app/storage /app/logs /tmp/agent-workspace \
+    && chmod 700 /app/storage /tmp/agent-workspace
+
+# Switch to non-root user
+USER agentcore
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8002/health || exit 1
+
+# Expose port
+EXPOSE 8002
+
+# Start the agent runtime service
+CMD ["uvicorn", "agentcore.agent_runtime.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8002", \
+     "--workers", "2", \
+     "--loop", "uvloop", \
+     "--log-level", "info"]
+
+# Development stage with additional tools
+FROM agent-runtime AS development
+
+USER root
+
+# Install development tools
+RUN apt-get update && apt-get install -y \
+    git \
+    vim \
+    htop \
+    strace \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install development Python packages
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-asyncio \
+    pytest-cov \
+    ruff \
+    mypy \
+    ipython
+
+USER agentcore
+
+# Override CMD for development
+CMD ["uvicorn", "agentcore.agent_runtime.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8002", \
+     "--reload", \
+     "--log-level", "debug"]

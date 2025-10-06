@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  agent-runtime:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-runtime
+      target: development
+    privileged: true  # Required for container-in-container execution
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ./src/agentcore/agent_runtime:/app/src/agentcore/agent_runtime:delegated
+      - ./tests:/app/tests:delegated
+      - agent_storage:/app/storage
+      - ./security/seccomp:/app/security/seccomp:ro
+    environment:
+      - DATABASE_URL=postgresql://agentcore:dev@postgres:5432/agentcore_dev
+      - REDIS_URL=redis://redis:6379
+      - KUBERNETES_SERVICE_HOST=kind-control-plane
+      - LOG_LEVEL=DEBUG
+      - DEBUG=True
+      - AGENT_IMAGE_REGISTRY=localhost:5000
+      - AGENT_RUNTIME_PORT=8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+      - redis
+      - registry
+    networks:
+      - agentcore
+
+  # Container registry for agent images
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - agentcore
+
+  # Local Kubernetes cluster (kind) for testing
+  kind-cluster:
+    image: kindest/node:v1.28.0
+    privileged: true
+    volumes:
+      - kind_data:/var/lib/containerd
+    ports:
+      - "6443:6443"
+    networks:
+      - agentcore
+
+  # Shared PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=agentcore
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DB=agentcore_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentcore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agentcore
+
+  # Shared Redis cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - agentcore
+
+volumes:
+  agent_storage:
+  kind_data:
+  registry_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  agentcore:
+    driver: bridge

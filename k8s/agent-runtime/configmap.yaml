@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-runtime-config
+  namespace: agentcore-runtime
+  labels:
+    app.kubernetes.io/name: agentcore
+    app.kubernetes.io/component: agent-runtime
+data:
+  # Agent Runtime Configuration
+  AGENT_RUNTIME_PORT: "8002"
+  LOG_LEVEL: "INFO"
+  DEBUG: "False"
+  PYTHONUNBUFFERED: "1"
+
+  # Container Configuration
+  MAX_CONCURRENT_AGENTS: "1000"
+  AGENT_STARTUP_TIMEOUT: "30"
+  TOOL_EXECUTION_TIMEOUT: "60"
+  CHECKPOINT_INTERVAL: "300"
+  RESOURCE_CLEANUP_INTERVAL: "60"
+
+  # Security Configuration
+  SECURITY_PROFILE_DEFAULT: "standard"
+  CONTAINER_REGISTRY: "agentcore.azurecr.io"
+  AGENT_IMAGE_BASE: "agentcore/hardened-python:3.12"
+
+  # Resource Limits (default per agent)
+  DEFAULT_MEMORY_LIMIT_MB: "512"
+  DEFAULT_CPU_LIMIT: "1.0"
+  DEFAULT_EXECUTION_TIME_SECONDS: "300"

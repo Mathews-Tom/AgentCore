@@ -28,6 +28,9 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.1.0",
     "sentence-transformers>=5.1.1",
     "pgvector>=0.4.1",
+    "docker>=7.1.0",
+    "aiodocker>=0.24.0",
+    "restrictedpython>=8.0",
 ]
 
 [project.optional-dependencies]
