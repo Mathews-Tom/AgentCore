@@ -31,6 +31,11 @@ dependencies = [
     "docker>=7.1.0",
     "aiodocker>=0.24.0",
     "restrictedpython>=8.0",
+    "networkx>=3.2",
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0",
+    "portkey-ai>=1.15.1",
 ]
 
 [project.optional-dependencies]
@@ -98,7 +103,10 @@ exclude_lines = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agentcore"]
+packages = ["src/agentcore", "src/agentcore_cli"]
+
+[project.scripts]
+agentcore = "agentcore_cli.main:cli_main"
 
 [dependency-groups]
 dev = [
