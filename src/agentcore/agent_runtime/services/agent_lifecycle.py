@@ -13,6 +13,7 @@ import structlog
 
 from ..models.agent_config import AgentConfig
 from ..models.agent_state import AgentExecutionState
+from .a2a_client import A2AClient, A2ARegistrationError
 from .container_manager import ContainerManager
 
 logger = structlog.get_logger()
@@ -33,14 +34,20 @@ class AgentStateError(AgentLifecycleError):
 class AgentLifecycleManager:
     """Manages agent lifecycle from creation to termination."""
 
-    def __init__(self, container_manager: ContainerManager) -> None:
+    def __init__(
+        self,
+        container_manager: ContainerManager,
+        a2a_client: A2AClient | None = None,
+    ) -> None:
         """
         Initialize lifecycle manager.
 
         Args:
             container_manager: Container management service
+            a2a_client: A2A protocol client for integration
         """
         self._container_manager = container_manager
+        self._a2a_client = a2a_client
         self._agents: dict[str, AgentExecutionState] = {}
         self._agent_tasks: dict[str, asyncio.Task[None]] = {}
 
@@ -88,18 +95,39 @@ class AgentLifecycleManager:
                 philosophy=agent_config.philosophy.value,
             )
 
+            # Register with A2A protocol if client is available
+            if self._a2a_client:
+                try:
+                    await self._a2a_client.register_agent(agent_config)
+                    logger.info(
+                        "agent_registered_with_a2a",
+                        agent_id=agent_id,
+                    )
+                except (A2ARegistrationError, Exception) as e:
+                    logger.warning(
+                        "a2a_registration_failed",
+                        agent_id=agent_id,
+                        error=str(e),
+                    )
+                    # Don't fail agent creation if A2A registration fails
+                    # Agent can still run locally
+
             return state
 
         except Exception as e:
-            # Cleanup on failure
-            state.status = "failed"
-            state.failure_reason = str(e)
-            logger.error(
-                "agent_creation_failed",
-                agent_id=agent_id,
-                error=str(e),
-            )
-            raise AgentLifecycleError(f"Failed to create agent: {e}") from e
+            # Only fail if container creation failed, not A2A registration
+            if "Connection refused" not in str(e):
+                # Cleanup on failure
+                state.status = "failed"
+                state.failure_reason = str(e)
+                logger.error(
+                    "agent_creation_failed",
+                    agent_id=agent_id,
+                    error=str(e),
+                )
+                raise AgentLifecycleError(f"Failed to create agent: {e}") from e
+            # If only A2A failed, return state anyway
+            return state
 
     async def start_agent(self, agent_id: str) -> None:
         """
@@ -130,6 +158,20 @@ class AgentLifecycleManager:
             # Start monitoring task
             task = asyncio.create_task(self._monitor_agent(agent_id))
             self._agent_tasks[agent_id] = task
+
+            # Update A2A status to active
+            if self._a2a_client:
+                try:
+                    await self._a2a_client.update_agent_status(
+                        agent_id=agent_id,
+                        status="active",
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "a2a_status_update_failed",
+                        agent_id=agent_id,
+                        error=str(e),
+                    )
 
             logger.info("agent_started", agent_id=agent_id)
 
@@ -219,6 +261,18 @@ class AgentLifecycleManager:
             # Update state
             state.status = "terminated"
             state.last_updated = datetime.now()
+
+            # Unregister from A2A protocol
+            if self._a2a_client and cleanup:
+                try:
+                    await self._a2a_client.unregister_agent(agent_id)
+                    logger.info("agent_unregistered_from_a2a", agent_id=agent_id)
+                except Exception as e:
+                    logger.warning(
+                        "a2a_unregistration_failed",
+                        agent_id=agent_id,
+                        error=str(e),
+                    )
 
             if cleanup:
                 # Remove from tracking
@@ -365,6 +419,22 @@ class AgentLifecycleManager:
                 try:
                     stats = await self._container_manager.get_container_stats(agent_id)
                     await self.update_agent_metrics(agent_id, stats)
+
+                    # Report health to A2A protocol
+                    if self._a2a_client:
+                        try:
+                            await self._a2a_client.report_health(
+                                agent_id=agent_id,
+                                health_status="healthy",
+                                metrics=stats,
+                            )
+                        except Exception as health_error:
+                            logger.debug(
+                                "a2a_health_report_failed",
+                                agent_id=agent_id,
+                                error=str(health_error),
+                            )
+
                 except Exception as e:
                     logger.warning(
                         "metrics_update_failed",
