@@ -16,6 +16,7 @@ from aiodocker.exceptions import DockerError
 from ..config import get_settings
 from ..models.agent_config import AgentConfig
 from ..models.sandbox import SandboxConfig
+from .performance_optimizer import get_performance_optimizer
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -28,6 +29,7 @@ class ContainerManager:
         """Initialize container manager with Docker client."""
         self._docker: aiodocker.Docker | None = None
         self._containers: dict[str, DockerContainer] = {}
+        self._optimizer = get_performance_optimizer()
 
     async def initialize(self) -> None:
         """Initialize Docker client connection."""
@@ -199,12 +201,23 @@ class ContainerManager:
         Raises:
             KeyError: If container not found
         """
+        # Check cache first
+        cache_key = f"stats:{agent_id}"
+        cached_stats = self._optimizer.get_cached_pattern(cache_key)
+        if cached_stats:
+            return cached_stats
+
         container = self._containers.get(agent_id)
         if not container:
             raise KeyError(f"Container for agent {agent_id} not found")
 
         stats = await container.stats(stream=False)
-        return self._parse_container_stats(stats)
+        parsed_stats = self._parse_container_stats(stats)
+
+        # Cache stats for 2 seconds to reduce Docker API calls
+        self._optimizer.cache_execution_pattern(cache_key, parsed_stats)
+
+        return parsed_stats
 
     async def get_container_logs(
         self,
