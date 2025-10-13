@@ -14,9 +14,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from .config import get_settings
-from .routers import agents
+from .routers import agents, monitoring
 from .services.agent_lifecycle import AgentLifecycleManager
 from .services.container_manager import ContainerManager
+from .services.alerting_service import get_alerting_service
+from .services.distributed_tracing import get_distributed_tracer
+from .services.metrics_collector import get_metrics_collector
+from .services.resource_manager import get_resource_manager
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -50,6 +54,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Initialize router services
         await agents.initialize_services(container_manager, lifecycle_manager)
 
+        # Initialize monitoring services
+        metrics_collector = get_metrics_collector()
+        distributed_tracer = get_distributed_tracer()
+        alerting_service = get_alerting_service()
+        resource_manager = get_resource_manager()
+
+        # Set runtime info
+        metrics_collector.set_runtime_info({
+            "service": "agent-runtime",
+            "version": "0.1.0",
+            "port": str(settings.agent_runtime_port),
+        })
+
+        # Start resource manager
+        await resource_manager.start()
+
+        # Start alerting service
+        await alerting_service.start()
+
         logger.info("agent_runtime_services_initialized")
 
     except Exception as e:
@@ -62,8 +85,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("agent_runtime_shutdown")
 
     try:
+        # Stop monitoring services
+        alerting_service = get_alerting_service()
+        await alerting_service.stop()
+
+        resource_manager = get_resource_manager()
+        await resource_manager.stop()
+
+        # Close container manager
         if container_manager:
             await container_manager.close()
+
         logger.info("agent_runtime_services_closed")
     except Exception as e:
         logger.error("agent_runtime_shutdown_error", error=str(e))
@@ -94,6 +126,7 @@ if settings.enable_metrics:
 
 # Include routers
 app.include_router(agents.router)
+app.include_router(monitoring.router)
 
 
 @app.get("/health")
