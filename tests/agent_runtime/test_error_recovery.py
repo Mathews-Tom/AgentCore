@@ -165,7 +165,7 @@ class TestErrorRecovery:
     ) -> None:
         """Test error history recording."""
 
-        async def fail_func() -> None:
+        async def fail_func(degraded: bool = False, **kwargs: object) -> None:
             raise ValueError("Test error")
 
         try:
