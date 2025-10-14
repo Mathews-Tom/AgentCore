@@ -6,18 +6,18 @@ System health and readiness endpoints for monitoring and load balancing.
 
 from __future__ import annotations
 
-import datetime
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
 
 from gateway.config import settings
 from gateway.models.health import (
-    HealthResponse,
     HealthCheckDetail,
-    ReadinessResponse,
+    HealthResponse,
     LivenessResponse,
     MetricsInfo,
+    ReadinessResponse,
 )
 
 router = APIRouter()
@@ -35,13 +35,12 @@ async def health_check() -> HealthResponse:
     return HealthResponse(
         status="healthy",
         version=settings.GATEWAY_VERSION,
-        timestamp=datetime.datetime.now(datetime.UTC).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         checks={
             "application": HealthCheckDetail(
-                status="healthy",
-                details="Gateway application is running"
+                status="healthy", details="Gateway application is running"
             )
-        }
+        },
     )
 
 
@@ -71,15 +70,10 @@ async def readiness_check() -> ReadinessResponse:
 
     if not all_ready:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service not ready"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready"
         )
 
-    return ReadinessResponse(
-        status="ready",
-        ready=all_ready,
-        checks=checks
-    )
+    return ReadinessResponse(status="ready", ready=all_ready, checks=checks)
 
 
 @router.get("/live", response_model=LivenessResponse)
@@ -100,7 +94,4 @@ async def metrics_info() -> MetricsInfo:
 
     Returns information about the metrics endpoint.
     """
-    return MetricsInfo(
-        endpoint="/metrics",
-        format="prometheus"
-    )
+    return MetricsInfo(endpoint="/metrics", format="prometheus")

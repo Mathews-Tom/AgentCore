@@ -4,23 +4,23 @@ Health Monitoring JSON-RPC Methods
 JSON-RPC 2.0 methods for agent health monitoring and service discovery (A2A-008).
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
-from datetime import datetime
 
-from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
-from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
-from agentcore.a2a_protocol.services.health_monitor import health_monitor
 from agentcore.a2a_protocol.database import get_session
 from agentcore.a2a_protocol.database.repositories import AgentRepository
 from agentcore.a2a_protocol.models.agent import AgentStatus
+from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
+from agentcore.a2a_protocol.services.health_monitor import health_monitor
+from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 
 logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("health.check_agent")
-async def handle_check_agent(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_check_agent(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Check health of a specific agent.
 
@@ -40,18 +40,20 @@ async def handle_check_agent(request: JsonRpcRequest) -> Dict[str, Any]:
 
     is_healthy = await health_monitor.check_agent_health(agent_id)
 
-    logger.info("Agent health check via JSON-RPC", agent_id=agent_id, is_healthy=is_healthy)
+    logger.info(
+        "Agent health check via JSON-RPC", agent_id=agent_id, is_healthy=is_healthy
+    )
 
     return {
         "success": True,
         "agent_id": agent_id,
         "is_healthy": is_healthy,
-        "checked_at": datetime.utcnow().isoformat()
+        "checked_at": datetime.now(UTC).isoformat(),
     }
 
 
 @register_jsonrpc_method("health.check_all")
-async def handle_check_all(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_check_all(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Check health of all agents.
 
@@ -71,12 +73,12 @@ async def handle_check_all(request: JsonRpcRequest) -> Dict[str, Any]:
         "total_agents": len(results),
         "healthy_count": sum(1 for h in results.values() if h),
         "unhealthy_count": sum(1 for h in results.values() if not h),
-        "checked_at": datetime.utcnow().isoformat()
+        "checked_at": datetime.now(UTC).isoformat(),
     }
 
 
 @register_jsonrpc_method("health.get_history")
-async def handle_get_history(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_history(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get health check history for an agent.
 
@@ -99,18 +101,20 @@ async def handle_get_history(request: JsonRpcRequest) -> Dict[str, Any]:
 
     history = await health_monitor.get_agent_health_history(agent_id, limit)
 
-    logger.debug("Health history retrieved via JSON-RPC", agent_id=agent_id, records=len(history))
+    logger.debug(
+        "Health history retrieved via JSON-RPC", agent_id=agent_id, records=len(history)
+    )
 
     return {
         "success": True,
         "agent_id": agent_id,
         "history": history,
-        "count": len(history)
+        "count": len(history),
     }
 
 
 @register_jsonrpc_method("health.get_unhealthy")
-async def handle_get_unhealthy(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_unhealthy(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get list of unhealthy agents.
 
@@ -127,12 +131,12 @@ async def handle_get_unhealthy(request: JsonRpcRequest) -> Dict[str, Any]:
     return {
         "success": True,
         "unhealthy_agents": unhealthy_agents,
-        "count": len(unhealthy_agents)
+        "count": len(unhealthy_agents),
     }
 
 
 @register_jsonrpc_method("health.get_stats")
-async def handle_get_stats(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_stats(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get health monitoring statistics.
 
@@ -146,14 +150,11 @@ async def handle_get_stats(request: JsonRpcRequest) -> Dict[str, Any]:
 
     logger.debug("Health stats retrieved via JSON-RPC")
 
-    return {
-        "success": True,
-        "stats": stats
-    }
+    return {"success": True, "stats": stats}
 
 
 @register_jsonrpc_method("discovery.find_agents")
-async def handle_find_agents(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_find_agents(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Service discovery: Find agents by capabilities and status.
 
@@ -176,7 +177,9 @@ async def handle_find_agents(request: JsonRpcRequest) -> Dict[str, Any]:
 
     async with get_session() as session:
         if capabilities:
-            agents = await AgentRepository.get_by_capabilities(session, capabilities, status)
+            agents = await AgentRepository.get_by_capabilities(
+                session, capabilities, status
+            )
         else:
             agents = await AgentRepository.get_all(session, status)
 
@@ -190,7 +193,7 @@ async def handle_find_agents(request: JsonRpcRequest) -> Dict[str, Any]:
             "endpoint": a.endpoint,
             "current_load": a.current_load,
             "max_load": a.max_load,
-            "last_seen": a.last_seen.isoformat() if a.last_seen else None
+            "last_seen": a.last_seen.isoformat() if a.last_seen else None,
         }
         for a in agents
     ]
@@ -199,18 +202,14 @@ async def handle_find_agents(request: JsonRpcRequest) -> Dict[str, Any]:
         "Agent discovery via JSON-RPC",
         capabilities=capabilities,
         status=status.value,
-        results=len(agent_list)
+        results=len(agent_list),
     )
 
-    return {
-        "success": True,
-        "agents": agent_list,
-        "count": len(agent_list)
-    }
+    return {"success": True, "agents": agent_list, "count": len(agent_list)}
 
 
 @register_jsonrpc_method("discovery.get_agent")
-async def handle_get_agent(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_agent(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Service discovery: Get agent details by ID.
 
@@ -251,13 +250,13 @@ async def handle_get_agent(request: JsonRpcRequest) -> Dict[str, Any]:
             "max_load": agent.max_load,
             "created_at": agent.created_at.isoformat(),
             "updated_at": agent.updated_at.isoformat(),
-            "last_seen": agent.last_seen.isoformat() if agent.last_seen else None
-        }
+            "last_seen": agent.last_seen.isoformat() if agent.last_seen else None,
+        },
     }
 
 
 @register_jsonrpc_method("discovery.list_capabilities")
-async def handle_list_capabilities(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_list_capabilities(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Service discovery: List all available capabilities.
 
@@ -282,14 +281,21 @@ async def handle_list_capabilities(request: JsonRpcRequest) -> Dict[str, Any]:
     return {
         "success": True,
         "capabilities": capabilities_list,
-        "count": len(capabilities_list)
+        "count": len(capabilities_list),
     }
 
 
 # Log registration on import
-logger.info("Health monitoring JSON-RPC methods registered",
-           methods=[
-               "health.check_agent", "health.check_all", "health.get_history",
-               "health.get_unhealthy", "health.get_stats",
-               "discovery.find_agents", "discovery.get_agent", "discovery.list_capabilities"
-           ])
+logger.info(
+    "Health monitoring JSON-RPC methods registered",
+    methods=[
+        "health.check_agent",
+        "health.check_all",
+        "health.get_history",
+        "health.get_unhealthy",
+        "health.get_stats",
+        "discovery.find_agents",
+        "discovery.get_agent",
+        "discovery.list_capabilities",
+    ],
+)

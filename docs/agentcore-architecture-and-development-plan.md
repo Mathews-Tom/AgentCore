@@ -900,7 +900,7 @@ class ComponentPerformanceTracker:
             component_id=component_id,
             agent_profile=agent_profile,
             metrics=metrics,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             context_hash=self._generate_context_hash(agent_profile)
         )
 
@@ -1048,7 +1048,7 @@ class StatefulTaskManager:
                         checkpoint_id=f"{task_id}_{execution_state.current_step}",
                         content_hash=content_hash,
                         execution_state=execution_state,
-                        created_at=datetime.utcnow()
+                        created_at=datetime.now(UTC)
                     )
 
                     await self.checkpoint_store.save_checkpoint(checkpoint)
@@ -1074,7 +1074,7 @@ class StatefulTaskManager:
     def _should_checkpoint(self, execution_state, policy):
         # Time-based checkpointing
         if policy.checkpoint_interval_seconds:
-            time_since_last = (datetime.utcnow() - execution_state.last_checkpoint).seconds
+            time_since_last = (datetime.now(UTC) - execution_state.last_checkpoint).seconds
             if time_since_last >= policy.checkpoint_interval_seconds:
                 return True
 
@@ -1487,7 +1487,7 @@ class SemanticCache:
             id=key,
             embedding=embedding,
             content=content,
-            metadata={'indexed_at': datetime.utcnow().isoformat()}
+            metadata={'indexed_at': datetime.now(UTC).isoformat()}
         )
 ```
 
@@ -1833,7 +1833,7 @@ class A2AZeroTrustManager:
             encrypted_payload=encrypted_payload,
             integrity_hash=message_hash,
             trust_level=authorization_grant.trust_level,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             session_id=authorization_grant.sender.session_id
         )
 
@@ -1941,7 +1941,7 @@ class ComplianceFramework:
     async def audit_agent_execution(self, execution_event):
         audit_entry = AuditEntry(
             event_id=execution_event.id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             user_id=execution_event.user_context.user_id,
             tenant_id=execution_event.tenant_id,
             agent_id=execution_event.agent_id,

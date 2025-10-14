@@ -4,24 +4,24 @@ Message Routing JSON-RPC Methods
 JSON-RPC 2.0 methods for message routing, queue management, and routing statistics.
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
-from datetime import datetime
 
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest, MessageEnvelope
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.a2a_protocol.services.message_router import (
-    message_router,
+    MessagePriority,
     RoutingStrategy,
-    MessagePriority
+    message_router,
 )
 
 logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("route.message")
-async def handle_route_message(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_route_message(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Route a message to appropriate agent.
 
@@ -60,7 +60,7 @@ async def handle_route_message(request: JsonRpcRequest) -> Dict[str, Any]:
             envelope=envelope,
             required_capabilities=required_capabilities,
             strategy=strategy,
-            priority=priority
+            priority=priority,
         )
 
         logger.info(
@@ -68,7 +68,7 @@ async def handle_route_message(request: JsonRpcRequest) -> Dict[str, Any]:
             message_id=envelope.message_id,
             selected_agent=selected_agent,
             strategy=strategy.value,
-            method="route.message"
+            method="route.message",
         )
 
         return {
@@ -76,7 +76,7 @@ async def handle_route_message(request: JsonRpcRequest) -> Dict[str, Any]:
             "message_id": envelope.message_id,
             "selected_agent": selected_agent,
             "strategy": strategy.value,
-            "queued": selected_agent is None
+            "queued": selected_agent is None,
         }
 
     except Exception as e:
@@ -85,7 +85,7 @@ async def handle_route_message(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("route.process_queue")
-async def handle_process_queue(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_process_queue(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Process queued messages for an agent.
 
@@ -110,14 +110,10 @@ async def handle_process_queue(request: JsonRpcRequest) -> Dict[str, Any]:
             "Processed queued messages via JSON-RPC",
             agent_id=agent_id,
             processed=processed,
-            method="route.process_queue"
+            method="route.process_queue",
         )
 
-        return {
-            "success": True,
-            "agent_id": agent_id,
-            "processed": processed
-        }
+        return {"success": True, "agent_id": agent_id, "processed": processed}
 
     except Exception as e:
         logger.error("Queue processing failed", error=str(e), agent_id=agent_id)
@@ -125,7 +121,7 @@ async def handle_process_queue(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("route.get_queue_info")
-async def handle_get_queue_info(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_queue_info(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get queue information for an agent.
 
@@ -148,14 +144,14 @@ async def handle_get_queue_info(request: JsonRpcRequest) -> Dict[str, Any]:
     logger.debug(
         "Queue info retrieved via JSON-RPC",
         agent_id=agent_id,
-        method="route.get_queue_info"
+        method="route.get_queue_info",
     )
 
     return queue_info
 
 
 @register_jsonrpc_method("route.get_stats")
-async def handle_get_routing_stats(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_routing_stats(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get routing statistics.
 
@@ -169,15 +165,11 @@ async def handle_get_routing_stats(request: JsonRpcRequest) -> Dict[str, Any]:
 
     logger.debug("Routing stats retrieved via JSON-RPC", method="route.get_stats")
 
-    return {
-        "success": True,
-        "stats": stats,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"success": True, "stats": stats, "timestamp": datetime.now(UTC).isoformat()}
 
 
 @register_jsonrpc_method("route.cleanup_expired")
-async def handle_cleanup_expired(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_cleanup_expired(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Cleanup expired messages from queues.
 
@@ -192,17 +184,14 @@ async def handle_cleanup_expired(request: JsonRpcRequest) -> Dict[str, Any]:
     logger.info(
         "Expired messages cleaned up via JSON-RPC",
         removed=removed,
-        method="route.cleanup_expired"
+        method="route.cleanup_expired",
     )
 
-    return {
-        "success": True,
-        "removed": removed
-    }
+    return {"success": True, "removed": removed}
 
 
 @register_jsonrpc_method("route.record_failure")
-async def handle_record_failure(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_record_failure(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Record agent failure for circuit breaker.
 
@@ -225,18 +214,14 @@ async def handle_record_failure(request: JsonRpcRequest) -> Dict[str, Any]:
     logger.info(
         "Agent failure recorded via JSON-RPC",
         agent_id=agent_id,
-        method="route.record_failure"
+        method="route.record_failure",
     )
 
-    return {
-        "success": True,
-        "agent_id": agent_id,
-        "message": "Failure recorded"
-    }
+    return {"success": True, "agent_id": agent_id, "message": "Failure recorded"}
 
 
 @register_jsonrpc_method("route.record_success")
-async def handle_record_success(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_record_success(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Record agent success.
 
@@ -259,17 +244,14 @@ async def handle_record_success(request: JsonRpcRequest) -> Dict[str, Any]:
     logger.debug(
         "Agent success recorded via JSON-RPC",
         agent_id=agent_id,
-        method="route.record_success"
+        method="route.record_success",
     )
 
-    return {
-        "success": True,
-        "agent_id": agent_id
-    }
+    return {"success": True, "agent_id": agent_id}
 
 
 @register_jsonrpc_method("route.decrease_load")
-async def handle_decrease_load(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_decrease_load(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Decrease agent load counter.
 
@@ -292,19 +274,23 @@ async def handle_decrease_load(request: JsonRpcRequest) -> Dict[str, Any]:
     logger.debug(
         "Agent load decreased via JSON-RPC",
         agent_id=agent_id,
-        method="route.decrease_load"
+        method="route.decrease_load",
     )
 
-    return {
-        "success": True,
-        "agent_id": agent_id
-    }
+    return {"success": True, "agent_id": agent_id}
 
 
 # Log registration on import
-logger.info("Routing JSON-RPC methods registered",
-           methods=[
-               "route.message", "route.process_queue", "route.get_queue_info",
-               "route.get_stats", "route.cleanup_expired", "route.record_failure",
-               "route.record_success", "route.decrease_load"
-           ])
+logger.info(
+    "Routing JSON-RPC methods registered",
+    methods=[
+        "route.message",
+        "route.process_queue",
+        "route.get_queue_info",
+        "route.get_stats",
+        "route.cleanup_expired",
+        "route.record_failure",
+        "route.record_success",
+        "route.decrease_load",
+    ],
+)

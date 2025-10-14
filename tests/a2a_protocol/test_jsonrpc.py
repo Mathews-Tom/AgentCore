@@ -157,16 +157,16 @@ class TestJsonRpcApi:
         response = client.post("/api/v1/jsonrpc", json=batch_request)
         assert response.status_code == 200
         data = response.json()
-        assert "responses" in data
-        responses = data["responses"]
-        assert len(responses) == 2
+        # Per JSON-RPC 2.0 spec, batch responses should be a bare array
+        assert isinstance(data, list)
+        assert len(data) == 2
 
         # Check first response (ping)
-        ping_response = next(r for r in responses if r["id"] == 1)
+        ping_response = next(r for r in data if r["id"] == 1)
         assert ping_response["result"]["pong"] is True
 
         # Check second response (version)
-        version_response = next(r for r in responses if r["id"] == 2)
+        version_response = next(r for r in data if r["id"] == 2)
         assert "agentcore_version" in version_response["result"]
 
     def test_invalid_method(self, client):
@@ -178,7 +178,7 @@ class TestJsonRpcApi:
         assert response.status_code == 200
         data = response.json()
         assert "error" in data
-        assert data["error"]["code"] == JsonRpcErrorCode.INTERNAL_ERROR.value
+        assert data["error"]["code"] == JsonRpcErrorCode.METHOD_NOT_FOUND.value
 
     def test_invalid_json(self, client):
         """Test handling of malformed JSON."""

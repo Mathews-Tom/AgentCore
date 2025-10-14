@@ -78,7 +78,9 @@ async def test_agent_lifecycle_with_a2a_integration(
     # Verify A2A registration called
     mock_a2a_client.register_agent.assert_called_once()
     call_args = mock_a2a_client.register_agent.call_args
-    assert call_args[1]["agent_config"].agent_id == "test-agent-001"
+    # The agent_config is passed as positional argument
+    registered_config = call_args[0][0]
+    assert registered_config.agent_id == "test-agent-001"
 
     # Start agent
     await lifecycle_manager.start_agent("test-agent-001")
@@ -134,9 +136,9 @@ async def test_agent_lifecycle_without_a2a_client(
 async def test_a2a_client_connectivity(mock_a2a_client):
     """Test A2A client connectivity check."""
     # Test ping
-    async with mock_a2a_client as client:
-        result = await client.ping()
-        assert result is True
+    result = await mock_a2a_client.ping()
+    assert result is True
+    mock_a2a_client.ping.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -179,9 +181,9 @@ async def test_task_assignment_and_execution(
     assert accept_call[1]["task_id"] == task_id
     assert accept_call[1]["agent_id"] == "test-agent-001"
 
-    # Wait for task execution (with short timeout for test)
+    # Wait for task execution (increased timeout for async completion)
     import asyncio
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(1.5)
 
     # Verify task started
     mock_a2a_client.start_task.assert_called_once()

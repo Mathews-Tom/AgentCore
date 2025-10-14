@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from uuid import uuid4
 
 import pytest
@@ -23,8 +24,18 @@ from agentcore.orchestration.streams.config import StreamConfig
 @pytest.fixture(scope="module")
 def redis_container():
     """Provide Redis container for integration tests."""
-    with RedisContainer("redis:7-alpine") as container:
-        yield container
+    # Suppress testcontainers internal deprecation warnings
+    # The warnings are from the testcontainers library's internal use of
+    # @wait_container_is_ready, which we cannot control
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="The @wait_container_is_ready decorator is deprecated",
+            category=DeprecationWarning,
+        )
+        container = RedisContainer("redis:7-alpine")
+        with container:
+            yield container
 
 
 @pytest.fixture

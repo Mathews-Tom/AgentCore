@@ -1,7 +1,7 @@
 """Autonomous Agent philosophy engine."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -153,7 +153,9 @@ class AutonomousEngine(PhilosophyEngine):
             return {
                 "goal_status": final_status.value,
                 "goal_progress": primary_goal.progress,
-                "decisions_made": [d.model_dump() for d in self.context.decision_lineage],
+                "decisions_made": [
+                    d.model_dump() for d in self.context.decision_lineage
+                ],
                 "memories_created": len(self.context.long_term_memory),
                 "learning_experiences": [
                     exp.model_dump() for exp in self.context.learning_experiences
@@ -236,13 +238,15 @@ class AutonomousEngine(PhilosophyEngine):
         goal_id = plan.goal_id
 
         # Find corresponding goal
-        goal = next((g for g in self.context.active_goals if g.goal_id == goal_id), None)
+        goal = next(
+            (g for g in self.context.active_goals if g.goal_id == goal_id), None
+        )
         if not goal:
             raise ValueError(f"Goal {goal_id} not found")
 
         # Mark goal as in progress
         goal.status = GoalStatus.IN_PROGRESS
-        goal.started_at = datetime.now()
+        goal.started_at = datetime.now(UTC)
 
         # Execute each step
         for i, step in enumerate(plan.steps):
@@ -297,7 +301,7 @@ class AutonomousEngine(PhilosophyEngine):
             criteria_met = await self._check_success_criteria(goal.success_criteria)
             if criteria_met:
                 goal.status = GoalStatus.COMPLETED
-                goal.completed_at = datetime.now()
+                goal.completed_at = datetime.now(UTC)
                 goal.progress = 1.0
             else:
                 goal.status = GoalStatus.FAILED
@@ -305,7 +309,7 @@ class AutonomousEngine(PhilosophyEngine):
             # No explicit criteria - assume completed if all steps done
             if goal.progress >= 1.0:
                 goal.status = GoalStatus.COMPLETED
-                goal.completed_at = datetime.now()
+                goal.completed_at = datetime.now(UTC)
             else:
                 goal.status = GoalStatus.FAILED
 
@@ -412,7 +416,7 @@ class AutonomousEngine(PhilosophyEngine):
             sub_goals = [
                 Goal(
                     goal_id=str(uuid.uuid4()),
-                    description=f"Sub-task {i+1} of: {goal.description}",
+                    description=f"Sub-task {i + 1} of: {goal.description}",
                     priority=goal.priority,
                     parent_goal_id=goal.goal_id,
                 )
@@ -503,7 +507,9 @@ class AutonomousEngine(PhilosophyEngine):
         if status == GoalStatus.COMPLETED:
             return f"Successfully completed goal: {goal.description}. Execution plan was effective."
         else:
-            return f"Failed to complete goal: {goal.description}. Need to refine approach."
+            return (
+                f"Failed to complete goal: {goal.description}. Need to refine approach."
+            )
 
     async def _store_memory(self, memory: Memory) -> None:
         """
@@ -524,4 +530,4 @@ class AutonomousEngine(PhilosophyEngine):
             self.context.long_term_memory.append(memory)
 
         memory.access_count += 1
-        memory.last_accessed = datetime.now()
+        memory.last_accessed = datetime.now(UTC)

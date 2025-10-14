@@ -1,7 +1,7 @@
 """Tests for performance optimization service."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -155,7 +155,9 @@ class TestContainerPool:
         async def create_container() -> str:
             return "container-1"
 
-        container_id, is_warm = await pool.acquire(AgentPhilosophy.REACT, create_container)
+        container_id, is_warm = await pool.acquire(
+            AgentPhilosophy.REACT, create_container
+        )
 
         assert container_id == "container-1"
         assert not is_warm  # Cold start
@@ -171,7 +173,9 @@ class TestContainerPool:
         async def create_container() -> str:
             return "container-2"
 
-        container_id, is_warm = await pool.acquire(AgentPhilosophy.REACT, create_container)
+        container_id, is_warm = await pool.acquire(
+            AgentPhilosophy.REACT, create_container
+        )
 
         assert container_id == "container-1"
         assert is_warm  # Warm start
@@ -381,8 +385,8 @@ class TestPerformanceOptimizer:
         agent = AgentExecutionState(
             agent_id="test-agent",
             status="running",
-            created_at=datetime.now(),
-            last_updated=datetime.now(),
+            created_at=datetime.now(UTC),
+            last_updated=datetime.now(UTC),
         )
 
         metrics = {

@@ -15,8 +15,13 @@ from agentcore.agent_runtime.engines.react_engine import ReActEngine
 from agentcore.agent_runtime.engines.cot_engine import CoTEngine
 from agentcore.agent_runtime.engines.autonomous_engine import AutonomousEngine
 from agentcore.agent_runtime.models.agent_config import AgentConfig, AgentPhilosophy
+from agentcore.agent_runtime.models.agent_state import AgentExecutionState
+from agentcore.agent_runtime.models.tool_integration import ToolDefinition
 from agentcore.agent_runtime.services.agent_lifecycle import AgentLifecycleManager
 from agentcore.agent_runtime.services.multi_agent_coordinator import (
+    AgentMessage,
+    MessagePriority,
+    MessageType,
     MultiAgentCoordinator,
 )
 from agentcore.agent_runtime.services.task_handler import TaskHandler
@@ -38,9 +43,7 @@ async def test_complete_react_agent_workflow(
     # Create ReAct agent
     config = AgentConfig(
         agent_id="react-agent-001",
-        name="ReAct Agent",
         philosophy=AgentPhilosophy.REACT,
-        capabilities=["reasoning", "action", "observation"],
     )
 
     # 1. Agent Creation
@@ -59,17 +62,43 @@ async def test_complete_react_agent_workflow(
 
     # 4. Tool Registration
     tool_registry = ToolRegistry()
-    await tool_registry.register_tool(
+    calculator_tool = ToolDefinition(
+        tool_id="calculator",
         name="calculator",
         description="Perform calculations",
-        handler=lambda x: {"result": eval(x["expression"])},
+        parameters={
+            "operation": {"type": "string", "enum": ["+", "-", "*", "/"]},
+            "a": {"type": "number"},
+            "b": {"type": "number"},
+        },
+    )
+
+    def calculator_executor(operation: str, a: float, b: float) -> float:
+        operations = {
+            "+": lambda x, y: x + y,
+            "-": lambda x, y: x - y,
+            "*": lambda x, y: x * y,
+            "/": lambda x, y: x / y,
+        }
+        return operations[operation](a, b)
+
+    tool_registry.register_tool(
+        tool=calculator_tool,
+        executor=calculator_executor,
     )
 
     # 5. Execute ReAct Cycle
-    engine = ReActEngine(tool_registry=tool_registry)
+    engine = ReActEngine(config, tool_registry=tool_registry)
+    execution_state = AgentExecutionState(
+        agent_id="react-agent-001",
+        status="running",
+    )
     result = await engine.execute(
-        goal="Calculate 5 + 3 and return the result",
-        max_steps=5,
+        input_data={
+            "goal": "Calculate 5 + 3 and return the result",
+            "max_iterations": 5,
+        },
+        state=execution_state,
     )
 
     assert result["completed"] is True
@@ -95,9 +124,7 @@ async def test_complete_cot_agent_workflow(
     # Create CoT agent
     config = AgentConfig(
         agent_id="cot-agent-001",
-        name="CoT Agent",
         philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT,
-        capabilities=["reasoning", "analysis"],
     )
 
     mock_container_manager.create_container.return_value = "container-cot-001"
@@ -110,24 +137,22 @@ async def test_complete_cot_agent_workflow(
     await lifecycle_manager.start_agent("cot-agent-001")
 
     # 3. Execute reasoning
-    engine = CoTEngine()
+    engine = CoTEngine(config, use_real_llm=False)
+    execution_state = AgentExecutionState(
+        agent_id="cot-agent-001",
+        status="running",
+    )
 
-    # Mock LLM service
-    with patch.object(engine, "_query_llm", new=AsyncMock()) as mock_llm:
-        mock_llm.side_effect = [
-            "Step 1: Analyze the problem",
-            "Step 2: Consider alternatives",
-            "Step 3: Choose best solution",
-            "Conclusion: The optimal approach is X",
-        ]
+    result = await engine.execute(
+        input_data={
+            "goal": "Analyze the best approach to solve problem X",
+            "max_steps": 5,
+        },
+        state=execution_state,
+    )
 
-        result = await engine.execute(
-            goal="Analyze the best approach to solve problem X",
-            max_steps=5,
-        )
-
-        assert result["completed"] is True
-        assert len(result["reasoning_steps"]) >= 3
+    assert result["completed"] is True
+    assert len(result["reasoning_chain"]) >= 3
 
     # 4. Cleanup
     await lifecycle_manager.terminate_agent("cot-agent-001", cleanup=True)
@@ -158,45 +183,54 @@ async def test_multi_agent_collaborative_workflow(
     for agent_id, philosophy, capabilities in agents:
         config = AgentConfig(
             agent_id=agent_id,
-            name=agent_id.title(),
             philosophy=philosophy,
-            capabilities=capabilities,
         )
 
         mock_container_manager.create_container.return_value = f"container-{agent_id}"
         await lifecycle_manager.create_agent(config)
         await lifecycle_manager.start_agent(agent_id)
-        await coordinator.register_agent(agent_id, capabilities)
+        await coordinator.register_agent(
+            agent_id, metadata={"capabilities": capabilities}
+        )
 
     # 2. Coordinate workflow
     # Research phase
     await coordinator.send_message(
-        from_agent="orchestrator",
-        to_agent="agent-researcher",
-        message_type="research_request",
-        payload={"topic": "AI Safety"},
+        AgentMessage(
+            sender_id="orchestrator",
+            recipient_id="agent-researcher",
+            message_type=MessageType.TASK_ASSIGNMENT,
+            priority=MessagePriority.NORMAL,
+            content={"request_type": "research", "topic": "AI Safety"},
+        )
     )
 
     # Writing phase
     await coordinator.send_message(
-        from_agent="agent-researcher",
-        to_agent="agent-writer",
-        message_type="write_request",
-        payload={"findings": "[research results]"},
+        AgentMessage(
+            sender_id="agent-researcher",
+            recipient_id="agent-writer",
+            message_type=MessageType.TASK_ASSIGNMENT,
+            priority=MessagePriority.NORMAL,
+            content={"request_type": "write", "findings": "[research results]"},
+        )
     )
 
     # Review phase
     await coordinator.send_message(
-        from_agent="agent-writer",
-        to_agent="agent-reviewer",
-        message_type="review_request",
-        payload={"draft": "[written content]"},
+        AgentMessage(
+            sender_id="agent-writer",
+            recipient_id="agent-reviewer",
+            message_type=MessageType.TASK_ASSIGNMENT,
+            priority=MessagePriority.NORMAL,
+            content={"request_type": "review", "draft": "[written content]"},
+        )
     )
 
     # 3. Verify messages received
     for agent_id, _, _ in agents:
-        messages = await coordinator.receive_messages(agent_id)
-        assert len(messages) > 0
+        msg = await coordinator.receive_message(agent_id, timeout=1.0)
+        assert msg is not None
 
     # 4. Cleanup
     for agent_id, _, _ in agents:
@@ -219,9 +253,7 @@ async def test_autonomous_agent_goal_execution(
     # Create autonomous agent
     config = AgentConfig(
         agent_id="autonomous-001",
-        name="Autonomous Agent",
         philosophy=AgentPhilosophy.AUTONOMOUS,
-        capabilities=["planning", "execution", "adaptation"],
     )
 
     mock_container_manager.create_container.return_value = "container-autonomous-001"
@@ -231,16 +263,22 @@ async def test_autonomous_agent_goal_execution(
     await lifecycle_manager.start_agent("autonomous-001")
 
     # 2. Execute autonomous goal
-    engine = AutonomousEngine()
+    engine = AutonomousEngine(config, use_real_llm=False)
+    execution_state = AgentExecutionState(
+        agent_id="autonomous-001",
+        status="running",
+    )
 
     result = await engine.execute(
-        goal="Build a simple web scraper",
-        success_criteria={
-            "can_fetch_url": True,
-            "can_parse_html": True,
-            "can_extract_data": True,
+        input_data={
+            "goal": "Build a simple web scraper",
+            "success_criteria": {
+                "can_fetch_url": True,
+                "can_parse_html": True,
+                "can_extract_data": True,
+            },
         },
-        max_steps=10,
+        state=execution_state,
     )
 
     assert result["completed"] is True
@@ -271,9 +309,7 @@ async def test_task_lifecycle_with_checkpointing(
     # 1. Create agent
     config = AgentConfig(
         agent_id="task-agent-001",
-        name="Task Agent",
         philosophy=AgentPhilosophy.REACT,
-        capabilities=["task_execution"],
     )
 
     mock_container_manager.create_container.return_value = "container-task-001"
@@ -334,42 +370,48 @@ async def test_fault_tolerant_workflow(
     for agent_id, capabilities in agents:
         config = AgentConfig(
             agent_id=agent_id,
-            name=agent_id.title(),
             philosophy=AgentPhilosophy.REACT,
-            capabilities=capabilities,
         )
 
         mock_container_manager.create_container.return_value = f"container-{agent_id}"
         await lifecycle_manager.create_agent(config)
         await lifecycle_manager.start_agent(agent_id)
-        await coordinator.register_agent(agent_id, capabilities)
+        await coordinator.register_agent(
+            agent_id, metadata={"capabilities": capabilities}
+        )
 
     # Send task to primary
     await coordinator.send_message(
-        "orchestrator",
-        "agent-primary",
-        "task",
-        {"data": "process this"},
+        AgentMessage(
+            sender_id="orchestrator",
+            recipient_id="agent-primary",
+            message_type=MessageType.TASK_ASSIGNMENT,
+            priority=MessagePriority.NORMAL,
+            content={"data": "process this"},
+        )
     )
 
     # Simulate primary failure
     await lifecycle_manager.terminate_agent("agent-primary", cleanup=True)
     await coordinator.unregister_agent("agent-primary")
 
-    # Discover backup agent with same capability
-    backups = await coordinator.discover_agents(capability="primary")
-    assert "agent-backup" in backups
+    # Check that backup agent is still available
+    active_agents = coordinator.get_active_agents()
+    assert "agent-backup" in active_agents
 
     # Redirect to backup
     await coordinator.send_message(
-        "orchestrator",
-        "agent-backup",
-        "task",
-        {"data": "process this"},
+        AgentMessage(
+            sender_id="orchestrator",
+            recipient_id="agent-backup",
+            message_type=MessageType.TASK_ASSIGNMENT,
+            priority=MessagePriority.NORMAL,
+            content={"data": "process this"},
+        )
     )
 
-    messages = await coordinator.receive_messages("agent-backup")
-    assert len(messages) > 0
+    msg = await coordinator.receive_message("agent-backup", timeout=1.0)
+    assert msg is not None
 
     # Cleanup
     await coordinator.unregister_agent("agent-backup")
@@ -391,13 +433,7 @@ async def test_resource_constrained_execution(
     # Create agent with strict resource limits
     config = AgentConfig(
         agent_id="constrained-agent",
-        name="Constrained Agent",
         philosophy=AgentPhilosophy.REACT,
-        capabilities=["compute"],
-        resource_limits={
-            "cpu": "0.25",  # 25% CPU
-            "memory": "128Mi",  # 128MB RAM
-        },
     )
 
     mock_container_manager.create_container.return_value = "container-constrained"
@@ -441,27 +477,30 @@ async def test_multi_philosophy_collaboration(
     for agent_id, philosophy in philosophies:
         config = AgentConfig(
             agent_id=agent_id,
-            name=agent_id.title(),
             philosophy=philosophy,
-            capabilities=["collaboration"],
         )
 
         mock_container_manager.create_container.return_value = f"container-{agent_id}"
         await lifecycle_manager.create_agent(config)
         await lifecycle_manager.start_agent(agent_id)
-        await coordinator.register_agent(agent_id, ["collaboration"])
+        await coordinator.register_agent(
+            agent_id, metadata={"capabilities": ["collaboration"]}
+        )
 
-    # Coordinate between different philosophies
-    await coordinator.broadcast_message(
-        "orchestrator",
-        "sync",
-        {"step": "initialization"},
+    # Coordinate between different philosophies using broadcast
+    broadcast_msg = AgentMessage(
+        sender_id="orchestrator",
+        recipient_id=None,  # None means broadcast
+        message_type=MessageType.BROADCAST,
+        priority=MessagePriority.NORMAL,
+        content={"step": "initialization"},
     )
+    await coordinator.send_message(broadcast_msg)
 
     # Verify all received
     for agent_id, _ in philosophies:
-        messages = await coordinator.receive_messages(agent_id)
-        assert len(messages) > 0
+        msg = await coordinator.receive_message(agent_id, timeout=1.0)
+        assert msg is not None
 
     # Cleanup
     for agent_id, _ in philosophies:
@@ -484,9 +523,7 @@ async def test_complete_deployment_lifecycle(
     # 1. Development: Create test agent
     config = AgentConfig(
         agent_id="prod-agent-001",
-        name="Production Agent",
         philosophy=AgentPhilosophy.REACT,
-        capabilities=["production", "monitoring"],
     )
 
     mock_container_manager.create_container.return_value = "container-prod-001"

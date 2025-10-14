@@ -4,7 +4,7 @@ Database Models
 SQLAlchemy ORM models for agents, tasks, and related entities.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from sqlalchemy import (
@@ -75,8 +75,8 @@ class AgentDB(Base):
     max_load = Column(Integer, nullable=False, default=10)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     last_seen = Column(DateTime, nullable=True)
 
     # Relationships
@@ -119,8 +119,8 @@ class TaskDB(Base):
     error = Column(Text, nullable=True)
 
     # Timing
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -158,7 +158,7 @@ class AgentHealthMetricDB(Base):
     memory_mb = Column(Float, nullable=True)
 
     # Timestamp
-    checked_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    checked_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
 
     __table_args__ = (
         Index("idx_health_agent_time", "agent_id", "checked_at"),
@@ -191,7 +191,7 @@ class MessageQueueDB(Base):
     last_error = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
     processed_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
@@ -213,7 +213,7 @@ class EventSubscriptionDB(Base):
     filters = Column(JSON, nullable=True)  # Optional filter criteria
 
     # Subscription lifecycle
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
     expires_at = Column(DateTime, nullable=True, index=True)
 
     # Status
@@ -237,7 +237,7 @@ class SecurityTokenDB(Base):
     token_type = Column(String(50), nullable=False)
 
     # Token lifecycle
-    issued_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    issued_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
     expires_at = Column(DateTime, nullable=False, index=True)
 
     # Revocation
@@ -260,7 +260,7 @@ class RateLimitDB(Base):
 
     # Rate limiting
     request_count = Column(Integer, nullable=False, default=0)
-    window_start = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    window_start = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
 
     # Configuration
     max_requests = Column(Integer, nullable=False, default=1000)
@@ -271,7 +271,7 @@ class RateLimitDB(Base):
     last_violation = Column(DateTime, nullable=True)
 
     # Timestamps
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class AgentPublicKeyDB(Base):
@@ -284,7 +284,7 @@ class AgentPublicKeyDB(Base):
 
     # Key metadata
     algorithm = Column(String(50), nullable=False, default="RSA-2048")
-    registered_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    registered_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
     expires_at = Column(DateTime, nullable=True)
 
     # Key rotation
@@ -322,8 +322,8 @@ class SessionSnapshotDB(Base):
     artifact_ids = Column(JSON, nullable=False, default=list)  # Array of artifact IDs
 
     # Lifecycle tracking
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     expires_at = Column(DateTime, nullable=True, index=True)
     completed_at = Column(DateTime, nullable=True)
 

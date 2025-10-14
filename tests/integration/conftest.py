@@ -16,10 +16,6 @@ from agentcore.a2a_protocol.main import create_app
 from agentcore.a2a_protocol.database.connection import Base
 
 
-# Configure pytest-asyncio
-pytest_plugins = ('pytest_asyncio',)
-
-
 @pytest.fixture(scope="session")
 def event_loop():
     """Create event loop for async tests."""
@@ -81,11 +77,22 @@ def sample_agent_card():
     """Sample AgentCard for testing."""
     return {
         "agent_id": "test-agent-001",
-        "name": "Test Agent",
-        "version": "1.0.0",
+        "agent_name": "Test Agent",
+        "agent_version": "1.0.0",
         "status": "active",
         "description": "Test agent for integration tests",
-        "capabilities": ["text-generation", "summarization"],
+        "capabilities": [
+            {
+                "name": "text-generation",
+                "version": "1.0.0",
+                "description": "Generate text content"
+            },
+            {
+                "name": "summarization",
+                "version": "1.0.0",
+                "description": "Summarize text content"
+            }
+        ],
         "endpoints": [
             {
                 "url": "http://localhost:8080/api",
@@ -95,7 +102,11 @@ def sample_agent_card():
         ],
         "authentication": {
             "type": "jwt",
-            "metadata": {}
+            "config": {
+                "algorithm": "RS256",
+                "public_key_url": "http://localhost:8080/.well-known/jwks.json"
+            },
+            "required": True
         }
     }
 

@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -49,7 +49,9 @@ class AgentMessage(BaseModel):
     )
     content: dict[str, Any] = Field(description="Message payload")
     timestamp: datetime = Field(default_factory=datetime.now)
-    reply_to: str | None = Field(default=None, description="ID of message being replied to")
+    reply_to: str | None = Field(
+        default=None, description="ID of message being replied to"
+    )
     expires_at: datetime | None = Field(default=None, description="Message expiration")
 
 
@@ -58,7 +60,9 @@ class VoteOption(BaseModel):
 
     option_id: str = Field(description="Option identifier")
     description: str = Field(description="Option description")
-    votes: list[str] = Field(default_factory=list, description="List of agent IDs that voted")
+    votes: list[str] = Field(
+        default_factory=list, description="List of agent IDs that voted"
+    )
     weight: float = Field(default=1.0, description="Option weight/importance")
 
 
@@ -79,7 +83,9 @@ class ConsensusResult(BaseModel):
     """Result of consensus voting."""
 
     request_id: str = Field(description="Corresponding consensus request ID")
-    winning_option: VoteOption | None = Field(description="Winning option if consensus reached")
+    winning_option: VoteOption | None = Field(
+        description="Winning option if consensus reached"
+    )
     consensus_reached: bool = Field(description="Whether consensus was reached")
     total_votes: int = Field(description="Total votes cast")
     vote_distribution: dict[str, int] = Field(description="Votes per option")
@@ -206,10 +212,12 @@ class MultiAgentCoordinator:
             else:
                 message = await self._message_queues[agent_id].get()
 
-            logger.debug("message_received", agent_id=agent_id, message_id=message.message_id)
+            logger.debug(
+                "message_received", agent_id=agent_id, message_id=message.message_id
+            )
             return message
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     async def initiate_consensus(self, request: ConsensusRequest) -> str:
@@ -303,7 +311,9 @@ class MultiAgentCoordinator:
 
             # Count votes
             total_votes = sum(len(opt.votes) for opt in request.options)
-            vote_distribution = {opt.option_id: len(opt.votes) for opt in request.options}
+            vote_distribution = {
+                opt.option_id: len(opt.votes) for opt in request.options
+            }
 
             # Find winning option
             winning_option = max(request.options, key=lambda opt: len(opt.votes))
@@ -389,7 +399,9 @@ class MultiAgentCoordinator:
 
             return {
                 "strategy": strategy.value,
-                "resolution": result.winning_option.option_id if result.winning_option else None,
+                "resolution": result.winning_option.option_id
+                if result.winning_option
+                else None,
                 "consensus_reached": result.consensus_reached,
             }
 
@@ -423,7 +435,9 @@ class MultiAgentCoordinator:
         async with self._lock:
             self._shared_states[state.state_id] = state
 
-        logger.info("shared_state_created", state_id=state.state_id, owner=state.owner_id)
+        logger.info(
+            "shared_state_created", state_id=state.state_id, owner=state.owner_id
+        )
         return state.state_id
 
     async def read_shared_state(self, state_id: str, agent_id: str) -> SharedState:
@@ -444,7 +458,10 @@ class MultiAgentCoordinator:
             state = self._shared_states[state_id]
 
             # Check read access
-            if agent_id not in state.access_control["read"] and state.owner_id != agent_id:
+            if (
+                agent_id not in state.access_control["read"]
+                and state.owner_id != agent_id
+            ):
                 raise PermissionError(f"Agent {agent_id} does not have read access")
 
             return state
@@ -473,7 +490,10 @@ class MultiAgentCoordinator:
             state = self._shared_states[state_id]
 
             # Check write access
-            if agent_id not in state.access_control["write"] and state.owner_id != agent_id:
+            if (
+                agent_id not in state.access_control["write"]
+                and state.owner_id != agent_id
+            ):
                 raise PermissionError(f"Agent {agent_id} does not have write access")
 
             # Check lock
@@ -483,7 +503,7 @@ class MultiAgentCoordinator:
             # Apply updates
             state.data.update(updates)
             state.version += 1
-            state.last_modified = datetime.now()
+            state.last_modified = datetime.now(UTC)
 
             logger.info(
                 "shared_state_updated",

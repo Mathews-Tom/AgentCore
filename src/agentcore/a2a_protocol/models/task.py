@@ -5,9 +5,9 @@ A2A Protocol v0.2 compliant task definition, execution, and lifecycle management
 Implements task state transitions, dependency tracking, and agent assignment.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class TaskStatus(str, Enum):
     """Task execution status states."""
+
     PENDING = "pending"
     ASSIGNED = "assigned"
     RUNNING = "running"
@@ -26,6 +27,7 @@ class TaskStatus(str, Enum):
 
 class TaskPriority(str, Enum):
     """Task priority levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -34,42 +36,59 @@ class TaskPriority(str, Enum):
 
 class DependencyType(str, Enum):
     """Task dependency relationship types."""
+
     PREDECESSOR = "predecessor"  # Must complete before this task can start
-    SUCCESSOR = "successor"      # Will start after this task completes
-    PARALLEL = "parallel"        # Can run concurrently
-    CONDITIONAL = "conditional"   # Conditional dependency based on outcome
+    SUCCESSOR = "successor"  # Will start after this task completes
+    PARALLEL = "parallel"  # Can run concurrently
+    CONDITIONAL = "conditional"  # Conditional dependency based on outcome
 
 
 class TaskDependency(BaseModel):
     """Task dependency definition."""
+
     task_id: str = Field(..., description="Dependent task ID")
     type: DependencyType = Field(..., description="Dependency type")
-    condition: Optional[Dict[str, Any]] = Field(None, description="Optional condition for dependency")
+    condition: dict[str, Any] | None = Field(
+        None, description="Optional condition for dependency"
+    )
 
 
 class TaskArtifact(BaseModel):
     """Task execution artifact."""
+
     name: str = Field(..., description="Artifact name")
     type: str = Field(..., description="Artifact type (file, data, url, etc.)")
     content: Any = Field(..., description="Artifact content")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Artifact metadata")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Artifact metadata"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation timestamp"
+    )
 
     # A2A-018: Context engineering fields
-    context_lineage: Optional[List[str]] = Field(
+    context_lineage: list[str] | None = Field(
         None,
-        description="Lineage of context transformations (task_ids that contributed)"
+        description="Lineage of context transformations (task_ids that contributed)",
     )
-    context_summary: Optional[str] = Field(
-        None,
-        description="Summary of accumulated context for this artifact"
+    context_summary: str | None = Field(
+        None, description="Summary of accumulated context for this artifact"
     )
 
-    @field_validator('type')
+    @field_validator("type")
     @classmethod
     def validate_artifact_type(cls, v: str) -> str:
         """Validate artifact type."""
-        valid_types = ["file", "data", "url", "json", "text", "binary", "image", "document"]
+        valid_types = [
+            "file",
+            "data",
+            "url",
+            "json",
+            "text",
+            "binary",
+            "image",
+            "document",
+        ]
         if v not in valid_types:
             raise ValueError(f"Invalid artifact type. Must be one of: {valid_types}")
         return v
@@ -77,12 +96,23 @@ class TaskArtifact(BaseModel):
 
 class TaskRequirement(BaseModel):
     """Task execution requirements."""
-    required_capabilities: List[str] = Field(default_factory=list, description="Required agent capabilities")
-    preferred_agents: List[str] = Field(default_factory=list, description="Preferred agent IDs")
-    excluded_agents: List[str] = Field(default_factory=list, description="Excluded agent IDs")
-    max_execution_time: Optional[int] = Field(None, description="Maximum execution time in seconds")
+
+    required_capabilities: list[str] = Field(
+        default_factory=list, description="Required agent capabilities"
+    )
+    preferred_agents: list[str] = Field(
+        default_factory=list, description="Preferred agent IDs"
+    )
+    excluded_agents: list[str] = Field(
+        default_factory=list, description="Excluded agent IDs"
+    )
+    max_execution_time: int | None = Field(
+        None, description="Maximum execution time in seconds"
+    )
     retry_count: int = Field(default=0, description="Number of retry attempts")
-    require_authentication: bool = Field(default=False, description="Whether authentication is required")
+    require_authentication: bool = Field(
+        default=False, description="Whether authentication is required"
+    )
 
 
 class TaskDefinition(BaseModel):
@@ -91,39 +121,56 @@ class TaskDefinition(BaseModel):
 
     Defines what needs to be executed, requirements, and dependencies.
     """
-    task_id: str = Field(default_factory=lambda: str(uuid4()), description="Unique task identifier")
+
+    task_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Unique task identifier"
+    )
     task_type: str = Field(..., description="Type of task to execute")
     title: str = Field(..., description="Human-readable task title")
-    description: Optional[str] = Field(None, description="Task description")
+    description: str | None = Field(None, description="Task description")
 
     # Task data and parameters
-    input_data: Dict[str, Any] = Field(default_factory=dict, description="Input data for task execution")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Task-specific parameters")
+    input_data: dict[str, Any] = Field(
+        default_factory=dict, description="Input data for task execution"
+    )
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="Task-specific parameters"
+    )
 
     # Requirements and constraints
-    requirements: TaskRequirement = Field(default_factory=TaskRequirement, description="Task requirements")
-    priority: TaskPriority = Field(default=TaskPriority.NORMAL, description="Task priority")
+    requirements: TaskRequirement = Field(
+        default_factory=TaskRequirement, description="Task requirements"
+    )
+    priority: TaskPriority = Field(
+        default=TaskPriority.NORMAL, description="Task priority"
+    )
 
     # Dependencies
-    dependencies: List[TaskDependency] = Field(default_factory=list, description="Task dependencies")
+    dependencies: list[TaskDependency] = Field(
+        default_factory=list, description="Task dependencies"
+    )
 
     # Metadata
-    tags: List[str] = Field(default_factory=list, description="Task tags")
-    created_by: Optional[str] = Field(None, description="Creator agent/user ID")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    tags: list[str] = Field(default_factory=list, description="Task tags")
+    created_by: str | None = Field(None, description="Creator agent/user ID")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation timestamp"
+    )
 
-    @field_validator('task_type')
+    @field_validator("task_type")
     @classmethod
     def validate_task_type(cls, v: str) -> str:
         """Validate task type format."""
         if not v or len(v.strip()) == 0:
             raise ValueError("Task type cannot be empty")
         # Task types should follow a namespace pattern like "text.generation" or "data.analysis"
-        if '.' not in v:
-            raise ValueError("Task type should follow namespace.action format (e.g., 'text.generation')")
+        if "." not in v:
+            raise ValueError(
+                "Task type should follow namespace.action format (e.g., 'text.generation')"
+            )
         return v.strip()
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def validate_title(cls, v: str) -> str:
         """Validate task title."""
@@ -133,7 +180,9 @@ class TaskDefinition(BaseModel):
             raise ValueError("Task title cannot exceed 200 characters")
         return v.strip()
 
-    def has_dependency(self, task_id: str, dependency_type: Optional[DependencyType] = None) -> bool:
+    def has_dependency(
+        self, task_id: str, dependency_type: DependencyType | None = None
+    ) -> bool:
         """Check if task has a specific dependency."""
         for dep in self.dependencies:
             if dep.task_id == task_id:
@@ -141,9 +190,13 @@ class TaskDefinition(BaseModel):
                     return True
         return False
 
-    def get_predecessor_tasks(self) -> List[str]:
+    def get_predecessor_tasks(self) -> list[str]:
         """Get list of predecessor task IDs."""
-        return [dep.task_id for dep in self.dependencies if dep.type == DependencyType.PREDECESSOR]
+        return [
+            dep.task_id
+            for dep in self.dependencies
+            if dep.type == DependencyType.PREDECESSOR
+        ]
 
 
 class TaskExecution(BaseModel):
@@ -152,32 +205,47 @@ class TaskExecution(BaseModel):
 
     Represents the runtime execution of a TaskDefinition.
     """
-    execution_id: str = Field(default_factory=lambda: str(uuid4()), description="Unique execution identifier")
-    task_definition: TaskDefinition = Field(..., description="Associated task definition")
+
+    execution_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Unique execution identifier"
+    )
+    task_definition: TaskDefinition = Field(
+        ..., description="Associated task definition"
+    )
 
     # Execution state
-    status: TaskStatus = Field(default=TaskStatus.PENDING, description="Current execution status")
-    assigned_agent: Optional[str] = Field(None, description="Assigned agent ID")
+    status: TaskStatus = Field(
+        default=TaskStatus.PENDING, description="Current execution status"
+    )
+    assigned_agent: str | None = Field(None, description="Assigned agent ID")
 
     # Timing
-    assigned_at: Optional[datetime] = Field(None, description="Assignment timestamp")
-    started_at: Optional[datetime] = Field(None, description="Execution start timestamp")
-    completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
+    assigned_at: datetime | None = Field(None, description="Assignment timestamp")
+    started_at: datetime | None = Field(None, description="Execution start timestamp")
+    completed_at: datetime | None = Field(None, description="Completion timestamp")
 
     # Progress tracking
-    progress_percentage: float = Field(default=0.0, ge=0.0, le=100.0, description="Execution progress (0-100)")
-    current_step: Optional[str] = Field(None, description="Current execution step")
+    progress_percentage: float = Field(
+        default=0.0, ge=0.0, le=100.0, description="Execution progress (0-100)"
+    )
+    current_step: str | None = Field(None, description="Current execution step")
 
     # Results and artifacts
-    result_data: Dict[str, Any] = Field(default_factory=dict, description="Execution result data")
-    artifacts: List[TaskArtifact] = Field(default_factory=list, description="Generated artifacts")
+    result_data: dict[str, Any] = Field(
+        default_factory=dict, description="Execution result data"
+    )
+    artifacts: list[TaskArtifact] = Field(
+        default_factory=list, description="Generated artifacts"
+    )
 
     # Error handling
-    error_message: Optional[str] = Field(None, description="Error message if failed")
+    error_message: str | None = Field(None, description="Error message if failed")
     retry_count: int = Field(default=0, description="Number of retry attempts made")
 
     # Metadata
-    execution_metadata: Dict[str, Any] = Field(default_factory=dict, description="Execution-specific metadata")
+    execution_metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Execution-specific metadata"
+    )
 
     @property
     def task_id(self) -> str:
@@ -207,15 +275,24 @@ class TaskExecution(BaseModel):
     @property
     def is_failed(self) -> bool:
         """Check if task failed."""
-        return self.status in [TaskStatus.FAILED, TaskStatus.TIMEOUT, TaskStatus.CANCELLED]
+        return self.status in [
+            TaskStatus.FAILED,
+            TaskStatus.TIMEOUT,
+            TaskStatus.CANCELLED,
+        ]
 
     @property
     def is_terminal(self) -> bool:
         """Check if task is in a terminal state."""
-        return self.status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMEOUT]
+        return self.status in [
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+            TaskStatus.TIMEOUT,
+        ]
 
     @property
-    def execution_duration(self) -> Optional[float]:
+    def execution_duration(self) -> float | None:
         """Get execution duration in seconds."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
@@ -226,11 +303,20 @@ class TaskExecution(BaseModel):
         valid_transitions = {
             TaskStatus.PENDING: [TaskStatus.ASSIGNED, TaskStatus.CANCELLED],
             TaskStatus.ASSIGNED: [TaskStatus.RUNNING, TaskStatus.CANCELLED],
-            TaskStatus.RUNNING: [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMEOUT],
+            TaskStatus.RUNNING: [
+                TaskStatus.COMPLETED,
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+                TaskStatus.TIMEOUT,
+            ],
             TaskStatus.COMPLETED: [],  # Terminal state
-            TaskStatus.FAILED: [TaskStatus.PENDING] if self.retry_count < self.task_definition.requirements.retry_count else [],
+            TaskStatus.FAILED: [TaskStatus.PENDING]
+            if self.retry_count < self.task_definition.requirements.retry_count
+            else [],
             TaskStatus.CANCELLED: [],  # Terminal state
-            TaskStatus.TIMEOUT: [TaskStatus.PENDING] if self.retry_count < self.task_definition.requirements.retry_count else [],
+            TaskStatus.TIMEOUT: [TaskStatus.PENDING]
+            if self.retry_count < self.task_definition.requirements.retry_count
+            else [],
         }
         return new_status in valid_transitions.get(self.status, [])
 
@@ -240,7 +326,7 @@ class TaskExecution(BaseModel):
             raise ValueError(f"Cannot assign task in {self.status} status")
 
         self.assigned_agent = agent_id
-        self.assigned_at = datetime.utcnow()
+        self.assigned_at = datetime.now(UTC)
         self.status = TaskStatus.ASSIGNED
 
     def start_execution(self) -> None:
@@ -248,16 +334,20 @@ class TaskExecution(BaseModel):
         if not self.can_transition_to(TaskStatus.RUNNING):
             raise ValueError(f"Cannot start task in {self.status} status")
 
-        self.started_at = datetime.utcnow()
+        self.started_at = datetime.now(UTC)
         self.status = TaskStatus.RUNNING
         self.progress_percentage = 0.0
 
-    def complete_execution(self, result_data: Dict[str, Any], artifacts: Optional[List[TaskArtifact]] = None) -> None:
+    def complete_execution(
+        self,
+        result_data: dict[str, Any],
+        artifacts: list[TaskArtifact] | None = None,
+    ) -> None:
         """Complete task execution successfully."""
         if not self.can_transition_to(TaskStatus.COMPLETED):
             raise ValueError(f"Cannot complete task in {self.status} status")
 
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(UTC)
         self.status = TaskStatus.COMPLETED
         self.progress_percentage = 100.0
         self.result_data = result_data
@@ -269,11 +359,14 @@ class TaskExecution(BaseModel):
         if not self.can_transition_to(TaskStatus.FAILED):
             raise ValueError(f"Cannot fail task in {self.status} status")
 
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(UTC)
         self.error_message = error_message
 
         # Check if we should retry
-        if should_retry and self.retry_count < self.task_definition.requirements.retry_count:
+        if (
+            should_retry
+            and self.retry_count < self.task_definition.requirements.retry_count
+        ):
             self.status = TaskStatus.PENDING
             self.retry_count += 1
             self.assigned_agent = None
@@ -289,10 +382,12 @@ class TaskExecution(BaseModel):
         if not self.can_transition_to(TaskStatus.CANCELLED):
             raise ValueError(f"Cannot cancel task in {self.status} status")
 
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(UTC)
         self.status = TaskStatus.CANCELLED
 
-    def update_progress(self, percentage: float, current_step: Optional[str] = None) -> None:
+    def update_progress(
+        self, percentage: float, current_step: str | None = None
+    ) -> None:
         """Update task execution progress."""
         if not self.is_running:
             raise ValueError("Can only update progress for running tasks")
@@ -301,17 +396,20 @@ class TaskExecution(BaseModel):
         if current_step:
             self.current_step = current_step
 
-    def add_artifact(self, name: str, artifact_type: str, content: Any, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add_artifact(
+        self,
+        name: str,
+        artifact_type: str,
+        content: Any,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Add an execution artifact."""
         artifact = TaskArtifact(
-            name=name,
-            type=artifact_type,
-            content=content,
-            metadata=metadata or {}
+            name=name, type=artifact_type, content=content, metadata=metadata or {}
         )
         self.artifacts.append(artifact)
 
-    def to_summary(self) -> Dict[str, Any]:
+    def to_summary(self) -> dict[str, Any]:
         """Create a task execution summary."""
         return {
             "execution_id": self.execution_id,
@@ -323,7 +421,9 @@ class TaskExecution(BaseModel):
             "assigned_agent": self.assigned_agent,
             "created_at": self.task_definition.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "execution_duration": self.execution_duration,
             "retry_count": self.retry_count,
             "artifacts_count": len(self.artifacts),
@@ -335,37 +435,47 @@ class TaskExecution(BaseModel):
 
 class TaskCreateRequest(BaseModel):
     """Request to create a new task."""
+
     task_definition: TaskDefinition = Field(..., description="Task definition")
-    auto_assign: bool = Field(default=True, description="Automatically assign to capable agent")
-    preferred_agent: Optional[str] = Field(None, description="Preferred agent ID for assignment")
+    auto_assign: bool = Field(
+        default=True, description="Automatically assign to capable agent"
+    )
+    preferred_agent: str | None = Field(
+        None, description="Preferred agent ID for assignment"
+    )
 
 
 class TaskCreateResponse(BaseModel):
     """Response for task creation."""
+
     execution_id: str = Field(..., description="Task execution ID")
     task_id: str = Field(..., description="Task definition ID")
     status: str = Field(..., description="Initial task status")
-    assigned_agent: Optional[str] = Field(None, description="Assigned agent ID")
+    assigned_agent: str | None = Field(None, description="Assigned agent ID")
     message: str = Field(..., description="Creation status message")
 
 
 class TaskQuery(BaseModel):
     """Task query parameters for filtering and search."""
-    status: Optional[TaskStatus] = Field(None, description="Filter by task status")
-    task_type: Optional[str] = Field(None, description="Filter by task type")
-    assigned_agent: Optional[str] = Field(None, description="Filter by assigned agent")
-    created_by: Optional[str] = Field(None, description="Filter by creator")
-    tags: Optional[List[str]] = Field(None, description="Filter by tags (all must match)")
-    priority: Optional[TaskPriority] = Field(None, description="Filter by priority")
-    created_after: Optional[datetime] = Field(None, description="Filter by creation time")
-    created_before: Optional[datetime] = Field(None, description="Filter by creation time")
-    limit: int = Field(default=50, ge=1, le=1000, description="Maximum number of results")
+
+    status: TaskStatus | None = Field(None, description="Filter by task status")
+    task_type: str | None = Field(None, description="Filter by task type")
+    assigned_agent: str | None = Field(None, description="Filter by assigned agent")
+    created_by: str | None = Field(None, description="Filter by creator")
+    tags: list[str] | None = Field(None, description="Filter by tags (all must match)")
+    priority: TaskPriority | None = Field(None, description="Filter by priority")
+    created_after: datetime | None = Field(None, description="Filter by creation time")
+    created_before: datetime | None = Field(None, description="Filter by creation time")
+    limit: int = Field(
+        default=50, ge=1, le=1000, description="Maximum number of results"
+    )
     offset: int = Field(default=0, ge=0, description="Result offset for pagination")
 
 
 class TaskQueryResponse(BaseModel):
     """Response for task queries."""
-    tasks: List[Dict[str, Any]] = Field(..., description="Task execution summaries")
+
+    tasks: list[dict[str, Any]] = Field(..., description="Task execution summaries")
     total_count: int = Field(..., description="Total number of matching tasks")
     has_more: bool = Field(..., description="Whether more results are available")
     query: TaskQuery = Field(..., description="Original query parameters")

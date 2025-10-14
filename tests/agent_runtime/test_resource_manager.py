@@ -1,16 +1,15 @@
 """Tests for resource management service."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
+from agentcore.agent_runtime.models.agent_config import AgentConfig, AgentPhilosophy
 from agentcore.agent_runtime.models.agent_config import (
-    AgentConfig,
-    AgentPhilosophy,
     ResourceLimits as ConfigResourceLimits,
-    SecurityProfile,
 )
+from agentcore.agent_runtime.models.agent_config import SecurityProfile
 from agentcore.agent_runtime.services.resource_manager import (
     AlertSeverity,
     DynamicScaler,
@@ -41,7 +40,7 @@ class TestResourceUsage:
 
     def test_resource_usage_with_timestamp(self) -> None:
         """Test resource usage with custom timestamp."""
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
         usage = ResourceUsage(
             cpu_percent=50.0,
             memory_percent=60.0,

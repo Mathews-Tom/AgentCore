@@ -6,7 +6,7 @@ Pydantic models for orchestration events transmitted through Redis Streams.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -43,7 +43,7 @@ class OrchestrationEvent(BaseModel):
         description="Type of orchestration event",
     )
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Event creation timestamp",
     )
     trace_id: UUID | None = Field(

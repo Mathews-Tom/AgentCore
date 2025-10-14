@@ -2,7 +2,7 @@
 
 import json
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -26,9 +26,7 @@ from agentcore.agent_runtime.services.audit_logger import AuditLogger
 from agentcore.agent_runtime.services.plugin_loader import PluginLoader
 from agentcore.agent_runtime.services.plugin_registry import PluginRegistry
 from agentcore.agent_runtime.services.plugin_validator import PluginValidator
-from agentcore.agent_runtime.services.plugin_version_manager import (
-    PluginVersionManager,
-)
+from agentcore.agent_runtime.services.plugin_version_manager import PluginVersionManager
 
 
 class TestPluginModels:
@@ -104,7 +102,7 @@ class TestPluginModels:
 
         # Simulate loading
         state.status = PluginStatus.LOADED
-        state.load_time = datetime.utcnow()
+        state.load_time = datetime.now(UTC)
 
         assert state.status == PluginStatus.LOADED
         assert state.load_time is not None
@@ -214,9 +212,7 @@ class TestPluginVersionManager:
             "com.example.dep2": "1.1.0",
         }
 
-        all_satisfied, missing = manager.resolve_dependencies(
-            metadata, available
-        )
+        all_satisfied, missing = manager.resolve_dependencies(metadata, available)
         assert all_satisfied is True
         assert len(missing) == 0
 
@@ -225,9 +221,7 @@ class TestPluginVersionManager:
             "com.example.dep2": "1.1.0",
         }
 
-        all_satisfied, missing = manager.resolve_dependencies(
-            metadata, available
-        )
+        all_satisfied, missing = manager.resolve_dependencies(metadata, available)
         assert all_satisfied is False
         assert len(missing) == 1
         assert "com.example.dep1" in missing[0]

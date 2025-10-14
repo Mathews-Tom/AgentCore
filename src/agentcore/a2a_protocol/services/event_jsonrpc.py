@@ -4,27 +4,27 @@ Event System JSON-RPC Methods
 JSON-RPC 2.0 methods for event publishing, subscriptions, and management.
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
-from datetime import datetime
 
-from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.models.events import (
-    EventType,
     EventPriority,
     EventPublishRequest,
     EventSubscribeRequest,
-    EventUnsubscribeRequest
+    EventType,
+    EventUnsubscribeRequest,
 )
-from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
+from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.services.event_manager import event_manager
+from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 
 logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("event.publish")
-async def handle_publish_event(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_publish_event(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Publish an event.
 
@@ -49,7 +49,9 @@ async def handle_publish_event(request: JsonRpcRequest) -> Dict[str, Any]:
         data = request.params.get("data")
 
         if not event_type_str or not source or data is None:
-            raise ValueError("Missing required parameters: event_type, source, and/or data")
+            raise ValueError(
+                "Missing required parameters: event_type, source, and/or data"
+            )
 
         # Parse event type
         event_type = EventType(event_type_str)
@@ -68,7 +70,7 @@ async def handle_publish_event(request: JsonRpcRequest) -> Dict[str, Any]:
             data=data,
             priority=priority,
             metadata=metadata,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         logger.info(
@@ -76,7 +78,7 @@ async def handle_publish_event(request: JsonRpcRequest) -> Dict[str, Any]:
             event_type=event_type.value,
             source=source,
             event_id=response.event_id,
-            method="event.publish"
+            method="event.publish",
         )
 
         return response.model_dump()
@@ -87,7 +89,7 @@ async def handle_publish_event(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("event.subscribe")
-async def handle_subscribe(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_subscribe(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Subscribe to events.
 
@@ -109,7 +111,9 @@ async def handle_subscribe(request: JsonRpcRequest) -> Dict[str, Any]:
         event_types_str = request.params.get("event_types")
 
         if not subscriber_id or not event_types_str:
-            raise ValueError("Missing required parameters: subscriber_id and/or event_types")
+            raise ValueError(
+                "Missing required parameters: subscriber_id and/or event_types"
+            )
 
         # Parse event types
         event_types = [EventType(et) for et in event_types_str]
@@ -122,7 +126,7 @@ async def handle_subscribe(request: JsonRpcRequest) -> Dict[str, Any]:
             subscriber_id=subscriber_id,
             event_types=event_types,
             filters=filters,
-            ttl_seconds=ttl_seconds
+            ttl_seconds=ttl_seconds,
         )
 
         logger.info(
@@ -130,7 +134,7 @@ async def handle_subscribe(request: JsonRpcRequest) -> Dict[str, Any]:
             subscriber_id=subscriber_id,
             subscription_id=response.subscription_id,
             event_types=[et.value for et in event_types],
-            method="event.subscribe"
+            method="event.subscribe",
         )
 
         return response.model_dump()
@@ -141,7 +145,7 @@ async def handle_subscribe(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("event.unsubscribe")
-async def handle_unsubscribe(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_unsubscribe(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Unsubscribe from events.
 
@@ -168,13 +172,13 @@ async def handle_unsubscribe(request: JsonRpcRequest) -> Dict[str, Any]:
         logger.info(
             "Event subscription removed via JSON-RPC",
             subscription_id=subscription_id,
-            method="event.unsubscribe"
+            method="event.unsubscribe",
         )
 
         return {
             "success": True,
             "subscription_id": subscription_id,
-            "message": "Subscription removed successfully"
+            "message": "Subscription removed successfully",
         }
 
     except Exception as e:
@@ -183,7 +187,7 @@ async def handle_unsubscribe(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("event.list_subscriptions")
-async def handle_list_subscriptions(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_list_subscriptions(request: JsonRpcRequest) -> dict[str, Any]:
     """
     List event subscriptions.
 
@@ -206,18 +210,18 @@ async def handle_list_subscriptions(request: JsonRpcRequest) -> Dict[str, Any]:
         "Subscriptions listed via JSON-RPC",
         subscriber_id=subscriber_id,
         count=len(subscriptions),
-        method="event.list_subscriptions"
+        method="event.list_subscriptions",
     )
 
     return {
         "success": True,
         "subscriptions": [sub.model_dump(mode="json") for sub in subscriptions],
-        "count": len(subscriptions)
+        "count": len(subscriptions),
     }
 
 
 @register_jsonrpc_method("event.get_history")
-async def handle_get_history(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_history(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get event history.
 
@@ -246,18 +250,18 @@ async def handle_get_history(request: JsonRpcRequest) -> Dict[str, Any]:
         "Event history retrieved via JSON-RPC",
         event_type=event_type.value if event_type else None,
         count=len(events),
-        method="event.get_history"
+        method="event.get_history",
     )
 
     return {
         "success": True,
         "events": [event.to_notification() for event in events],
-        "count": len(events)
+        "count": len(events),
     }
 
 
 @register_jsonrpc_method("event.get_dead_letter_queue")
-async def handle_get_dead_letter_queue(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_dead_letter_queue(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get messages from dead letter queue.
 
@@ -279,18 +283,18 @@ async def handle_get_dead_letter_queue(request: JsonRpcRequest) -> Dict[str, Any
     logger.debug(
         "Dead letter queue retrieved via JSON-RPC",
         count=len(messages),
-        method="event.get_dead_letter_queue"
+        method="event.get_dead_letter_queue",
     )
 
     return {
         "success": True,
         "messages": [msg.model_dump(mode="json") for msg in messages],
-        "count": len(messages)
+        "count": len(messages),
     }
 
 
 @register_jsonrpc_method("event.retry_dead_letter")
-async def handle_retry_dead_letter(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_retry_dead_letter(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Retry delivery of dead letter message.
 
@@ -317,13 +321,13 @@ async def handle_retry_dead_letter(request: JsonRpcRequest) -> Dict[str, Any]:
         logger.info(
             "Dead letter message retry successful via JSON-RPC",
             message_id=message_id,
-            method="event.retry_dead_letter"
+            method="event.retry_dead_letter",
         )
 
         return {
             "success": True,
             "message_id": message_id,
-            "message": "Dead letter message retried successfully"
+            "message": "Dead letter message retried successfully",
         }
 
     except Exception as e:
@@ -332,7 +336,7 @@ async def handle_retry_dead_letter(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("event.get_stats")
-async def handle_get_event_stats(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_event_stats(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get event system statistics.
 
@@ -346,15 +350,11 @@ async def handle_get_event_stats(request: JsonRpcRequest) -> Dict[str, Any]:
 
     logger.debug("Event stats retrieved via JSON-RPC", method="event.get_stats")
 
-    return {
-        "success": True,
-        "stats": stats,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"success": True, "stats": stats, "timestamp": datetime.now(UTC).isoformat()}
 
 
 @register_jsonrpc_method("event.cleanup_expired")
-async def handle_cleanup_expired(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_cleanup_expired(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Cleanup expired subscriptions and dead connections.
 
@@ -371,21 +371,28 @@ async def handle_cleanup_expired(request: JsonRpcRequest) -> Dict[str, Any]:
         "Event system cleanup completed via JSON-RPC",
         subscriptions_removed=subscriptions_removed,
         connections_removed=connections_removed,
-        method="event.cleanup_expired"
+        method="event.cleanup_expired",
     )
 
     return {
         "success": True,
         "subscriptions_removed": subscriptions_removed,
-        "connections_removed": connections_removed
+        "connections_removed": connections_removed,
     }
 
 
 # Log registration on import
-logger.info("Event JSON-RPC methods registered",
-           methods=[
-               "event.publish", "event.subscribe", "event.unsubscribe",
-               "event.list_subscriptions", "event.get_history",
-               "event.get_dead_letter_queue", "event.retry_dead_letter",
-               "event.get_stats", "event.cleanup_expired"
-           ])
+logger.info(
+    "Event JSON-RPC methods registered",
+    methods=[
+        "event.publish",
+        "event.subscribe",
+        "event.unsubscribe",
+        "event.list_subscriptions",
+        "event.get_history",
+        "event.get_dead_letter_queue",
+        "event.retry_dead_letter",
+        "event.get_stats",
+        "event.cleanup_expired",
+    ],
+)

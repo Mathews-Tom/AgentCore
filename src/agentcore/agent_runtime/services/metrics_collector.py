@@ -7,7 +7,7 @@ and custom metric definitions.
 """
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -348,9 +348,9 @@ class MetricsCollector:
             philosophy: Agent philosophy type
             duration_seconds: Initialization duration
         """
-        self.agent_initialization_duration.labels(
-            philosophy=philosophy.value
-        ).observe(duration_seconds)
+        self.agent_initialization_duration.labels(philosophy=philosophy.value).observe(
+            duration_seconds
+        )
 
     def record_agent_execution(
         self,
@@ -404,9 +404,9 @@ class MetricsCollector:
             cpu_percent: CPU usage percentage
             memory_mb: Memory usage in MB
         """
-        self.agent_cpu_usage.labels(
-            agent_id=agent_id, philosophy=philosophy.value
-        ).set(cpu_percent)
+        self.agent_cpu_usage.labels(agent_id=agent_id, philosophy=philosophy.value).set(
+            cpu_percent
+        )
 
         self.agent_memory_usage.labels(
             agent_id=agent_id, philosophy=philosophy.value
@@ -665,7 +665,7 @@ class MetricsCollector:
             Dictionary with metric snapshots
         """
         snapshot = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "metrics": {
                 "agents": {
                     "active": sum(

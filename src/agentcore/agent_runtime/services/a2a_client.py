@@ -7,19 +7,21 @@ and status reporting.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 import httpx
 import structlog
 
-from ...a2a_protocol.models.agent import AgentCard
-from ...a2a_protocol.models.jsonrpc import (
-    JsonRpcError,
-    JsonRpcRequest,
-    JsonRpcResponse,
+from ...a2a_protocol.models.agent import (
+    AgentAuthentication,
+    AgentCard,
+    AgentEndpoint,
+    AuthenticationType,
+    EndpointType,
 )
+from ...a2a_protocol.models.jsonrpc import JsonRpcError, JsonRpcRequest, JsonRpcResponse
 from ..models.agent_config import AgentConfig
 from ..models.agent_state import AgentExecutionState
 
@@ -89,7 +91,9 @@ class A2AClient:
             A2AClientError: If JSON-RPC error occurs
         """
         if not self._client:
-            raise A2AConnectionError("Client not initialized, use async context manager")
+            raise A2AConnectionError(
+                "Client not initialized, use async context manager"
+            )
 
         request = JsonRpcRequest(
             id=str(uuid4()),
@@ -108,9 +112,7 @@ class A2AClient:
             rpc_response = JsonRpcResponse(**data)
 
             if rpc_response.error:
-                raise A2AClientError(
-                    f"JSON-RPC error: {rpc_response.error.message}"
-                )
+                raise A2AClientError(f"JSON-RPC error: {rpc_response.error.message}")
 
             return rpc_response.result
 
@@ -136,15 +138,25 @@ class A2AClient:
             A2ARegistrationError: If registration fails
         """
         # Build AgentCard from config
+        # Map AgentConfig fields to AgentCard structure
+        endpoint = AgentEndpoint(
+            url=f"{self._base_url}/agents/{agent_config.agent_id}",
+            type=EndpointType.HTTP,
+            protocols=["jsonrpc-2.0"],
+        )
+
+        authentication = AgentAuthentication(
+            type=AuthenticationType.BEARER_TOKEN,
+            config={},
+            required=True,
+        )
+
         agent_card = AgentCard(
             agent_id=agent_config.agent_id,
-            name=agent_config.name,
-            description=getattr(agent_config, "description", "Agent runtime agent"),
-            capabilities=agent_config.capabilities,
-            version="1.0.0",
-            protocol_version="0.2",
-            endpoint=f"{self._base_url}/agents/{agent_config.agent_id}",
-            authentication={"type": "bearer"},
+            agent_name=agent_config.agent_id,  # Use agent_id as name
+            description=f"Agent with {agent_config.philosophy.value} philosophy",
+            endpoints=[endpoint],
+            authentication=authentication,
         )
 
         try:
@@ -156,7 +168,7 @@ class A2AClient:
             logger.info(
                 "agent_registered",
                 agent_id=agent_config.agent_id,
-                name=agent_config.name,
+                philosophy=agent_config.philosophy.value,
             )
 
             return result["agent_id"]
@@ -249,7 +261,7 @@ class A2AClient:
                 "agent_id": agent_id,
                 "status": health_status,
                 "metrics": metrics or {},
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 

@@ -5,18 +5,18 @@ JSON-RPC 2.0 methods for authentication, token management, RSA key management,
 and rate limiting.
 """
 
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
-from datetime import datetime
 
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.models.security import (
     AuthenticationRequest,
-    Role,
-    TokenType,
     Permission,
-    SignedRequest
+    Role,
+    SignedRequest,
+    TokenType,
 )
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.a2a_protocol.services.security_service import security_service
@@ -25,7 +25,7 @@ logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("auth.authenticate")
-async def handle_authenticate(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_authenticate(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Authenticate agent and issue JWT tokens.
 
@@ -56,7 +56,7 @@ async def handle_authenticate(request: JsonRpcRequest) -> Dict[str, Any]:
         auth_request = AuthenticationRequest(
             agent_id=agent_id,
             credentials=credentials,
-            requested_permissions=requested_permissions
+            requested_permissions=requested_permissions,
         )
 
         # Authenticate
@@ -66,7 +66,7 @@ async def handle_authenticate(request: JsonRpcRequest) -> Dict[str, Any]:
             "Authentication attempt",
             agent_id=agent_id,
             success=response.success,
-            method="auth.authenticate"
+            method="auth.authenticate",
         )
 
         return response.model_dump()
@@ -77,7 +77,7 @@ async def handle_authenticate(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("auth.validate_token")
-async def handle_validate_token(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_validate_token(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Validate JWT token.
 
@@ -100,16 +100,17 @@ async def handle_validate_token(request: JsonRpcRequest) -> Dict[str, Any]:
     if not payload:
         raise ValueError("Invalid or expired token")
 
-    logger.debug("Token validated via JSON-RPC", subject=payload.sub, method="auth.validate_token")
+    logger.debug(
+        "Token validated via JSON-RPC",
+        subject=payload.sub,
+        method="auth.validate_token",
+    )
 
-    return {
-        "valid": True,
-        "payload": payload.model_dump(mode="json")
-    }
+    return {"valid": True, "payload": payload.model_dump(mode="json")}
 
 
 @register_jsonrpc_method("auth.check_permission")
-async def handle_check_permission(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_check_permission(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Check if token has required permission.
 
@@ -138,13 +139,10 @@ async def handle_check_permission(request: JsonRpcRequest) -> Dict[str, Any]:
             "Permission checked via JSON-RPC",
             permission=permission_str,
             has_permission=has_permission,
-            method="auth.check_permission"
+            method="auth.check_permission",
         )
 
-        return {
-            "has_permission": has_permission,
-            "permission": permission_str
-        }
+        return {"has_permission": has_permission, "permission": permission_str}
 
     except Exception as e:
         logger.error("Permission check failed", error=str(e))
@@ -152,7 +150,7 @@ async def handle_check_permission(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("security.generate_keypair")
-async def handle_generate_keypair(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_generate_keypair(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Generate RSA key pair for agent.
 
@@ -173,13 +171,13 @@ async def handle_generate_keypair(request: JsonRpcRequest) -> Dict[str, Any]:
     try:
         keys = security_service.generate_rsa_keypair(agent_id)
 
-        logger.info("RSA keypair generated via JSON-RPC", agent_id=agent_id, method="security.generate_keypair")
+        logger.info(
+            "RSA keypair generated via JSON-RPC",
+            agent_id=agent_id,
+            method="security.generate_keypair",
+        )
 
-        return {
-            "success": True,
-            "agent_id": agent_id,
-            **keys
-        }
+        return {"success": True, "agent_id": agent_id, **keys}
 
     except Exception as e:
         logger.error("Keypair generation failed", error=str(e), agent_id=agent_id)
@@ -187,7 +185,7 @@ async def handle_generate_keypair(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("security.register_public_key")
-async def handle_register_public_key(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_register_public_key(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Register agent's public key.
 
@@ -214,12 +212,16 @@ async def handle_register_public_key(request: JsonRpcRequest) -> Dict[str, Any]:
         if not success:
             raise ValueError("Failed to register public key")
 
-        logger.info("Public key registered via JSON-RPC", agent_id=agent_id, method="security.register_public_key")
+        logger.info(
+            "Public key registered via JSON-RPC",
+            agent_id=agent_id,
+            method="security.register_public_key",
+        )
 
         return {
             "success": True,
             "agent_id": agent_id,
-            "message": "Public key registered successfully"
+            "message": "Public key registered successfully",
         }
 
     except Exception as e:
@@ -228,7 +230,7 @@ async def handle_register_public_key(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("security.verify_signature")
-async def handle_verify_signature(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_verify_signature(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Verify signed request.
 
@@ -257,13 +259,13 @@ async def handle_verify_signature(request: JsonRpcRequest) -> Dict[str, Any]:
             "Signature verified via JSON-RPC",
             agent_id=signed_request.agent_id,
             is_valid=is_valid,
-            method="security.verify_signature"
+            method="security.verify_signature",
         )
 
         return {
             "valid": is_valid,
             "agent_id": signed_request.agent_id,
-            "timestamp": signed_request.timestamp.isoformat()
+            "timestamp": signed_request.timestamp.isoformat(),
         }
 
     except Exception as e:
@@ -272,7 +274,7 @@ async def handle_verify_signature(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("security.check_rate_limit")
-async def handle_check_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_check_rate_limit(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Check agent rate limit.
 
@@ -297,9 +299,7 @@ async def handle_check_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
 
     try:
         within_limit = security_service.check_rate_limit(
-            agent_id=agent_id,
-            max_requests=max_requests,
-            window_seconds=window_seconds
+            agent_id=agent_id, max_requests=max_requests, window_seconds=window_seconds
         )
 
         rate_limit_info = security_service.get_rate_limit_info(agent_id)
@@ -308,16 +308,22 @@ async def handle_check_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
             "Rate limit checked via JSON-RPC",
             agent_id=agent_id,
             within_limit=within_limit,
-            method="security.check_rate_limit"
+            method="security.check_rate_limit",
         )
 
         return {
             "within_limit": within_limit,
             "agent_id": agent_id,
             "requests_count": rate_limit_info.requests_count if rate_limit_info else 0,
-            "max_requests": rate_limit_info.max_requests if rate_limit_info else max_requests,
-            "remaining": rate_limit_info.get_remaining_requests() if rate_limit_info else 0,
-            "reset_time": rate_limit_info.get_reset_time().isoformat() if rate_limit_info else None
+            "max_requests": rate_limit_info.max_requests
+            if rate_limit_info
+            else max_requests,
+            "remaining": rate_limit_info.get_remaining_requests()
+            if rate_limit_info
+            else 0,
+            "reset_time": rate_limit_info.get_reset_time().isoformat()
+            if rate_limit_info
+            else None,
         }
 
     except Exception as e:
@@ -326,7 +332,7 @@ async def handle_check_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("security.get_rate_limit_info")
-async def handle_get_rate_limit_info(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_rate_limit_info(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get rate limit information for agent.
 
@@ -347,22 +353,23 @@ async def handle_get_rate_limit_info(request: JsonRpcRequest) -> Dict[str, Any]:
     rate_limit_info = security_service.get_rate_limit_info(agent_id)
 
     if not rate_limit_info:
-        return {
-            "agent_id": agent_id,
-            "has_limit": False
-        }
+        return {"agent_id": agent_id, "has_limit": False}
 
-    logger.debug("Rate limit info retrieved via JSON-RPC", agent_id=agent_id, method="security.get_rate_limit_info")
+    logger.debug(
+        "Rate limit info retrieved via JSON-RPC",
+        agent_id=agent_id,
+        method="security.get_rate_limit_info",
+    )
 
     return {
         "agent_id": agent_id,
         "has_limit": True,
-        **rate_limit_info.model_dump(mode="json")
+        **rate_limit_info.model_dump(mode="json"),
     }
 
 
 @register_jsonrpc_method("security.reset_rate_limit")
-async def handle_reset_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_reset_rate_limit(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Reset rate limit for agent.
 
@@ -383,12 +390,16 @@ async def handle_reset_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
     try:
         security_service.reset_rate_limit(agent_id)
 
-        logger.info("Rate limit reset via JSON-RPC", agent_id=agent_id, method="security.reset_rate_limit")
+        logger.info(
+            "Rate limit reset via JSON-RPC",
+            agent_id=agent_id,
+            method="security.reset_rate_limit",
+        )
 
         return {
             "success": True,
             "agent_id": agent_id,
-            "message": "Rate limit reset successfully"
+            "message": "Rate limit reset successfully",
         }
 
     except Exception as e:
@@ -397,7 +408,7 @@ async def handle_reset_rate_limit(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("security.get_stats")
-async def handle_get_security_stats(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_get_security_stats(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get security statistics.
 
@@ -411,15 +422,11 @@ async def handle_get_security_stats(request: JsonRpcRequest) -> Dict[str, Any]:
 
     logger.debug("Security stats retrieved via JSON-RPC", method="security.get_stats")
 
-    return {
-        "success": True,
-        "stats": stats,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"success": True, "stats": stats, "timestamp": datetime.now(UTC).isoformat()}
 
 
 @register_jsonrpc_method("security.validate_agent_id")
-async def handle_validate_agent_id(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_validate_agent_id(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Validate agent ID format.
 
@@ -439,19 +446,30 @@ async def handle_validate_agent_id(request: JsonRpcRequest) -> Dict[str, Any]:
 
     is_valid = security_service.validate_agent_id(agent_id)
 
-    logger.debug("Agent ID validated via JSON-RPC", agent_id=agent_id, is_valid=is_valid, method="security.validate_agent_id")
+    logger.debug(
+        "Agent ID validated via JSON-RPC",
+        agent_id=agent_id,
+        is_valid=is_valid,
+        method="security.validate_agent_id",
+    )
 
-    return {
-        "valid": is_valid,
-        "agent_id": agent_id
-    }
+    return {"valid": is_valid, "agent_id": agent_id}
 
 
 # Log registration on import
-logger.info("Security JSON-RPC methods registered",
-           methods=[
-               "auth.authenticate", "auth.validate_token", "auth.check_permission",
-               "security.generate_keypair", "security.register_public_key", "security.verify_signature",
-               "security.check_rate_limit", "security.get_rate_limit_info", "security.reset_rate_limit",
-               "security.get_stats", "security.validate_agent_id"
-           ])
+logger.info(
+    "Security JSON-RPC methods registered",
+    methods=[
+        "auth.authenticate",
+        "auth.validate_token",
+        "auth.check_permission",
+        "security.generate_keypair",
+        "security.register_public_key",
+        "security.verify_signature",
+        "security.check_rate_limit",
+        "security.get_rate_limit_info",
+        "security.reset_rate_limit",
+        "security.get_stats",
+        "security.validate_agent_id",
+    ],
+)

@@ -48,8 +48,9 @@ class TestJSONRPCCore:
         assert response.status_code == 200
         data = response.json()
         assert "result" in data
-        assert "version" in data["result"]
+        assert "agentcore_version" in data["result"]
         assert "jsonrpc_version" in data["result"]
+        assert "a2a_protocol_version" in data["result"]
         assert data["result"]["jsonrpc_version"] == "2.0"
 
     async def test_invalid_jsonrpc_version(self, async_client: AsyncClient):
@@ -119,9 +120,7 @@ class TestJSONRPCCore:
         }
         response = await async_client.post("/api/v1/jsonrpc", json=request)
 
-        # Notifications should not return a response (or return empty)
-        assert response.status_code == 200
-        # Response might be empty or have no result/error
-        data = response.json()
-        # For notifications, we might get empty response or success indicator
-        assert data is None or "result" in data or "error" in data
+        # Notifications should return 204 No Content (no response body)
+        assert response.status_code == 204
+        # Response should be empty for notifications
+        assert response.content == b''

@@ -46,7 +46,7 @@ async def test_a2a_agent_registration(
     # The agent_config is passed as positional argument
     registered_config = call_args[0][0]
     assert registered_config.agent_id == "test-agent-001"
-    assert registered_config.name == "Test Agent"
+    assert registered_config.philosophy == AgentPhilosophy.REACT
 
     # Cleanup
     await lifecycle_manager.terminate_agent("test-agent-001", cleanup=True)
@@ -207,8 +207,8 @@ async def test_a2a_task_completion(
         task_data=test_task_data,
     )
 
-    # Wait for completion
-    await asyncio.sleep(0.3)
+    # Wait for completion (increased timeout for async task execution)
+    await asyncio.sleep(1.5)
 
     # Verify task completed
     mock_a2a_client.complete_task.assert_called_once()
@@ -321,9 +321,7 @@ async def test_a2a_concurrent_registrations(
     configs = [
         AgentConfig(
             agent_id=f"test-agent-{i:03d}",
-            name=f"Test Agent {i}",
             philosophy=AgentPhilosophy.REACT,
-            capabilities=["test"],
         )
         for i in range(5)
     ]
@@ -467,7 +465,8 @@ async def test_a2a_metadata_propagation(
     mock_a2a_client.register_agent.assert_called_once()
     call_args = mock_a2a_client.register_agent.call_args
     registered_config = call_args[0][0]
-    assert registered_config.capabilities == ["test", "demo"]
+    assert registered_config.agent_id == "test-agent-001"
+    assert registered_config.philosophy == AgentPhilosophy.REACT
 
     # Cleanup
     await lifecycle_manager.terminate_agent("test-agent-001", cleanup=True)

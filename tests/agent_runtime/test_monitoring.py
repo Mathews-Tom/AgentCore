@@ -5,17 +5,17 @@ Tests metrics collection, distributed tracing, alerting, and monitoring APIs.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from agentcore.agent_runtime.models.agent_config import AgentPhilosophy
 from agentcore.agent_runtime.services.alerting_service import (
     Alert,
+    AlertingService,
     AlertRule,
     AlertSeverity,
     AlertState,
-    AlertingService,
     NotificationChannel,
 )
 from agentcore.agent_runtime.services.distributed_tracing import (
@@ -469,7 +469,7 @@ class TestAlertingService:
             title="Old alert",
             description="Test",
         )
-        alert1.created_at = datetime.now() - timedelta(hours=48)
+        alert1.created_at = datetime.now(UTC) - timedelta(hours=48)
 
         alert2 = Alert(
             alert_id="2",

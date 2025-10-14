@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -39,7 +39,7 @@ class TestOrchestrationEvent:
         event_id = uuid4()
         trace_id = uuid4()
         workflow_id = uuid4()
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
 
         event = OrchestrationEvent(
             event_id=event_id,

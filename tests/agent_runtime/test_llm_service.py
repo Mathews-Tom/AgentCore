@@ -39,7 +39,6 @@ async def llm_service(llm_config: LLMConfig) -> PortkeyLLMService:
     await service.close()
 
 
-@pytest.mark.asyncio
 class TestLLMConfig:
     """Test suite for LLM configuration."""
 

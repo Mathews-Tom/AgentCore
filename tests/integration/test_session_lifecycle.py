@@ -5,20 +5,20 @@ Tests the complete session lifecycle including creation, state transitions,
 context management, and cleanup operations.
 """
 
-import pytest
-from datetime import datetime, timedelta
-from typing import Dict, Any
+from datetime import UTC, datetime
 
-from agentcore.a2a_protocol.models.session import (
-    SessionSnapshot,
-    SessionState,
-    SessionPriority,
-    SessionCreateRequest,
-    SessionQuery,
-)
-from agentcore.a2a_protocol.services.session_manager import session_manager
+import pytest
+
 from agentcore.a2a_protocol.database.connection import get_session
 from agentcore.a2a_protocol.database.repositories import SessionRepository
+from agentcore.a2a_protocol.models.session import (
+    SessionCreateRequest,
+    SessionPriority,
+    SessionQuery,
+    SessionSnapshot,
+    SessionState,
+)
+from agentcore.a2a_protocol.services.session_manager import session_manager
 
 
 @pytest.mark.asyncio
@@ -35,7 +35,7 @@ class TestSessionLifecycle:
             timeout_seconds=3600,
             max_idle_seconds=300,
             tags=["test", "integration"],
-            initial_context={"workflow": "test", "step": 1}
+            initial_context={"workflow": "test", "step": 1},
         )
 
         response = await session_manager.create_session(request)
@@ -46,7 +46,9 @@ class TestSessionLifecycle:
 
         # Verify session was persisted
         async with get_session() as db_session:
-            session_db = await SessionRepository.get_by_id(db_session, response.session_id)
+            session_db = await SessionRepository.get_by_id(
+                db_session, response.session_id
+            )
             assert session_db is not None
             assert session_db.name == "Test Workflow Session"
             assert session_db.owner_agent == "test-agent-001"
@@ -183,7 +185,7 @@ class TestSessionLifecycle:
         request = SessionCreateRequest(
             name="Context Test",
             owner_agent="test-agent-007",
-            initial_context={"key1": "value1"}
+            initial_context={"key1": "value1"},
         )
         response = await session_manager.create_session(request)
         session_id = response.session_id
@@ -214,7 +216,9 @@ class TestSessionLifecycle:
         # Set agent state
         agent_id = "worker-agent-001"
         agent_state = {"status": "processing", "progress": 50}
-        success = await session_manager.set_agent_state(session_id, agent_id, agent_state)
+        success = await session_manager.set_agent_state(
+            session_id, agent_id, agent_state
+        )
         assert success is True
 
         # Verify agent added as participant
@@ -267,12 +271,16 @@ class TestSessionLifecycle:
         session_id = response.session_id
 
         # Record events
-        event1 = {"action": "start", "timestamp": datetime.utcnow().isoformat()}
-        success = await session_manager.record_event(session_id, "workflow.start", event1)
+        event1 = {"action": "start", "timestamp": datetime.now(UTC).isoformat()}
+        success = await session_manager.record_event(
+            session_id, "workflow.start", event1
+        )
         assert success is True
 
         event2 = {"action": "progress", "step": 1}
-        success = await session_manager.record_event(session_id, "workflow.progress", event2)
+        success = await session_manager.record_event(
+            session_id, "workflow.progress", event2
+        )
         assert success is True
 
         # Verify
@@ -321,34 +329,27 @@ class TestSessionLifecycle:
                 name=f"Query Test Session {i}",
                 owner_agent="test-agent-012",
                 priority=SessionPriority.HIGH if i < 2 else SessionPriority.NORMAL,
-                tags=["query-test", f"batch-{i // 2}"]
+                tags=["query-test", f"batch-{i // 2}"],
             )
             response = await session_manager.create_session(request)
             sessions_created.append(response.session_id)
 
         # Query by owner
-        query = SessionQuery(
-            owner_agent="test-agent-012",
-            limit=10
-        )
+        query = SessionQuery(owner_agent="test-agent-012", limit=10)
         response = await session_manager.query_sessions(query)
         assert response.total_count >= 5
         assert len(response.sessions) >= 5
 
         # Query by priority
         query = SessionQuery(
-            owner_agent="test-agent-012",
-            priority=SessionPriority.HIGH,
-            limit=10
+            owner_agent="test-agent-012", priority=SessionPriority.HIGH, limit=10
         )
         response = await session_manager.query_sessions(query)
         assert response.total_count >= 2
 
         # Query by tags
         query = SessionQuery(
-            owner_agent="test-agent-012",
-            tags=["query-test"],
-            limit=10
+            owner_agent="test-agent-012", tags=["query-test"], limit=10
         )
         response = await session_manager.query_sessions(query)
         assert response.total_count >= 5
@@ -363,14 +364,16 @@ class TestSessionLifecycle:
         request = SessionCreateRequest(
             name="Export Import Test",
             owner_agent="test-agent-013",
-            initial_context={"export": "test"}
+            initial_context={"export": "test"},
         )
         response = await session_manager.create_session(request)
         original_session_id = response.session_id
 
         # Add some data
         await session_manager.add_task(original_session_id, "task-export-001")
-        await session_manager.record_event(original_session_id, "test.event", {"data": "test"})
+        await session_manager.record_event(
+            original_session_id, "test.event", {"data": "test"}
+        )
 
         # Export session
         json_data = await session_manager.export_session(original_session_id)
@@ -381,7 +384,9 @@ class TestSessionLifecycle:
         await session_manager.delete_session(original_session_id, hard_delete=True)
 
         # Import session
-        imported_session_id = await session_manager.import_session(json_data, overwrite=False)
+        imported_session_id = await session_manager.import_session(
+            json_data, overwrite=False
+        )
         assert imported_session_id is not None
 
         # Verify imported session
@@ -404,7 +409,11 @@ class TestSessionLifecycle:
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
-        # Soft delete (expire)
+        # Suspend session first (required before expiring)
+        success = await session_manager.suspend_session(session_id)
+        assert success is True
+
+        # Soft delete (expire) - now session is in SUSPENDED state
         success = await session_manager.delete_session(session_id, hard_delete=False)
         assert success is True
 

@@ -2124,7 +2124,7 @@ audit_logger.info(
     workflow_id=workflow_id,
     execution_id=execution_id,
     ip_address=request.client.host,
-    timestamp=datetime.utcnow(),
+    timestamp=datetime.now(UTC),
     action="execute"
 )
 
@@ -2136,7 +2136,7 @@ audit_logger.info(
     hook_name=hook_name,
     trigger=trigger_type,
     action_command=sanitized_command,  # Sanitized for logging
-    timestamp=datetime.utcnow(),
+    timestamp=datetime.now(UTC),
     action="register"
 )
 ```

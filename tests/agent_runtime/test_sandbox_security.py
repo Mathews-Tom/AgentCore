@@ -1,8 +1,7 @@
 """Comprehensive tests for sandbox security implementation."""
 
-import asyncio
 import tempfile
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -90,7 +89,9 @@ class TestSandboxLifecycle:
         workspace_path = sandbox_service._get_workspace_path(sandbox_id)
         assert workspace_path.exists()
 
-    async def test_create_duplicate_sandbox(self, sandbox_service, basic_sandbox_config):
+    async def test_create_duplicate_sandbox(
+        self, sandbox_service, basic_sandbox_config
+    ):
         """Test creating duplicate sandbox fails."""
         await sandbox_service.create_sandbox(basic_sandbox_config)
 
@@ -115,7 +116,9 @@ class TestSandboxLifecycle:
 class TestPermissionEnforcement:
     """Test permission-based access control."""
 
-    async def test_check_permission_granted(self, sandbox_service, basic_sandbox_config):
+    async def test_check_permission_granted(
+        self, sandbox_service, basic_sandbox_config
+    ):
         """Test permission check when granted."""
         sandbox_id = await sandbox_service.create_sandbox(basic_sandbox_config)
 
@@ -207,7 +210,9 @@ class TestPermissionEnforcement:
                 resource="/secrets/api_key.txt",
             )
 
-    async def test_network_permission_disabled(self, sandbox_service, basic_sandbox_config):
+    async def test_network_permission_disabled(
+        self, sandbox_service, basic_sandbox_config
+    ):
         """Test network permission when disabled."""
         basic_sandbox_config.allow_network = False
         sandbox_id = await sandbox_service.create_sandbox(basic_sandbox_config)
@@ -265,7 +270,9 @@ result = 2 + 2
 
         assert result == 4
 
-    async def test_execute_code_with_context(self, sandbox_service, basic_sandbox_config):
+    async def test_execute_code_with_context(
+        self, sandbox_service, basic_sandbox_config
+    ):
         """Test executing code with context variables."""
         sandbox_id = await sandbox_service.create_sandbox(basic_sandbox_config)
 
@@ -409,7 +416,7 @@ class TestAuditLogging:
 
     async def test_query_logs_by_time_range(self, audit_logger):
         """Test querying logs by time range."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         past = now - timedelta(hours=2)
         future = now + timedelta(hours=2)
 
@@ -463,13 +470,15 @@ class TestAuditLogging:
     async def test_cleanup_old_logs(self, audit_logger, temp_log_dir):
         """Test cleanup of old audit logs."""
         # Create old log files
-        old_date = datetime.utcnow() - timedelta(days=100)
+        old_date = datetime.now(UTC) - timedelta(days=100)
         old_log_file = temp_log_dir / f"audit_{old_date.strftime('%Y-%m-%d')}.jsonl"
         old_log_file.write_text('{"test": "data"}\n')
 
         # Create recent log file
-        recent_date = datetime.utcnow()
-        recent_log_file = temp_log_dir / f"audit_{recent_date.strftime('%Y-%m-%d')}.jsonl"
+        recent_date = datetime.now(UTC)
+        recent_log_file = (
+            temp_log_dir / f"audit_{recent_date.strftime('%Y-%m-%d')}.jsonl"
+        )
         recent_log_file.write_text('{"test": "data"}\n')
 
         # Run cleanup
@@ -533,7 +542,9 @@ class TestResourceLimits:
 class TestSecurityViolations:
     """Test security violation handling."""
 
-    async def test_security_violation_logged(self, sandbox_service, basic_sandbox_config):
+    async def test_security_violation_logged(
+        self, sandbox_service, basic_sandbox_config
+    ):
         """Test security violations are logged to audit."""
         sandbox_id = await sandbox_service.create_sandbox(basic_sandbox_config)
 
