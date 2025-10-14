@@ -5,16 +5,17 @@ JSON-RPC 2.0 methods for agent registration, discovery, and lifecycle management
 Integrates with the AgentManager service and JSON-RPC processor.
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from pydantic import ValidationError
 
 from agentcore.a2a_protocol.models.agent import (
     AgentCard,
-    AgentStatus,
     AgentDiscoveryQuery,
     AgentRegistrationRequest,
+    AgentStatus,
 )
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
@@ -24,7 +25,7 @@ logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("agent.register")
-async def handle_agent_register(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_register(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Register a new agent in the A2A ecosystem.
 
@@ -41,7 +42,9 @@ async def handle_agent_register(request: JsonRpcRequest) -> Dict[str, Any]:
     """
     try:
         if not request.params or not isinstance(request.params, dict):
-            raise ValueError("Parameters required: agent_card and optional override_existing")
+            raise ValueError(
+                "Parameters required: agent_card and optional override_existing"
+            )
 
         # Extract and validate parameters
         agent_card_data = request.params.get("agent_card")
@@ -55,8 +58,7 @@ async def handle_agent_register(request: JsonRpcRequest) -> Dict[str, Any]:
 
         # Create registration request
         registration_request = AgentRegistrationRequest(
-            agent_card=agent_card,
-            override_existing=override_existing
+            agent_card=agent_card, override_existing=override_existing
         )
 
         # Register agent
@@ -66,10 +68,10 @@ async def handle_agent_register(request: JsonRpcRequest) -> Dict[str, Any]:
             "Agent registered via JSON-RPC",
             agent_id=response.agent_id,
             agent_name=agent_card.agent_name,
-            method="agent.register"
+            method="agent.register",
         )
 
-        return response.model_dump()
+        return response.model_dump(mode="json")
 
     except ValidationError as e:
         logger.error("Agent registration validation failed", error=str(e))
@@ -80,7 +82,7 @@ async def handle_agent_register(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.get")
-async def handle_agent_get(request: JsonRpcRequest) -> Optional[Dict[str, Any]]:
+async def handle_agent_get(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get agent details by ID.
 
@@ -89,7 +91,7 @@ async def handle_agent_get(request: JsonRpcRequest) -> Optional[Dict[str, Any]]:
         - agent_id: string
 
     Returns:
-        - AgentCard object or null if not found
+        - agent: AgentCard object or null if not found
     """
     try:
         if not request.params or not isinstance(request.params, dict):
@@ -101,8 +103,8 @@ async def handle_agent_get(request: JsonRpcRequest) -> Optional[Dict[str, Any]]:
 
         agent = await agent_manager.get_agent(agent_id)
         if agent:
-            return agent.model_dump()
-        return None
+            return {"agent": agent.model_dump(mode="json")}
+        return {"agent": None}
 
     except Exception as e:
         logger.error("Agent retrieval failed", error=str(e), agent_id=agent_id)
@@ -110,7 +112,7 @@ async def handle_agent_get(request: JsonRpcRequest) -> Optional[Dict[str, Any]]:
 
 
 @register_jsonrpc_method("agent.discover")
-async def handle_agent_discover(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_discover(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Discover agents based on criteria.
 
@@ -145,10 +147,13 @@ async def handle_agent_discover(request: JsonRpcRequest) -> Dict[str, Any]:
             "Agent discovery completed",
             found_count=response.total_count,
             returned_count=len(response.agents),
-            method="agent.discover"
+            method="agent.discover",
         )
 
-        return response.model_dump()
+        result = response.model_dump(mode="json")
+        # Add 'count' alias for compatibility
+        result["count"] = result["total_count"]
+        return result
 
     except ValidationError as e:
         logger.error("Agent discovery validation failed", error=str(e))
@@ -159,7 +164,7 @@ async def handle_agent_discover(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.unregister")
-async def handle_agent_unregister(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_unregister(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Unregister an agent.
 
@@ -187,13 +192,10 @@ async def handle_agent_unregister(request: JsonRpcRequest) -> Dict[str, Any]:
             "Agent unregistration attempted",
             agent_id=agent_id,
             success=success,
-            method="agent.unregister"
+            method="agent.unregister",
         )
 
-        return {
-            "success": success,
-            "message": message
-        }
+        return {"success": success, "message": message}
 
     except Exception as e:
         logger.error("Agent unregistration failed", error=str(e), agent_id=agent_id)
@@ -201,7 +203,7 @@ async def handle_agent_unregister(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.ping")
-async def handle_agent_ping(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_ping(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Ping an agent (update last seen timestamp).
 
@@ -224,23 +226,15 @@ async def handle_agent_ping(request: JsonRpcRequest) -> Dict[str, Any]:
 
         success = await agent_manager.ping_agent(agent_id)
 
-        from datetime import datetime
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         message = "Agent pinged successfully" if success else "Agent not found"
 
         logger.debug(
-            "Agent ping",
-            agent_id=agent_id,
-            success=success,
-            method="agent.ping"
+            "Agent ping", agent_id=agent_id, success=success, method="agent.ping"
         )
 
-        return {
-            "success": success,
-            "message": message,
-            "timestamp": timestamp
-        }
+        return {"success": success, "message": message, "timestamp": timestamp}
 
     except Exception as e:
         logger.error("Agent ping failed", error=str(e), agent_id=agent_id)
@@ -248,7 +242,7 @@ async def handle_agent_ping(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.update_status")
-async def handle_agent_update_status(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_update_status(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Update agent status.
 
@@ -290,14 +284,10 @@ async def handle_agent_update_status(request: JsonRpcRequest) -> Dict[str, Any]:
             agent_id=agent_id,
             new_status=status.value,
             success=success,
-            method="agent.update_status"
+            method="agent.update_status",
         )
 
-        return {
-            "success": success,
-            "message": message,
-            "new_status": status.value
-        }
+        return {"success": success, "message": message, "new_status": status.value}
 
     except Exception as e:
         logger.error("Agent status update failed", error=str(e), agent_id=agent_id)
@@ -305,7 +295,7 @@ async def handle_agent_update_status(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.list")
-async def handle_agent_list(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_list(request: JsonRpcRequest) -> dict[str, Any]:
     """
     List all registered agents (summaries).
 
@@ -320,16 +310,9 @@ async def handle_agent_list(request: JsonRpcRequest) -> Dict[str, Any]:
         agents = await agent_manager.list_all_agents()
         count = len(agents)
 
-        logger.info(
-            "Agent list requested",
-            count=count,
-            method="agent.list"
-        )
+        logger.info("Agent list requested", count=count, method="agent.list")
 
-        return {
-            "agents": agents,
-            "count": count
-        }
+        return {"agents": agents, "count": count}
 
     except Exception as e:
         logger.error("Agent list failed", error=str(e))
@@ -337,7 +320,7 @@ async def handle_agent_list(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.capabilities")
-async def handle_agent_capabilities(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_capabilities(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get capabilities index with agent counts.
 
@@ -356,13 +339,10 @@ async def handle_agent_capabilities(request: JsonRpcRequest) -> Dict[str, Any]:
             "Capabilities index requested",
             unique_capabilities=len(capabilities),
             total_agents=total_agents,
-            method="agent.capabilities"
+            method="agent.capabilities",
         )
 
-        return {
-            "capabilities": capabilities,
-            "total_agents": total_agents
-        }
+        return {"capabilities": capabilities, "total_agents": total_agents}
 
     except Exception as e:
         logger.error("Capabilities index failed", error=str(e))
@@ -370,7 +350,7 @@ async def handle_agent_capabilities(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("agent.cleanup")
-async def handle_agent_cleanup(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_agent_cleanup(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Clean up inactive agents.
 
@@ -398,12 +378,12 @@ async def handle_agent_cleanup(request: JsonRpcRequest) -> Dict[str, Any]:
             "Agent cleanup completed",
             removed_count=removed_count,
             max_inactive_hours=max_inactive_hours,
-            method="agent.cleanup"
+            method="agent.cleanup",
         )
 
         return {
             "removed_count": removed_count,
-            "max_inactive_hours": max_inactive_hours
+            "max_inactive_hours": max_inactive_hours,
         }
 
     except Exception as e:

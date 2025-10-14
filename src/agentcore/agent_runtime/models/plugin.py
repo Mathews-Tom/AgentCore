@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -132,11 +132,11 @@ class PluginMetadata(BaseModel):
         description="Tags for plugin discovery",
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Plugin creation timestamp",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Plugin last update timestamp",
     )
 
@@ -242,7 +242,7 @@ class PluginValidationResult(BaseModel):
         description="Risk level assessment (low, medium, high, critical)",
     )
     scanned_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Validation timestamp",
     )
 

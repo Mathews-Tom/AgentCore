@@ -74,7 +74,7 @@ async def handle_task_create(request: JsonRpcRequest) -> Dict[str, Any]:
             method="task.create"
         )
 
-        return response.model_dump()
+        return response.model_dump(mode='json')
 
     except Exception as e:
         logger.error("Task creation failed", error=str(e))
@@ -91,21 +91,26 @@ async def handle_task_get(request: JsonRpcRequest) -> Dict[str, Any]:
         - execution_id: string
 
     Returns:
-        Task execution details
+        Task execution details wrapped in "task" key
     """
-    if not request.params or not isinstance(request.params, dict):
-        raise ValueError("Parameter required: execution_id")
+    try:
+        if not request.params or not isinstance(request.params, dict):
+            raise ValueError("Parameter required: execution_id")
 
-    execution_id = request.params.get("execution_id")
-    if not execution_id:
-        raise ValueError("Missing required parameter: execution_id")
+        execution_id = request.params.get("execution_id")
+        if not execution_id:
+            raise ValueError("Missing required parameter: execution_id")
 
-    execution = await task_manager.get_task(execution_id)
+        execution = await task_manager.get_task(execution_id)
 
-    if not execution:
-        raise ValueError(f"Task not found: {execution_id}")
+        if not execution:
+            raise ValueError(f"Task not found: {execution_id}")
 
-    return execution.model_dump()
+        return {"task": execution.model_dump(mode='json')}
+
+    except Exception as e:
+        logger.error("Task retrieval failed", error=str(e), execution_id=execution_id if 'execution_id' in locals() else None)
+        raise
 
 
 @register_jsonrpc_method("task.assign")
@@ -192,33 +197,38 @@ async def handle_task_complete(request: JsonRpcRequest) -> Dict[str, Any]:
     Returns:
         Completion result
     """
-    if not request.params or not isinstance(request.params, dict):
-        raise ValueError("Parameters required: execution_id, result_data")
+    try:
+        if not request.params or not isinstance(request.params, dict):
+            raise ValueError("Parameters required: execution_id, result_data")
 
-    execution_id = request.params.get("execution_id")
-    result_data = request.params.get("result_data")
-    artifacts_data = request.params.get("artifacts")
+        execution_id = request.params.get("execution_id")
+        result_data = request.params.get("result_data")
+        artifacts_data = request.params.get("artifacts")
 
-    if not execution_id or result_data is None:
-        raise ValueError("Missing required parameters: execution_id and/or result_data")
+        if not execution_id or result_data is None:
+            raise ValueError("Missing required parameters: execution_id and/or result_data")
 
-    # Parse artifacts if provided
-    parsed_artifacts = None
-    if artifacts_data:
-        parsed_artifacts = [TaskArtifact.model_validate(artifact) for artifact in artifacts_data]
+        # Parse artifacts if provided
+        parsed_artifacts = None
+        if artifacts_data:
+            parsed_artifacts = [TaskArtifact.model_validate(artifact) for artifact in artifacts_data]
 
-    success = await task_manager.complete_task(execution_id, result_data, parsed_artifacts)
+        success = await task_manager.complete_task(execution_id, result_data, parsed_artifacts)
 
-    if not success:
-        raise ValueError(f"Task completion failed: {execution_id}")
+        if not success:
+            raise ValueError(f"Task completion failed: {execution_id}")
 
-    logger.info("Task completed via JSON-RPC", execution_id=execution_id, method="task.complete")
+        logger.info("Task completed via JSON-RPC", execution_id=execution_id, method="task.complete")
 
-    return {
-        "success": True,
-        "execution_id": execution_id,
-        "message": "Task completed successfully"
-    }
+        return {
+            "success": True,
+            "execution_id": execution_id,
+            "message": "Task completed successfully"
+        }
+
+    except Exception as e:
+        logger.error("Task completion handler failed", error=str(e), execution_id=execution_id if 'execution_id' in locals() else None)
+        raise
 
 
 @register_jsonrpc_method("task.fail")
@@ -235,30 +245,35 @@ async def handle_task_fail(request: JsonRpcRequest) -> Dict[str, Any]:
     Returns:
         Failure result
     """
-    if not request.params or not isinstance(request.params, dict):
-        raise ValueError("Parameters required: execution_id, error_message")
+    try:
+        if not request.params or not isinstance(request.params, dict):
+            raise ValueError("Parameters required: execution_id, error_message")
 
-    execution_id = request.params.get("execution_id")
-    error_message = request.params.get("error_message")
-    should_retry = request.params.get("should_retry", True)
+        execution_id = request.params.get("execution_id")
+        error_message = request.params.get("error_message")
+        should_retry = request.params.get("should_retry", True)
 
-    if not execution_id or not error_message:
-        raise ValueError("Missing required parameters: execution_id and/or error_message")
+        if not execution_id or not error_message:
+            raise ValueError("Missing required parameters: execution_id and/or error_message")
 
-    success = await task_manager.fail_task(execution_id, error_message, should_retry)
+        success = await task_manager.fail_task(execution_id, error_message, should_retry)
 
-    if not success:
-        raise ValueError(f"Task failure recording failed: {execution_id}")
+        if not success:
+            raise ValueError(f"Task failure recording failed: {execution_id}")
 
-    logger.info("Task failed via JSON-RPC", execution_id=execution_id, error=error_message, method="task.fail")
+        logger.info("Task failed via JSON-RPC", execution_id=execution_id, error=error_message, method="task.fail")
 
-    return {
-        "success": True,
-        "execution_id": execution_id,
-        "error_message": error_message,
-        "should_retry": should_retry,
-        "message": "Task failure recorded successfully"
-    }
+        return {
+            "success": True,
+            "execution_id": execution_id,
+            "error_message": error_message,
+            "should_retry": should_retry,
+            "message": "Task failure recorded successfully"
+        }
+
+    except Exception as e:
+        logger.error("Task fail handler failed", error=str(e), execution_id=execution_id if 'execution_id' in locals() else None)
+        raise
 
 
 @register_jsonrpc_method("task.cancel")
@@ -396,7 +411,10 @@ async def handle_task_query(request: JsonRpcRequest) -> Dict[str, Any]:
 
         logger.debug("Tasks queried via JSON-RPC", filters=query_params, count=len(response.tasks), method="task.query")
 
-        return response.model_dump()
+        result = response.model_dump(mode='json')
+        # Add 'count' alias for compatibility
+        result["count"] = len(response.tasks)
+        return result
 
     except Exception as e:
         logger.error("Task query failed", error=str(e))
@@ -591,7 +609,7 @@ async def handle_task_get_artifacts(request: JsonRpcRequest) -> Dict[str, Any]:
 
     return {
         "execution_id": execution_id,
-        "artifacts": [artifact.model_dump() for artifact in artifacts],
+        "artifacts": [artifact.model_dump(mode='json') for artifact in artifacts],
         "count": len(artifacts)
     }
 

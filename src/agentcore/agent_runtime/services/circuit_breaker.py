@@ -8,9 +8,10 @@ and allow systems to recover from transient errors.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 import structlog
 
@@ -105,9 +106,7 @@ class CircuitBreaker:
 
             # Block if circuit is open
             if self._state == CircuitState.OPEN:
-                raise CircuitBreakerError(
-                    f"Circuit breaker '{self.name}' is open"
-                )
+                raise CircuitBreakerError(f"Circuit breaker '{self.name}' is open")
 
         # Execute function
         try:
@@ -130,7 +129,7 @@ class CircuitBreaker:
         if self._state == CircuitState.OPEN:
             # Check if timeout has passed
             if self._last_failure_time:
-                elapsed = (datetime.now() - self._last_failure_time).total_seconds()
+                elapsed = (datetime.now(UTC) - self._last_failure_time).total_seconds()
                 if elapsed >= self.config.timeout_seconds:
                     # Transition to half-open
                     self._state = CircuitState.HALF_OPEN
@@ -178,7 +177,7 @@ class CircuitBreaker:
         """
         async with self._lock:
             self._failure_count += 1
-            self._last_failure_time = datetime.now()
+            self._last_failure_time = datetime.now(UTC)
 
             logger.warning(
                 "circuit_breaker_failure",
@@ -238,9 +237,7 @@ class CircuitBreaker:
             "success_count": self._success_count,
             "half_open_attempts": self._half_open_attempts,
             "last_failure_time": (
-                self._last_failure_time.isoformat()
-                if self._last_failure_time
-                else None
+                self._last_failure_time.isoformat() if self._last_failure_time else None
             ),
             "config": self.config.model_dump(),
         }
@@ -302,10 +299,7 @@ class CircuitBreakerRegistry:
         Returns:
             Dictionary mapping breaker names to their stats
         """
-        return {
-            name: breaker.get_stats()
-            for name, breaker in self._breakers.items()
-        }
+        return {name: breaker.get_stats() for name, breaker in self._breakers.items()}
 
     def list_breakers(self) -> list[str]:
         """

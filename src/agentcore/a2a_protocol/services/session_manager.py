@@ -7,25 +7,25 @@ preservation for long-running agent workflows.
 
 import asyncio
 import json
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 import structlog
-from collections import defaultdict
 
-from agentcore.a2a_protocol.models.session import (
-    SessionSnapshot,
-    SessionState,
-    SessionPriority,
-    SessionCreateRequest,
-    SessionCreateResponse,
-    SessionQuery,
-    SessionQueryResponse,
-    SessionContext,
-)
 from agentcore.a2a_protocol.database.connection import get_session
 from agentcore.a2a_protocol.database.repositories import SessionRepository
+from agentcore.a2a_protocol.models.session import (
+    SessionContext,
+    SessionCreateRequest,
+    SessionCreateResponse,
+    SessionPriority,
+    SessionQuery,
+    SessionQueryResponse,
+    SessionSnapshot,
+    SessionState,
+)
 
 
 class SessionManager:
@@ -40,17 +40,19 @@ class SessionManager:
         self.logger = structlog.get_logger()
 
         # Session storage
-        self._sessions: Dict[str, SessionSnapshot] = {}
+        self._sessions: dict[str, SessionSnapshot] = {}
 
         # Indexing for efficient queries
-        self._sessions_by_state: Dict[SessionState, Set[str]] = defaultdict(set)
-        self._sessions_by_owner: Dict[str, Set[str]] = defaultdict(set)
-        self._sessions_by_participant: Dict[str, Set[str]] = defaultdict(set)
+        self._sessions_by_state: dict[SessionState, set[str]] = defaultdict(set)
+        self._sessions_by_owner: dict[str, set[str]] = defaultdict(set)
+        self._sessions_by_participant: dict[str, set[str]] = defaultdict(set)
 
         # Timeout tracking
-        self._session_timers: Dict[str, asyncio.TimerHandle] = {}
+        self._session_timers: dict[str, asyncio.TimerHandle] = {}
 
-    async def create_session(self, request: SessionCreateRequest) -> SessionCreateResponse:
+    async def create_session(
+        self, request: SessionCreateRequest
+    ) -> SessionCreateResponse:
         """
         Create a new session.
 
@@ -74,8 +76,10 @@ class SessionManager:
             tags=request.tags,
         )
 
-        # Set expiration
-        session.expires_at = datetime.utcnow() + timedelta(seconds=request.timeout_seconds)
+        # set expiration
+        session.expires_at = datetime.now(UTC) + timedelta(
+            seconds=request.timeout_seconds
+        )
 
         # Initialize context if provided
         if request.initial_context:
@@ -101,16 +105,16 @@ class SessionManager:
             name=session.name,
             owner=request.owner_agent,
             priority=session.priority.value,
-            timeout=request.timeout_seconds
+            timeout=request.timeout_seconds,
         )
 
         return SessionCreateResponse(
             session_id=session.session_id,
             state=session.state.value,
-            message="Session created successfully"
+            message="Session created successfully",
         )
 
-    async def get_session(self, session_id: str) -> Optional[SessionSnapshot]:
+    async def get_session(self, session_id: str) -> SessionSnapshot | None:
         """
         Get session by ID, loading from database if not in cache.
 
@@ -171,7 +175,9 @@ class SessionManager:
             return True
 
         except ValueError as e:
-            self.logger.error("Session pause failed", session_id=session_id, error=str(e))
+            self.logger.error(
+                "Session pause failed", session_id=session_id, error=str(e)
+            )
             return False
 
     async def resume_session(self, session_id: str) -> bool:
@@ -202,7 +208,9 @@ class SessionManager:
             await self._persist_session(session)
 
             # Reschedule timeout
-            remaining_time = max(0, (session.expires_at - datetime.utcnow()).total_seconds())
+            remaining_time = max(
+                0, (session.expires_at - datetime.now(UTC)).total_seconds()
+            )
             if remaining_time > 0:
                 self._schedule_timeout_check(session_id, int(remaining_time))
 
@@ -210,7 +218,9 @@ class SessionManager:
             return True
 
         except ValueError as e:
-            self.logger.error("Session resume failed", session_id=session_id, error=str(e))
+            self.logger.error(
+                "Session resume failed", session_id=session_id, error=str(e)
+            )
             return False
 
     async def suspend_session(self, session_id: str) -> bool:
@@ -247,7 +257,9 @@ class SessionManager:
             return True
 
         except ValueError as e:
-            self.logger.error("Session suspend failed", session_id=session_id, error=str(e))
+            self.logger.error(
+                "Session suspend failed", session_id=session_id, error=str(e)
+            )
             return False
 
     async def complete_session(self, session_id: str) -> bool:
@@ -284,15 +296,17 @@ class SessionManager:
                 "Session completed",
                 session_id=session_id,
                 duration=session.duration,
-                tasks=len(session.task_ids)
+                tasks=len(session.task_ids),
             )
             return True
 
         except ValueError as e:
-            self.logger.error("Session completion failed", session_id=session_id, error=str(e))
+            self.logger.error(
+                "Session completion failed", session_id=session_id, error=str(e)
+            )
             return False
 
-    async def fail_session(self, session_id: str, reason: Optional[str] = None) -> bool:
+    async def fail_session(self, session_id: str, reason: str | None = None) -> bool:
         """
         Mark session as failed.
 
@@ -327,15 +341,17 @@ class SessionManager:
                 "Session failed",
                 session_id=session_id,
                 reason=reason,
-                duration=session.duration
+                duration=session.duration,
             )
             return True
 
         except ValueError as e:
-            self.logger.error("Session failure recording failed", session_id=session_id, error=str(e))
+            self.logger.error(
+                "Session failure recording failed", session_id=session_id, error=str(e)
+            )
             return False
 
-    async def update_context(self, session_id: str, updates: Dict[str, Any]) -> bool:
+    async def update_context(self, session_id: str, updates: dict[str, Any]) -> bool:
         """
         Update session context variables.
 
@@ -356,15 +372,15 @@ class SessionManager:
         await self._persist_session(session)
 
         self.logger.debug(
-            "Session context updated",
-            session_id=session_id,
-            update_count=len(updates)
+            "Session context updated", session_id=session_id, update_count=len(updates)
         )
         return True
 
-    async def set_agent_state(self, session_id: str, agent_id: str, state: Dict[str, Any]) -> bool:
+    async def set_agent_state(
+        self, session_id: str, agent_id: str, state: dict[str, Any]
+    ) -> bool:
         """
-        Set state for a specific agent in session.
+        set state for a specific agent in session.
 
         Args:
             session_id: Session ID
@@ -389,13 +405,13 @@ class SessionManager:
         await self._persist_session(session)
 
         self.logger.debug(
-            "Agent state updated",
-            session_id=session_id,
-            agent_id=agent_id
+            "Agent state updated", session_id=session_id, agent_id=agent_id
         )
         return True
 
-    async def get_agent_state(self, session_id: str, agent_id: str) -> Optional[Dict[str, Any]]:
+    async def get_agent_state(
+        self, session_id: str, agent_id: str
+    ) -> dict[str, Any] | None:
         """
         Get state for a specific agent in session.
 
@@ -432,7 +448,9 @@ class SessionManager:
         # Persist to database
         await self._persist_session(session)
 
-        self.logger.debug("Task added to session", session_id=session_id, task_id=task_id)
+        self.logger.debug(
+            "Task added to session", session_id=session_id, task_id=task_id
+        )
         return True
 
     async def add_artifact(self, session_id: str, artifact_id: str) -> bool:
@@ -455,10 +473,14 @@ class SessionManager:
         # Persist to database
         await self._persist_session(session)
 
-        self.logger.debug("Artifact added to session", session_id=session_id, artifact_id=artifact_id)
+        self.logger.debug(
+            "Artifact added to session", session_id=session_id, artifact_id=artifact_id
+        )
         return True
 
-    async def record_event(self, session_id: str, event_type: str, event_data: Dict[str, Any]) -> bool:
+    async def record_event(
+        self, session_id: str, event_type: str, event_data: dict[str, Any]
+    ) -> bool:
         """
         Record execution event in session history.
 
@@ -503,7 +525,7 @@ class SessionManager:
         self.logger.info(
             "Session checkpoint created",
             session_id=session_id,
-            checkpoint_count=session.checkpoint_count
+            checkpoint_count=session.checkpoint_count,
         )
         return True
 
@@ -573,7 +595,7 @@ class SessionManager:
             sessions=session_summaries,
             total_count=total_count,
             has_more=end_idx < total_count,
-            query=query
+            query=query,
         )
 
     async def cleanup_expired_sessions(self) -> int:
@@ -605,12 +627,12 @@ class SessionManager:
                 cleanup_count += 1
 
                 self.logger.info(
-                    "Session expired",
-                    session_id=session_id,
-                    duration=session.duration
+                    "Session expired", session_id=session_id, duration=session.duration
                 )
             except ValueError as e:
-                self.logger.error("Session expiration failed", session_id=session_id, error=str(e))
+                self.logger.error(
+                    "Session expiration failed", session_id=session_id, error=str(e)
+                )
 
         return cleanup_count
 
@@ -634,7 +656,7 @@ class SessionManager:
                     self.logger.info(
                         "Idle session suspended",
                         session_id=session_id,
-                        idle_time=session.time_since_update
+                        idle_time=session.time_since_update,
                     )
 
         return cleanup_count
@@ -706,10 +728,14 @@ class SessionManager:
         Returns:
             Number of sessions deleted
         """
-        cutoff_time = datetime.utcnow() - timedelta(days=max_age_days)
+        cutoff_time = datetime.now(UTC) - timedelta(days=max_age_days)
         cleanup_count = 0
 
-        terminal_states = [SessionState.COMPLETED, SessionState.FAILED, SessionState.EXPIRED]
+        terminal_states = [
+            SessionState.COMPLETED,
+            SessionState.FAILED,
+            SessionState.EXPIRED,
+        ]
         delete_ids = []
 
         for state in terminal_states:
@@ -726,11 +752,15 @@ class SessionManager:
             cleanup_count += 1
 
         if cleanup_count > 0:
-            self.logger.info("Old sessions deleted", count=cleanup_count, max_age_days=max_age_days)
+            self.logger.info(
+                "Old sessions deleted", count=cleanup_count, max_age_days=max_age_days
+            )
 
         return cleanup_count
 
-    async def export_session(self, session_id: str, include_history: bool = True) -> Optional[str]:
+    async def export_session(
+        self, session_id: str, include_history: bool = True
+    ) -> str | None:
         """
         Export session to JSON format.
 
@@ -748,7 +778,7 @@ class SessionManager:
         # Create export data structure
         export_data = {
             "version": "1.0",
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "session": session.model_dump(mode="json"),
         }
 
@@ -765,12 +795,14 @@ class SessionManager:
             "Session exported",
             session_id=session_id,
             size_bytes=len(json_str),
-            include_history=include_history
+            include_history=include_history,
         )
 
         return json_str
 
-    async def import_session(self, json_data: str, overwrite: bool = False) -> Optional[str]:
+    async def import_session(
+        self, json_data: str, overwrite: bool = False
+    ) -> str | None:
         """
         Import session from JSON format.
 
@@ -797,7 +829,9 @@ class SessionManager:
             # Check if session exists
             existing_session = await self.get_session(session_data["session_id"])
             if existing_session and not overwrite:
-                raise ValueError(f"Session already exists: {session_data['session_id']}")
+                raise ValueError(
+                    f"Session already exists: {session_data['session_id']}"
+                )
 
             # Reconstruct SessionSnapshot
             session = SessionSnapshot.model_validate(session_data)
@@ -823,31 +857,33 @@ class SessionManager:
 
             # Reschedule timeout if active
             if session.state == SessionState.ACTIVE and session.expires_at:
-                remaining_time = max(0, (session.expires_at - datetime.utcnow()).total_seconds())
+                remaining_time = max(
+                    0, (session.expires_at - datetime.now(UTC)).total_seconds()
+                )
                 if remaining_time > 0:
-                    self._schedule_timeout_check(session.session_id, int(remaining_time))
+                    self._schedule_timeout_check(
+                        session.session_id, int(remaining_time)
+                    )
 
             self.logger.info(
                 "Session imported",
                 session_id=session.session_id,
                 overwrite=overwrite,
-                state=session.state.value
+                state=session.state.value,
             )
 
             return session.session_id
 
         except json.JSONDecodeError as e:
             self.logger.error("Session import failed: invalid JSON", error=str(e))
-            raise ValueError(f"Invalid JSON: {str(e)}")
+            raise ValueError(f"Invalid JSON: {str(e)}") from e
 
         except Exception as e:
             self.logger.error("Session import failed", error=str(e))
             raise
 
     async def export_sessions_batch(
-        self,
-        session_ids: List[str],
-        include_history: bool = True
+        self, session_ids: list[str], include_history: bool = True
     ) -> str:
         """
         Export multiple sessions to JSON format.
@@ -876,7 +912,7 @@ class SessionManager:
 
         export_data = {
             "version": "1.0",
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "count": len(sessions_data),
             "sessions": sessions_data,
         }
@@ -887,16 +923,14 @@ class SessionManager:
             "Sessions batch exported",
             count=len(sessions_data),
             size_bytes=len(json_str),
-            include_history=include_history
+            include_history=include_history,
         )
 
         return json_str
 
     async def import_sessions_batch(
-        self,
-        json_data: str,
-        overwrite: bool = False
-    ) -> Dict[str, Any]:
+        self, json_data: str, overwrite: bool = False
+    ) -> dict[str, Any]:
         """
         Import multiple sessions from JSON format.
 
@@ -921,7 +955,7 @@ class SessionManager:
                 "imported": 0,
                 "skipped": 0,
                 "failed": 0,
-                "errors": []
+                "errors": [],
             }
 
             for session_data in sessions_data:
@@ -953,24 +987,26 @@ class SessionManager:
 
                 except Exception as e:
                     results["failed"] += 1
-                    results["errors"].append({
-                        "session_id": session_data.get("session_id", "unknown"),
-                        "error": str(e)
-                    })
+                    results["errors"].append(
+                        {
+                            "session_id": session_data.get("session_id", "unknown"),
+                            "error": str(e),
+                        }
+                    )
 
             self.logger.info(
                 "Sessions batch imported",
                 total=results["total"],
                 imported=results["imported"],
                 skipped=results["skipped"],
-                failed=results["failed"]
+                failed=results["failed"],
             )
 
             return results
 
         except json.JSONDecodeError as e:
             self.logger.error("Batch import failed: invalid JSON", error=str(e))
-            raise ValueError(f"Invalid JSON: {str(e)}")
+            raise ValueError(f"Invalid JSON: {str(e)}") from e
 
         except Exception as e:
             self.logger.error("Batch import failed", error=str(e))
@@ -1010,7 +1046,7 @@ class SessionManager:
         loop = asyncio.get_event_loop()
         timer = loop.call_later(
             timeout_seconds,
-            lambda: asyncio.create_task(self._handle_timeout(session_id))
+            lambda: asyncio.create_task(self._handle_timeout(session_id)),
         )
         self._session_timers[session_id] = timer
 

@@ -6,8 +6,7 @@ creation, execution, pause, resume, and termination with state management.
 """
 
 import asyncio
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
 
 import structlog
 
@@ -77,8 +76,8 @@ class AgentLifecycleManager:
         state = AgentExecutionState(
             agent_id=agent_id,
             status="initializing",
-            created_at=datetime.now(),
-            last_updated=datetime.now(),
+            created_at=datetime.now(UTC),
+            last_updated=datetime.now(UTC),
         )
         self._agents[agent_id] = state
 
@@ -86,7 +85,7 @@ class AgentLifecycleManager:
             # Create container
             container_id = await self._container_manager.create_container(agent_config)
             state.container_id = container_id
-            state.last_updated = datetime.now()
+            state.last_updated = datetime.now(UTC)
 
             logger.info(
                 "agent_created",
@@ -143,9 +142,7 @@ class AgentLifecycleManager:
         state = self._get_agent_state(agent_id)
 
         if state.status not in ("initializing", "paused"):
-            raise AgentStateError(
-                f"Cannot start agent in {state.status} state"
-            )
+            raise AgentStateError(f"Cannot start agent in {state.status} state")
 
         try:
             # Start container
@@ -153,7 +150,7 @@ class AgentLifecycleManager:
 
             # Update state
             state.status = "running"
-            state.last_updated = datetime.now()
+            state.last_updated = datetime.now(UTC)
 
             # Start monitoring task
             task = asyncio.create_task(self._monitor_agent(agent_id))
@@ -199,9 +196,7 @@ class AgentLifecycleManager:
         state = self._get_agent_state(agent_id)
 
         if state.status != "running":
-            raise AgentStateError(
-                f"Cannot pause agent in {state.status} state"
-            )
+            raise AgentStateError(f"Cannot pause agent in {state.status} state")
 
         try:
             # Stop container
@@ -214,7 +209,7 @@ class AgentLifecycleManager:
 
             # Update state
             state.status = "paused"
-            state.last_updated = datetime.now()
+            state.last_updated = datetime.now(UTC)
 
             logger.info("agent_paused", agent_id=agent_id)
 
@@ -260,7 +255,7 @@ class AgentLifecycleManager:
 
             # Update state
             state.status = "terminated"
-            state.last_updated = datetime.now()
+            state.last_updated = datetime.now(UTC)
 
             # Unregister from A2A protocol
             if self._a2a_client and cleanup:
@@ -333,7 +328,7 @@ class AgentLifecycleManager:
         """
         state = self._get_agent_state(agent_id)
         state.performance_metrics.update(metrics)
-        state.last_updated = datetime.now()
+        state.last_updated = datetime.now(UTC)
 
     async def save_checkpoint(
         self,
@@ -352,7 +347,7 @@ class AgentLifecycleManager:
         """
         state = self._get_agent_state(agent_id)
         state.checkpoint_data = checkpoint_data
-        state.last_updated = datetime.now()
+        state.last_updated = datetime.now(UTC)
 
         logger.info(
             "checkpoint_saved",
@@ -411,7 +406,7 @@ class AgentLifecycleManager:
 
                 if not is_running:
                     state.status = "completed"
-                    state.last_updated = datetime.now()
+                    state.last_updated = datetime.now(UTC)
                     logger.info("agent_completed", agent_id=agent_id)
                     break
 

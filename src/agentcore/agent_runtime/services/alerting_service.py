@@ -8,7 +8,7 @@ alerts, anomaly detection, notification channels, and alert management.
 import asyncio
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -79,8 +79,8 @@ class Alert:
         self.labels = labels or {}
         self.annotations = annotations or {}
         self.state = AlertState.ACTIVE
-        self.created_at = datetime.now()
-        self.updated_at = datetime.now()
+        self.created_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
         self.acknowledged_at: datetime | None = None
         self.resolved_at: datetime | None = None
         self.acknowledged_by: str | None = None
@@ -94,9 +94,9 @@ class Alert:
             acknowledged_by: User/system that acknowledged
         """
         self.state = AlertState.ACKNOWLEDGED
-        self.acknowledged_at = datetime.now()
+        self.acknowledged_at = datetime.now(UTC)
         self.acknowledged_by = acknowledged_by
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def resolve(self, resolution_note: str | None = None) -> None:
         """
@@ -106,14 +106,14 @@ class Alert:
             resolution_note: Note about resolution
         """
         self.state = AlertState.RESOLVED
-        self.resolved_at = datetime.now()
+        self.resolved_at = datetime.now(UTC)
         self.resolution_note = resolution_note
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def suppress(self) -> None:
         """Suppress alert notifications."""
         self.state = AlertState.SUPPRESSED
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -190,7 +190,7 @@ class AlertRule:
         if not self.last_triggered:
             return True
 
-        elapsed = (datetime.now() - self.last_triggered).total_seconds()
+        elapsed = (datetime.now(UTC) - self.last_triggered).total_seconds()
         return elapsed >= self.cooldown_seconds
 
     def evaluate(self, context: dict[str, Any]) -> tuple[bool, str, str]:
@@ -480,7 +480,7 @@ class AlertingService:
         self._stats["active_alerts"] += 1
 
         # Update rule state
-        rule.last_triggered = datetime.now()
+        rule.last_triggered = datetime.now(UTC)
         rule.active_alert_id = alert_id
 
         # Add to groups
@@ -674,7 +674,7 @@ class AlertingService:
         Returns:
             List of historical alerts
         """
-        cutoff = datetime.now() - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         alerts = [a for a in self._alert_history if a.created_at >= cutoff]
 
         if severity:

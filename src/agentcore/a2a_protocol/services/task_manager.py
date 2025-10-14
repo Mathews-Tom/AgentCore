@@ -6,24 +6,23 @@ Implements A2A protocol task management with state transitions and agent coordin
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
-from uuid import uuid4
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import structlog
-from collections import defaultdict, deque
 
 from agentcore.a2a_protocol.models.task import (
-    TaskDefinition,
-    TaskExecution,
-    TaskStatus,
-    TaskPriority,
-    TaskQuery,
+    DependencyType,
+    TaskArtifact,
     TaskCreateRequest,
     TaskCreateResponse,
+    TaskDefinition,
+    TaskExecution,
+    TaskPriority,
+    TaskQuery,
     TaskQueryResponse,
-    DependencyType,
-    TaskArtifact
+    TaskStatus,
 )
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
 
@@ -40,18 +39,22 @@ class TaskManager:
         self.logger = structlog.get_logger()
 
         # Task storage
-        self._task_executions: Dict[str, TaskExecution] = {}
-        self._task_definitions: Dict[str, TaskDefinition] = {}
+        self._task_executions: dict[str, TaskExecution] = {}
+        self._task_definitions: dict[str, TaskDefinition] = {}
 
         # Indexing for efficient queries
-        self._tasks_by_status: Dict[TaskStatus, Set[str]] = defaultdict(set)
-        self._tasks_by_agent: Dict[str, Set[str]] = defaultdict(set)
-        self._tasks_by_type: Dict[str, Set[str]] = defaultdict(set)
-        self._dependency_graph: Dict[str, Set[str]] = defaultdict(set)  # task_id -> dependent_task_ids
-        self._reverse_dependency_graph: Dict[str, Set[str]] = defaultdict(set)  # task_id -> prerequisite_task_ids
+        self._tasks_by_status: dict[TaskStatus, set[str]] = defaultdict(set)
+        self._tasks_by_agent: dict[str, set[str]] = defaultdict(set)
+        self._tasks_by_type: dict[str, set[str]] = defaultdict(set)
+        self._dependency_graph: dict[str, set[str]] = defaultdict(
+            set
+        )  # task_id -> dependent_task_ids
+        self._reverse_dependency_graph: dict[str, set[str]] = defaultdict(
+            set
+        )  # task_id -> prerequisite_task_ids
 
         # Execution tracking
-        self._execution_locks: Dict[str, asyncio.Lock] = {}
+        self._execution_locks: dict[str, asyncio.Lock] = {}
 
     async def create_task(self, request: TaskCreateRequest) -> TaskCreateResponse:
         """
@@ -89,23 +92,25 @@ class TaskManager:
             task_id=task_def.task_id,
             execution_id=execution.execution_id,
             task_type=task_def.task_type,
-            priority=task_def.priority.value
+            priority=task_def.priority.value,
         )
 
         # Auto-assign if requested and no dependencies
         assigned_agent = None
         if request.auto_assign and not task_def.dependencies:
-            assigned_agent = await self._auto_assign_task(execution, request.preferred_agent)
+            assigned_agent = await self._auto_assign_task(
+                execution, request.preferred_agent
+            )
 
         return TaskCreateResponse(
             execution_id=execution.execution_id,
             task_id=task_def.task_id,
             status=execution.status.value,
             assigned_agent=assigned_agent,
-            message=f"Task created successfully{'and assigned' if assigned_agent else ''}"
+            message=f"Task created successfully{'and assigned' if assigned_agent else ''}",
         )
 
-    async def get_task(self, execution_id: str) -> Optional[TaskExecution]:
+    async def get_task(self, execution_id: str) -> TaskExecution | None:
         """Get task execution by ID."""
         return self._task_executions.get(execution_id)
 
@@ -135,7 +140,7 @@ class TaskManager:
             self.logger.warning(
                 "Agent lacks required capabilities",
                 agent_id=agent_id,
-                required_capabilities=execution.task_definition.requirements.required_capabilities
+                required_capabilities=execution.task_definition.requirements.required_capabilities,
             )
             return False
 
@@ -158,7 +163,7 @@ class TaskManager:
                 "Task assigned",
                 execution_id=execution_id,
                 task_id=execution.task_id,
-                agent_id=agent_id
+                agent_id=agent_id,
             )
 
             return True
@@ -186,7 +191,7 @@ class TaskManager:
             self.logger.warning(
                 "Cannot start task - dependencies not satisfied",
                 execution_id=execution_id,
-                task_id=execution.task_id
+                task_id=execution.task_id,
             )
             return False
 
@@ -204,7 +209,7 @@ class TaskManager:
                 "Task started",
                 execution_id=execution_id,
                 task_id=execution.task_id,
-                agent_id=execution.assigned_agent
+                agent_id=execution.assigned_agent,
             )
 
             return True
@@ -216,8 +221,8 @@ class TaskManager:
     async def complete_task(
         self,
         execution_id: str,
-        result_data: Dict[str, Any],
-        artifacts: Optional[List[TaskArtifact]] = None
+        result_data: dict[str, Any],
+        artifacts: list[TaskArtifact] | None = None,
     ) -> bool:
         """
         Complete task execution successfully.
@@ -249,7 +254,7 @@ class TaskManager:
                 execution_id=execution_id,
                 task_id=execution.task_id,
                 agent_id=execution.assigned_agent,
-                duration=execution.execution_duration
+                duration=execution.execution_duration,
             )
 
             # Check for dependent tasks that can now be started
@@ -261,7 +266,9 @@ class TaskManager:
             self.logger.error("Task completion failed", error=str(e))
             return False
 
-    async def fail_task(self, execution_id: str, error_message: str, should_retry: bool = True) -> bool:
+    async def fail_task(
+        self, execution_id: str, error_message: str, should_retry: bool = True
+    ) -> bool:
         """
         Mark task as failed with optional retry.
 
@@ -293,7 +300,7 @@ class TaskManager:
                 task_id=execution.task_id,
                 agent_id=execution.assigned_agent,
                 error=error_message,
-                retry_count=execution.retry_count
+                retry_count=execution.retry_count,
             )
 
             return True
@@ -330,7 +337,7 @@ class TaskManager:
                 "Task cancelled",
                 execution_id=execution_id,
                 task_id=execution.task_id,
-                agent_id=execution.assigned_agent
+                agent_id=execution.assigned_agent,
             )
 
             return True
@@ -339,7 +346,9 @@ class TaskManager:
             self.logger.error("Task cancellation failed", error=str(e))
             return False
 
-    async def update_task_progress(self, execution_id: str, percentage: float, current_step: Optional[str] = None) -> bool:
+    async def update_task_progress(
+        self, execution_id: str, percentage: float, current_step: str | None = None
+    ) -> bool:
         """
         Update task execution progress.
 
@@ -363,7 +372,7 @@ class TaskManager:
                 execution_id=execution_id,
                 task_id=execution.task_id,
                 progress=percentage,
-                step=current_step
+                step=current_step,
             )
 
             return True
@@ -378,7 +387,7 @@ class TaskManager:
         name: str,
         artifact_type: str,
         content: Any,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """
         Add an artifact to a task execution.
@@ -405,16 +414,17 @@ class TaskManager:
                 execution_id=execution_id,
                 task_id=execution.task_id,
                 artifact_name=name,
-                artifact_type=artifact_type
+                artifact_type=artifact_type,
             )
 
             return True
 
         except ValueError as e:
+            # Re-raise validation errors so callers get detailed error messages
             self.logger.error("Task artifact addition failed", error=str(e))
-            return False
+            raise
 
-    async def get_task_artifacts(self, execution_id: str) -> Optional[List[TaskArtifact]]:
+    async def get_task_artifacts(self, execution_id: str) -> list[TaskArtifact] | None:
         """
         Get all artifacts for a task execution.
 
@@ -430,7 +440,9 @@ class TaskManager:
 
         return execution.artifacts
 
-    async def get_task_status_transitions(self, execution_id: str) -> Optional[List[TaskStatus]]:
+    async def get_task_status_transitions(
+        self, execution_id: str
+    ) -> list[TaskStatus] | None:
         """
         Get valid status transitions for a task execution.
 
@@ -502,7 +514,9 @@ class TaskManager:
             filtered_executions.append(execution)
 
         # Sort by creation time (newest first)
-        filtered_executions.sort(key=lambda e: e.task_definition.created_at, reverse=True)
+        filtered_executions.sort(
+            key=lambda e: e.task_definition.created_at, reverse=True
+        )
 
         # Apply pagination
         total_count = len(filtered_executions)
@@ -518,10 +532,10 @@ class TaskManager:
             tasks=task_summaries,
             total_count=total_count,
             has_more=end_idx < total_count,
-            query=query
+            query=query,
         )
 
-    async def get_task_dependencies(self, task_id: str) -> Dict[str, List[str]]:
+    async def get_task_dependencies(self, task_id: str) -> dict[str, list[str]]:
         """
         Get task dependency information.
 
@@ -533,10 +547,10 @@ class TaskManager:
         """
         return {
             "prerequisites": list(self._reverse_dependency_graph.get(task_id, set())),
-            "dependents": list(self._dependency_graph.get(task_id, set()))
+            "dependents": list(self._dependency_graph.get(task_id, set())),
         }
 
-    async def get_ready_tasks(self) -> List[str]:
+    async def get_ready_tasks(self) -> list[str]:
         """
         Get tasks that are ready to be assigned (pending with satisfied dependencies).
 
@@ -562,11 +576,15 @@ class TaskManager:
         Returns:
             Number of tasks cleaned up
         """
-        cutoff_time = datetime.utcnow() - timedelta(days=max_age_days)
+        cutoff_time = datetime.now(UTC) - timedelta(days=max_age_days)
         cleanup_count = 0
 
         # Find old terminal tasks
-        terminal_statuses = [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]
+        terminal_statuses = [
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+        ]
         cleanup_ids = []
 
         for status in terminal_statuses:
@@ -585,7 +603,9 @@ class TaskManager:
             cleanup_count += 1
 
         if cleanup_count > 0:
-            self.logger.info("Old tasks cleaned up", count=cleanup_count, max_age_days=max_age_days)
+            self.logger.info(
+                "Old tasks cleaned up", count=cleanup_count, max_age_days=max_age_days
+            )
 
         return cleanup_count
 
@@ -609,17 +629,24 @@ class TaskManager:
         for dep in task_def.dependencies:
             if dep.type == DependencyType.PREDECESSOR:
                 dep_task_executions = [
-                    e for e in self._task_executions.values()
+                    e
+                    for e in self._task_executions.values()
                     if e.task_id == dep.task_id
                 ]
-                if not dep_task_executions or not any(e.is_completed for e in dep_task_executions):
+                if not dep_task_executions or not any(
+                    e.is_completed for e in dep_task_executions
+                ):
                     return False
         return True
 
-    async def _auto_assign_task(self, execution: TaskExecution, preferred_agent: Optional[str]) -> Optional[str]:
+    async def _auto_assign_task(
+        self, execution: TaskExecution, preferred_agent: str | None
+    ) -> str | None:
         """Automatically assign task to capable agent."""
         # Try preferred agent first
-        if preferred_agent and await self._agent_can_handle_task(preferred_agent, execution.task_definition):
+        if preferred_agent and await self._agent_can_handle_task(
+            preferred_agent, execution.task_definition
+        ):
             if await self.assign_task(execution.execution_id, preferred_agent):
                 return preferred_agent
 
@@ -633,7 +660,9 @@ class TaskManager:
 
         return None
 
-    async def _agent_can_handle_task(self, agent_id: str, task_def: TaskDefinition) -> bool:
+    async def _agent_can_handle_task(
+        self, agent_id: str, task_def: TaskDefinition
+    ) -> bool:
         """Check if agent can handle task based on capabilities."""
         agent = await agent_manager.get_agent(agent_id)
         if not agent or not agent.is_active():
@@ -650,7 +679,7 @@ class TaskManager:
 
         return True
 
-    async def _find_capable_agents(self, task_def: TaskDefinition) -> List[str]:
+    async def _find_capable_agents(self, task_def: TaskDefinition) -> list[str]:
         """Find agents capable of handling task."""
         capable_agents = []
 
@@ -671,7 +700,8 @@ class TaskManager:
         for task_id in dependent_task_ids:
             # Find pending executions for this task
             pending_executions = [
-                e for e in self._task_executions.values()
+                e
+                for e in self._task_executions.values()
                 if e.task_id == task_id and e.status == TaskStatus.PENDING
             ]
 
@@ -681,7 +711,7 @@ class TaskManager:
                         "Dependent task ready for assignment",
                         task_id=task_id,
                         execution_id=execution.execution_id,
-                        completed_dependency=completed_task_id
+                        completed_dependency=completed_task_id,
                     )
 
     def _update_indices_on_create(self, execution: TaskExecution) -> None:

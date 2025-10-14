@@ -165,20 +165,14 @@ def agent_config() -> AgentConfig:
     """Create test agent configuration."""
     return AgentConfig(
         agent_id="test-agent-001",
-        name="Test Agent",
         philosophy=AgentPhilosophy.REACT,
-        capabilities=["test", "demo"],
         resource_limits=ResourceLimits(
-            max_cpu_percent=50.0,
+            max_cpu_cores=0.5,
             max_memory_mb=512,
-            max_disk_mb=1024,
+            storage_quota_mb=1024,
         ),
         security_profile=SecurityProfile(
-            allow_internet_access=False,
-            allowed_domains=[],
-            allow_code_execution=True,
-            allow_file_write=True,
-            restricted_paths=["/etc", "/root"],
+            profile_name="standard",
         ),
     )
 
@@ -188,13 +182,11 @@ def agent_config_cot() -> AgentConfig:
     """Create Chain-of-Thought agent configuration."""
     return AgentConfig(
         agent_id="test-agent-cot-001",
-        name="CoT Agent",
         philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT,
-        capabilities=["reasoning", "analysis"],
         resource_limits=ResourceLimits(
-            max_cpu_percent=50.0,
+            max_cpu_cores=0.5,
             max_memory_mb=512,
-            max_disk_mb=1024,
+            storage_quota_mb=1024,
         ),
     )
 
@@ -204,13 +196,11 @@ def agent_config_multi() -> AgentConfig:
     """Create multi-agent configuration."""
     return AgentConfig(
         agent_id="test-agent-multi-001",
-        name="Multi Agent",
         philosophy=AgentPhilosophy.MULTI_AGENT,
-        capabilities=["coordination", "communication"],
         resource_limits=ResourceLimits(
-            max_cpu_percent=50.0,
+            max_cpu_cores=0.5,
             max_memory_mb=512,
-            max_disk_mb=1024,
+            storage_quota_mb=1024,
         ),
     )
 

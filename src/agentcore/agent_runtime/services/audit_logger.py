@@ -3,7 +3,7 @@
 import asyncio
 import json
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -171,7 +171,7 @@ class AuditLogger:
         Returns:
             Dictionary with audit statistics
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
         logs = await self.query_logs(
             sandbox_id=sandbox_id,
             agent_id=agent_id,
@@ -211,7 +211,7 @@ class AuditLogger:
 
     async def cleanup_old_logs(self) -> None:
         """Remove audit logs older than retention period."""
-        cutoff_date = datetime.utcnow() - timedelta(days=self._retention_days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=self._retention_days)
         cutoff_str = cutoff_date.strftime("%Y-%m-%d")
 
         deleted_count = 0

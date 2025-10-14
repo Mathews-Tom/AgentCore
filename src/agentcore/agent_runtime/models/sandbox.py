@@ -1,10 +1,10 @@
 """Sandbox security models for isolated agent execution."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class SandboxPermission(str, Enum):
@@ -150,8 +150,12 @@ class AuditEventType(str, Enum):
 class AuditLogEntry(BaseModel):
     """Security audit log entry for sandbox operations."""
 
+    model_config = ConfigDict(
+        # No need for json_encoders - Pydantic v2 handles datetime serialization automatically
+    )
+
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Event timestamp",
     )
     event_type: AuditEventType = Field(
@@ -186,12 +190,10 @@ class AuditLogEntry(BaseModel):
         description="Additional context information",
     )
 
-    class Config:
-        """Pydantic model configuration."""
-
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize datetime to ISO format string."""
+        return value.isoformat()
 
 
 class SandboxStats(BaseModel):

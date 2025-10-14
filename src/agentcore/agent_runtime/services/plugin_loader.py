@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
-import importlib.util
+import importlib
 import json
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -209,7 +208,7 @@ class PluginLoader:
             # Update state
             state.instance = instance
             state.status = PluginStatus.LOADED
-            state.load_time = datetime.utcnow()
+            state.load_time = datetime.now(UTC)
 
             logger.info(
                 "plugin_loaded_successfully",
@@ -483,7 +482,13 @@ class PluginLoader:
                         manifest = json.load(f)
                         if manifest.get("plugin_id") == plugin_id:
                             return path
-                except Exception:
+                except json.JSONDecodeError as e:
+                    logger.warning(
+                        f"Failed to decode manifest for plugin at {path}: {e}"
+                    )
+                    continue
+                except OSError as e:
+                    logger.warning(f"Failed to read manifest for plugin at {path}: {e}")
                     continue
 
         return None

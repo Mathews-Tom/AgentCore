@@ -5,16 +5,12 @@ from __future__ import annotations
 import ast
 import hashlib
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 import structlog
 
-from ..models.plugin import (
-    PluginMetadata,
-    PluginValidationResult,
-)
+from ..models.plugin import PluginMetadata, PluginValidationResult
 
 logger = structlog.get_logger()
 
@@ -140,9 +136,7 @@ class PluginValidator:
 
         # Scan code if enabled
         if self._enable_code_scanning:
-            code_errors, code_warnings = await self._scan_code(
-                plugin_path, metadata
-            )
+            code_errors, code_warnings = await self._scan_code(plugin_path, metadata)
             errors.extend(code_errors)
             warnings.extend(code_warnings)
             if code_errors:
@@ -175,7 +169,7 @@ class PluginValidator:
             warnings=warnings,
             security_score=security_score,
             risk_level=risk_level,
-            scanned_at=datetime.utcnow(),
+            scanned_at=datetime.now(UTC),
         )
 
         logger.info(
@@ -240,10 +234,11 @@ class PluginValidator:
 
         # Validate entry point format
         if metadata.entry_point:
-            if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$", metadata.entry_point):
-                errors.append(
-                    f"Invalid entry point format: {metadata.entry_point}"
-                )
+            if not re.match(
+                r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$",
+                metadata.entry_point,
+            ):
+                errors.append(f"Invalid entry point format: {metadata.entry_point}")
 
         return errors
 
@@ -274,9 +269,7 @@ class PluginValidator:
 
         # Warn about large files
         if large_files:
-            warnings.append(
-                f"Large files detected: {', '.join(large_files[:5])}"
-            )
+            warnings.append(f"Large files detected: {', '.join(large_files[:5])}")
 
         return errors, warnings
 
@@ -379,9 +372,7 @@ class PluginValidator:
 
         return errors, warnings
 
-    async def _validate_permissions(
-        self, metadata: PluginMetadata
-    ) -> list[str]:
+    async def _validate_permissions(self, metadata: PluginMetadata) -> list[str]:
         """Validate plugin permissions."""
         warnings: list[str] = []
 

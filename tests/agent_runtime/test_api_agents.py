@@ -1,8 +1,10 @@
 """Tests for agent API endpoints."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from agentcore.agent_runtime.main import app
 from agentcore.agent_runtime.models.agent_config import AgentPhilosophy
@@ -16,7 +18,9 @@ def client() -> TestClient:
 
 def test_create_agent_endpoint(client: TestClient) -> None:
     """Test agent creation endpoint."""
-    with patch("agentcore.agent_runtime.routers.agents._lifecycle_manager") as mock_lifecycle:
+    with patch(
+        "agentcore.agent_runtime.routers.agents._lifecycle_manager"
+    ) as mock_lifecycle:
         # Mock the lifecycle manager
         mock_state = MagicMock()
         mock_state.agent_id = "test-agent-001"
@@ -44,7 +48,9 @@ def test_create_agent_endpoint(client: TestClient) -> None:
 
 def test_start_agent_endpoint(client: TestClient) -> None:
     """Test agent start endpoint."""
-    with patch("agentcore.agent_runtime.routers.agents._lifecycle_manager") as mock_lifecycle:
+    with patch(
+        "agentcore.agent_runtime.routers.agents._lifecycle_manager"
+    ) as mock_lifecycle:
         mock_lifecycle.start_agent = AsyncMock()
 
         response = client.post("/api/v1/agents/test-agent-001/start")
@@ -57,7 +63,9 @@ def test_start_agent_endpoint(client: TestClient) -> None:
 
 def test_pause_agent_endpoint(client: TestClient) -> None:
     """Test agent pause endpoint."""
-    with patch("agentcore.agent_runtime.routers.agents._lifecycle_manager") as mock_lifecycle:
+    with patch(
+        "agentcore.agent_runtime.routers.agents._lifecycle_manager"
+    ) as mock_lifecycle:
         mock_lifecycle.pause_agent = AsyncMock()
 
         response = client.post("/api/v1/agents/test-agent-001/pause")
@@ -69,7 +77,9 @@ def test_pause_agent_endpoint(client: TestClient) -> None:
 
 def test_terminate_agent_endpoint(client: TestClient) -> None:
     """Test agent termination endpoint."""
-    with patch("agentcore.agent_runtime.routers.agents._lifecycle_manager") as mock_lifecycle:
+    with patch(
+        "agentcore.agent_runtime.routers.agents._lifecycle_manager"
+    ) as mock_lifecycle:
         mock_lifecycle.terminate_agent = AsyncMock()
 
         response = client.delete("/api/v1/agents/test-agent-001")
@@ -81,15 +91,16 @@ def test_terminate_agent_endpoint(client: TestClient) -> None:
 
 def test_get_agent_status_endpoint(client: TestClient) -> None:
     """Test get agent status endpoint."""
-    with patch("agentcore.agent_runtime.routers.agents._lifecycle_manager") as mock_lifecycle:
+    with patch(
+        "agentcore.agent_runtime.routers.agents._lifecycle_manager"
+    ) as mock_lifecycle:
         from agentcore.agent_runtime.models.agent_state import AgentExecutionState
-        from datetime import datetime
 
         mock_state = AgentExecutionState(
             agent_id="test-agent-001",
             status="running",
-            created_at=datetime.now(),
-            last_updated=datetime.now(),
+            created_at=datetime.now(UTC),
+            last_updated=datetime.now(UTC),
         )
         mock_lifecycle.get_agent_status = AsyncMock(return_value=mock_state)
 
@@ -103,16 +114,19 @@ def test_get_agent_status_endpoint(client: TestClient) -> None:
 
 def test_list_agents_endpoint(client: TestClient) -> None:
     """Test list agents endpoint."""
-    with patch("agentcore.agent_runtime.routers.agents._lifecycle_manager") as mock_lifecycle:
-        from agentcore.agent_runtime.models.agent_state import AgentExecutionState
+    with patch(
+        "agentcore.agent_runtime.routers.agents._lifecycle_manager"
+    ) as mock_lifecycle:
         from datetime import datetime
+
+        from agentcore.agent_runtime.models.agent_state import AgentExecutionState
 
         mock_states = [
             AgentExecutionState(
                 agent_id=f"test-agent-{i}",
                 status="running",
-                created_at=datetime.now(),
-                last_updated=datetime.now(),
+                created_at=datetime.now(UTC),
+                last_updated=datetime.now(UTC),
             )
             for i in range(3)
         ]

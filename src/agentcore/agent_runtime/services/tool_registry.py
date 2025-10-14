@@ -2,12 +2,14 @@
 
 import asyncio
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 
-from ..models.tool_integration import ToolDefinition
 from ..engines.react_models import ToolCall, ToolResult
+from ..models.tool_integration import ToolDefinition
 
 logger = structlog.get_logger()
 
@@ -88,12 +90,9 @@ class ToolRegistry:
         descriptions = []
         for tool in self._tools.values():
             param_str = ", ".join(
-                f"{k}: {v.get('type', 'any')}"
-                for k, v in tool.parameters.items()
+                f"{k}: {v.get('type', 'any')}" for k, v in tool.parameters.items()
             )
-            descriptions.append(
-                f"- {tool.name}({param_str}): {tool.description}"
-            )
+            descriptions.append(f"- {tool.name}({param_str}): {tool.description}")
         return "\n".join(descriptions)
 
     async def execute_tool(
@@ -208,8 +207,7 @@ def get_current_time_tool() -> str:
     Returns:
         Current time as ISO string
     """
-    from datetime import datetime
-    return datetime.now().isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 async def echo_tool(message: str) -> str:

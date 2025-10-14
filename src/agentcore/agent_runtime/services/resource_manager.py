@@ -10,7 +10,7 @@ import asyncio
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -73,7 +73,7 @@ class ResourceAlert:
         self.agent_id = agent_id
         self.threshold = threshold
         self.current_value = current_value
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(UTC)
         self.acknowledged = False
 
 
@@ -104,7 +104,7 @@ class ResourceUsage:
     def __post_init__(self) -> None:
         """Set timestamp if not provided."""
         if self.timestamp is None:
-            self.timestamp = datetime.now()
+            self.timestamp = datetime.now(UTC)
 
 
 class ResourceMonitor:
@@ -141,7 +141,9 @@ class ResourceMonitor:
             self._monitoring_task = asyncio.create_task(
                 self._monitor_loop(usage_provider)
             )
-            logger.info("resource_monitor_started", interval_seconds=self._check_interval)
+            logger.info(
+                "resource_monitor_started", interval_seconds=self._check_interval
+            )
 
     async def stop(self) -> None:
         """Stop resource monitoring."""
@@ -219,7 +221,7 @@ class ResourceMonitor:
             List of resource usage snapshots
         """
         history = self._usage_history.get(resource_type, [])
-        cutoff_time = datetime.now() - timedelta(minutes=duration_minutes)
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=duration_minutes)
 
         return [
             usage
@@ -369,7 +371,7 @@ class ResourceMonitor:
             threshold: Threshold value
             current_value: Current value
         """
-        alert_id = f"{resource_type.value}_{datetime.now().timestamp()}"
+        alert_id = f"{resource_type.value}_{datetime.now(UTC).timestamp()}"
 
         alert = ResourceAlert(
             alert_id=alert_id,
@@ -404,7 +406,7 @@ class ResourceMonitor:
 
     def _cleanup_history(self) -> None:
         """Clean up old history entries."""
-        cutoff_time = datetime.now() - timedelta(hours=1)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=1)
 
         for resource_key in list(self._usage_history.keys()):
             history = self._usage_history[resource_key]
@@ -459,7 +461,7 @@ class DynamicScaler:
         # Check cooldown
         last_action = self._last_scale_action.get(philosophy.value)
         if last_action:
-            cooldown_elapsed = (datetime.now() - last_action).total_seconds()
+            cooldown_elapsed = (datetime.now(UTC) - last_action).total_seconds()
             if cooldown_elapsed < self._cooldown_seconds:
                 return False
 
@@ -490,7 +492,7 @@ class DynamicScaler:
         # Check cooldown
         last_action = self._last_scale_action.get(philosophy.value)
         if last_action:
-            cooldown_elapsed = (datetime.now() - last_action).total_seconds()
+            cooldown_elapsed = (datetime.now(UTC) - last_action).total_seconds()
             if cooldown_elapsed < self._cooldown_seconds:
                 return False
 
@@ -508,7 +510,7 @@ class DynamicScaler:
             philosophy: Agent philosophy type
             new_scale: New scale value
         """
-        self._last_scale_action[philosophy.value] = datetime.now()
+        self._last_scale_action[philosophy.value] = datetime.now(UTC)
         self._current_scale[philosophy.value] = new_scale
 
         logger.info(
@@ -552,9 +554,7 @@ class ResourceManager:
         self._enable_dynamic_scaling = enable_dynamic_scaling
 
         # Initialize components
-        self._monitor = (
-            ResourceMonitor(self._limits) if enable_monitoring else None
-        )
+        self._monitor = ResourceMonitor(self._limits) if enable_monitoring else None
         self._scaler = DynamicScaler() if enable_dynamic_scaling else None
         self._optimizer = get_performance_optimizer()
 

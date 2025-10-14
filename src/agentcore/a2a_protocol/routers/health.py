@@ -4,12 +4,12 @@ Health Check Endpoints
 System health and readiness endpoints for monitoring and load balancing.
 """
 
-import asyncio
-from typing import Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
-import structlog
 
 from agentcore.a2a_protocol.config import settings
 from agentcore.a2a_protocol.database import check_db_health
@@ -20,17 +20,19 @@ logger = structlog.get_logger()
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+
     status: str
     version: str
     timestamp: str
-    checks: Dict[str, Dict[str, Any]]
+    checks: dict[str, dict[str, Any]]
 
 
 class ReadinessResponse(BaseModel):
     """Readiness check response model."""
+
     status: str
     ready: bool
-    checks: Dict[str, bool]
+    checks: dict[str, bool]
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -41,19 +43,15 @@ async def health_check() -> HealthResponse:
     Returns the service status and version information.
     Used by monitoring systems to verify service is running.
     """
-    import datetime
     from agentcore import __version__
 
     return HealthResponse(
         status="healthy",
         version=__version__,
-        timestamp=datetime.datetime.utcnow().isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         checks={
-            "application": {
-                "status": "healthy",
-                "details": "Application is running"
-            }
-        }
+            "application": {"status": "healthy", "details": "Application is running"}
+        },
     )
 
 
@@ -105,19 +103,14 @@ async def readiness_check() -> ReadinessResponse:
 
     if not all_ready:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service not ready"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready"
         )
 
-    return ReadinessResponse(
-        status="ready",
-        ready=all_ready,
-        checks=checks
-    )
+    return ReadinessResponse(status="ready", ready=all_ready, checks=checks)
 
 
 @router.get("/health/live")
-async def liveness_check() -> Dict[str, str]:
+async def liveness_check() -> dict[str, str]:
     """
     Liveness check endpoint.
 

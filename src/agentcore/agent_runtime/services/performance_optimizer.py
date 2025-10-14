@@ -11,7 +11,7 @@ import gc
 import weakref
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -34,19 +34,19 @@ class CacheEntry:
             ttl_seconds: Time-to-live in seconds
         """
         self.value = value
-        self.created_at = datetime.now()
+        self.created_at = datetime.now(UTC)
         self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
         self.access_count = 0
         self.last_accessed = self.created_at
 
     def is_expired(self) -> bool:
         """Check if cache entry has expired."""
-        return datetime.now() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def access(self) -> Any:
         """Access cached value and update metrics."""
         self.access_count += 1
-        self.last_accessed = datetime.now()
+        self.last_accessed = datetime.now(UTC)
         return self.value
 
 
@@ -146,9 +146,7 @@ class PerformanceCache:
 
     def _evict_expired(self) -> None:
         """Evict all expired entries."""
-        expired_keys = [
-            key for key, entry in self._cache.items() if entry.is_expired()
-        ]
+        expired_keys = [key for key, entry in self._cache.items() if entry.is_expired()]
         for key in expired_keys:
             del self._cache[key]
 
@@ -440,9 +438,9 @@ class PerformanceOptimizer:
         self._predictor = ResourcePredictor()
 
         # Weak references to tracked agents for memory optimization
-        self._tracked_agents: weakref.WeakValueDictionary[
-            str, AgentExecutionState
-        ] = weakref.WeakValueDictionary()
+        self._tracked_agents: weakref.WeakValueDictionary[str, AgentExecutionState] = (
+            weakref.WeakValueDictionary()
+        )
 
         # Performance metrics
         self._optimization_metrics = {

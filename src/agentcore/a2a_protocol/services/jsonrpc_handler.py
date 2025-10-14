@@ -5,21 +5,22 @@ Core service for processing JSON-RPC 2.0 requests with A2A protocol extensions.
 Handles request parsing, validation, method routing, and response generation.
 """
 
-import json
 import asyncio
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+import json
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from pydantic import ValidationError
 
 from agentcore.a2a_protocol.models.jsonrpc import (
-    JsonRpcRequest,
-    JsonRpcResponse,
     JsonRpcBatchRequest,
     JsonRpcBatchResponse,
     JsonRpcError,
     JsonRpcErrorCode,
+    JsonRpcRequest,
+    JsonRpcResponse,
     MessageEnvelope,
     create_error_response,
     create_success_response,
@@ -29,6 +30,12 @@ logger = structlog.get_logger()
 
 # Type alias for JSON-RPC method handlers
 JsonRpcHandler = Callable[[JsonRpcRequest], Any]
+
+
+class MethodNotFoundException(Exception):
+    """Exception raised when a JSON-RPC method is not found."""
+
+    pass
 
 
 class JsonRpcProcessor:
@@ -45,8 +52,8 @@ class JsonRpcProcessor:
 
     def __init__(self) -> None:
         """Initialize the JSON-RPC processor."""
-        self.methods: Dict[str, JsonRpcHandler] = {}
-        self._middleware_stack: List[Callable] = []
+        self.methods: dict[str, JsonRpcHandler] = {}
+        self._middleware_stack: list[Callable] = []
 
     def register_method(self, name: str, handler: JsonRpcHandler) -> None:
         """
@@ -72,7 +79,7 @@ class JsonRpcProcessor:
         """Add middleware to the processing stack."""
         self._middleware_stack.append(middleware)
 
-    async def process_raw_message(self, raw_data: Union[str, bytes]) -> Optional[str]:
+    async def process_raw_message(self, raw_data: str | bytes) -> str | None:
         """
         Process a raw JSON-RPC message.
 
@@ -85,7 +92,7 @@ class JsonRpcProcessor:
         try:
             # Parse JSON
             if isinstance(raw_data, bytes):
-                raw_data = raw_data.decode('utf-8')
+                raw_data = raw_data.decode("utf-8")
 
             parsed_data = json.loads(raw_data)
 
@@ -103,23 +110,24 @@ class JsonRpcProcessor:
             error_response = create_error_response(
                 request_id=None,
                 error_code=JsonRpcErrorCode.PARSE_ERROR,
-                data={"details": str(e)}
+                data={"details": str(e)},
             )
             return json.dumps(error_response.model_dump(exclude_none=True))
 
         except Exception as e:
-            logger.error("Unexpected error processing message", error=str(e), exc_info=True)
+            logger.error(
+                "Unexpected error processing message", error=str(e), exc_info=True
+            )
             error_response = create_error_response(
                 request_id=None,
                 error_code=JsonRpcErrorCode.INTERNAL_ERROR,
-                data={"details": str(e)}
+                data={"details": str(e)},
             )
             return json.dumps(error_response.model_dump(exclude_none=True))
 
     async def process_message(
-        self,
-        data: Union[Dict[str, Any], List[Dict[str, Any]]]
-    ) -> Optional[Union[JsonRpcResponse, JsonRpcBatchResponse]]:
+        self, data: dict[str, Any] | list[dict[str, Any]]
+    ) -> JsonRpcResponse | JsonRpcBatchResponse | None:
         """
         Process a parsed JSON-RPC message.
 
@@ -140,17 +148,21 @@ class JsonRpcProcessor:
         except Exception as e:
             logger.error("Error processing message", error=str(e), exc_info=True)
             return create_error_response(
-                request_id=data.get('id') if isinstance(data, dict) else None,
-                error_code=JsonRpcErrorCode.INTERNAL_ERROR
+                request_id=data.get("id") if isinstance(data, dict) else None,
+                error_code=JsonRpcErrorCode.INTERNAL_ERROR,
             )
 
-    async def _process_batch(self, batch_data: List[Dict[str, Any]]) -> JsonRpcBatchResponse:
+    async def _process_batch(
+        self, batch_data: list[dict[str, Any]]
+    ) -> JsonRpcBatchResponse:
         """Process a batch of JSON-RPC requests."""
         if not batch_data:
             # Empty batch is an error
-            return JsonRpcBatchResponse(responses=[
-                create_error_response(None, JsonRpcErrorCode.INVALID_REQUEST)
-            ])
+            return JsonRpcBatchResponse(
+                responses=[
+                    create_error_response(None, JsonRpcErrorCode.INVALID_REQUEST)
+                ]
+            )
 
         # Process all requests concurrently
         tasks = []
@@ -174,9 +186,11 @@ class JsonRpcProcessor:
 
         return JsonRpcBatchResponse(responses=responses)
 
-    async def _process_single_request(self, request_data: Dict[str, Any]) -> Optional[JsonRpcResponse]:
+    async def _process_single_request(
+        self, request_data: dict[str, Any]
+    ) -> JsonRpcResponse | None:
         """Process a single JSON-RPC request."""
-        request_id = request_data.get('id')
+        request_id = request_data.get("id")
 
         try:
             # Validate request structure
@@ -188,7 +202,7 @@ class JsonRpcProcessor:
                 method=request.method,
                 request_id=request_id,
                 is_notification=request.is_notification,
-                trace_id=request.a2a_context.trace_id if request.a2a_context else None
+                trace_id=request.a2a_context.trace_id if request.a2a_context else None,
             )
 
             # Handle notifications (no response expected)
@@ -201,19 +215,30 @@ class JsonRpcProcessor:
             return create_success_response(request_id, result)
 
         except ValidationError as e:
-            logger.error("Request validation failed", error=str(e), request_id=request_id)
+            logger.error(
+                "Request validation failed", error=str(e), request_id=request_id
+            )
             return create_error_response(
                 request_id,
                 JsonRpcErrorCode.INVALID_REQUEST,
-                data={"validation_errors": e.errors()}
+                data={"validation_errors": e.errors()},
+            )
+
+        except MethodNotFoundException as e:
+            logger.error("Method not found", error=str(e), request_id=request_id)
+            return create_error_response(
+                request_id, JsonRpcErrorCode.METHOD_NOT_FOUND, data={"details": str(e)}
             )
 
         except Exception as e:
-            logger.error("Request processing failed", error=str(e), request_id=request_id, exc_info=True)
+            logger.error(
+                "Request processing failed",
+                error=str(e),
+                request_id=request_id,
+                exc_info=True,
+            )
             return create_error_response(
-                request_id,
-                JsonRpcErrorCode.INTERNAL_ERROR,
-                data={"details": str(e)}
+                request_id, JsonRpcErrorCode.INTERNAL_ERROR, data={"details": str(e)}
             )
 
     async def _execute_method(self, request: JsonRpcRequest) -> Any:
@@ -227,13 +252,14 @@ class JsonRpcProcessor:
             Method result
 
         Raises:
+            MethodNotFoundException: If method is not registered
             Exception: If method execution fails
         """
         method_name = request.method
 
         # Check if method is registered
         if method_name not in self.methods:
-            raise Exception(f"Method '{method_name}' not found")
+            raise MethodNotFoundException(f"Method '{method_name}' not found")
 
         handler = self.methods[method_name]
 
@@ -256,7 +282,7 @@ class JsonRpcProcessor:
                 method=method_name,
                 error=str(e),
                 request_id=request.id,
-                exc_info=True
+                exc_info=True,
             )
             raise
 
@@ -271,37 +297,37 @@ def register_jsonrpc_method(name: str):
 
     Usage:
         @register_jsonrpc_method("agent.register")
-        async def handle_agent_register(request: JsonRpcRequest) -> Dict[str, Any]:
+        async def handle_agent_register(request: JsonRpcRequest) -> dict[str, Any]:
             # Handle the request
             return {"status": "registered"}
     """
+
     def decorator(func: JsonRpcHandler):
         jsonrpc_processor.register_method(name, func)
         return func
+
     return decorator
 
 
 # Built-in methods
 @register_jsonrpc_method("rpc.ping")
-async def handle_ping(request: JsonRpcRequest) -> Dict[str, str]:
+async def handle_ping(request: JsonRpcRequest) -> dict[str, str]:
     """Built-in ping method for testing connectivity."""
     return {
         "pong": True,
-        "timestamp": datetime.utcnow().isoformat(),
-        "trace_id": request.a2a_context.trace_id if request.a2a_context else None
+        "timestamp": datetime.now(UTC).isoformat(),
+        "trace_id": request.a2a_context.trace_id if request.a2a_context else None,
     }
 
 
 @register_jsonrpc_method("rpc.methods")
-async def handle_list_methods(request: JsonRpcRequest) -> Dict[str, List[str]]:
+async def handle_list_methods(request: JsonRpcRequest) -> dict[str, list[str]]:
     """List all registered JSON-RPC methods."""
-    return {
-        "methods": list(jsonrpc_processor.methods.keys())
-    }
+    return {"methods": list(jsonrpc_processor.methods.keys())}
 
 
 @register_jsonrpc_method("rpc.version")
-async def handle_version(request: JsonRpcRequest) -> Dict[str, str]:
+async def handle_version(request: JsonRpcRequest) -> dict[str, str]:
     """Return A2A protocol and JSON-RPC version information."""
     from agentcore import __version__
     from agentcore.a2a_protocol.config import settings

@@ -6,18 +6,17 @@ Provides in-memory storage with future support for persistence backends.
 """
 
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
 from agentcore.a2a_protocol.models.agent import (
     AgentCard,
-    AgentStatus,
     AgentDiscoveryQuery,
     AgentDiscoveryResponse,
     AgentRegistrationRequest,
     AgentRegistrationResponse,
+    AgentStatus,
 )
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 
@@ -35,8 +34,8 @@ class AgentManager:
     def __init__(self) -> None:
         """Initialize the agent manager."""
         # In-memory storage (TODO: Replace with Redis/PostgreSQL)
-        self._agents: Dict[str, AgentCard] = {}
-        self._agent_index: Dict[str, Set[str]] = {
+        self._agents: dict[str, AgentCard] = {}
+        self._agent_index: dict[str, set[str]] = {
             "capabilities": {},
             "tags": {},
             "categories": {},
@@ -45,7 +44,9 @@ class AgentManager:
 
         logger.info("Agent manager initialized")
 
-    async def register_agent(self, request: AgentRegistrationRequest) -> AgentRegistrationResponse:
+    async def register_agent(
+        self, request: AgentRegistrationRequest
+    ) -> AgentRegistrationResponse:
         """
         Register a new agent or update existing registration.
 
@@ -65,13 +66,15 @@ class AgentManager:
             "Registering agent",
             agent_id=agent_id,
             agent_name=agent_card.agent_name,
-            override=request.override_existing
+            override=request.override_existing,
         )
 
         # Check if agent already exists
         existing_agent = self._agents.get(agent_id)
         if existing_agent and not request.override_existing:
-            raise ValueError(f"Agent {agent_id} already registered. Use override_existing=true to update.")
+            raise ValueError(
+                f"Agent {agent_id} already registered. Use override_existing=true to update."
+            )
 
         # Validate agent card
         await self._validate_agent_card(agent_card)
@@ -79,8 +82,8 @@ class AgentManager:
         # Update timestamps
         if existing_agent:
             agent_card.created_at = existing_agent.created_at
-        agent_card.updated_at = datetime.utcnow()
-        agent_card.last_seen = datetime.utcnow()
+        agent_card.updated_at = datetime.now(UTC)
+        agent_card.last_seen = datetime.now(UTC)
 
         # Store agent
         self._agents[agent_id] = agent_card
@@ -96,17 +99,17 @@ class AgentManager:
             agent_id=agent_id,
             agent_name=agent_card.agent_name,
             capabilities=len(agent_card.capabilities),
-            endpoints=len(agent_card.endpoints)
+            endpoints=len(agent_card.endpoints),
         )
 
         return AgentRegistrationResponse(
             agent_id=agent_id,
             status="registered",
             discovery_url=discovery_url,
-            message="Agent registered successfully"
+            message="Agent registered successfully",
         )
 
-    async def get_agent(self, agent_id: str) -> Optional[AgentCard]:
+    async def get_agent(self, agent_id: str) -> AgentCard | None:
         """
         Get agent by ID.
 
@@ -121,7 +124,7 @@ class AgentManager:
             logger.debug("Agent retrieved", agent_id=agent_id)
         return agent
 
-    async def get_agent_summary(self, agent_id: str) -> Optional[Dict]:
+    async def get_agent_summary(self, agent_id: str) -> dict | None:
         """
         Get agent discovery summary by ID.
 
@@ -136,7 +139,9 @@ class AgentManager:
             return agent.to_discovery_summary()
         return None
 
-    async def discover_agents(self, query: AgentDiscoveryQuery) -> AgentDiscoveryResponse:
+    async def discover_agents(
+        self, query: AgentDiscoveryQuery
+    ) -> AgentDiscoveryResponse:
         """
         Discover agents based on query criteria.
 
@@ -152,7 +157,7 @@ class AgentManager:
             status=query.status,
             tags=query.tags,
             limit=query.limit,
-            offset=query.offset
+            offset=query.offset,
         )
 
         # Get all agents
@@ -176,14 +181,14 @@ class AgentManager:
             "Agent discovery completed",
             total_found=total_count,
             returned=len(agent_summaries),
-            has_more=has_more
+            has_more=has_more,
         )
 
         return AgentDiscoveryResponse(
             agents=agent_summaries,
             total_count=total_count,
             has_more=has_more,
-            query=query
+            query=query,
         )
 
     async def unregister_agent(self, agent_id: str) -> bool:
@@ -199,7 +204,9 @@ class AgentManager:
         agent = self._agents.pop(agent_id, None)
         if agent:
             self._remove_from_indexes(agent)
-            logger.info("Agent unregistered", agent_id=agent_id, agent_name=agent.agent_name)
+            logger.info(
+                "Agent unregistered", agent_id=agent_id, agent_name=agent.agent_name
+            )
             return True
 
         logger.warning("Attempted to unregister non-existent agent", agent_id=agent_id)
@@ -222,7 +229,7 @@ class AgentManager:
 
         old_status = agent.status
         agent.status = status
-        agent.updated_at = datetime.utcnow()
+        agent.updated_at = datetime.now(UTC)
 
         # Update indexes if status changed
         if old_status != status:
@@ -232,7 +239,7 @@ class AgentManager:
             "Agent status updated",
             agent_id=agent_id,
             old_status=old_status.value,
-            new_status=status.value
+            new_status=status.value,
         )
         return True
 
@@ -254,7 +261,7 @@ class AgentManager:
         logger.debug("Agent pinged", agent_id=agent_id)
         return True
 
-    async def list_all_agents(self) -> List[Dict]:
+    async def list_all_agents(self) -> list[dict]:
         """
         List all registered agents (summaries).
 
@@ -267,12 +274,14 @@ class AgentManager:
         """Get total number of registered agents."""
         return len(self._agents)
 
-    async def get_capabilities_index(self) -> Dict[str, int]:
+    async def get_capabilities_index(self) -> dict[str, int]:
         """Get capabilities index with agent counts."""
         capabilities_count = {}
         for agent in self._agents.values():
             for capability in agent.capabilities:
-                capabilities_count[capability.name] = capabilities_count.get(capability.name, 0) + 1
+                capabilities_count[capability.name] = (
+                    capabilities_count.get(capability.name, 0) + 1
+                )
         return capabilities_count
 
     async def cleanup_inactive_agents(self, max_inactive_hours: int = 24) -> int:
@@ -285,7 +294,7 @@ class AgentManager:
         Returns:
             Number of agents removed
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=max_inactive_hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=max_inactive_hours)
         agents_to_remove = []
 
         for agent_id, agent in self._agents.items():
@@ -301,7 +310,7 @@ class AgentManager:
             logger.info(
                 "Inactive agents cleaned up",
                 removed_count=removed_count,
-                max_inactive_hours=max_inactive_hours
+                max_inactive_hours=max_inactive_hours,
             )
 
         return removed_count
@@ -329,7 +338,9 @@ class AgentManager:
 
         logger.debug("Agent card validation passed", agent_id=agent_card.agent_id)
 
-    def _filter_agents(self, agents: List[AgentCard], query: AgentDiscoveryQuery) -> List[AgentCard]:
+    def _filter_agents(
+        self, agents: list[AgentCard], query: AgentDiscoveryQuery
+    ) -> list[AgentCard]:
         """
         Filter agents based on discovery query.
 
@@ -349,21 +360,24 @@ class AgentManager:
         # Filter by capabilities
         if query.capabilities:
             filtered = [
-                a for a in filtered
+                a
+                for a in filtered
                 if all(a.has_capability(cap) for cap in query.capabilities)
             ]
 
         # Filter by tags
         if query.tags and query.tags:
             filtered = [
-                a for a in filtered
+                a
+                for a in filtered
                 if a.metadata and all(tag in a.metadata.tags for tag in query.tags)
             ]
 
         # Filter by category
         if query.category:
             filtered = [
-                a for a in filtered
+                a
+                for a in filtered
                 if a.metadata and a.metadata.category == query.category
             ]
 

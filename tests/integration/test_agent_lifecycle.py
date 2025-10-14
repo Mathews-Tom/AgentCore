@@ -27,8 +27,9 @@ class TestAgentLifecycle:
         assert response.status_code == 200
         data = response.json()
         assert "result" in data
-        assert data["result"]["success"] is True
         assert data["result"]["agent_id"] == sample_agent_card["agent_id"]
+        assert data["result"]["status"] == "registered"
+        assert "discovery_url" in data["result"]
 
     async def test_agent_get(
         self,
@@ -53,7 +54,7 @@ class TestAgentLifecycle:
         data = response.json()
         assert "result" in data
         assert data["result"]["agent"]["agent_id"] == sample_agent_card["agent_id"]
-        assert data["result"]["agent"]["name"] == sample_agent_card["name"]
+        assert data["result"]["agent"]["agent_name"] == sample_agent_card["agent_name"]
 
     async def test_agent_discover_by_capability(
         self,

@@ -1,7 +1,7 @@
 """Agent state persistence service with database integration."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -133,7 +133,7 @@ class StatePersistenceService:
                 checksum=checksum,
                 tags=snapshot.tags,
                 retention_days=self._retention_days,
-                expires_at=datetime.now() + timedelta(days=self._retention_days),
+                expires_at=datetime.now(UTC) + timedelta(days=self._retention_days),
             )
 
             # Cache metadata
@@ -403,7 +403,7 @@ class StatePersistenceService:
             Number of snapshots deleted
         """
         deleted_count = 0
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         for snapshot_id, metadata in list(self._backup_metadata.items()):
             if metadata.expires_at and metadata.expires_at < now:

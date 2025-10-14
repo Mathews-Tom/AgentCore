@@ -5,14 +5,15 @@ FastAPI router for handling JSON-RPC 2.0 requests over HTTP and WebSocket.
 Integrates with the JSON-RPC processor service for request handling.
 """
 
-from typing import Any, Dict, List, Union
+from datetime import UTC, datetime
+from typing import Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-import structlog
 
+from agentcore.a2a_protocol.models.jsonrpc import JsonRpcBatchResponse, JsonRpcErrorCode
 from agentcore.a2a_protocol.services.jsonrpc_handler import jsonrpc_processor
-from agentcore.a2a_protocol.models.jsonrpc import JsonRpcErrorCode
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -20,8 +21,7 @@ logger = structlog.get_logger()
 
 @router.post("/jsonrpc", summary="JSON-RPC 2.0 Endpoint")
 async def jsonrpc_endpoint(
-    request: Request,
-    raw_data: Union[Dict[str, Any], List[Dict[str, Any]]]
+    request: Request, raw_data: dict[str, Any] | list[dict[str, Any]]
 ) -> JSONResponse:
     """
     Main JSON-RPC 2.0 endpoint for processing requests.
@@ -46,7 +46,7 @@ async def jsonrpc_endpoint(
             client_ip=client_ip,
             user_agent=user_agent,
             content_type=request.headers.get("content-type"),
-            is_batch=isinstance(raw_data, list)
+            is_batch=isinstance(raw_data, list),
         )
 
         # Process the request through JSON-RPC handler
@@ -58,6 +58,12 @@ async def jsonrpc_endpoint(
 
         # Return JSON response
         response_data = response.model_dump(exclude_none=True)
+
+        # For batch responses, unwrap the "responses" key to return a bare array
+        # as per JSON-RPC 2.0 spec
+        if isinstance(response, JsonRpcBatchResponse):
+            response_data = response_data.get("responses", [])
+
         return JSONResponse(content=response_data)
 
     except Exception as e:
@@ -69,19 +75,18 @@ async def jsonrpc_endpoint(
             "error": {
                 "code": JsonRpcErrorCode.INTERNAL_ERROR.value,
                 "message": "Internal server error",
-                "data": {"details": str(e)}
+                "data": {"details": str(e)},
             },
-            "id": None
+            "id": None,
         }
 
         return JSONResponse(
-            content=error_response,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            content=error_response, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
 @router.get("/jsonrpc/methods", summary="List JSON-RPC Methods")
-async def list_jsonrpc_methods() -> Dict[str, List[str]]:
+async def list_jsonrpc_methods() -> dict[str, list[str]]:
     """
     List all registered JSON-RPC methods.
 
@@ -90,23 +95,20 @@ async def list_jsonrpc_methods() -> Dict[str, List[str]]:
     Returns:
         Dictionary containing list of available methods
     """
-    return {
-        "methods": list(jsonrpc_processor.methods.keys())
-    }
+    return {"methods": list(jsonrpc_processor.methods.keys())}
 
 
 @router.post("/jsonrpc/ping", summary="JSON-RPC Ping Test")
-async def jsonrpc_ping() -> Dict[str, Any]:
+async def jsonrpc_ping() -> dict[str, Any]:
     """
     Simple ping endpoint for testing JSON-RPC connectivity.
 
     Returns:
         Ping response with timestamp
     """
-    from datetime import datetime
 
     return {
         "pong": True,
-        "timestamp": datetime.utcnow().isoformat(),
-        "service": "agentcore-a2a-protocol"
+        "timestamp": datetime.now(UTC).isoformat(),
+        "service": "agentcore-a2a-protocol",
     }

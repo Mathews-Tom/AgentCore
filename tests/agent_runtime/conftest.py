@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock
-from collections.abc import AsyncGenerator
 
 import docker
 import pytest
@@ -33,9 +33,8 @@ from agentcore.agent_runtime.models.sandbox import (
     SandboxConfig,
 )
 from agentcore.agent_runtime.models.tool_integration import ToolDefinition
-from agentcore.agent_runtime.services.container_manager import ContainerManager
 from agentcore.agent_runtime.services.a2a_client import A2AClient
-
+from agentcore.agent_runtime.services.container_manager import ContainerManager
 
 # ============================================================================
 # Agent Configuration Fixtures
@@ -52,11 +51,9 @@ def agent_id() -> str:
 def resource_limits() -> ResourceLimits:
     """Return default resource limits for testing."""
     return ResourceLimits(
-        max_cpu_percent=50.0,
+        max_cpu_cores=0.5,
         max_memory_mb=512,
-        max_disk_mb=1024,
-        max_network_mbps=10.0,
-        max_tools=10,
+        storage_quota_mb=1024,
     )
 
 
@@ -64,16 +61,14 @@ def resource_limits() -> ResourceLimits:
 def security_profile() -> SecurityProfile:
     """Return default security profile for testing."""
     return SecurityProfile(
-        allow_internet_access=False,
-        allowed_domains=[],
-        allow_code_execution=True,
-        allow_file_write=True,
-        restricted_paths=["/etc", "/root"],
+        profile_name="standard",
     )
 
 
 @pytest.fixture
-def agent_config(agent_id: str, resource_limits: ResourceLimits, security_profile: SecurityProfile) -> AgentConfig:
+def agent_config(
+    agent_id: str, resource_limits: ResourceLimits, security_profile: SecurityProfile
+) -> AgentConfig:
     """Return test agent configuration."""
     return AgentConfig(
         agent_id=agent_id,
@@ -172,14 +167,16 @@ def plugin_config() -> PluginConfig:
 
 
 @pytest.fixture
-def plugin_state(plugin_metadata: PluginMetadata, plugin_config: PluginConfig) -> PluginState:
+def plugin_state(
+    plugin_metadata: PluginMetadata, plugin_config: PluginConfig
+) -> PluginState:
     """Return test plugin state."""
     return PluginState(
         plugin_id="com.test.plugin",
         status=PluginStatus.LOADED,
         metadata=plugin_metadata,
         config=plugin_config,
-        load_time=datetime.now(),
+        load_time=datetime.now(UTC),
     )
 
 
@@ -250,14 +247,24 @@ def mock_docker_container() -> Mock:
     container.unpause = Mock()
     container.remove = Mock()
     container.reload = Mock()
-    container.stats = Mock(return_value=iter([{
-        "cpu_stats": {"cpu_usage": {"total_usage": 1000000000}, "system_cpu_usage": 2000000000},
-        "precpu_stats": {"cpu_usage": {"total_usage": 500000000}, "system_cpu_usage": 1000000000},
-        "memory_stats": {"usage": 268435456, "limit": 536870912},
-        "networks": {
-            "eth0": {"rx_bytes": 1048576, "tx_bytes": 524288}
-        },
-    }]))
+    container.stats = Mock(
+        return_value=iter(
+            [
+                {
+                    "cpu_stats": {
+                        "cpu_usage": {"total_usage": 1000000000},
+                        "system_cpu_usage": 2000000000,
+                    },
+                    "precpu_stats": {
+                        "cpu_usage": {"total_usage": 500000000},
+                        "system_cpu_usage": 1000000000,
+                    },
+                    "memory_stats": {"usage": 268435456, "limit": 536870912},
+                    "networks": {"eth0": {"rx_bytes": 1048576, "tx_bytes": 524288}},
+                }
+            ]
+        )
+    )
     container.logs = Mock(return_value=b"test logs")
 
     return container
@@ -291,13 +298,15 @@ def mock_container_manager(mock_docker_client: Mock) -> ContainerManager:
     manager.unpause_container = AsyncMock()
     manager.remove_container = AsyncMock()
     manager.container_is_running = AsyncMock(return_value=True)
-    manager.get_container_stats = AsyncMock(return_value={
-        "cpu_percent": 50.0,
-        "memory_usage_mb": 256.0,
-        "memory_percent": 50.0,
-        "network_rx_mb": 1.0,
-        "network_tx_mb": 0.5,
-    })
+    manager.get_container_stats = AsyncMock(
+        return_value={
+            "cpu_percent": 50.0,
+            "memory_usage_mb": 256.0,
+            "memory_percent": 50.0,
+            "network_rx_mb": 1.0,
+            "network_tx_mb": 0.5,
+        }
+    )
     manager.get_container_logs = AsyncMock(return_value="test logs")
     manager.cleanup_containers = AsyncMock()
 

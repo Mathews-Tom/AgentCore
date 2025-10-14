@@ -4,9 +4,9 @@ Event System Models
 Data models for event publishing, subscriptions, and notifications.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 class EventType(str, Enum):
     """Event type enumeration."""
+
     # Agent events
     AGENT_REGISTERED = "agent.registered"
     AGENT_UNREGISTERED = "agent.unregistered"
@@ -43,6 +44,7 @@ class EventType(str, Enum):
 
 class EventPriority(str, Enum):
     """Event priority levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -51,17 +53,28 @@ class EventPriority(str, Enum):
 
 class Event(BaseModel):
     """Base event model."""
-    event_id: str = Field(default_factory=lambda: str(uuid4()), description="Unique event identifier")
-    event_type: EventType = Field(..., description="Event type")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Event timestamp")
-    source: str = Field(..., description="Event source (agent_id, service_name, etc.)")
-    priority: EventPriority = Field(default=EventPriority.NORMAL, description="Event priority")
-    data: Dict[str, Any] = Field(default_factory=dict, description="Event payload data")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Event metadata")
-    correlation_id: Optional[str] = Field(None, description="Correlation ID for related events")
-    parent_event_id: Optional[str] = Field(None, description="Parent event ID for hierarchical events")
 
-    def to_notification(self) -> Dict[str, Any]:
+    event_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Unique event identifier"
+    )
+    event_type: EventType = Field(..., description="Event type")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Event timestamp"
+    )
+    source: str = Field(..., description="Event source (agent_id, service_name, etc.)")
+    priority: EventPriority = Field(
+        default=EventPriority.NORMAL, description="Event priority"
+    )
+    data: dict[str, Any] = Field(default_factory=dict, description="Event payload data")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Event metadata")
+    correlation_id: str | None = Field(
+        None, description="Correlation ID for related events"
+    )
+    parent_event_id: str | None = Field(
+        None, description="Parent event ID for hierarchical events"
+    )
+
+    def to_notification(self) -> dict[str, Any]:
         """Convert event to notification format."""
         return {
             "event_id": self.event_id,
@@ -78,12 +91,21 @@ class Event(BaseModel):
 
 class EventSubscription(BaseModel):
     """Event subscription configuration."""
-    subscription_id: str = Field(default_factory=lambda: str(uuid4()), description="Subscription ID")
-    subscriber_id: str = Field(..., description="Subscriber identifier (agent_id, connection_id)")
-    event_types: List[EventType] = Field(..., description="Event types to subscribe to")
-    filters: Dict[str, Any] = Field(default_factory=dict, description="Event filters")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Subscription creation time")
-    expires_at: Optional[datetime] = Field(None, description="Subscription expiration time")
+
+    subscription_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Subscription ID"
+    )
+    subscriber_id: str = Field(
+        ..., description="Subscriber identifier (agent_id, connection_id)"
+    )
+    event_types: list[EventType] = Field(..., description="Event types to subscribe to")
+    filters: dict[str, Any] = Field(default_factory=dict, description="Event filters")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Subscription creation time"
+    )
+    expires_at: datetime | None = Field(
+        None, description="Subscription expiration time"
+    )
     active: bool = Field(default=True, description="Subscription active status")
 
     def matches_event(self, event: Event) -> bool:
@@ -110,9 +132,9 @@ class EventSubscription(BaseModel):
         return True
 
     @staticmethod
-    def _get_nested_value(data: Dict[str, Any], key: str) -> Any:
+    def _get_nested_value(data: dict[str, Any], key: str) -> Any:
         """Get nested value from dictionary using dot notation."""
-        keys = key.split('.')
+        keys = key.split(".")
         value = data
         for k in keys:
             if isinstance(value, dict):
@@ -125,20 +147,29 @@ class EventSubscription(BaseModel):
         """Check if subscription is expired."""
         if not self.expires_at:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
 
 class DeadLetterMessage(BaseModel):
     """Dead letter queue message for failed event delivery."""
-    message_id: str = Field(default_factory=lambda: str(uuid4()), description="Message ID")
+
+    message_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Message ID"
+    )
     event: Event = Field(..., description="Failed event")
     subscriber_id: str = Field(..., description="Subscriber that failed to receive")
     failure_reason: str = Field(..., description="Failure reason")
     retry_count: int = Field(default=0, description="Number of retry attempts")
     max_retries: int = Field(default=3, description="Maximum retry attempts")
-    failed_at: datetime = Field(default_factory=datetime.utcnow, description="Initial failure timestamp")
-    last_retry_at: Optional[datetime] = Field(None, description="Last retry attempt timestamp")
-    next_retry_at: Optional[datetime] = Field(None, description="Next scheduled retry timestamp")
+    failed_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Initial failure timestamp"
+    )
+    last_retry_at: datetime | None = Field(
+        None, description="Last retry attempt timestamp"
+    )
+    next_retry_at: datetime | None = Field(
+        None, description="Next scheduled retry timestamp"
+    )
 
     def can_retry(self) -> bool:
         """Check if message can be retried."""
@@ -147,56 +178,69 @@ class DeadLetterMessage(BaseModel):
     def increment_retry(self) -> None:
         """Increment retry counter and update timestamps."""
         self.retry_count += 1
-        self.last_retry_at = datetime.utcnow()
+        self.last_retry_at = datetime.now(UTC)
 
 
 class EventPublishRequest(BaseModel):
     """Event publish request."""
+
     event_type: EventType = Field(..., description="Event type")
     source: str = Field(..., description="Event source")
-    data: Dict[str, Any] = Field(..., description="Event data")
-    priority: EventPriority = Field(default=EventPriority.NORMAL, description="Event priority")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Event metadata")
-    correlation_id: Optional[str] = Field(None, description="Correlation ID")
+    data: dict[str, Any] = Field(..., description="Event data")
+    priority: EventPriority = Field(
+        default=EventPriority.NORMAL, description="Event priority"
+    )
+    metadata: dict[str, Any] | None = Field(None, description="Event metadata")
+    correlation_id: str | None = Field(None, description="Correlation ID")
 
 
 class EventPublishResponse(BaseModel):
     """Event publish response."""
+
     success: bool = Field(..., description="Publish success status")
     event_id: str = Field(..., description="Published event ID")
     subscribers_notified: int = Field(..., description="Number of subscribers notified")
-    message: Optional[str] = Field(None, description="Response message")
+    message: str | None = Field(None, description="Response message")
 
 
 class EventSubscribeRequest(BaseModel):
     """Event subscription request."""
+
     subscriber_id: str = Field(..., description="Subscriber identifier")
-    event_types: List[EventType] = Field(..., description="Event types to subscribe to")
-    filters: Optional[Dict[str, Any]] = Field(None, description="Event filters")
-    ttl_seconds: Optional[int] = Field(None, description="Subscription TTL in seconds")
+    event_types: list[EventType] = Field(..., description="Event types to subscribe to")
+    filters: dict[str, Any] | None = Field(None, description="Event filters")
+    ttl_seconds: int | None = Field(None, description="Subscription TTL in seconds")
 
 
 class EventSubscribeResponse(BaseModel):
     """Event subscription response."""
+
     success: bool = Field(..., description="Subscription success status")
     subscription_id: str = Field(..., description="Subscription ID")
-    message: Optional[str] = Field(None, description="Response message")
+    message: str | None = Field(None, description="Response message")
 
 
 class EventUnsubscribeRequest(BaseModel):
     """Event unsubscribe request."""
+
     subscription_id: str = Field(..., description="Subscription ID to cancel")
 
 
 class EventUnsubscribeResponse(BaseModel):
     """Event unsubscribe response."""
+
     success: bool = Field(..., description="Unsubscribe success status")
-    message: Optional[str] = Field(None, description="Response message")
+    message: str | None = Field(None, description="Response message")
 
 
 class WebSocketMessage(BaseModel):
     """WebSocket message format."""
+
     message_type: str = Field(..., description="Message type (event, ping, pong, etc.)")
-    payload: Dict[str, Any] = Field(..., description="Message payload")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Message timestamp")
-    message_id: str = Field(default_factory=lambda: str(uuid4()), description="Message ID")
+    payload: dict[str, Any] = Field(..., description="Message payload")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Message timestamp"
+    )
+    message_id: str = Field(
+        default_factory=lambda: str(uuid4()), description="Message ID"
+    )

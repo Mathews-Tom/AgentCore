@@ -7,24 +7,24 @@ and message queuing for offline agents.
 
 import asyncio
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 from uuid import uuid4
 
 import structlog
 
 from agentcore.a2a_protocol.models.agent import AgentStatus
-from agentcore.a2a_protocol.models.jsonrpc import MessageEnvelope, JsonRpcRequest
+from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest, MessageEnvelope
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
 from agentcore.a2a_protocol.services.session_manager import session_manager
-
 
 logger = structlog.get_logger()
 
 
 class RoutingStrategy(str, Enum):
     """Message routing strategy."""
+
     ROUND_ROBIN = "round_robin"
     LEAST_LOADED = "least_loaded"
     RANDOM = "random"
@@ -35,6 +35,7 @@ class RoutingStrategy(str, Enum):
 
 class MessagePriority(str, Enum):
     """Message priority levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -50,20 +51,20 @@ class QueuedMessage:
         envelope: MessageEnvelope,
         target_agent_id: str,
         priority: MessagePriority = MessagePriority.NORMAL,
-        ttl_seconds: int = 3600
+        ttl_seconds: int = 3600,
     ):
         self.message_id = message_id
         self.envelope = envelope
         self.target_agent_id = target_agent_id
         self.priority = priority
-        self.queued_at = datetime.utcnow()
+        self.queued_at = datetime.now(UTC)
         self.expires_at = self.queued_at + timedelta(seconds=ttl_seconds)
         self.retry_count = 0
         self.max_retries = 3
 
     def is_expired(self) -> bool:
         """Check if message has expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def can_retry(self) -> bool:
         """Check if message can be retried."""
@@ -86,19 +87,19 @@ class MessageRouter:
         self.logger = structlog.get_logger()
 
         # Message queues for offline agents
-        self._message_queues: Dict[str, deque[QueuedMessage]] = defaultdict(deque)
+        self._message_queues: dict[str, deque[QueuedMessage]] = defaultdict(deque)
 
         # Agent load tracking (message count per agent)
-        self._agent_load: Dict[str, int] = defaultdict(int)
+        self._agent_load: dict[str, int] = defaultdict(int)
 
         # Round-robin counters per capability
-        self._round_robin_counters: Dict[str, int] = defaultdict(int)
+        self._round_robin_counters: dict[str, int] = defaultdict(int)
 
         # Circuit breaker state
-        self._circuit_breaker_failures: Dict[str, int] = defaultdict(int)
+        self._circuit_breaker_failures: dict[str, int] = defaultdict(int)
         self._circuit_breaker_threshold = 5
         self._circuit_breaker_timeout = 60  # seconds
-        self._circuit_breaker_reset_time: Dict[str, datetime] = {}
+        self._circuit_breaker_reset_time: dict[str, datetime] = {}
 
         # Routing statistics
         self._routing_stats = {
@@ -112,10 +113,10 @@ class MessageRouter:
     async def route_message(
         self,
         envelope: MessageEnvelope,
-        required_capabilities: Optional[List[str]] = None,
+        required_capabilities: list[str] | None = None,
         strategy: RoutingStrategy = RoutingStrategy.CAPABILITY_MATCH,
-        priority: MessagePriority = MessagePriority.NORMAL
-    ) -> Optional[str]:
+        priority: MessagePriority = MessagePriority.NORMAL,
+    ) -> str | None:
         """
         Route message to appropriate agent.
 
@@ -144,7 +145,7 @@ class MessageRouter:
                 self.logger.info(
                     "Message queued for offline agent",
                     target_agent=envelope.destination,
-                    message_id=envelope.message_id
+                    message_id=envelope.message_id,
                 )
                 return None
 
@@ -155,7 +156,8 @@ class MessageRouter:
                 # Get all active agents
                 all_agents = await agent_manager.list_all_agents()
                 candidates = [
-                    a["agent_id"] for a in all_agents
+                    a["agent_id"]
+                    for a in all_agents
                     if await self._is_agent_available(a["agent_id"])
                 ]
 
@@ -179,7 +181,7 @@ class MessageRouter:
                     message_id=envelope.message_id,
                     source=envelope.source,
                     target=selected_agent,
-                    strategy=strategy.value
+                    strategy=strategy.value,
                 )
                 return selected_agent
 
@@ -191,11 +193,11 @@ class MessageRouter:
                 "Message routing failed",
                 error=str(e),
                 message_id=envelope.message_id,
-                required_capabilities=required_capabilities
+                required_capabilities=required_capabilities,
             )
             raise
 
-    async def _find_capable_agents(self, required_capabilities: List[str]) -> List[str]:
+    async def _find_capable_agents(self, required_capabilities: list[str]) -> list[str]:
         """
         Find agents matching required capabilities.
 
@@ -209,7 +211,9 @@ class MessageRouter:
         matching_agents = []
 
         for capability in required_capabilities:
-            query_result = await agent_manager.discover_agents_by_capabilities([capability])
+            query_result = await agent_manager.discover_agents_by_capabilities(
+                [capability]
+            )
             if query_result:
                 agent_ids = [agent["agent_id"] for agent in query_result]
                 matching_agents.append(set(agent_ids))
@@ -240,7 +244,7 @@ class MessageRouter:
         """
         # Check circuit breaker
         if agent_id in self._circuit_breaker_reset_time:
-            if datetime.utcnow() < self._circuit_breaker_reset_time[agent_id]:
+            if datetime.now(UTC) < self._circuit_breaker_reset_time[agent_id]:
                 return False
             else:
                 # Reset circuit breaker
@@ -252,10 +256,8 @@ class MessageRouter:
         return agent is not None and agent.is_active()
 
     async def _select_agent(
-        self,
-        candidates: List[str],
-        strategy: RoutingStrategy
-    ) -> Optional[str]:
+        self, candidates: list[str], strategy: RoutingStrategy
+    ) -> str | None:
         """
         Select agent from candidates based on strategy.
 
@@ -277,6 +279,7 @@ class MessageRouter:
 
         elif strategy == RoutingStrategy.RANDOM:
             import random
+
             return random.choice(candidates)
 
         elif strategy == RoutingStrategy.COST_OPTIMIZED:
@@ -290,7 +293,7 @@ class MessageRouter:
         else:  # CAPABILITY_MATCH or default
             return candidates[0]
 
-    async def _round_robin_select(self, candidates: List[str]) -> str:
+    async def _round_robin_select(self, candidates: list[str]) -> str:
         """Round-robin selection across candidates."""
         key = "|".join(sorted(candidates))
         counter = self._round_robin_counters[key]
@@ -299,7 +302,7 @@ class MessageRouter:
         self._routing_stats["load_balanced"] += 1
         return selected
 
-    async def _least_loaded_select(self, candidates: List[str]) -> str:
+    async def _least_loaded_select(self, candidates: list[str]) -> str:
         """Select least loaded agent."""
         least_loaded = min(candidates, key=lambda a: self._agent_load.get(a, 0))
         self._routing_stats["load_balanced"] += 1
@@ -307,9 +310,9 @@ class MessageRouter:
 
     async def _cost_optimized_select(
         self,
-        candidates: List[str],
-        max_latency_ms: Optional[float] = None,
-        max_cost: Optional[float] = None
+        candidates: list[str],
+        max_latency_ms: float | None = None,
+        max_cost: float | None = None,
     ) -> str:
         """
         Cost-optimized agent selection with multi-objective scoring (A2A-017).
@@ -348,7 +351,9 @@ class MessageRouter:
         scored_agents.sort(key=lambda x: x[1], reverse=True)
         selected = scored_agents[0][0]
 
-        self._routing_stats["cost_optimized"] = self._routing_stats.get("cost_optimized", 0) + 1
+        self._routing_stats["cost_optimized"] = (
+            self._routing_stats.get("cost_optimized", 0) + 1
+        )
         return selected
 
     async def _deliver_message(self, envelope: MessageEnvelope, agent_id: str) -> None:
@@ -368,7 +373,7 @@ class MessageRouter:
             "Message delivered",
             message_id=envelope.message_id,
             agent_id=agent_id,
-            current_load=self._agent_load[agent_id]
+            current_load=self._agent_load[agent_id],
         )
 
     async def _queue_message(
@@ -376,7 +381,7 @@ class MessageRouter:
         envelope: MessageEnvelope,
         agent_id: str,
         priority: MessagePriority,
-        ttl_seconds: int = 3600
+        ttl_seconds: int = 3600,
     ) -> None:
         """
         Queue message for offline agent.
@@ -392,7 +397,7 @@ class MessageRouter:
             envelope=envelope,
             target_agent_id=agent_id,
             priority=priority,
-            ttl_seconds=ttl_seconds
+            ttl_seconds=ttl_seconds,
         )
 
         # Insert based on priority
@@ -410,7 +415,7 @@ class MessageRouter:
             message_id=envelope.message_id,
             agent_id=agent_id,
             priority=priority.value,
-            queue_size=len(queue)
+            queue_size=len(queue),
         )
 
     async def process_queued_messages(self, agent_id: str) -> int:
@@ -438,7 +443,7 @@ class MessageRouter:
                 self.logger.warning(
                     "Queued message expired",
                     message_id=message.message_id,
-                    agent_id=agent_id
+                    agent_id=agent_id,
                 )
                 continue
 
@@ -450,7 +455,7 @@ class MessageRouter:
                 self.logger.error(
                     "Failed to deliver queued message",
                     message_id=message.message_id,
-                    error=str(e)
+                    error=str(e),
                 )
 
                 message.increment_retry()
@@ -466,7 +471,7 @@ class MessageRouter:
             agent_id=agent_id,
             processed=processed,
             failed=len(failed),
-            remaining=len(queue)
+            remaining=len(queue),
         )
 
         return processed
@@ -510,14 +515,16 @@ class MessageRouter:
         self._circuit_breaker_failures[agent_id] += 1
 
         if self._circuit_breaker_failures[agent_id] >= self._circuit_breaker_threshold:
-            reset_time = datetime.utcnow() + timedelta(seconds=self._circuit_breaker_timeout)
+            reset_time = datetime.now(UTC) + timedelta(
+                seconds=self._circuit_breaker_timeout
+            )
             self._circuit_breaker_reset_time[agent_id] = reset_time
 
             self.logger.warning(
                 "Circuit breaker opened for agent",
                 agent_id=agent_id,
                 failures=self._circuit_breaker_failures[agent_id],
-                reset_at=reset_time.isoformat()
+                reset_at=reset_time.isoformat(),
             )
 
     def record_agent_success(self, agent_id: str) -> None:
@@ -529,8 +536,7 @@ class MessageRouter:
         """
         if agent_id in self._circuit_breaker_failures:
             self._circuit_breaker_failures[agent_id] = max(
-                0,
-                self._circuit_breaker_failures[agent_id] - 1
+                0, self._circuit_breaker_failures[agent_id] - 1
             )
 
     def decrease_agent_load(self, agent_id: str) -> None:
@@ -543,7 +549,7 @@ class MessageRouter:
         if agent_id in self._agent_load:
             self._agent_load[agent_id] = max(0, self._agent_load[agent_id] - 1)
 
-    def get_routing_stats(self) -> Dict[str, Any]:
+    def get_routing_stats(self) -> dict[str, Any]:
         """Get routing statistics."""
         total_queued = sum(len(q) for q in self._message_queues.values())
 
@@ -555,7 +561,7 @@ class MessageRouter:
             "total_agent_load": sum(self._agent_load.values()),
         }
 
-    def get_queue_info(self, agent_id: str) -> Dict[str, Any]:
+    def get_queue_info(self, agent_id: str) -> dict[str, Any]:
         """
         Get queue information for specific agent.
 
@@ -578,10 +584,10 @@ class MessageRouter:
         self,
         envelope: MessageEnvelope,
         session_id: str,
-        required_capabilities: Optional[List[str]] = None,
+        required_capabilities: list[str] | None = None,
         strategy: RoutingStrategy = RoutingStrategy.CAPABILITY_MATCH,
-        priority: MessagePriority = MessagePriority.NORMAL
-    ) -> Optional[str]:
+        priority: MessagePriority = MessagePriority.NORMAL,
+    ) -> str | None:
         """
         Route message with session context preservation.
 
@@ -604,7 +610,9 @@ class MessageRouter:
             raise ValueError(f"Session not found: {session_id}")
 
         if session.is_terminal:
-            raise ValueError(f"Session {session_id} is in terminal state: {session.state}")
+            raise ValueError(
+                f"Session {session_id} is in terminal state: {session.state}"
+            )
 
         # Prefer routing to participant agents in the session
         candidates = []
@@ -613,10 +621,16 @@ class MessageRouter:
             # Try to route to existing session participants first
             for agent_id in session.participant_agents:
                 agent = await agent_manager.get_agent(agent_id)
-                if agent and agent.is_active() and await self._is_agent_available(agent_id):
+                if (
+                    agent
+                    and agent.is_active()
+                    and await self._is_agent_available(agent_id)
+                ):
                     # Check capabilities if required
                     if required_capabilities:
-                        if all(agent.has_capability(cap) for cap in required_capabilities):
+                        if all(
+                            agent.has_capability(cap) for cap in required_capabilities
+                        ):
                             candidates.append(agent_id)
                     else:
                         candidates.append(agent_id)
@@ -629,7 +643,7 @@ class MessageRouter:
             self.logger.warning(
                 "No agents available for session routing",
                 session_id=session_id,
-                required_capabilities=required_capabilities
+                required_capabilities=required_capabilities,
             )
             return None
 
@@ -645,7 +659,7 @@ class MessageRouter:
                 await session_manager.set_agent_state(
                     session_id,
                     selected_agent,
-                    {"joined_at": datetime.utcnow().isoformat()}
+                    {"joined_at": datetime.now(UTC).isoformat()},
                 )
 
             # Record routing event in session
@@ -656,19 +670,21 @@ class MessageRouter:
                     "message_id": envelope.message_id,
                     "agent_id": selected_agent,
                     "source": envelope.source,
-                    "strategy": strategy.value
-                }
+                    "strategy": strategy.value,
+                },
             )
 
             self._routing_stats["total_routed"] += 1
-            self._routing_stats["session_routed"] = self._routing_stats.get("session_routed", 0) + 1
+            self._routing_stats["session_routed"] = (
+                self._routing_stats.get("session_routed", 0) + 1
+            )
 
             self.logger.info(
                 "Message routed with session context",
                 message_id=envelope.message_id,
                 session_id=session_id,
                 target=selected_agent,
-                strategy=strategy.value
+                strategy=strategy.value,
             )
 
             return selected_agent
@@ -676,10 +692,7 @@ class MessageRouter:
         return None
 
     async def preserve_session_context(
-        self,
-        session_id: str,
-        agent_id: str,
-        context_updates: Dict[str, Any]
+        self, session_id: str, agent_id: str, context_updates: dict[str, Any]
     ) -> bool:
         """
         Preserve context updates in session after message processing.
@@ -700,7 +713,7 @@ class MessageRouter:
                 "Session context preserved",
                 session_id=session_id,
                 agent_id=agent_id,
-                update_keys=list(context_updates.keys())
+                update_keys=list(context_updates.keys()),
             )
 
         return success

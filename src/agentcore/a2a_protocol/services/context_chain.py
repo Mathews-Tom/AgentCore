@@ -6,8 +6,10 @@ Implements A2A-018: Context Engineering Patterns.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
-from datetime import datetime
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -15,14 +17,25 @@ logger = logging.getLogger(__name__)
 
 class ContextStage(BaseModel):
     """Single stage in a context chain."""
+
     stage_id: str = Field(..., description="Unique stage identifier")
-    task_id: Optional[str] = Field(None, description="Associated task ID")
-    agent_id: Optional[str] = Field(None, description="Agent that executed this stage")
-    input_context: Dict[str, Any] = Field(default_factory=dict, description="Input context for this stage")
-    output_context: Dict[str, Any] = Field(default_factory=dict, description="Output context from this stage")
-    summary: Optional[str] = Field(None, description="Summary of this stage's transformation")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Stage execution timestamp")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    task_id: str | None = Field(None, description="Associated task ID")
+    agent_id: str | None = Field(None, description="Agent that executed this stage")
+    input_context: dict[str, Any] = Field(
+        default_factory=dict, description="Input context for this stage"
+    )
+    output_context: dict[str, Any] = Field(
+        default_factory=dict, description="Output context from this stage"
+    )
+    summary: str | None = Field(
+        None, description="Summary of this stage's transformation"
+    )
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Stage execution timestamp"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class ContextChain:
@@ -59,7 +72,9 @@ class ContextChain:
         ```
     """
 
-    def __init__(self, initial_context: Optional[Dict[str, Any]] = None, chain_id: Optional[str] = None):
+    def __init__(
+        self, initial_context: dict[str, Any] | None = None, chain_id: str | None = None
+    ):
         """
         Initialize context chain.
 
@@ -67,20 +82,20 @@ class ContextChain:
             initial_context: Initial context dictionary
             chain_id: Optional chain identifier
         """
-        self.chain_id = chain_id or f"chain_{datetime.utcnow().timestamp()}"
-        self.stages: List[ContextStage] = []
+        self.chain_id = chain_id or f"chain_{datetime.now(UTC).timestamp()}"
+        self.stages: list[ContextStage] = []
         self.accumulated_context = initial_context or {}
-        self.input_transforms: Dict[str, Callable] = {}
+        self.input_transforms: dict[str, Callable] = {}
 
     def add_stage(
         self,
         stage_id: str,
-        output_context: Dict[str, Any],
-        task_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        summary: Optional[str] = None,
-        input_transform: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        output_context: dict[str, Any],
+        task_id: str | None = None,
+        agent_id: str | None = None,
+        summary: str | None = None,
+        input_transform: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "ContextChain":
         """
         Add a stage to the context chain.
@@ -111,7 +126,7 @@ class ContextChain:
                 self.input_transforms[stage_id] = input_transform
             except Exception as e:
                 logger.error(f"Input transform failed for stage '{stage_id}': {e}")
-                raise ValueError(f"Input transform failed: {e}")
+                raise ValueError(f"Input transform failed: {e}") from e
 
         # Create stage
         stage = ContextStage(
@@ -132,7 +147,7 @@ class ContextChain:
         logger.info(f"Added stage '{stage_id}' to chain '{self.chain_id}'")
         return self
 
-    def get_accumulated_context(self) -> Dict[str, Any]:
+    def get_accumulated_context(self) -> dict[str, Any]:
         """
         Get the accumulated context from all stages.
 
@@ -141,7 +156,7 @@ class ContextChain:
         """
         return self.accumulated_context.copy()
 
-    def get_stage(self, stage_id: str) -> Optional[ContextStage]:
+    def get_stage(self, stage_id: str) -> ContextStage | None:
         """
         Get a specific stage by ID.
 
@@ -156,7 +171,7 @@ class ContextChain:
                 return stage
         return None
 
-    def get_lineage(self) -> List[str]:
+    def get_lineage(self) -> list[str]:
         """
         Get the lineage of context transformations (ordered list of stage IDs).
 
@@ -165,7 +180,7 @@ class ContextChain:
         """
         return [stage.stage_id for stage in self.stages]
 
-    def get_task_lineage(self) -> List[str]:
+    def get_task_lineage(self) -> list[str]:
         """
         Get the lineage of task IDs (for TaskArtifact.context_lineage).
 
@@ -191,7 +206,7 @@ class ContextChain:
 
         return "Context Chain:\n" + "\n".join(summaries)
 
-    def export_for_artifact(self) -> Dict[str, Any]:
+    def export_for_artifact(self) -> dict[str, Any]:
         """
         Export context chain data for TaskArtifact.
 
@@ -203,7 +218,7 @@ class ContextChain:
             "context_summary": self.generate_summary(),
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Export full context chain to dictionary.
 
@@ -218,7 +233,7 @@ class ContextChain:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ContextChain":
+    def from_dict(cls, data: dict[str, Any]) -> "ContextChain":
         """
         Create context chain from dictionary.
 
@@ -248,6 +263,7 @@ class ContextChain:
 
 # Example patterns for common use cases
 
+
 def calendar_analysis_pattern(initial_query: str) -> ContextChain:
     """
     Example pattern for calendar analysis workflow.
@@ -260,7 +276,7 @@ def calendar_analysis_pattern(initial_query: str) -> ContextChain:
     """
     return ContextChain(
         initial_context={"user_query": initial_query, "domain": "calendar"},
-        chain_id="calendar_analysis"
+        chain_id="calendar_analysis",
     )
 
 
@@ -276,7 +292,7 @@ def research_synthesis_pattern(research_topic: str) -> ContextChain:
     """
     return ContextChain(
         initial_context={"topic": research_topic, "sources": [], "findings": []},
-        chain_id="research_synthesis"
+        chain_id="research_synthesis",
     )
 
 
@@ -292,5 +308,5 @@ def multi_step_reasoning_pattern(problem: str) -> ContextChain:
     """
     return ContextChain(
         initial_context={"problem": problem, "steps": [], "solution": None},
-        chain_id="multi_step_reasoning"
+        chain_id="multi_step_reasoning",
     )

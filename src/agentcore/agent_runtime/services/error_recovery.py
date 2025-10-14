@@ -11,8 +11,9 @@ import asyncio
 import random
 import traceback
 import uuid
-from datetime import datetime
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any, TypeVar
 
 import structlog
 
@@ -78,7 +79,7 @@ class ErrorRecoveryService:
             Exception: If all recovery attempts fail
         """
         config = retry_config or RetryConfig()
-        start_time = datetime.now()
+        start_time = datetime.now(UTC)
         attempts = 0
         last_error: Exception | None = None
         recovery_result: ErrorRecoveryResult | None = None
@@ -134,7 +135,7 @@ class ErrorRecoveryService:
                         strategy_used=RecoveryStrategy.DEGRADE,
                         attempts=1,
                         duration_seconds=(
-                            datetime.now() - start_time
+                            datetime.now(UTC) - start_time
                         ).total_seconds(),
                         degradation_level=degradation,
                         message="Executed with degraded functionality",
@@ -154,7 +155,7 @@ class ErrorRecoveryService:
 
         # All strategies failed
         if last_error:
-            duration = (datetime.now() - start_time).total_seconds()
+            duration = (datetime.now(UTC) - start_time).total_seconds()
             error_metadata = self._create_error_metadata(
                 last_error,
                 error_category,
@@ -366,8 +367,9 @@ class ErrorRecoveryService:
 
             errors = self._error_history[agent_id]
             recent_errors = [
-                e for e in errors
-                if (datetime.now() - e.timestamp).total_seconds() < 300
+                e
+                for e in errors
+                if (datetime.now(UTC) - e.timestamp).total_seconds() < 300
             ]
 
             if len(recent_errors) >= 10:
@@ -433,7 +435,7 @@ class ErrorRecoveryService:
                 "exception_type": type(error).__name__,
                 "exception_module": type(error).__module__,
             },
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             agent_id=agent_id,
             stack_trace=stack_trace,
         )
@@ -551,9 +553,7 @@ class ErrorRecoveryService:
             Statistics dictionary
         """
         async with self._lock:
-            total_errors = sum(
-                len(errors) for errors in self._error_history.values()
-            )
+            total_errors = sum(len(errors) for errors in self._error_history.values())
 
             errors_by_category: dict[str, int] = {}
             errors_by_severity: dict[str, int] = {}
@@ -576,9 +576,7 @@ class ErrorRecoveryService:
                 "errors_by_category": errors_by_category,
                 "errors_by_severity": errors_by_severity,
                 "degraded_agents": len(self._degradation_state),
-                "circuit_breakers": (
-                    self._circuit_breaker_registry.get_all_stats()
-                ),
+                "circuit_breakers": (self._circuit_breaker_registry.get_all_stats()),
             }
 
 

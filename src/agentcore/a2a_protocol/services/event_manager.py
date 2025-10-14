@@ -6,26 +6,26 @@ Manages event publishing, subscriptions, and WebSocket connections for real-time
 
 import asyncio
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Any, Callable, Deque, Dict, List, Optional, Set
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 import structlog
 from fastapi import WebSocket
 
 from agentcore.a2a_protocol.models.events import (
-    Event,
-    EventType,
-    EventPriority,
-    EventSubscription,
     DeadLetterMessage,
+    Event,
+    EventPriority,
     EventPublishRequest,
     EventPublishResponse,
     EventSubscribeRequest,
     EventSubscribeResponse,
-    WebSocketMessage
+    EventSubscription,
+    EventType,
+    WebSocketMessage,
 )
-
 
 logger = structlog.get_logger()
 
@@ -37,8 +37,8 @@ class WebSocketConnection:
         self.connection_id = connection_id
         self.websocket = websocket
         self.subscriber_id = subscriber_id
-        self.connected_at = datetime.utcnow()
-        self.last_ping = datetime.utcnow()
+        self.connected_at = datetime.now(UTC)
+        self.last_ping = datetime.now(UTC)
         self.is_alive = True
 
     async def send_event(self, event: Event) -> bool:
@@ -53,8 +53,7 @@ class WebSocketConnection:
         """
         try:
             message = WebSocketMessage(
-                message_type="event",
-                payload=event.to_notification()
+                message_type="event", payload=event.to_notification()
             )
             await self.websocket.send_json(message.model_dump(mode="json"))
             return True
@@ -62,7 +61,7 @@ class WebSocketConnection:
             logger.error(
                 "Failed to send event via WebSocket",
                 connection_id=self.connection_id,
-                error=str(e)
+                error=str(e),
             )
             self.is_alive = False
             return False
@@ -72,10 +71,10 @@ class WebSocketConnection:
         try:
             message = WebSocketMessage(
                 message_type="ping",
-                payload={"timestamp": datetime.utcnow().isoformat()}
+                payload={"timestamp": datetime.now(UTC).isoformat()},
             )
             await self.websocket.send_json(message.model_dump(mode="json"))
-            self.last_ping = datetime.utcnow()
+            self.last_ping = datetime.now(UTC)
             return True
         except Exception:
             self.is_alive = False
@@ -101,19 +100,19 @@ class EventManager:
         self.logger = structlog.get_logger()
 
         # Subscriptions
-        self._subscriptions: Dict[str, EventSubscription] = {}
-        self._subscriptions_by_type: Dict[EventType, Set[str]] = defaultdict(set)
-        self._subscriptions_by_subscriber: Dict[str, Set[str]] = defaultdict(set)
+        self._subscriptions: dict[str, EventSubscription] = {}
+        self._subscriptions_by_type: dict[EventType, set[str]] = defaultdict(set)
+        self._subscriptions_by_subscriber: dict[str, set[str]] = defaultdict(set)
 
         # WebSocket connections
-        self._websocket_connections: Dict[str, WebSocketConnection] = {}
-        self._connections_by_subscriber: Dict[str, Set[str]] = defaultdict(set)
+        self._websocket_connections: dict[str, WebSocketConnection] = {}
+        self._connections_by_subscriber: dict[str, set[str]] = defaultdict(set)
 
         # Dead letter queue
-        self._dead_letter_queue: Deque[DeadLetterMessage] = deque(maxlen=10000)
+        self._dead_letter_queue: deque[DeadLetterMessage] = deque(maxlen=10000)
 
         # Event history (for replay)
-        self._event_history: Deque[Event] = deque(maxlen=1000)
+        self._event_history: deque[Event] = deque(maxlen=1000)
 
         # Event statistics
         self._event_stats = {
@@ -126,7 +125,7 @@ class EventManager:
         }
 
         # Event hooks for custom processing
-        self._event_hooks: Dict[EventType, List[Callable]] = defaultdict(list)
+        self._event_hooks: dict[EventType, list[Callable]] = defaultdict(list)
 
     # ==================== Event Publishing ====================
 
@@ -134,10 +133,10 @@ class EventManager:
         self,
         event_type: EventType,
         source: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         priority: EventPriority = EventPriority.NORMAL,
-        metadata: Optional[Dict[str, Any]] = None,
-        correlation_id: Optional[str] = None
+        metadata: dict[str, Any] | None = None,
+        correlation_id: str | None = None,
     ) -> EventPublishResponse:
         """
         Publish an event to all matching subscribers.
@@ -160,7 +159,7 @@ class EventManager:
             data=data,
             priority=priority,
             metadata=metadata or {},
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         # Add to history
@@ -174,23 +173,25 @@ class EventManager:
         matching_subscriptions = self._find_matching_subscriptions(event)
 
         # Notify subscribers
-        subscribers_notified = await self._notify_subscribers(event, matching_subscriptions)
+        subscribers_notified = await self._notify_subscribers(
+            event, matching_subscriptions
+        )
 
         self.logger.info(
             "Event published",
             event_id=event.event_id,
             event_type=event_type.value,
             source=source,
-            subscribers_notified=subscribers_notified
+            subscribers_notified=subscribers_notified,
         )
 
         return EventPublishResponse(
             success=True,
             event_id=event.event_id,
-            subscribers_notified=subscribers_notified
+            subscribers_notified=subscribers_notified,
         )
 
-    def _find_matching_subscriptions(self, event: Event) -> List[EventSubscription]:
+    def _find_matching_subscriptions(self, event: Event) -> list[EventSubscription]:
         """Find subscriptions that match the event."""
         matching = []
 
@@ -213,9 +214,7 @@ class EventManager:
         return matching
 
     async def _notify_subscribers(
-        self,
-        event: Event,
-        subscriptions: List[EventSubscription]
+        self, event: Event, subscriptions: list[EventSubscription]
     ) -> int:
         """
         Notify subscribers about event.
@@ -238,9 +237,7 @@ class EventManager:
             if not connection_ids:
                 # No active connections - add to dead letter queue
                 await self._add_to_dead_letter_queue(
-                    event,
-                    subscriber_id,
-                    "No active WebSocket connections"
+                    event, subscriber_id, "No active WebSocket connections"
                 )
                 continue
 
@@ -264,9 +261,7 @@ class EventManager:
             if not success:
                 # All connections failed - add to dead letter queue
                 await self._add_to_dead_letter_queue(
-                    event,
-                    subscriber_id,
-                    "All WebSocket connections failed"
+                    event, subscriber_id, "All WebSocket connections failed"
                 )
 
         return notified_count
@@ -282,9 +277,7 @@ class EventManager:
                     hook(event)
             except Exception as e:
                 self.logger.error(
-                    "Event hook failed",
-                    event_type=event.event_type.value,
-                    error=str(e)
+                    "Event hook failed", event_type=event.event_type.value, error=str(e)
                 )
 
     def register_hook(self, event_type: EventType, hook: Callable) -> None:
@@ -297,9 +290,9 @@ class EventManager:
     async def subscribe(
         self,
         subscriber_id: str,
-        event_types: List[EventType],
-        filters: Optional[Dict[str, Any]] = None,
-        ttl_seconds: Optional[int] = None
+        event_types: list[EventType],
+        filters: dict[str, Any] | None = None,
+        ttl_seconds: int | None = None,
     ) -> EventSubscribeResponse:
         """
         Create event subscription.
@@ -316,14 +309,14 @@ class EventManager:
         # Calculate expiration if TTL provided
         expires_at = None
         if ttl_seconds:
-            expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+            expires_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
 
         # Create subscription
         subscription = EventSubscription(
             subscriber_id=subscriber_id,
             event_types=event_types,
             filters=filters or {},
-            expires_at=expires_at
+            expires_at=expires_at,
         )
 
         # Store subscription
@@ -333,7 +326,9 @@ class EventManager:
         for event_type in event_types:
             self._subscriptions_by_type[event_type].add(subscription.subscription_id)
 
-        self._subscriptions_by_subscriber[subscriber_id].add(subscription.subscription_id)
+        self._subscriptions_by_subscriber[subscriber_id].add(
+            subscription.subscription_id
+        )
 
         self._event_stats["active_subscriptions"] = len(self._subscriptions)
 
@@ -341,12 +336,11 @@ class EventManager:
             "Subscription created",
             subscription_id=subscription.subscription_id,
             subscriber_id=subscriber_id,
-            event_types=[et.value for et in event_types]
+            event_types=[et.value for et in event_types],
         )
 
         return EventSubscribeResponse(
-            success=True,
-            subscription_id=subscription.subscription_id
+            success=True, subscription_id=subscription.subscription_id
         )
 
     async def unsubscribe(self, subscription_id: str) -> bool:
@@ -367,7 +361,9 @@ class EventManager:
         for event_type in subscription.event_types:
             self._subscriptions_by_type[event_type].discard(subscription_id)
 
-        self._subscriptions_by_subscriber[subscription.subscriber_id].discard(subscription_id)
+        self._subscriptions_by_subscriber[subscription.subscriber_id].discard(
+            subscription_id
+        )
 
         # Remove subscription
         del self._subscriptions[subscription_id]
@@ -377,12 +373,14 @@ class EventManager:
         self.logger.info(
             "Subscription removed",
             subscription_id=subscription_id,
-            subscriber_id=subscription.subscriber_id
+            subscriber_id=subscription.subscriber_id,
         )
 
         return True
 
-    def get_subscriptions(self, subscriber_id: Optional[str] = None) -> List[EventSubscription]:
+    def get_subscriptions(
+        self, subscriber_id: str | None = None
+    ) -> list[EventSubscription]:
         """
         Get subscriptions.
 
@@ -394,17 +392,17 @@ class EventManager:
         """
         if subscriber_id:
             sub_ids = self._subscriptions_by_subscriber.get(subscriber_id, set())
-            return [self._subscriptions[sid] for sid in sub_ids if sid in self._subscriptions]
+            return [
+                self._subscriptions[sid]
+                for sid in sub_ids
+                if sid in self._subscriptions
+            ]
 
         return list(self._subscriptions.values())
 
     # ==================== WebSocket Connection Management ====================
 
-    async def register_websocket(
-        self,
-        websocket: WebSocket,
-        subscriber_id: str
-    ) -> str:
+    async def register_websocket(self, websocket: WebSocket, subscriber_id: str) -> str:
         """
         Register WebSocket connection.
 
@@ -420,7 +418,7 @@ class EventManager:
         connection = WebSocketConnection(
             connection_id=connection_id,
             websocket=websocket,
-            subscriber_id=subscriber_id
+            subscriber_id=subscriber_id,
         )
 
         self._websocket_connections[connection_id] = connection
@@ -431,7 +429,7 @@ class EventManager:
         self.logger.info(
             "WebSocket registered",
             connection_id=connection_id,
-            subscriber_id=subscriber_id
+            subscriber_id=subscriber_id,
         )
 
         return connection_id
@@ -458,7 +456,7 @@ class EventManager:
         self.logger.info(
             "WebSocket removed",
             connection_id=connection_id,
-            subscriber_id=subscriber_id
+            subscriber_id=subscriber_id,
         )
 
     async def close_connection(self, connection_id: str) -> None:
@@ -468,16 +466,11 @@ class EventManager:
     # ==================== Dead Letter Queue ====================
 
     async def _add_to_dead_letter_queue(
-        self,
-        event: Event,
-        subscriber_id: str,
-        failure_reason: str
+        self, event: Event, subscriber_id: str, failure_reason: str
     ) -> None:
         """Add failed delivery to dead letter queue."""
         message = DeadLetterMessage(
-            event=event,
-            subscriber_id=subscriber_id,
-            failure_reason=failure_reason
+            event=event, subscriber_id=subscriber_id, failure_reason=failure_reason
         )
 
         self._dead_letter_queue.append(message)
@@ -489,10 +482,10 @@ class EventManager:
             "Event added to dead letter queue",
             event_id=event.event_id,
             subscriber_id=subscriber_id,
-            reason=failure_reason
+            reason=failure_reason,
         )
 
-    def get_dead_letter_messages(self, limit: int = 100) -> List[DeadLetterMessage]:
+    def get_dead_letter_messages(self, limit: int = 100) -> list[DeadLetterMessage]:
         """Get messages from dead letter queue."""
         return list(self._dead_letter_queue)[:limit]
 
@@ -518,8 +511,7 @@ class EventManager:
 
         if not message.can_retry():
             self.logger.warning(
-                "Dead letter message exceeded max retries",
-                message_id=message_id
+                "Dead letter message exceeded max retries", message_id=message_id
             )
             return False
 
@@ -531,7 +523,8 @@ class EventManager:
 
         # Filter to only subscriber that failed
         subscriber_subscriptions = [
-            sub for sub in matching_subscriptions
+            sub
+            for sub in matching_subscriptions
             if sub.subscriber_id == message.subscriber_id
         ]
 
@@ -539,13 +532,17 @@ class EventManager:
             return False
 
         # Attempt delivery
-        notified = await self._notify_subscribers(message.event, subscriber_subscriptions)
+        notified = await self._notify_subscribers(
+            message.event, subscriber_subscriptions
+        )
 
         if notified > 0:
             # Success - remove from dead letter queue
             self._dead_letter_queue.remove(message)
             self._event_stats["dead_letter_messages"] = len(self._dead_letter_queue)
-            self.logger.info("Dead letter message retry successful", message_id=message_id)
+            self.logger.info(
+                "Dead letter message retry successful", message_id=message_id
+            )
             return True
 
         return False
@@ -553,10 +550,8 @@ class EventManager:
     # ==================== Event History & Replay ====================
 
     def get_event_history(
-        self,
-        event_type: Optional[EventType] = None,
-        limit: int = 100
-    ) -> List[Event]:
+        self, event_type: EventType | None = None, limit: int = 100
+    ) -> list[Event]:
         """
         Get event history.
 
@@ -608,7 +603,7 @@ class EventManager:
 
         return len(dead_ids)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get event system statistics."""
         return {
             **self._event_stats,
