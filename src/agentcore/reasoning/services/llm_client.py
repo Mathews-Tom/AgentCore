@@ -35,7 +35,7 @@ class CircuitState(str, Enum):
 class LLMClientConfig(BaseModel):
     """Configuration for LLM client adapter."""
 
-    api_key: str = Field(..., description="LLM provider API key")
+    api_key: str = Field(..., description="LLM provider API key", repr=False)
     base_url: str = Field(
         default="https://api.openai.com/v1",
         description="LLM API base URL",
@@ -63,6 +63,8 @@ class LLMClientConfig(BaseModel):
         le=100,
         description="HTTP connection pool size",
     )
+
+    model_config = {"hide_api_key_in_logs": True}
 
 
 class GenerationResult(BaseModel):

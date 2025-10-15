@@ -17,6 +17,7 @@ from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_met
 
 from ..engines.bounded_context_engine import BoundedContextEngine
 from ..models.reasoning_models import BoundedContextConfig
+from ..services.input_sanitizer import sanitize_reasoning_request
 from ..services.llm_client import LLMClient, LLMClientConfig
 from ..services.metrics import (
     record_llm_failure,
@@ -119,6 +120,20 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
     except Exception as e:
         record_reasoning_error("validation_error")
         raise ValueError(f"Invalid parameters: {e}") from e
+
+    # Sanitize inputs for prompt injection prevention
+    is_valid, error_msg = sanitize_reasoning_request(
+        query=params.query,
+        system_prompt=params.system_prompt,
+    )
+    if not is_valid:
+        logger.warning(
+            "input_sanitization_failed",
+            error=error_msg,
+            query_length=len(params.query),
+        )
+        record_reasoning_error("validation_error")
+        raise ValueError(f"Input sanitization failed: {error_msg}")
 
     # Extract A2A context for logging
     trace_id = None
