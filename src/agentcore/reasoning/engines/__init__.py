@@ -9,3 +9,9 @@ This module contains concrete strategy implementations:
 
 All engines implement the ReasoningStrategy protocol for polymorphic usage.
 """
+
+from .bounded_context_engine import BoundedContextEngine
+
+__all__ = [
+    "BoundedContextEngine",
+]
