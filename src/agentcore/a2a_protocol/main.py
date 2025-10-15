@@ -29,6 +29,8 @@ from agentcore.a2a_protocol.services import (
     event_jsonrpc,
     health_jsonrpc,
 )
+# Import reasoning JSON-RPC methods
+from agentcore.reasoning.services import reasoning_jsonrpc
 
 
 @asynccontextmanager
