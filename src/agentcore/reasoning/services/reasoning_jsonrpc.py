@@ -6,6 +6,7 @@ JSON-RPC 2.0 methods for bounded context reasoning.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import structlog
@@ -17,6 +18,11 @@ from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_met
 from ..engines.bounded_context_engine import BoundedContextEngine
 from ..models.reasoning_models import BoundedContextConfig
 from ..services.llm_client import LLMClient, LLMClientConfig
+from ..services.metrics import (
+    record_llm_failure,
+    record_reasoning_error,
+    record_reasoning_request,
+)
 
 logger = structlog.get_logger()
 
@@ -100,13 +106,18 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
         -32603: Internal error (LLM failures, runtime errors)
         -32001: Max iterations reached without answer
     """
+    # Start timing
+    start_time = time.time()
+
     # Validate parameters
     if not request.params or not isinstance(request.params, dict):
+        record_reasoning_error("validation_error")
         raise ValueError("Parameters required for reasoning.bounded_context")
 
     try:
         params = BoundedReasoningParams(**request.params)
     except Exception as e:
+        record_reasoning_error("validation_error")
         raise ValueError(f"Invalid parameters: {e}") from e
 
     # Extract A2A context for logging
@@ -205,16 +216,29 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
             trace_id=trace_id,
         )
 
+        # Record metrics
+        duration_seconds = time.time() - start_time
+        record_reasoning_request(
+            status="success",
+            duration_seconds=duration_seconds,
+            total_tokens=result.total_tokens,
+            compute_savings_pct=result.compute_savings_pct,
+            total_iterations=result.total_iterations,
+        )
+
         return response.model_dump()
 
     except ValueError as e:
         # Parameter validation errors
         logger.error("bounded_reasoning_validation_error", error=str(e), trace_id=trace_id)
+        record_reasoning_error("validation_error")
         raise ValueError(f"Invalid parameters: {e}") from e
 
     except RuntimeError as e:
         # LLM or runtime errors
         logger.error("bounded_reasoning_runtime_error", error=str(e), trace_id=trace_id)
+        record_reasoning_error("llm_error")
+        record_llm_failure()
         raise RuntimeError(f"Reasoning execution failed: {e}") from e
 
     except Exception as e:
@@ -225,6 +249,7 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
             error_type=type(e).__name__,
             trace_id=trace_id,
         )
+        record_reasoning_error("internal_error")
         raise RuntimeError(f"Unexpected error during reasoning: {e}") from e
 
 
