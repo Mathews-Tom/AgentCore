@@ -15,6 +15,7 @@
 The Tool Integration Framework provides a standardized architecture for agents to discover, access, and utilize diverse external tools and services. Rather than hardcoding tool integrations, this framework offers centralized tool registration, discovery, invocation, and result handling that enables agents to interact with the real world through APIs, search engines, code execution environments, and databases.
 
 **Business Value:**
+
 - **Increased Agent Capability:** Enable 3-5x more complex workflows through tool access
 - **Improved Reliability:** +20-30% task completion rate through standardized error handling
 - **Faster Integration:** 50% reduction in time to integrate new tools
@@ -167,6 +168,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 **User Story:** As a tool provider, I want to register my tool with comprehensive metadata so that agents can discover and use it.
 
 **Flow:**
+
 1. Tool provider implements Tool interface
 2. Tool provider creates ToolMetadata with parameters, auth, rate limits
 3. Tool provider calls `tool_registry.register(tool)`
@@ -175,6 +177,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 6. Agents query registry to find suitable tools
 
 **Acceptance Criteria:**
+
 - [ ] Tools registered with complete metadata
 - [ ] Registry supports search by name, category, capabilities
 - [ ] Tool listing returns comprehensive tool information
@@ -187,6 +190,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 **User Story:** As an agent, I want to execute tools reliably with clear error messages so that I can handle failures gracefully.
 
 **Flow:**
+
 1. Agent calls `tools.execute` with tool_id and parameters
 2. Execution engine retrieves tool from registry
 3. Engine validates parameters against tool schema
@@ -197,6 +201,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 8. Engine logs execution for observability
 
 **Acceptance Criteria:**
+
 - [ ] Parameter validation catches type and required field errors
 - [ ] Authentication handles multiple auth methods
 - [ ] Timeouts enforced per tool configuration
@@ -210,6 +215,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 **User Story:** As a platform operator, I want to enforce rate limits per tool so that I can control costs and prevent abuse.
 
 **Flow:**
+
 1. Tool configured with rate limits (e.g., 100 calls/minute)
 2. Agent attempts tool execution
 3. Rate limiter checks current usage from Redis
@@ -219,6 +225,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 7. Quota usage tracked and reported
 
 **Acceptance Criteria:**
+
 - [ ] Rate limits enforced per tool and per user
 - [ ] Rate limiting state distributed across instances
 - [ ] 429 errors returned when limits exceeded
@@ -232,6 +239,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 **User Story:** As an agent, I want transient tool failures to be retried automatically so that I don't have to implement retry logic.
 
 **Flow:**
+
 1. Tool execution fails with retryable error (network, 503, timeout)
 2. Engine checks if tool is marked retryable
 3. If retryable, wait for backoff period (1s, 2s, 4s...)
@@ -241,6 +249,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 7. Log retry attempts for debugging
 
 **Acceptance Criteria:**
+
 - [ ] Retryable errors detected automatically
 - [ ] Exponential backoff implemented correctly
 - [ ] Max retry attempts configurable per tool
@@ -254,6 +263,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 **User Story:** As an agent developer, I want search and code execution tools available immediately so that I can build capable agents without custom integrations.
 
 **Tools to Implement:**
+
 - **Google Search:** Web search with configurable result count
 - **Wikipedia Search:** Encyclopedia lookup
 - **Python Executor:** Sandboxed Python code execution
@@ -261,6 +271,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 - **File Operations:** Read/write files with validation
 
 **Acceptance Criteria:**
+
 - [ ] All five tools implemented and tested
 - [ ] Search tools return structured results
 - [ ] Python executor runs in isolated container
@@ -274,6 +285,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 ### Definition of Done
 
 **For Feature Completion:**
+
 - [ ] All functional requirements (FR-1 through FR-5) implemented
 - [ ] All P0 features fully functional and tested
 - [ ] At least 5 built-in tools available (search, code execution, API)
@@ -281,6 +293,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 - [ ] Documentation complete (tool developer guide, API docs)
 
 **For Production Readiness:**
+
 - [ ] Load testing validates 1000 concurrent executions
 - [ ] Rate limiting prevents cost overruns in stress test
 - [ ] Security audit passed (credential management, sandboxing)
@@ -290,21 +303,25 @@ The Tool Integration Framework provides a standardized architecture for agents t
 ### Validation Approach
 
 **Unit Testing:**
+
 - Test each tool adapter in isolation with mocked backends
 - Validate parameter validation, auth handling, error cases
 - Achieve >90% code coverage for framework and adapters
 
 **Integration Testing:**
+
 - Test real tool executions against live services (staging)
 - Validate rate limiting with concurrent requests
 - Test retry logic with simulated failures
 
 **Security Testing:**
+
 - Penetrate sandboxed code execution environment
 - Attempt credential extraction from logs
 - Validate RBAC enforcement
 
 **Performance Testing:**
+
 - Benchmark framework overhead (<100ms target)
 - Load test with 1000 concurrent tool executions
 - Measure rate limiting overhead (<5ms target)
@@ -362,12 +379,14 @@ The Tool Integration Framework provides a standardized architecture for agents t
 ### Phase 1: Foundation (Weeks 1-2)
 
 **Objectives:**
+
 - Implement Tool interface and ToolMetadata models
 - Build ToolRegistry with search and listing
 - Create ToolExecutor with basic invocation
 - Set up database schema for tool logs
 
 **Deliverables:**
+
 - `agentcore/tools/base.py` with Tool interface
 - `agentcore/tools/registry.py` with ToolRegistry
 - `agentcore/tools/executor.py` with ToolExecutor
@@ -377,6 +396,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 ### Phase 2: Built-in Tools (Week 3)
 
 **Objectives:**
+
 - Implement GoogleSearchTool adapter
 - Implement WikipediaSearchTool adapter
 - Implement PythonExecutionTool with Docker sandbox
@@ -384,6 +404,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 - Register built-in tools on startup
 
 **Deliverables:**
+
 - Working implementations of 4-5 built-in tools
 - Docker configuration for Python sandbox
 - Integration tests for each tool
@@ -392,6 +413,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 ### Phase 3: JSON-RPC Integration (Week 4)
 
 **Objectives:**
+
 - Register `tools.list` JSON-RPC method
 - Register `tools.execute` JSON-RPC method
 - Integrate with A2A authentication
@@ -399,6 +421,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 - Implement error handling and logging
 
 **Deliverables:**
+
 - JSON-RPC endpoints operational
 - Tools accessible to agents via API
 - Tracing integration complete
@@ -407,6 +430,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 ### Phase 4: Advanced Features (Weeks 5-6)
 
 **Objectives:**
+
 - Implement rate limiting with Redis
 - Add automatic retry with exponential backoff
 - Build monitoring dashboards
@@ -414,6 +438,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 - Security hardening
 
 **Deliverables:**
+
 - Rate limiting preventing cost overruns
 - Retry logic improving success rate
 - Dashboards showing tool usage
@@ -431,6 +456,7 @@ The Tool Integration Framework provides a standardized architecture for agents t
 List available tools with optional category filtering.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -443,6 +469,7 @@ List available tools with optional category filtering.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -483,6 +510,7 @@ List available tools with optional category filtering.
 Execute a tool with validated parameters.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -499,6 +527,7 @@ Execute a tool with validated parameters.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -588,10 +617,12 @@ CREATE INDEX idx_tool_executions_created ON tool_executions(created_at DESC);
 ### Metrics Collection
 
 **Baseline Measurement (Week 0):**
+
 - Measure current agent task success rate without tools
 - Document common failure modes
 
 **Post-Implementation Measurement (Week 7):**
+
 - Measure tool adoption rate (% of tasks using tools)
 - Measure tool success rate (target: 95%)
 - Measure integration time for new tools (target: <1 day)
@@ -600,12 +631,14 @@ CREATE INDEX idx_tool_executions_created ON tool_executions(created_at DESC);
 ### Load Testing
 
 **Test Configuration:**
+
 - 1000 concurrent tool executions
 - Mix of tool types (search, code execution, API)
 - Duration: 1 hour sustained load
 - Monitor: latency, success rate, error recovery
 
 **Success Criteria:**
+
 - 95%+ success rate maintained under load
 - p95 latency <500ms (excluding tool execution)
 - No cascading failures or resource exhaustion
@@ -622,6 +655,7 @@ CREATE INDEX idx_tool_executions_created ON tool_executions(created_at DESC);
 ---
 
 **Related Documents:**
+
 - Research: `docs/research/multi-tool-integration.md`
 - Architecture: `docs/agentcore-architecture-and-development-plan.md`
 - Dependencies: `docs/specs/modular-agent-core/spec.md` (MOD-001)

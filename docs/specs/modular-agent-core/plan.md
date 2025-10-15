@@ -127,6 +127,7 @@
 1. **JSON-RPC Method Registration Pattern:**
    - **Application:** Register `modular.solve` method and module-specific methods
    - **Usage Example:**
+
      ```python
      from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 
@@ -136,11 +137,13 @@
          result = await modular_agent.solve(params.query, params.config)
          return result.model_dump()
      ```
+
    - **Adaptation Notes:** Create `services/modular_jsonrpc.py` following existing `*_jsonrpc.py` pattern
 
 2. **Agent Registration Pattern:**
    - **Application:** Register each module as an A2A agent with capabilities
    - **Usage Example:**
+
      ```python
      from agentcore.a2a_protocol.services.agent_manager import agent_manager
      from agentcore.a2a_protocol.models.agent import AgentCard, AgentCapability
@@ -165,22 +168,26 @@
          AgentRegistrationRequest(agent_card=planner_card)
      )
      ```
+
    - **Adaptation Notes:** Each of the four modules registers similarly with module-specific capabilities
 
 3. **Async Service Pattern:**
    - **Application:** Implement module classes as async services
    - **Usage Example:**
+
      ```python
      class PlannerModule:
          async def create_plan(self, query: str, memory: Memory) -> Plan:
              # Implementation using async LLM calls
              pass
      ```
+
    - **Adaptation Notes:** All I/O operations (LLM, database, HTTP) use asyncio
 
 4. **Database Repository Pattern:**
    - **Application:** Store execution plans and results in PostgreSQL
    - **Usage Example:**
+
      ```python
      from agentcore.a2a_protocol.database import get_session
 
@@ -189,6 +196,7 @@
          execution = await repo.create(plan_id=plan.id, query=query)
          await repo.update_status(execution.id, "completed", result=final_result)
      ```
+
    - **Adaptation Notes:** Follow existing repository patterns in `database/repositories.py`
 
 ### Implementation Reference Examples
@@ -658,6 +666,7 @@ class ExecutionPlanRecord(Base):
    - **Method:** POST `/api/v1/jsonrpc`
    - **Purpose:** Execute query through modular agent pipeline
    - **Request Schema:**
+
      ```json
      {
        "jsonrpc": "2.0",
@@ -677,7 +686,9 @@ class ExecutionPlanRecord(Base):
        "id": 1
      }
      ```
+
    - **Response Schema:**
+
      ```json
      {
        "jsonrpc": "2.0",
@@ -702,6 +713,7 @@ class ExecutionPlanRecord(Base):
        "id": 1
      }
      ```
+
    - **Error Handling:**
      - `INVALID_PARAMS` (-32602): Invalid query or config parameters
      - `INTERNAL_ERROR` (-32603): Module execution failure

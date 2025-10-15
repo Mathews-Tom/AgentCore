@@ -31,10 +31,12 @@
 ### Related Documentation
 
 **System Context:**
+
 - Project Standards: `CLAUDE.md` - AgentCore development guidelines
 - Architecture: `docs/agentcore-architecture-and-development-plan.md`
 
 **Related Specifications:**
+
 - MOD-001: `docs/specs/modular-agent-core/spec.md` - Executor module depends on tool framework
 - CTX-001: Context Management System (future integration)
 - MEM-001: Memory Management System (future integration)
@@ -48,6 +50,7 @@
 **Purpose:** Enable agents to interact with the real world through standardized tool integrations, transforming AgentCore from a pure reasoning system into a capable system that can search the web, execute code, call APIs, and process data.
 
 **Value Proposition:**
+
 - **Increased Agent Capability:** Enable 3-5x more complex workflows through tool access
 - **Improved Reliability:** +20-30% task completion rate through standardized error handling
 - **Faster Integration:** 50% reduction in time to integrate new tools
@@ -55,6 +58,7 @@
 - **Cost Control:** Prevent runaway costs through rate limiting and quota management
 
 **Target Users:**
+
 - **Agent Developers:** Building agents that need external tool access
 - **Tool Providers:** Integrating services into AgentCore
 - **Platform Operators:** Managing tool infrastructure and costs
@@ -63,12 +67,14 @@
 ### Technical Approach
 
 **Architecture Pattern:** Layered Architecture with Plugin System
+
 - **Tool Registry Layer:** Centralized discovery, metadata management, version control
 - **Tool Interface Layer:** Standardized abstractions for invocation, validation, error handling
 - **Tool Execution Layer:** Lifecycle management, authentication, rate limiting, observability
 - **Tool Adapters Layer:** Specific implementations (search, code execution, API clients)
 
 **Technology Stack:**
+
 - **Runtime:** Python 3.12+ with asyncio (existing AgentCore stack)
 - **Framework:** FastAPI with JSON-RPC 2.0 (A2A protocol)
 - **Database:** PostgreSQL with asyncpg (tool execution logs)
@@ -79,6 +85,7 @@
 - **Tracing:** OpenTelemetry (distributed tracing)
 
 **Implementation Strategy:** 4 phases over 6 weeks
+
 1. **Foundation (Weeks 1-2):** Core framework, interfaces, registry
 2. **Built-in Tools (Week 3):** Search, code execution, API adapters
 3. **JSON-RPC Integration (Week 4):** A2A protocol endpoints
@@ -87,12 +94,14 @@
 ### Key Success Metrics
 
 **Service Level Objectives (SLOs):**
+
 - **Availability:** 99.9% uptime for tool execution service
 - **Response Time:** <100ms framework overhead (excluding tool execution)
 - **Throughput:** 1000 concurrent tool executions per instance
 - **Error Rate:** <5% for properly configured tools
 
 **Key Performance Indicators (KPIs):**
+
 - **Tool Adoption:** 80%+ of agent tasks use at least one tool
 - **Tool Success Rate:** 95%+ successful executions
 - **Integration Time:** <1 day to integrate new tool
@@ -106,6 +115,7 @@
 ### Repository Patterns (from Research)
 
 **Pattern 1: Tool Interface (Abstract Base Class)**
+
 - **Source:** `docs/research/multi-tool-integration.md` (lines 119-182)
 - **Application:** All tools implement standardized interface
 - **Usage Example:**
@@ -142,6 +152,7 @@ class Tool(ABC):
 - **Adaptation Notes:** Integrate with A2A context for trace_id propagation, add async error handling
 
 **Pattern 2: Registry Pattern (Centralized Discovery)**
+
 - **Source:** `docs/research/multi-tool-integration.md` (lines 184-250)
 - **Application:** Tool discovery and metadata management
 - **Usage Example:**
@@ -173,6 +184,7 @@ class ToolRegistry:
 - **Adaptation Notes:** Add database persistence for tool metadata, implement version management
 
 **Pattern 3: Adapter Pattern (Tool-Specific Implementations)**
+
 - **Source:** `docs/research/multi-tool-integration.md` (lines 254-344 for GoogleSearchTool, 346-435 for PythonExecutionTool)
 - **Application:** Specific tool implementations wrapping external services
 - **Usage Example:**
@@ -331,11 +343,13 @@ async def list_tools(request: JsonRpcRequest) -> dict[str, Any]:
 ### Alternatives Considered
 
 **Option 2: gRPC instead of JSON-RPC**
+
 - **Pros:** Higher performance, streaming support, strong typing
 - **Cons:** More complex, not web-friendly, requires proto files
 - **Why Not Chosen:** AgentCore standardized on JSON-RPC 2.0 for A2A protocol
 
 **Option 3: SQLite instead of PostgreSQL**
+
 - **Pros:** Simpler deployment, no separate server
 - **Cons:** No horizontal scaling, limited concurrent writes
 - **Why Not Chosen:** AgentCore needs multi-instance deployment for scale
@@ -345,6 +359,7 @@ async def list_tools(request: JsonRpcRequest) -> dict[str, Any]:
 **From `CLAUDE.md` and system context:**
 
 **Consistent With:**
+
 - Python 3.12+ with async/await patterns
 - FastAPI framework and JSON-RPC 2.0
 - PostgreSQL with async SQLAlchemy
@@ -353,6 +368,7 @@ async def list_tools(request: JsonRpcRequest) -> dict[str, Any]:
 - Prometheus + Grafana monitoring
 
 **New Additions:**
+
 - **Redis:** Adding Redis for rate limiting (new dependency)
   - Deployment: docker-compose.dev.yml needs Redis service
   - Configuration: REDIS_URL environment variable
@@ -362,6 +378,7 @@ async def list_tools(request: JsonRpcRequest) -> dict[str, Any]:
 - **OpenTelemetry:** Adding distributed tracing (enhancement to existing monitoring)
 
 **Migration Considerations:**
+
 - None - this is a new component, no existing tool system to migrate
 
 ---
@@ -396,6 +413,7 @@ AgentCore is an open-source orchestration framework implementing Google's A2A (A
 ```
 
 **Integration Points for Tool Framework:**
+
 - **JSON-RPC Handler:** Register `tools.list` and `tools.execute` methods
 - **Agent Manager:** Tools advertised in agent capabilities
 - **Task Manager:** Tools invoked during task execution
@@ -404,6 +422,7 @@ AgentCore is an open-source orchestration framework implementing Google's A2A (A
 ### Component Architecture
 
 **Architecture Pattern:** Layered Architecture with Plugin System
+
 - **Rationale:** Separation of concerns between framework and adapters, easy to add new tools without modifying core
 - **Alignment:** Fits AgentCore's modular design philosophy
 
@@ -486,6 +505,7 @@ Agent Request → JSON-RPC (tools.execute)
 ### Architecture Decisions (from Research)
 
 **Decision 1: Layered vs. Microservices**
+
 - **Choice:** Layered Architecture within AgentCore monolith
 - **Rationale:**
   - Tool framework is tightly coupled with agent execution
@@ -495,6 +515,7 @@ Agent Request → JSON-RPC (tools.execute)
 - **Research Citation:** Research recommends integration over separate service due to latency requirements
 
 **Decision 2: Synchronous vs. Asynchronous Tool Execution**
+
 - **Choice:** Asynchronous with asyncio
 - **Rationale:**
   - AgentCore is async-first architecture
@@ -504,6 +525,7 @@ Agent Request → JSON-RPC (tools.execute)
 - **Trade-offs:** More complex code, but necessary for performance
 
 **Decision 3: In-Memory vs. Persistent Tool Registry**
+
 - **Choice:** Hybrid - in-memory with database persistence
 - **Rationale:**
   - Fast lookups (<10ms) require in-memory
@@ -516,6 +538,7 @@ Agent Request → JSON-RPC (tools.execute)
 - **Trade-offs:** Tools must be deployed with code, but performance optimal
 
 **Decision 4: Rate Limiting Strategy (Fail Open vs. Fail Closed)**
+
 - **Choice:** Fail Closed (reject requests when Redis unavailable)
 - **Rationale:**
   - Cost overruns more damaging than temporary unavailability
@@ -525,6 +548,7 @@ Agent Request → JSON-RPC (tools.execute)
 - **Trade-offs:** Less availability, but prevents runaway costs
 
 **Decision 5: Sandboxing Technology**
+
 - **Choice:** Docker containers with resource limits
 - **Rationale:**
   - Industry standard, mature security model
@@ -607,16 +631,19 @@ Agent Request → JSON-RPC (tools.execute)
 **Component Boundaries:**
 
 **Public Interface:**
+
 - JSON-RPC methods: `tools.list`, `tools.execute`
 - Tool base class for extending with custom tools
 - ToolResult format for tool outputs
 
 **Internal Implementation:**
+
 - ToolRegistry internals (data structures, caching)
 - RateLimiter implementation details (token bucket algorithm)
 - Tool adapter implementations (API clients, Docker management)
 
 **Cross-Component Contracts:**
+
 - Tools MUST return ToolResult (standard format)
 - Tools MUST validate parameters before execution
 - Tools MUST handle auth via ExecutionContext
@@ -693,6 +720,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 **Purpose:** List available tools with optional filtering
 
 **Request Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -707,6 +735,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 ```
 
 **Response Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -738,6 +767,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 ```
 
 **Error Handling:**
+
 - `400 Bad Request`: Invalid category or query parameter
 - `500 Internal Server Error`: Registry unavailable
 
@@ -748,6 +778,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 **Purpose:** Execute a tool with validated parameters
 
 **Request Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -772,6 +803,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 ```
 
 **Response Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -799,6 +831,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 ```
 
 **Error Handling:**
+
 - `400 Bad Request`: Invalid parameters, validation failed
 - `404 Not Found`: Tool not found
 - `429 Too Many Requests`: Rate limit exceeded
@@ -813,6 +846,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 **Purpose:** Search tools by capability or description
 
 **Request Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -835,6 +869,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 **Purpose:** Get detailed metadata for a specific tool
 
 **Request Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -855,6 +890,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 **Purpose:** Retrieve execution history for debugging
 
 **Request Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -878,6 +914,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 **Purpose:** Check current rate limit status
 
 **Request Schema:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -891,6 +928,7 @@ CREATE INDEX idx_tool_executions_success ON tool_executions(success, created_at 
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -1089,6 +1127,7 @@ FOR VALUES FROM ('2025-10-01') TO ('2025-11-01');
 ### Required Tools and Versions
 
 **Core Dependencies:**
+
 - Python 3.12+ (`python --version`)
 - Docker 24+ (`docker --version`)
 - PostgreSQL 15+ (via Docker Compose)
@@ -1096,6 +1135,7 @@ FOR VALUES FROM ('2025-10-01') TO ('2025-11-01');
 - uv package manager (`pip install uv`)
 
 **Development Tools:**
+
 - pytest-asyncio for testing
 - Ruff for linting
 - mypy for type checking
@@ -1392,6 +1432,7 @@ uv run pytest tests/ --cov=agentcore/tools --cov-report=html
    - Developer guide for adding tools
 
 **Deliverables:**
+
 - `src/agentcore/tools/base.py` - Tool interface
 - `src/agentcore/tools/models.py` - Data models
 - `src/agentcore/tools/registry.py` - ToolRegistry
@@ -1451,6 +1492,7 @@ uv run pytest tests/ --cov=agentcore/tools --cov-report=html
    - Validate error handling
 
 **Deliverables:**
+
 - `src/agentcore/tools/adapters/search.py` - Search tools
 - `src/agentcore/tools/adapters/code.py` - Code execution
 - `src/agentcore/tools/adapters/api.py` - API client
@@ -1511,6 +1553,7 @@ uv run pytest tests/ --cov=agentcore/tools --cov-report=html
    - Tool developer guide
 
 **Deliverables:**
+
 - `src/agentcore/tools/jsonrpc.py` - JSON-RPC handlers
 - `src/agentcore/tools/tracing.py` - OpenTelemetry integration
 - `docs/tools/api.md` - API documentation
@@ -1584,6 +1627,7 @@ uv run pytest tests/ --cov=agentcore/tools --cov-report=html
    - Troubleshooting guide
 
 **Deliverables:**
+
 - `src/agentcore/tools/rate_limiter.py` - Rate limiting
 - `src/agentcore/tools/retry.py` - Retry logic
 - `src/agentcore/tools/metrics.py` - Prometheus metrics
@@ -1991,6 +2035,7 @@ class CircuitBreaker:
 ### Source Documentation
 
 **Research Foundation:**
+
 - `docs/research/multi-tool-integration.md`
   - Technical architecture and framework design (lines 14-46)
   - Tool interface pattern (lines 117-182)
@@ -2000,6 +2045,7 @@ class CircuitBreaker:
   - Integration strategy with phases (lines 532-703)
 
 **Specification:**
+
 - `docs/specs/tool-integration/spec.md`
   - Functional requirements FR-1 through FR-5 (lines 43-104)
   - Non-functional requirements (lines 107-158)
@@ -2011,6 +2057,7 @@ class CircuitBreaker:
 ### System Context
 
 **Architecture & Patterns:**
+
 - Project Standards: `CLAUDE.md`
   - Python 3.12+ with async/await
   - FastAPI framework with JSON-RPC 2.0
@@ -2019,6 +2066,7 @@ class CircuitBreaker:
   - Async-first architecture patterns
 
 **Related Components:**
+
 - MOD-001: `docs/specs/modular-agent-core/spec.md` - Executor module integration
   - Relationship: Executor module depends on tool framework for tool invocation
 - CTX-001: Context Management System (future integration)
@@ -2029,12 +2077,14 @@ class CircuitBreaker:
 ### Technology Evaluation
 
 **Framework Selection:**
+
 - **FastAPI:** Existing AgentCore stack, JSON-RPC support, high performance (source: AgentCore architecture)
 - **Pydantic v2:** 10x validation performance improvement (source: Pydantic v2 release notes)
 - **Redis:** Sub-millisecond atomic operations (source: Redis documentation)
 - **Docker:** Industry standard for sandboxing (source: Research analysis)
 
 **Performance Benchmarks:**
+
 - **Framework overhead target:** <100ms (source: Research performance analysis, Spec NFR-1.1)
 - **Registry lookup target:** <10ms (source: Spec NFR-1.2)
 - **Rate limit check target:** <5ms (source: Spec NFR-1.4)
@@ -2049,12 +2099,14 @@ class CircuitBreaker:
 ### Related Components
 
 **Dependencies:**
+
 - MOD-001 (Modular Agent Core): `docs/specs/modular-agent-core/spec.md`
   - **Relationship:** Executor module consumes tool framework
   - **Integration:** Executor calls `tools.execute` to invoke tools
   - **Status:** In progress (MOD-001 spec complete, plan generated)
 
 **Dependents:**
+
 - CTX-001 (Context Management System): Future integration
   - **Relationship:** Tool selection strategies based on context playbooks
   - **Integration:** Context determines which tools agent can use
