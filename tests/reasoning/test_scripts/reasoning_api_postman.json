@@ -1,0 +1,192 @@
+{
+  "info": {
+    "name": "AgentCore Reasoning API",
+    "description": "Test collection for reasoning.bounded_context JSON-RPC method",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Simple Reasoning Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"reasoning.bounded_context\",\n  \"params\": {\n    \"query\": \"What is 2+2?\",\n    \"temperature\": 0.7,\n    \"chunk_size\": 8192,\n    \"carryover_size\": 4096,\n    \"max_iterations\": 5\n  },\n  \"id\": 1\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Basic reasoning request with all parameters"
+      }
+    },
+    {
+      "name": "Minimal Parameters",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"reasoning.bounded_context\",\n  \"params\": {\n    \"query\": \"Explain quantum entanglement\"\n  },\n  \"id\": 2\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Request with only required parameters (query)"
+      }
+    },
+    {
+      "name": "Custom System Prompt",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"reasoning.bounded_context\",\n  \"params\": {\n    \"query\": \"Write a haiku about coding\",\n    \"system_prompt\": \"You are a creative poet who loves programming.\",\n    \"temperature\": 0.9\n  },\n  \"id\": 3\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Request with custom system prompt and higher temperature"
+      }
+    },
+    {
+      "name": "With A2A Context",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"reasoning.bounded_context\",\n  \"params\": {\n    \"query\": \"What are the benefits of agent-based systems?\"\n  },\n  \"id\": 4,\n  \"a2a_context\": {\n    \"source_agent\": \"test-agent-1\",\n    \"target_agent\": \"reasoning-agent\",\n    \"trace_id\": \"test-trace-123\",\n    \"timestamp\": \"2025-01-16T00:00:00Z\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Request with A2A protocol context for distributed tracing"
+      }
+    },
+    {
+      "name": "Error - Invalid Parameters",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"reasoning.bounded_context\",\n  \"params\": {\n    \"query\": \"Test\",\n    \"chunk_size\": 4096,\n    \"carryover_size\": 4096\n  },\n  \"id\": 5\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Test error handling: carryover_size must be < chunk_size"
+      }
+    },
+    {
+      "name": "Error - Missing Required Parameter",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"reasoning.bounded_context\",\n  \"params\": {},\n  \"id\": 6\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Test error handling: missing required 'query' parameter"
+      }
+    },
+    {
+      "name": "Batch Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"reasoning.bounded_context\",\n    \"params\": {\"query\": \"What is AI?\"},\n    \"id\": 7\n  },\n  {\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"reasoning.bounded_context\",\n    \"params\": {\"query\": \"What is ML?\"},\n    \"id\": 8\n  }\n]"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "Batch request with multiple reasoning queries"
+      }
+    },
+    {
+      "name": "Introspection - List Methods",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"rpc.methods\",\n  \"id\": 9\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jsonrpc",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jsonrpc"]
+        },
+        "description": "List all registered JSON-RPC methods (verify reasoning.bounded_context is registered)"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8001",
+      "type": "string"
+    }
+  ]
+}
