@@ -4,8 +4,8 @@ Service layer for the Context Reasoning framework.
 This module contains service implementations:
 - LLMClient: Async LLM client with stop sequences, retry logic, circuit breaker
 - CarryoverGenerator: Compressed summary generation for bounded context iterations
-- ReasoningStrategyRegistry: Central registry for strategy registration and discovery
 - MetricsCalculator: Compute savings and performance metrics calculation
+- ReasoningStrategyRegistry: Central registry for strategy registration and discovery
 - StrategySelector: Logic for selecting strategies based on precedence rules
 """
 
@@ -16,6 +16,7 @@ from .llm_client import (
     LLMClient,
     LLMClientConfig,
 )
+from .metrics_calculator import MetricsCalculator
 
 __all__ = [
     "LLMClient",
@@ -23,4 +24,5 @@ __all__ = [
     "GenerationResult",
     "CircuitState",
     "CarryoverGenerator",
+    "MetricsCalculator",
 ]

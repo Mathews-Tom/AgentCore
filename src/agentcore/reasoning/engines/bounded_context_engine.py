@@ -30,6 +30,7 @@ from ..models.reasoning_models import (
 )
 from ..services.carryover_generator import CarryoverGenerator
 from ..services.llm_client import GenerationResult, LLMClient
+from ..services.metrics_calculator import MetricsCalculator
 
 logger = structlog.get_logger()
 
@@ -312,11 +313,26 @@ class BoundedContextEngine:
         execution_time = int((time.time() - start_time) * 1000)
         carryover_compressions = sum(1 for it in iterations if it.carryover is not None)
 
-        # Calculate compute savings (placeholder - real calculation in BCR-008)
-        # Assume traditional reasoning would use chunk_size * iterations tokens
-        traditional_tokens = self.config.chunk_size * len(iterations)
-        compute_savings_pct = ((traditional_tokens - total_tokens) / traditional_tokens * 100) if traditional_tokens > 0 else 0.0
+        # Create preliminary result for metrics calculation
+        preliminary_result = BoundedContextResult(
+            answer=answer,
+            iterations=iterations,
+            total_tokens=total_tokens,
+            total_iterations=len(iterations),
+            compute_savings_pct=0.0,  # Will be calculated below
+            carryover_compressions=carryover_compressions,
+            execution_time_ms=execution_time,
+        )
 
+        # Calculate compute savings using MetricsCalculator
+        query_tokens = self.llm_client.count_tokens(query)
+        compute_savings_pct = MetricsCalculator.calculate_compute_savings(
+            bounded_result=preliminary_result,
+            config=self.config,
+            query_tokens=query_tokens,
+        )
+
+        # Update result with actual compute savings
         result = BoundedContextResult(
             answer=answer,
             iterations=iterations,
