@@ -28,6 +28,7 @@ from ..models.reasoning_models import (
     CarryoverContent,
     IterationMetrics,
 )
+from ..services.carryover_generator import CarryoverGenerator
 from ..services.llm_client import GenerationResult, LLMClient
 
 logger = structlog.get_logger()
@@ -51,6 +52,12 @@ class BoundedContextEngine:
         """
         self.llm_client = llm_client
         self.config = config
+
+        # Initialize carryover generator
+        self.carryover_generator = CarryoverGenerator(
+            llm_client=llm_client,
+            max_carryover_tokens=config.carryover_size,
+        )
 
         logger.info(
             "bounded_context_engine_initialized",
@@ -164,8 +171,6 @@ class BoundedContextEngine:
         """
         Generate compressed carryover for next iteration.
 
-        This is a placeholder - will be implemented in BCR-006.
-
         Args:
             query: Original query
             iteration_content: Content from current iteration
@@ -174,17 +179,11 @@ class BoundedContextEngine:
         Returns:
             Compressed carryover for next iteration
         """
-        # Placeholder: Simple extraction logic
-        # Real implementation will use LLM to generate compressed summary
-        logger.debug("carryover_generation_placeholder", iteration_content_length=len(iteration_content))
-
-        # For now, return a minimal carryover structure
-        return CarryoverContent(
-            current_strategy="Continue reasoning step by step",
-            progress=f"Completed iteration with {len(iteration_content)} characters",
-            key_findings=["Reasoning in progress"],
-            next_steps=["Continue analysis"],
-            unresolved=["Answer not yet found"],
+        return await self.carryover_generator.generate_carryover(
+            query=query,
+            iteration_content=iteration_content,
+            previous_carryover=previous_carryover,
+            temperature=0.3,  # Lower temperature for focused compression
         )
 
     async def reason(
