@@ -8,3 +8,25 @@ This module contains data models for:
 - BoundedContextConfig: Configuration for bounded context strategy
 - IterationMetrics: Per-iteration tracking for multi-step reasoning
 """
+
+from .reasoning_models import (
+    BoundedContextConfig,
+    BoundedContextIterationResult,
+    BoundedContextResult,
+    CarryoverContent,
+    IterationMetrics,
+    ReasoningMetrics,
+    ReasoningRequest,
+    ReasoningResult,
+)
+
+__all__ = [
+    "ReasoningRequest",
+    "ReasoningResult",
+    "ReasoningMetrics",
+    "BoundedContextConfig",
+    "IterationMetrics",
+    "CarryoverContent",
+    "BoundedContextIterationResult",
+    "BoundedContextResult",
+]
