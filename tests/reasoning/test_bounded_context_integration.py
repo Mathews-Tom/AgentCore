@@ -318,3 +318,203 @@ async def test_iteration_metrics_tracking(
     assert iter_1.metrics.tokens == 600
     assert iter_1.metrics.has_answer is True
     assert iter_1.metrics.carryover_generated is False
+
+
+@pytest.mark.asyncio
+async def test_carryover_parse_failure_fallback(
+    mock_llm_client: LLMClient,
+    bounded_config: BoundedContextConfig,
+) -> None:
+    """Test fallback when carryover JSON parsing fails."""
+    responses = [
+        # Iteration 0: No answer, continue
+        GenerationResult(
+            content="Step 1: Working on it... <continue>",
+            tokens_used=600,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+        # Carryover generation returns invalid JSON
+        GenerationResult(
+            content="This is not valid JSON at all!",
+            tokens_used=200,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+        # Iteration 1: Answer found
+        GenerationResult(
+            content="<answer>Final answer</answer>",
+            tokens_used=500,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+    ]
+
+    mock_llm_client.generate.side_effect = responses
+
+    engine = BoundedContextEngine(mock_llm_client, bounded_config)
+    result = await engine.reason(query="Test query")
+
+    # Should complete successfully with fallback carryover
+    assert result.answer == "Final answer"
+    assert result.total_iterations == 2
+    # Carryover should still be generated (fallback)
+    assert result.iterations[0].carryover is not None
+
+
+@pytest.mark.asyncio
+async def test_carryover_missing_fields_fallback(
+    mock_llm_client: LLMClient,
+    bounded_config: BoundedContextConfig,
+) -> None:
+    """Test fallback when carryover JSON is missing required fields."""
+    responses = [
+        GenerationResult(
+            content="Reasoning... <continue>",
+            tokens_used=600,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+        # Carryover with incomplete fields
+        GenerationResult(
+            content='{"current_strategy": "Plan", "key_findings": []}',  # Missing fields
+            tokens_used=200,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+        GenerationResult(
+            content="<answer>Done</answer>",
+            tokens_used=500,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+    ]
+
+    mock_llm_client.generate.side_effect = responses
+
+    engine = BoundedContextEngine(mock_llm_client, bounded_config)
+    result = await engine.reason(query="Test")
+
+    # Should use fallback carryover
+    assert result.answer == "Done"
+    assert result.iterations[0].carryover is not None
+
+
+@pytest.mark.asyncio
+async def test_carryover_exceeds_token_limit(
+    mock_llm_client: LLMClient,
+    bounded_config: BoundedContextConfig,
+) -> None:
+    """Test that oversized carryover is trimmed."""
+    responses = [
+        GenerationResult(
+            content="Step 1... <continue>",
+            tokens_used=600,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+        # Very large carryover
+        GenerationResult(
+            content='{"current_strategy": "Plan", "key_findings": ["F1", "F2", "F3", "F4", "F5"], "progress": "Progress", "next_steps": ["N1", "N2", "N3", "N4", "N5"], "unresolved": []}',
+            tokens_used=200,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+        GenerationResult(
+            content="<answer>Result</answer>",
+            tokens_used=500,
+            finish_reason="stop",
+            model="gpt-4.1",
+        ),
+    ]
+
+    # Mock count_tokens to simulate oversized carryover that needs trimming
+    call_counts = [0]
+
+    def mock_count(text: str) -> int:
+        call_counts[0] += 1
+        # First few calls return large value, then it decreases as trimming happens
+        if "F1" in text and "F5" in text:
+            return 10000  # Too large
+        elif "F1" in text and "F4" in text:
+            return 9000  # Still too large
+        elif "F1" in text and "F3" in text:
+            return 8000  # Still too large
+        elif "F1" in text and "F2" in text:
+            return 4000  # Within limit after trimming
+        return 100
+
+    mock_llm_client.count_tokens = MagicMock(side_effect=mock_count)
+    mock_llm_client.generate.side_effect = responses
+
+    engine = BoundedContextEngine(mock_llm_client, bounded_config)
+    result = await engine.reason(query="Test")
+
+    # Should still complete successfully with trimmed carryover
+    assert result.answer == "Result"
+    assert result.iterations[0].carryover is not None
+    # Carryover should have been trimmed
+    assert len(result.iterations[0].carryover.key_findings) < 5
+
+
+@pytest.mark.asyncio
+async def test_carryover_generation_exception(
+    mock_llm_client: LLMClient,
+    bounded_config: BoundedContextConfig,
+) -> None:
+    """Test fallback when carryover generation raises exception."""
+    call_count = [0]
+
+    def side_effect_generator(*args, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            # First call: iteration 0
+            return GenerationResult(
+                content="Working... <continue>",
+                tokens_used=600,
+                finish_reason="stop",
+                model="gpt-4.1",
+            )
+        elif call_count[0] == 2:
+            # Second call: carryover generation - fails
+            raise RuntimeError("Carryover generation failed")
+        else:
+            # Third call: iteration 1
+            return GenerationResult(
+                content="<answer>Answer</answer>",
+                tokens_used=500,
+                finish_reason="stop",
+                model="gpt-4.1",
+            )
+
+    mock_llm_client.generate.side_effect = side_effect_generator
+
+    engine = BoundedContextEngine(mock_llm_client, bounded_config)
+    result = await engine.reason(query="Test")
+
+    # Should use fallback carryover
+    assert result.answer == "Answer"
+    assert result.iterations[0].carryover is not None
+
+
+@pytest.mark.asyncio
+async def test_metrics_calculator_edge_cases(
+    mock_llm_client: LLMClient,
+    bounded_config: BoundedContextConfig,
+) -> None:
+    """Test metrics calculation with edge cases."""
+    # Test with zero iterations (edge case, shouldn't happen in practice)
+    mock_llm_client.generate.return_value = GenerationResult(
+        content="<answer>Quick</answer>",
+        tokens_used=100,
+        finish_reason="stop",
+        model="gpt-4.1",
+    )
+
+    engine = BoundedContextEngine(mock_llm_client, bounded_config)
+    result = await engine.reason(query="Test")
+
+    # Single iteration should have valid metrics
+    assert result.total_iterations == 1
+    assert result.compute_savings_pct >= 0.0
+    assert result.total_tokens > 0
