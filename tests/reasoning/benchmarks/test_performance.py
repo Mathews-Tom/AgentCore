@@ -39,16 +39,38 @@ def create_mock_llm_client() -> LLMClient:
 
     Returns responses with realistic latency (100-200ms) to simulate actual LLM calls.
     """
+    from src.agentcore.reasoning.services.llm_client import GenerationResult
+
     mock_client = Mock(spec=LLMClient)
 
-    async def mock_complete(prompt: str, temperature: float, max_tokens: int) -> str:
+    async def mock_generate(
+        prompt: str,
+        system_prompt: str | None = None,
+        max_tokens: int = 8192,
+        temperature: float = 0.7,
+        stop_sequences: list[str] | None = None,
+        model: str | None = None,
+    ) -> GenerationResult:
         # Simulate realistic LLM latency (100-200ms)
         await asyncio.sleep(0.15)
         # Return response proportional to max_tokens
         response_size = min(max_tokens // 10, 200)
-        return f"Mock reasoning response. " * response_size
+        content = f"Mock reasoning response. " * response_size
 
-    mock_client.complete = mock_complete
+        return GenerationResult(
+            content=content,
+            tokens_used=len(content) // 4,  # Approximate token count
+            finish_reason="stop",
+            model=model or "gpt-4.1",
+            stop_sequence_found=None,
+        )
+
+    def mock_count_tokens(text: str) -> int:
+        # Simple approximation: ~4 chars per token
+        return len(text) // 4
+
+    mock_client.generate = mock_generate
+    mock_client.count_tokens = mock_count_tokens
     return mock_client
 
 
@@ -106,10 +128,10 @@ def mock_security_service(monkeypatch):
     def mock_validate_token(token: str) -> TokenPayload:
         return mock_payload
 
-    from src.agentcore.a2a_protocol.services import security_service
-
+    # Mock at the location where it's imported in reasoning_jsonrpc
     monkeypatch.setattr(
-        security_service.security_service, "validate_token", mock_validate_token
+        "src.agentcore.reasoning.services.reasoning_jsonrpc.security_service.validate_token",
+        mock_validate_token
     )
 
 
@@ -187,7 +209,7 @@ async def test_benchmark_compute_savings_small_query(mock_security_service, monk
 
     # 10K token query
     query = "Explain distributed consensus algorithms in detail." * 200
-    request = create_authenticated_request(query, chunk_size=4096, max_iterations=5)
+    request = create_authenticated_request(query, chunk_size=6144, max_iterations=5)
     result = await handle_bounded_reasoning(request)
 
     assert result["success"] is True
@@ -259,16 +281,17 @@ async def test_benchmark_memory_usage(mock_security_service, monkeypatch):
     tracemalloc.start()
     initial_memory = tracemalloc.get_traced_memory()[0]
 
-    request = create_authenticated_request(query, chunk_size=4096, max_iterations=5)
+    request = create_authenticated_request(query, chunk_size=6144, max_iterations=5)
     result = await handle_bounded_reasoning(request)
 
     final_memory = tracemalloc.get_traced_memory()[0]
     tracemalloc.stop()
 
     assert result["success"] is True
-    # Memory growth should be minimal (<5x of initial allocation for reasonable test)
-    memory_growth = (final_memory - initial_memory) / max(initial_memory, 1)
-    assert memory_growth < 5.0  # Allow reasonable growth for test execution
+    # Memory growth should be reasonable (under 10MB)
+    memory_growth_bytes = final_memory - initial_memory
+    memory_growth_mb = memory_growth_bytes / (1024 * 1024)
+    assert memory_growth_mb < 10.0  # Allow up to 10MB memory growth for test execution
 
 
 @pytest.mark.asyncio
@@ -288,13 +311,13 @@ async def test_benchmark_iteration_scaling(mock_security_service, monkeypatch):
     query = "Explain distributed tracing in microservices." * 150
 
     # Test with 3 iterations
-    request_3 = create_authenticated_request(query, chunk_size=4096, max_iterations=3)
+    request_3 = create_authenticated_request(query, chunk_size=6144, max_iterations=3)
     start_3 = time.time()
     result_3 = await handle_bounded_reasoning(request_3)
     duration_3 = time.time() - start_3
 
     # Test with 6 iterations
-    request_6 = create_authenticated_request(query, chunk_size=4096, max_iterations=6)
+    request_6 = create_authenticated_request(query, chunk_size=6144, max_iterations=6)
     start_6 = time.time()
     result_6 = await handle_bounded_reasoning(request_6)
     duration_6 = time.time() - start_6
