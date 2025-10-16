@@ -459,6 +459,14 @@ class AgentManager:
             except re.error:
                 logger.warning("Invalid regex pattern", pattern=query.name_pattern)
 
+        # BCR-018: Filter by bounded reasoning support
+        if query.has_bounded_reasoning is not None:
+            filtered = [
+                a
+                for a in filtered
+                if a.supports_bounded_reasoning == query.has_bounded_reasoning
+            ]
+
         return filtered
 
     def _update_agent_indexes(self, agent: AgentCard) -> None:

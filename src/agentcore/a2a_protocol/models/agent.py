@@ -349,6 +349,9 @@ class AgentDiscoveryQuery(BaseModel):
     tags: list[str] | None = Field(None, description="Agent tags filter")
     category: str | None = Field(None, description="Agent category filter")
     name_pattern: str | None = Field(None, description="Agent name pattern (regex)")
+    has_bounded_reasoning: bool | None = Field(
+        None, description="Filter by bounded reasoning support (BCR-018)"
+    )
     limit: int = Field(
         default=50, ge=1, le=1000, description="Maximum number of results"
     )
