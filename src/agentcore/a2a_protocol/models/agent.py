@@ -224,6 +224,16 @@ class AgentCard(BaseModel):
         description="Example interactions for few-shot learning (input/output pairs)",
     )
 
+    # BCR-016: Bounded reasoning capabilities
+    supports_bounded_reasoning: bool = Field(
+        default=False,
+        description="Whether agent supports bounded context reasoning",
+    )
+    reasoning_config: dict[str, Any] | None = Field(
+        None,
+        description="Optional reasoning configuration (max_iterations, chunk_size, carryover_size, temperature)",
+    )
+
     # Timestamps (managed by the system)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Registration timestamp"
@@ -309,6 +319,7 @@ class AgentCard(BaseModel):
             "primary_endpoint": str(primary_endpoint.url) if primary_endpoint else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
             "created_at": self.created_at.isoformat(),
+            "supports_bounded_reasoning": self.supports_bounded_reasoning,
         }
 
 
@@ -338,6 +349,9 @@ class AgentDiscoveryQuery(BaseModel):
     tags: list[str] | None = Field(None, description="Agent tags filter")
     category: str | None = Field(None, description="Agent category filter")
     name_pattern: str | None = Field(None, description="Agent name pattern (regex)")
+    has_bounded_reasoning: bool | None = Field(
+        None, description="Filter by bounded reasoning support (BCR-018)"
+    )
     limit: int = Field(
         default=50, ge=1, le=1000, description="Maximum number of results"
     )

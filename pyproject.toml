@@ -36,6 +36,8 @@ dependencies = [
     "rich>=13.0.0",
     "pyyaml>=6.0",
     "portkey-ai>=1.15.1",
+    "tiktoken>=0.12.0",
+    "bandit>=1.8.6",
 ]
 
 [project.optional-dependencies]
@@ -114,6 +116,7 @@ dev = [
     "locust>=2.41.2",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "pytest-benchmark>=5.1.0",
     "pytest-cov>=7.0.0",
     "testcontainers[redis]>=4.13.1",
 ]

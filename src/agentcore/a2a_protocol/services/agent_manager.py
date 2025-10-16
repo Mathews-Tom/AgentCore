@@ -333,10 +333,80 @@ class AgentManager:
         if len(capability_names) != len(set(capability_names)):
             raise ValueError("Agent capabilities must have unique names")
 
+        # BCR-017: Validate reasoning capabilities
+        if agent_card.reasoning_config:
+            self._validate_reasoning_config(agent_card.reasoning_config)
+
         # Validate endpoint URLs are accessible (future implementation)
         # This could include actual HTTP checks to endpoints
 
         logger.debug("Agent card validation passed", agent_id=agent_card.agent_id)
+
+    def _validate_reasoning_config(self, reasoning_config: dict) -> None:
+        """
+        Validate reasoning configuration parameters.
+
+        Args:
+            reasoning_config: Reasoning configuration dictionary
+
+        Raises:
+            ValueError: If reasoning config is invalid
+        """
+        if not isinstance(reasoning_config, dict):
+            raise ValueError("reasoning_config must be a dictionary")
+
+        # Validate max_iterations if present
+        if "max_iterations" in reasoning_config:
+            max_iterations = reasoning_config["max_iterations"]
+            if not isinstance(max_iterations, int):
+                raise ValueError("reasoning_config.max_iterations must be an integer")
+            if max_iterations < 1 or max_iterations > 50:
+                raise ValueError(
+                    "reasoning_config.max_iterations must be between 1 and 50"
+                )
+
+        # Validate chunk_size if present
+        if "chunk_size" in reasoning_config:
+            chunk_size = reasoning_config["chunk_size"]
+            if not isinstance(chunk_size, int):
+                raise ValueError("reasoning_config.chunk_size must be an integer")
+            if chunk_size < 1024 or chunk_size > 32768:
+                raise ValueError(
+                    "reasoning_config.chunk_size must be between 1024 and 32768"
+                )
+
+        # Validate carryover_size if present
+        if "carryover_size" in reasoning_config:
+            carryover_size = reasoning_config["carryover_size"]
+            if not isinstance(carryover_size, int):
+                raise ValueError("reasoning_config.carryover_size must be an integer")
+            if carryover_size < 512 or carryover_size > 16384:
+                raise ValueError(
+                    "reasoning_config.carryover_size must be between 512 and 16384"
+                )
+
+        # Validate temperature if present
+        if "temperature" in reasoning_config:
+            temperature = reasoning_config["temperature"]
+            if not isinstance(temperature, (int, float)):
+                raise ValueError("reasoning_config.temperature must be a number")
+            if temperature < 0.0 or temperature > 2.0:
+                raise ValueError(
+                    "reasoning_config.temperature must be between 0.0 and 2.0"
+                )
+
+        # Validate carryover_size < chunk_size if both present
+        if "chunk_size" in reasoning_config and "carryover_size" in reasoning_config:
+            if reasoning_config["carryover_size"] >= reasoning_config["chunk_size"]:
+                raise ValueError(
+                    "reasoning_config.carryover_size must be less than chunk_size"
+                )
+
+        logger.debug(
+            "Reasoning config validation passed",
+            max_iterations=reasoning_config.get("max_iterations"),
+            chunk_size=reasoning_config.get("chunk_size"),
+        )
 
     def _filter_agents(
         self, agents: list[AgentCard], query: AgentDiscoveryQuery
@@ -388,6 +458,14 @@ class AgentManager:
                 filtered = [a for a in filtered if pattern.search(a.agent_name)]
             except re.error:
                 logger.warning("Invalid regex pattern", pattern=query.name_pattern)
+
+        # BCR-018: Filter by bounded reasoning support
+        if query.has_bounded_reasoning is not None:
+            filtered = [
+                a
+                for a in filtered
+                if a.supports_bounded_reasoning == query.has_bounded_reasoning
+            ]
 
         return filtered
 

@@ -31,6 +31,7 @@ class Permission(str, Enum):
     TASK_UPDATE = "task:update"
     TASK_DELETE = "task:delete"
     ROUTE_MESSAGE = "route:message"
+    REASONING_EXECUTE = "reasoning:execute"
     ADMIN = "admin"
 
 
@@ -51,6 +52,7 @@ ROLE_PERMISSIONS: dict[Role, list[Permission]] = {
         Permission.TASK_READ,
         Permission.TASK_UPDATE,
         Permission.ROUTE_MESSAGE,
+        Permission.REASONING_EXECUTE,
     ],
     Role.SERVICE: [
         Permission.AGENT_REGISTER,
@@ -62,6 +64,7 @@ ROLE_PERMISSIONS: dict[Role, list[Permission]] = {
         Permission.TASK_UPDATE,
         Permission.TASK_DELETE,
         Permission.ROUTE_MESSAGE,
+        Permission.REASONING_EXECUTE,
     ],
     Role.ADMIN: [Permission.ADMIN],  # Admin has all permissions
 }

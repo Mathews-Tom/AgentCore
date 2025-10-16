@@ -1,0 +1,226 @@
+# Prometheus Alerting Rules for Bounded Context Reasoning
+#
+# Load these rules into Prometheus:
+#   kubectl apply -f prometheus/alerts/reasoning-alerts.yml
+#
+# Or add to prometheus.yml:
+#   rule_files:
+#     - "alerts/reasoning-alerts.yml"
+
+groups:
+  - name: reasoning_availability
+    interval: 30s
+    rules:
+      - alert: ReasoningHighErrorRate
+        expr: |
+          (
+            rate(reasoning_bounded_context_requests_total{status="error"}[5m])
+            /
+            rate(reasoning_bounded_context_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "High error rate in reasoning service"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%). Check logs and LLM provider status."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-high-error-rate"
+
+      - alert: ReasoningHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(reasoning_bounded_context_duration_seconds_bucket[5m])) by (le)
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "High latency in reasoning service"
+          description: "P95 latency is {{ $value | humanizeDuration }} (threshold: 5s). Performance degradation detected."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-high-latency"
+
+      - alert: ReasoningServiceDown
+        expr: up{job="agentcore-reasoning"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "Reasoning service is down"
+          description: "Reasoning service has been down for more than 2 minutes. Check pod status and logs."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-service-down"
+
+  - name: reasoning_performance
+    interval: 60s
+    rules:
+      - alert: ReasoningLowTokenSavings
+        expr: |
+          (
+            rate(reasoning_bounded_context_compute_savings_pct_sum[30m])
+            /
+            rate(reasoning_bounded_context_compute_savings_pct_count[30m])
+          ) < 10
+        for: 30m
+        labels:
+          severity: warning
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "Low token savings in reasoning"
+          description: "Token savings is {{ $value | humanizePercentage }} (threshold: 10%). Feature may not be providing expected value."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-low-savings"
+
+      - alert: ReasoningHighIterationCount
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(reasoning_bounded_context_iterations_total_bucket[10m])) by (le)
+          ) > 45
+        for: 15m
+        labels:
+          severity: warning
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "High iteration count in reasoning"
+          description: "P95 iteration count is {{ $value }} (threshold: 45). Queries may be hitting max iterations limit."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-high-iterations"
+
+  - name: reasoning_llm_health
+    interval: 30s
+    rules:
+      - alert: ReasoningLLMFailures
+        expr: rate(reasoning_bounded_context_llm_failures_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "LLM service failures in reasoning"
+          description: "LLM failure rate is {{ $value }} per minute. Check LLM provider status and credentials."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-llm-failures"
+
+      - alert: ReasoningAuthenticationErrors
+        expr: |
+          rate(reasoning_bounded_context_errors_total{error_type="authentication_error"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: reasoning
+          team: security
+        annotations:
+          summary: "High authentication error rate"
+          description: "Authentication errors at {{ $value }} per minute. Possible JWT issues or unauthorized access attempts."
+          dashboard: "https://grafana/d/reasoning"
+          runbook: "https://wiki/runbooks/reasoning-auth-errors"
+
+  - name: reasoning_capacity
+    interval: 60s
+    rules:
+      - alert: ReasoningHighTokenThroughput
+        expr: |
+          rate(reasoning_bounded_context_tokens_total_sum[5m]) > 1000000
+        for: 10m
+        labels:
+          severity: info
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "High token throughput"
+          description: "Processing {{ $value | humanize }} tokens per second. Monitor for cost and capacity."
+          dashboard: "https://grafana/d/reasoning"
+
+      - alert: ReasoningRateLimitApproaching
+        expr: |
+          (
+            rate(reasoning_bounded_context_requests_total[1m]) * 60
+          ) > 800
+        for: 5m
+        labels:
+          severity: warning
+          component: reasoning
+          team: ml-platform
+        annotations:
+          summary: "Approaching rate limit"
+          description: "Request rate is {{ $value }} per minute (limit: 1000). May start rate limiting soon."
+          dashboard: "https://grafana/d/reasoning"
+
+  - name: reasoning_business_metrics
+    interval: 300s  # Check every 5 minutes
+    rules:
+      - alert: ReasoningLowAdoptionRate
+        expr: |
+          (
+            rate(reasoning_bounded_context_requests_total[1h])
+            /
+            rate(http_requests_total{endpoint="/api/v1/jsonrpc"}[1h])
+          ) < 0.01
+        for: 2h
+        labels:
+          severity: info
+          component: reasoning
+          team: product
+        annotations:
+          summary: "Low reasoning adoption rate"
+          description: "Reasoning requests are {{ $value | humanizePercentage }} of total (threshold: 1%). Feature may need promotion."
+          dashboard: "https://grafana/d/reasoning"
+
+      - alert: ReasoningCostAnomaly
+        expr: |
+          (
+            sum(rate(reasoning_bounded_context_tokens_total_sum[1h]))
+            /
+            sum(rate(reasoning_bounded_context_tokens_total_sum[1h] offset 24h))
+          ) > 2
+        for: 1h
+        labels:
+          severity: warning
+          component: reasoning
+          team: finance
+        annotations:
+          summary: "Reasoning cost anomaly detected"
+          description: "Token usage is {{ $value }}x higher than 24h ago. Investigate usage patterns."
+          dashboard: "https://grafana/d/reasoning"
+
+# Alert Manager Configuration
+#
+# Add to alertmanager.yml:
+#
+# receivers:
+#   - name: 'reasoning-team'
+#     slack_configs:
+#       - channel: '#reasoning-alerts'
+#         title: '{{ .GroupLabels.alertname }}'
+#         text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+#     pagerduty_configs:
+#       - service_key: '<pagerduty-key>'
+#         severity: '{{ .GroupLabels.severity }}'
+#
+# route:
+#   group_by: ['alertname', 'component']
+#   group_wait: 30s
+#   group_interval: 5m
+#   repeat_interval: 12h
+#   receiver: 'reasoning-team'
+#   routes:
+#     - match:
+#         component: reasoning
+#         severity: critical
+#       receiver: 'reasoning-team'
+#       continue: true
+#     - match:
+#         component: reasoning
+#         severity: warning
+#       receiver: 'reasoning-team'
+#       repeat_interval: 24h
