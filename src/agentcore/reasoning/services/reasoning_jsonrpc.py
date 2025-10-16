@@ -12,8 +12,14 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, Field, field_validator
 
-from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
+from agentcore.a2a_protocol.models.jsonrpc import (
+    JsonRpcErrorCode,
+    JsonRpcRequest,
+    create_error_response,
+)
+from agentcore.a2a_protocol.models.security import Permission
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
+from agentcore.a2a_protocol.services.security_service import security_service
 
 from ..engines.bounded_context_engine import BoundedContextEngine
 from ..models.reasoning_models import BoundedContextConfig
@@ -26,6 +32,88 @@ from ..services.metrics import (
 )
 
 logger = structlog.get_logger()
+
+
+def _extract_jwt_token(request: JsonRpcRequest) -> str | None:
+    """
+    Extract JWT token from JSON-RPC request.
+
+    Checks params.auth_token for explicit token in params.
+
+    Args:
+        request: JSON-RPC request
+
+    Returns:
+        JWT token string or None if not found
+    """
+    # Check params for explicit auth_token
+    if request.params and isinstance(request.params, dict):
+        token = request.params.get("auth_token")
+        if token and isinstance(token, str):
+            return token
+
+    return None
+
+
+def _validate_authentication(request: JsonRpcRequest) -> None:
+    """
+    Validate JWT authentication and check reasoning:execute permission.
+
+    Args:
+        request: JSON-RPC request
+
+    Raises:
+        ValueError: If authentication fails
+    """
+    # Extract JWT token
+    token = _extract_jwt_token(request)
+
+    if not token:
+        logger.warning(
+            "authentication_failed",
+            reason="missing_token",
+            method="reasoning.bounded_context",
+            trace_id=request.a2a_context.trace_id if request.a2a_context else None,
+        )
+        raise ValueError(
+            "Authentication required: Missing JWT token. "
+            "Provide 'auth_token' in params"
+        )
+
+    # Validate token
+    token_payload = security_service.validate_token(token)
+
+    if not token_payload:
+        logger.warning(
+            "authentication_failed",
+            reason="invalid_token",
+            method="reasoning.bounded_context",
+            trace_id=request.a2a_context.trace_id if request.a2a_context else None,
+        )
+        raise ValueError("Authentication failed: Invalid or expired JWT token")
+
+    # Check permission
+    if not token_payload.has_permission(Permission.REASONING_EXECUTE):
+        logger.warning(
+            "authorization_failed",
+            reason="insufficient_permissions",
+            method="reasoning.bounded_context",
+            subject=token_payload.sub,
+            role=token_payload.role.value,
+            required_permission=Permission.REASONING_EXECUTE.value,
+            trace_id=request.a2a_context.trace_id if request.a2a_context else None,
+        )
+        raise PermissionError(
+            f"Authorization failed: Missing required permission '{Permission.REASONING_EXECUTE.value}'"
+        )
+
+    logger.info(
+        "authentication_success",
+        subject=token_payload.sub,
+        role=token_payload.role.value,
+        method="reasoning.bounded_context",
+        trace_id=request.a2a_context.trace_id if request.a2a_context else None,
+    )
 
 
 class BoundedReasoningParams(BaseModel):
@@ -98,11 +186,14 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
         - carryover_size: number (optional, default 4096) - Tokens carried forward
         - max_iterations: number (optional, default 5) - Maximum iterations
         - llm_config: object (optional) - LLM client configuration
+        - auth_token: string (optional) - JWT authentication token
 
     Returns:
         Bounded context reasoning result
 
     Errors:
+        -32103: Authentication failed (invalid/missing token)
+        -32104: Authorization failed (insufficient permissions)
         -32602: Invalid params (validation errors)
         -32603: Internal error (LLM failures, runtime errors)
         -32001: Max iterations reached without answer
@@ -110,13 +201,29 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
     # Start timing
     start_time = time.time()
 
+    # Validate authentication first
+    try:
+        _validate_authentication(request)
+    except PermissionError as e:
+        # Authorization failed - insufficient permissions
+        logger.error("authorization_failed", error=str(e))
+        record_reasoning_error("authorization_error")
+        raise ValueError(str(e)) from e
+    except ValueError as e:
+        # Authentication failed - invalid or missing token
+        logger.error("authentication_failed", error=str(e))
+        record_reasoning_error("authentication_error")
+        raise ValueError(str(e)) from e
+
     # Validate parameters
     if not request.params or not isinstance(request.params, dict):
         record_reasoning_error("validation_error")
         raise ValueError("Parameters required for reasoning.bounded_context")
 
     try:
-        params = BoundedReasoningParams(**request.params)
+        # Filter out auth_token from params before validation
+        params_dict = {k: v for k, v in request.params.items() if k != "auth_token"}
+        params = BoundedReasoningParams(**params_dict)
     except Exception as e:
         record_reasoning_error("validation_error")
         raise ValueError(f"Invalid parameters: {e}") from e

@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from agentcore.a2a_protocol.models.jsonrpc import A2AContext, JsonRpcRequest
+from agentcore.a2a_protocol.models.security import Role, TokenPayload
 from src.agentcore.reasoning.models.reasoning_models import (
     BoundedContextIterationResult,
     BoundedContextResult,
@@ -21,7 +23,6 @@ from src.agentcore.reasoning.services.reasoning_jsonrpc import (
     BoundedReasoningResult,
     handle_bounded_reasoning,
 )
-from agentcore.a2a_protocol.models.jsonrpc import A2AContext, JsonRpcRequest
 
 
 @pytest.fixture
@@ -61,7 +62,20 @@ def valid_request_params() -> dict:
         "chunk_size": 8192,
         "carryover_size": 4096,
         "max_iterations": 5,
+        "auth_token": "valid-test-token",  # Add auth token
     }
+
+
+@pytest.fixture
+def valid_token_payload() -> TokenPayload:
+    """Create valid token payload with reasoning:execute permission."""
+    return TokenPayload.create(
+        subject="test-agent",
+        role=Role.AGENT,
+        token_type="access",
+        expiration_hours=24,
+        agent_id="test-agent",
+    )
 
 
 def test_bounded_reasoning_params_validation():
@@ -101,6 +115,7 @@ def test_bounded_reasoning_params_validation():
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_success(
     valid_request_params: dict,
+    valid_token_payload: TokenPayload,
     mock_reasoning_result: BoundedContextResult,
 ):
     """Test successful bounded reasoning execution."""
@@ -111,11 +126,13 @@ async def test_handle_bounded_reasoning_success(
         id="test-123",
     )
 
-    # Mock engine
+    # Mock engine and security
     with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
     ):
+        mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -143,30 +160,34 @@ async def test_handle_bounded_reasoning_success(
 
 
 @pytest.mark.asyncio
-async def test_handle_bounded_reasoning_missing_params():
+async def test_handle_bounded_reasoning_missing_params(valid_token_payload: TokenPayload):
     """Test error handling for missing parameters."""
-    # No params
+    # No params - will fail auth check first
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         id="test-123",
     )
 
-    with pytest.raises(ValueError, match="Parameters required"):
+    with pytest.raises(ValueError, match="Authentication required"):
         await handle_bounded_reasoning(request)
 
-    # Empty params
+    # Empty params with valid auth token
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
-        params={},
+        params={"auth_token": "valid-token"},
         id="test-123",
     )
 
-    with pytest.raises(ValueError, match="Invalid parameters|Parameters required|query"):
+    with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        pytest.raises(ValueError, match="Invalid parameters|Parameters required|query"),
+    ):
+        mock_security.validate_token.return_value = valid_token_payload
         await handle_bounded_reasoning(request)
 
 
 @pytest.mark.asyncio
-async def test_handle_bounded_reasoning_invalid_params():
+async def test_handle_bounded_reasoning_invalid_params(valid_token_payload: TokenPayload):
     """Test error handling for invalid parameters."""
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
@@ -174,17 +195,23 @@ async def test_handle_bounded_reasoning_invalid_params():
             "query": "Test",
             "chunk_size": 4096,
             "carryover_size": 4096,  # Invalid: equal to chunk_size
+            "auth_token": "valid-token",
         },
         id="test-123",
     )
 
-    with pytest.raises(ValueError, match="Invalid parameters"):
+    with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        pytest.raises(ValueError, match="Invalid parameters"),
+    ):
+        mock_security.validate_token.return_value = valid_token_payload
         await handle_bounded_reasoning(request)
 
 
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_a2a_context_propagation(
     valid_request_params: dict,
+    valid_token_payload: TokenPayload,
     mock_reasoning_result: BoundedContextResult,
 ):
     """Test A2A context is properly logged and propagated."""
@@ -204,12 +231,14 @@ async def test_handle_bounded_reasoning_a2a_context_propagation(
         a2a_context=a2a_context,
     )
 
-    # Mock engine
+    # Mock engine and security
     with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.logger") as mock_logger,
     ):
+        mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -230,7 +259,9 @@ async def test_handle_bounded_reasoning_a2a_context_propagation(
 
 
 @pytest.mark.asyncio
-async def test_handle_bounded_reasoning_llm_failure(valid_request_params: dict):
+async def test_handle_bounded_reasoning_llm_failure(
+    valid_request_params: dict, valid_token_payload: TokenPayload
+):
     """Test error handling for LLM failures."""
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
@@ -240,9 +271,11 @@ async def test_handle_bounded_reasoning_llm_failure(valid_request_params: dict):
 
     # Mock engine to raise RuntimeError
     with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
     ):
+        mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(side_effect=RuntimeError("LLM service unavailable"))
         mock_engine_class.return_value = mock_engine
@@ -252,7 +285,9 @@ async def test_handle_bounded_reasoning_llm_failure(valid_request_params: dict):
 
 
 @pytest.mark.asyncio
-async def test_handle_bounded_reasoning_unexpected_error(valid_request_params: dict):
+async def test_handle_bounded_reasoning_unexpected_error(
+    valid_request_params: dict, valid_token_payload: TokenPayload
+):
     """Test error handling for unexpected errors."""
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
@@ -262,9 +297,11 @@ async def test_handle_bounded_reasoning_unexpected_error(valid_request_params: d
 
     # Mock engine to raise unexpected error
     with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
     ):
+        mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(side_effect=KeyError("unexpected"))
         mock_engine_class.return_value = mock_engine
@@ -276,6 +313,7 @@ async def test_handle_bounded_reasoning_unexpected_error(valid_request_params: d
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_max_iterations_reached(
     valid_request_params: dict,
+    valid_token_payload: TokenPayload,
 ):
     """Test handling when max iterations reached without finding answer."""
     # Create result with no answer - need 5 iterations to match total_iterations
@@ -312,11 +350,13 @@ async def test_handle_bounded_reasoning_max_iterations_reached(
         id="test-123",
     )
 
-    # Mock engine
+    # Mock engine and security
     with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
     ):
+        mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=result_no_answer)
         mock_engine_class.return_value = mock_engine
@@ -332,6 +372,7 @@ async def test_handle_bounded_reasoning_max_iterations_reached(
 
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_with_system_prompt(
+    valid_token_payload: TokenPayload,
     mock_reasoning_result: BoundedContextResult,
 ):
     """Test bounded reasoning with custom system prompt."""
@@ -341,15 +382,18 @@ async def test_handle_bounded_reasoning_with_system_prompt(
             "query": "Test query",
             "system_prompt": "You are a helpful assistant.",
             "temperature": 0.5,
+            "auth_token": "valid-token",
         },
         id="test-123",
     )
 
-    # Mock engine
+    # Mock engine and security
     with (
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
     ):
+        mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
