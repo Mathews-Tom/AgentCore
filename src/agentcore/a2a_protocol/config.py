@@ -66,6 +66,44 @@ class Settings(BaseSettings):
     ENABLE_METRICS: bool = Field(default=True, description="Enable Prometheus metrics")
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 
+    # Bounded Context Reasoning
+    REASONING_MAX_ITERATIONS: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Maximum reasoning iterations (1-50)"
+    )
+    REASONING_CHUNK_SIZE: int = Field(
+        default=8192,
+        ge=1024,
+        le=32768,
+        description="Reasoning context chunk size in tokens (1024-32768)"
+    )
+    REASONING_CARRYOVER_SIZE: int = Field(
+        default=4096,
+        ge=512,
+        le=16384,
+        description="Carryover context size in tokens (512-16384)"
+    )
+    REASONING_DEFAULT_TEMPERATURE: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="Default LLM temperature for reasoning (0.0-2.0)"
+    )
+    REASONING_ENABLE_METRICS: bool = Field(
+        default=True,
+        description="Enable reasoning metrics collection"
+    )
+    REASONING_ENABLE_TRACING: bool = Field(
+        default=True,
+        description="Enable reasoning trace_id propagation"
+    )
+    REASONING_INPUT_SANITIZATION: bool = Field(
+        default=True,
+        description="Enable input sanitization for reasoning queries"
+    )
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,
