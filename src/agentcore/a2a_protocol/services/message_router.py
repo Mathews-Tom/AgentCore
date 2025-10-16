@@ -261,6 +261,8 @@ class MessageRouter:
         """
         Select agent from candidates based on strategy.
 
+        BCR-019: Prefers reasoning-capable agents when available.
+
         Args:
             candidates: List of candidate agent IDs
             strategy: Selection strategy
@@ -270,6 +272,9 @@ class MessageRouter:
         """
         if not candidates:
             return None
+
+        # BCR-019: Prefer reasoning-capable agents
+        candidates = await self._prioritize_reasoning_agents(candidates)
 
         if strategy == RoutingStrategy.ROUND_ROBIN:
             return await self._round_robin_select(candidates)
@@ -292,6 +297,29 @@ class MessageRouter:
 
         else:  # CAPABILITY_MATCH or default
             return candidates[0]
+
+    async def _prioritize_reasoning_agents(self, candidates: list[str]) -> list[str]:
+        """
+        Reorder candidates to prioritize reasoning-capable agents.
+
+        Args:
+            candidates: List of candidate agent IDs
+
+        Returns:
+            Reordered list with reasoning agents first
+        """
+        reasoning_agents = []
+        non_reasoning_agents = []
+
+        for agent_id in candidates:
+            agent = await agent_manager.get_agent(agent_id)
+            if agent and agent.supports_bounded_reasoning:
+                reasoning_agents.append(agent_id)
+            else:
+                non_reasoning_agents.append(agent_id)
+
+        # Return reasoning agents first, then non-reasoning
+        return reasoning_agents + non_reasoning_agents
 
     async def _round_robin_select(self, candidates: list[str]) -> str:
         """Round-robin selection across candidates."""
