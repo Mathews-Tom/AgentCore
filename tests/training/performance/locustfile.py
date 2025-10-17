@@ -9,14 +9,32 @@ Simulates real-world load patterns for training infrastructure:
 
 Run with:
     locust -f tests/training/performance/locustfile.py --host=http://localhost:8001
+
+TODO: Stress Test Performance Optimization
+    Current stress test (500 users) shows degraded performance:
+    - 6.00% failure rate (target: <2%)
+    - 3,580ms P95 response time (target: <1000ms)
+
+    Optimization path to support 500+ concurrent users:
+    1. Implement PgBouncer for database connection pooling
+    2. Scale worker pods from 20 to 30-50 (HPA adjustment)
+    3. Increase database max_connections to 500
+    4. Add Redis connection pool tuning
+    5. Implement request queuing for burst protection
+
+    References:
+    - PR description: .docs/PR_DESCRIPTION.md:106-113
+    - Deployment recommendations: .docs/PR_DESCRIPTION.md:194-210
+    - Current capacity: 150-200 concurrent jobs (acceptable for initial deployment)
 """
 
 from __future__ import annotations
 
-from locust import HttpUser, task, between, events
-from uuid import uuid4
 import json
 import random
+from uuid import uuid4
+
+from locust import HttpUser, between, events, task
 
 
 class TrainingAPIUser(HttpUser):
@@ -47,10 +65,7 @@ class TrainingAPIUser(HttpUser):
         """Start a new training job (30% of requests)."""
         # Create minimal training data (100 queries minimum)
         training_data = [
-            {
-                "query": f"Task {i}",
-                "expected_outcome": {"success": True}
-            }
+            {"query": f"Task {i}", "expected_outcome": {"success": True}}
             for i in range(100)
         ]
 
@@ -162,10 +177,7 @@ class TrainingAPIUser(HttpUser):
         request_data = {
             "jsonrpc": "2.0",
             "method": "training.cancel",
-            "params": {
-                "job_id": job_id,
-                "reason": "Load test cancellation"
-            },
+            "params": {"job_id": job_id, "reason": "Load test cancellation"},
             "id": str(uuid4()),
         }
 
@@ -221,18 +233,18 @@ class BurstTrainingUser(HttpUser):
 @events.test_start.add_listener
 def on_test_start(environment, **kwargs):
     """Hook called before test starts."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Starting Training API Load Test")
     print(f"Host: {environment.host}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 @events.test_stop.add_listener
 def on_test_stop(environment, **kwargs):
     """Hook called after test stops - print summary."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Load Test Complete")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     stats = environment.stats
     total_requests = stats.total.num_requests
@@ -245,8 +257,12 @@ def on_test_stop(environment, **kwargs):
     print(f"  Failure Rate: {failure_rate:.2f}%")
     print(f"  Average Response Time: {stats.total.avg_response_time:.1f}ms")
     print(f"  Median Response Time: {stats.total.median_response_time:.1f}ms")
-    print(f"  P95 Response Time: {stats.total.get_response_time_percentile(0.95):.1f}ms")
-    print(f"  P99 Response Time: {stats.total.get_response_time_percentile(0.99):.1f}ms")
+    print(
+        f"  P95 Response Time: {stats.total.get_response_time_percentile(0.95):.1f}ms"
+    )
+    print(
+        f"  P99 Response Time: {stats.total.get_response_time_percentile(0.99):.1f}ms"
+    )
     print(f"  Requests/sec: {stats.total.total_rps:.2f}")
 
     print(f"\nStatus:")
@@ -255,7 +271,7 @@ def on_test_stop(environment, **kwargs):
     else:
         print("  ✗ FAIL - SLA targets not met")
 
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 # Custom load shape for gradual ramp-up
@@ -321,14 +337,14 @@ SCENARIOS = {
 def print_scenario_info():
     """Print available test scenarios."""
     print("\nAvailable Load Test Scenarios:")
-    print("="*60)
+    print("=" * 60)
     for name, config in SCENARIOS.items():
         print(f"\n{name.upper()}:")
         print(f"  Description: {config['description']}")
         print(f"  Users: {config['users']}")
         print(f"  Spawn Rate: {config['spawn_rate']}/sec")
         print(f"  Duration: {config['duration']}")
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("\nUsage:")
     print("  locust -f locustfile.py --users=100 --spawn-rate=10 --run-time=10m")
     print("  locust -f locustfile.py --headless --users=200 --spawn-rate=20")
@@ -336,4 +352,5 @@ def print_scenario_info():
 
 
 if __name__ == "__main__":
+    print_scenario_info()
     print_scenario_info()

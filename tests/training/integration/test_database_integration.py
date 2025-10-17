@@ -69,7 +69,7 @@ async def test_training_job_crud_operations(init_test_db) -> None:
             session,
             job_id,
             TrainingJobStatus.RUNNING,
-            started_at=datetime.now(UTC)(),  # Use naive datetime
+            started_at=datetime.now(UTC),
         )
         await session.commit()
 
@@ -117,7 +117,7 @@ async def test_trajectory_crud_operations(init_test_db) -> None:
         state={"context": "test"},
         action={"type": "tool_call"},
         result={"output": "success"},
-        timestamp=datetime.now(UTC)(),
+        timestamp=datetime.now(UTC),
         duration_ms=100,
     )
 
@@ -244,7 +244,7 @@ async def test_foreign_key_cascade_delete(init_test_db) -> None:
         state={},
         action={},
         result={},
-        timestamp=datetime.now(UTC)(),
+        timestamp=datetime.now(UTC),
         duration_ms=10,
     )
     trajectory = Trajectory(

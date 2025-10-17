@@ -179,6 +179,10 @@ class GRPOTrainer:
             rewards = self.reward_engine.compute_rewards(trajectories)
             baseline = sum(rewards) / len(rewards) if rewards else 0.0
 
+            # Assign computed rewards to trajectories
+            for traj, reward in zip(trajectories, rewards, strict=True):
+                traj.reward = reward
+
             advantages = []
             for traj in trajectories:
                 adv = self.credit_assignment.compute_trajectory_advantage(

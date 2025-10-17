@@ -57,10 +57,10 @@ class TrainingJobDB(Base):
     budget_usd = Column(DECIMAL(10, 2), nullable=False)
     best_checkpoint_id = Column(PG_UUID(as_uuid=True), nullable=True)
     created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True
     )
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(String(1000), nullable=True)
 
     __table_args__ = (
@@ -105,7 +105,7 @@ class TrajectoryDB(Base):
     execution_time_ms = Column(Integer, nullable=True)
     success = Column(Boolean, nullable=True, index=True)
     created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True
     )
 
     __table_args__ = (
@@ -146,7 +146,7 @@ class PolicyCheckpointDB(Base):
     validation_score = Column(Float, nullable=False, default=0.0)
     metrics = Column(JSONB, nullable=False, default=lambda: {})
     created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True
     )
 
     __table_args__ = (
