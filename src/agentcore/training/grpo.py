@@ -10,6 +10,7 @@ from typing import Any
 
 import structlog
 
+from agentcore.training.credit_assignment import CreditAssignment, CreditAssignmentConfig
 from agentcore.training.models import Trajectory
 from agentcore.training.rewards import RewardEngine
 
@@ -126,6 +127,7 @@ class GRPOTrainer:
         self,
         reward_engine: RewardEngine,
         config: GRPOConfig | None = None,
+        credit_assignment: CreditAssignment | None = None,
     ) -> None:
         """
         Initialize GRPO trainer.
@@ -133,9 +135,11 @@ class GRPOTrainer:
         Args:
             reward_engine: Reward computation engine
             config: GRPO configuration (uses defaults if not provided)
+            credit_assignment: Credit assignment module (uses defaults if not provided)
         """
         self.reward_engine = reward_engine
         self.config = config or GRPOConfig()
+        self.credit_assignment = credit_assignment or CreditAssignment()
         self.metrics = TrainingMetrics()
 
         logger.info(
@@ -143,6 +147,8 @@ class GRPOTrainer:
             learning_rate=self.config.learning_rate,
             gradient_clipping=self.config.enable_gradient_clipping,
             clip_value=self.config.gradient_clip_value,
+            td_enabled=self.credit_assignment.config.enable_td_rewards,
+            gamma=self.credit_assignment.config.gamma,
         )
 
     def compute_policy_gradient(
@@ -152,6 +158,9 @@ class GRPOTrainer:
     ) -> tuple[float, dict[str, Any]]:
         """
         Compute policy gradient loss.
+
+        Uses credit assignment for advantage computation when TD rewards are enabled,
+        otherwise falls back to standard reward-based advantages.
 
         Args:
             trajectories: List of execution trajectories
@@ -163,10 +172,31 @@ class GRPOTrainer:
         if len(trajectories) != len(log_probs):
             raise ValueError("Trajectories and log_probs must have same length")
 
-        # Compute advantages
-        advantages = self.reward_engine.compute_advantages(
-            trajectories, normalize=True
-        )
+        # Compute advantages using credit assignment
+        if self.credit_assignment.config.enable_td_rewards:
+            # Use TD rewards for advantage computation
+            # Compute baseline (mean trajectory reward)
+            rewards = self.reward_engine.compute_rewards(trajectories)
+            baseline = sum(rewards) / len(rewards) if rewards else 0.0
+
+            advantages = []
+            for traj in trajectories:
+                adv = self.credit_assignment.compute_trajectory_advantage(
+                    traj, baseline=baseline
+                )
+                advantages.append(adv)
+
+            logger.debug(
+                "advantages_computed_with_td",
+                count=len(advantages),
+                baseline=baseline,
+                mean_advantage=sum(advantages) / len(advantages) if advantages else 0.0,
+            )
+        else:
+            # Use standard reward-based advantages
+            advantages = self.reward_engine.compute_advantages(
+                trajectories, normalize=True
+            )
 
         # Filter positive advantages
         positive_indices = [i for i, adv in enumerate(advantages) if adv > self.config.advantage_threshold]
