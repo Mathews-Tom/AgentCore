@@ -2,6 +2,7 @@
 Reward computation system for training infrastructure.
 
 Implements outcome-based and shaped reward functions with group normalization.
+Supports custom reward functions via RewardRegistry.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from typing import Any, Callable
 import structlog
 
 from agentcore.training.models import Trajectory
+from agentcore.training.reward_registry import RewardRegistry, get_global_registry
 
 logger = structlog.get_logger()
 
@@ -44,17 +46,23 @@ class RewardEngine:
     """
     Computes rewards for trajectories using outcome-based and shaped reward functions.
 
-    Supports custom reward functions and group-based normalization.
+    Supports custom reward functions via RewardRegistry and group-based normalization.
     """
 
-    def __init__(self, config: RewardConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: RewardConfig | None = None,
+        registry: RewardRegistry | None = None,
+    ) -> None:
         """
         Initialize reward engine.
 
         Args:
             config: Reward configuration (uses defaults if not provided)
+            registry: RewardRegistry instance (uses global registry if not provided)
         """
         self.config = config or RewardConfig()
+        self.registry = registry or get_global_registry()
         self.custom_functions: dict[str, Callable[[Trajectory], float]] = {}
 
         logger.info(
@@ -63,6 +71,7 @@ class RewardEngine:
             verification_reward=self.config.verification_reward,
             length_penalty=self.config.length_penalty,
             shaping_enabled=self.config.enable_shaping,
+            registry_functions=len(self.registry.list_functions()),
         )
 
     def register_custom_function(
@@ -79,7 +88,11 @@ class RewardEngine:
         logger.info("custom_reward_function_registered", name=name)
 
     def compute_reward(
-        self, trajectory: Trajectory, custom_function: str | None = None
+        self,
+        trajectory: Trajectory,
+        custom_function: str | None = None,
+        agent_type: str | None = None,
+        use_registry: bool = False,
     ) -> float:
         """
         Compute total reward for trajectory.
@@ -87,18 +100,49 @@ class RewardEngine:
         Args:
             trajectory: Trajectory to compute reward for
             custom_function: Optional custom function name to use
+            agent_type: Agent type for registry strategy resolution
+            use_registry: If True, use RewardRegistry instead of legacy custom_functions
 
         Returns:
             Total reward (outcome + shaped rewards)
         """
-        # Use custom function if specified
+        # Use RewardRegistry if requested
+        if use_registry:
+            try:
+                reward = self.registry.compute_reward(
+                    trajectory=trajectory,
+                    function_name=custom_function,
+                    agent_type=agent_type,
+                )
+                logger.debug(
+                    "reward_computed_via_registry",
+                    trajectory_id=str(trajectory.trajectory_id)
+                    if trajectory.trajectory_id
+                    else "none",
+                    function=custom_function,
+                    agent_type=agent_type,
+                    reward=reward,
+                )
+                return reward
+            except (KeyError, ValueError) as e:
+                logger.warning(
+                    "registry_reward_failed_fallback_to_default",
+                    error=str(e),
+                    function=custom_function,
+                    agent_type=agent_type,
+                )
+                # Fall through to default computation
+
+        # Use legacy custom function if specified
         if custom_function:
             if custom_function not in self.custom_functions:
                 raise ValueError(f"Unknown custom function: {custom_function}")
             reward = self.custom_functions[custom_function](trajectory)
             logger.debug(
                 "reward_computed_custom",
-                trajectory_id=str(trajectory.trajectory_id) if trajectory.trajectory_id else "none",
+                trajectory_id=str(trajectory.trajectory_id)
+                if trajectory.trajectory_id
+                else "none",
                 function=custom_function,
                 reward=reward,
             )
@@ -116,7 +160,9 @@ class RewardEngine:
 
         logger.debug(
             "reward_computed",
-            trajectory_id=str(trajectory.trajectory_id) if trajectory.trajectory_id else "none",
+            trajectory_id=str(trajectory.trajectory_id)
+            if trajectory.trajectory_id
+            else "none",
             outcome_reward=outcome_reward,
             shaped_reward=shaped_reward,
             total_reward=total_reward,
