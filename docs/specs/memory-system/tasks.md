@@ -945,7 +945,7 @@ class MemoryEnabledAgent:
             task_id=task_id,
             query=query,
             response=response,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             success=success
         )
         await self.memory.add_interaction(self.agent_id, interaction)

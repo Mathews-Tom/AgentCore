@@ -1,0 +1,65 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: training-worker-hpa
+  namespace: agentcore
+  labels:
+    app: training-worker
+    component: training
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: training-worker
+  minReplicas: 2
+  maxReplicas: 50
+  metrics:
+  # CPU-based scaling
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  # Memory-based scaling
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  # Custom metric: Redis queue depth (requires custom metrics adapter)
+  - type: External
+    external:
+      metric:
+        name: redis_queue_depth
+        selector:
+          matchLabels:
+            queue_prefix: "training:queue"
+      target:
+        type: AverageValue
+        # Scale up when average queue depth > 10 jobs per worker
+        averageValue: "10"
+  behavior:
+    # Scale down gradually to avoid disrupting long-running training jobs
+    scaleDown:
+      stabilizationWindowSeconds: 600  # 10 minutes
+      policies:
+      - type: Percent
+        value: 25  # Scale down max 25% at a time
+        periodSeconds: 120  # Every 2 minutes
+      - type: Pods
+        value: 2  # Or remove max 2 pods at a time
+        periodSeconds: 120
+      selectPolicy: Min  # Use the most conservative policy
+    # Scale up aggressively to handle bursts
+    scaleUp:
+      stabilizationWindowSeconds: 30  # 30 seconds
+      policies:
+      - type: Percent
+        value: 100  # Double the replicas
+        periodSeconds: 30
+      - type: Pods
+        value: 5  # Or add 5 pods at once
+        periodSeconds: 30
+      selectPolicy: Max  # Use the most aggressive policy

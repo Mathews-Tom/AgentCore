@@ -1603,7 +1603,7 @@ from uuid import uuid4
 @pytest.mark.asyncio
 async def test_importance_score_recency():
     """Test that recent memories score higher."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     query_embedding = [0.1] * 1536
 
     # Recent memory (1 hour ago)
@@ -1661,7 +1661,7 @@ async def test_add_and_retrieve_interaction(memory_manager):
         actions=["search", "answer"],
         outcome="Answered correctly",
         success=True,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(UTC)
     )
 
     # Store interaction
@@ -2242,7 +2242,7 @@ class MemoryStoreParams(BaseModel):
             raise ValueError("Interaction query exceeds maximum length (100K chars)")
 
         # Validate timestamp not in future
-        if v.timestamp > datetime.utcnow():
+        if v.timestamp > datetime.now(UTC):
             raise ValueError("Interaction timestamp cannot be in future")
 
         return v

@@ -575,8 +575,8 @@ class Plan(BaseModel):
     max_iterations: int = Field(default=5, ge=1, le=10, description="Max refinement iterations")
     current_iteration: int = Field(default=0, description="Current iteration number")
     status: str = Field(default="pending", description="Plan status")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 # Execution Results
 class ExecutionResult(BaseModel):

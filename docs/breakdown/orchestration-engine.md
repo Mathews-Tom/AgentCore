@@ -1010,8 +1010,8 @@ class WorkflowDefinition(BaseModel):
     tasks: List[TaskDefinition]
     coordination: CoordinationConfig
     fault_tolerance: Optional[FaultToleranceConfig] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: UUID
 
 # Workflow Execution Models
@@ -1042,7 +1042,7 @@ class WorkflowExecution(BaseModel):
     task_states: Dict[str, TaskState] = {}  # task_id → state
     performance_metrics: Dict[str, float] = {}
     error_details: Optional[Dict[str, str]] = None
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 # Hooks System Models (NEW)
@@ -1089,8 +1089,8 @@ class HookConfig(BaseModel):
     enabled: bool = True
     timeout_seconds: int = 30
     retry_policy: Optional[RetryPolicy] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 class HookExecutionStatus(str, Enum):
     """Hook execution status"""
@@ -1107,7 +1107,7 @@ class HookExecution(BaseModel):
     output: str = ""
     error_message: Optional[str] = None
     duration_ms: int
-    executed_at: datetime = Field(default_factory=datetime.utcnow)
+    executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 # Graph Engine Models
 

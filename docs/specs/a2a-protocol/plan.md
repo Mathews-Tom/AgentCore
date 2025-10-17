@@ -175,8 +175,8 @@ class A2ATask(BaseModel):
     status: Literal["created", "assigned", "running", "completed", "failed"]
     input_data: Dict[str, Any]
     output_artifacts: List[Dict[str, Any]] = []
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: Dict[str, Any] = {}
 ```
 
@@ -193,7 +193,7 @@ class A2AMessage(BaseModel):
     agent_context: Dict[str, str]
     security_context: Dict[str, Any]
     trace_context: Dict[str, str]
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 ```
 
 ### API Design
