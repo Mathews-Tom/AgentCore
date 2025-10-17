@@ -13,6 +13,7 @@ from uuid import UUID
 
 import structlog
 
+from agentcore.a2a_protocol.database import get_session
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.training.job_manager import TrainingJobManager
@@ -22,6 +23,7 @@ from agentcore.training.models import (
 from agentcore.training.models import (
     TrainingQuery,
 )
+from agentcore.training.repositories import TrajectoryRepository
 
 logger = structlog.get_logger()
 
@@ -247,6 +249,118 @@ async def handle_list_jobs(request: JsonRpcRequest) -> dict[str, Any]:
     }
 
 
+@register_jsonrpc_method("training.export_trajectories")
+async def handle_export_trajectories(request: JsonRpcRequest) -> dict[str, Any]:
+    """
+    Export trajectories for a training job with filtering and pagination.
+
+    Method: training.export_trajectories
+    Params:
+        - job_id: string (required) - UUID of training job
+        - success_only: boolean (optional, default: false) - Filter successful trajectories only
+        - min_reward: float (optional) - Minimum reward threshold
+        - limit: int (optional, default: 1000, max: 10000) - Maximum trajectories to return
+        - offset: int (optional, default: 0) - Number of results to skip
+
+    Returns:
+        Exported trajectories in JSON format
+    """
+    if not request.params or not isinstance(request.params, dict):
+        raise ValueError("Parameter required: job_id")
+
+    # Extract and validate job_id
+    job_id_str = request.params.get("job_id")
+    if not job_id_str:
+        raise ValueError("Missing required parameter: job_id")
+
+    try:
+        job_id = UUID(job_id_str)
+    except ValueError as e:
+        raise ValueError(f"Invalid job_id format: {job_id_str}") from e
+
+    # Extract optional parameters
+    success_only = request.params.get("success_only", False)
+    min_reward = request.params.get("min_reward")
+    limit = request.params.get("limit", 1000)
+    offset = request.params.get("offset", 0)
+
+    # Validate parameters
+    if not isinstance(success_only, bool):
+        raise ValueError("success_only must be a boolean")
+
+    if min_reward is not None and not isinstance(min_reward, (int, float)):
+        raise ValueError("min_reward must be a number")
+
+    if not isinstance(limit, int) or limit <= 0:
+        raise ValueError("limit must be a positive integer")
+
+    if not isinstance(offset, int) or offset < 0:
+        raise ValueError("offset must be a non-negative integer")
+
+    # Enforce maximum limit
+    MAX_EXPORT_LIMIT = 10000
+    if limit > MAX_EXPORT_LIMIT:
+        raise ValueError(
+            f"limit exceeds maximum allowed value of {MAX_EXPORT_LIMIT}"
+        )
+
+    # Query trajectories from database
+    async with get_session() as session:
+        trajectories_db = await TrajectoryRepository.get_by_job(
+            session=session,
+            job_id=job_id,
+            success_only=success_only,
+            min_reward=min_reward,
+            limit=limit,
+            offset=offset,
+        )
+
+    # Convert to JSON format
+    trajectories_json = [
+        {
+            "trajectory_id": str(traj.trajectory_id),
+            "job_id": str(traj.job_id),
+            "agent_id": traj.agent_id,
+            "query": traj.query,
+            "steps": traj.steps,
+            "reward": float(traj.reward),
+            "normalized_reward": (
+                float(traj.normalized_reward) if traj.normalized_reward is not None else None
+            ),
+            "advantage": float(traj.advantage) if traj.advantage is not None else None,
+            "execution_time_ms": traj.execution_time_ms,
+            "success": traj.success,
+            "created_at": traj.created_at.isoformat() if traj.created_at else None,
+        }
+        for traj in trajectories_db
+    ]
+
+    logger.info(
+        "Trajectories exported via JSON-RPC",
+        job_id=job_id_str,
+        count=len(trajectories_json),
+        success_only=success_only,
+        min_reward=min_reward,
+        limit=limit,
+        offset=offset,
+    )
+
+    return {
+        "success": True,
+        "job_id": str(job_id),
+        "trajectories": trajectories_json,
+        "count": len(trajectories_json),
+        "filters": {
+            "success_only": success_only,
+            "min_reward": min_reward,
+        },
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+        },
+    }
+
+
 # Log registration on import
 logger.info(
     "Training JSON-RPC methods registered",
@@ -255,5 +369,6 @@ logger.info(
         "training.get_status",
         "training.cancel",
         "training.list_jobs",
+        "training.export_trajectories",
     ],
 )

@@ -10,6 +10,7 @@ import pytest
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.training.training_jsonrpc import (
     handle_cancel,
+    handle_export_trajectories,
     handle_get_status,
     handle_list_jobs,
     handle_start_grpo,
@@ -423,3 +424,276 @@ async def test_end_to_end_job_lifecycle(sample_training_data, sample_config):
 
         cancel_response = await handle_cancel(cancel_request)
         assert cancel_response["success"] is True
+
+
+# Export trajectories tests
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_success(sample_training_data, sample_config, init_test_db):
+    """Test successful trajectory export with no filters."""
+    # Create a job (in Phase 1, trajectories are simulated, not stored in DB)
+    start_request = JsonRpcRequest(
+        method="training.start_grpo",
+        params={
+            "agent_id": "export-agent",
+            "training_queries": sample_training_data,
+            "config": sample_config,
+        },
+    )
+
+    start_response = await handle_start_grpo(start_request)
+    job_id = start_response["job_id"]
+
+    # Export trajectories (Phase 1: returns empty list as trajectories not stored)
+    export_request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={"job_id": job_id},
+    )
+
+    response = await handle_export_trajectories(export_request)
+
+    assert response["success"] is True
+    assert response["job_id"] == job_id
+    assert "trajectories" in response
+    assert "count" in response
+    assert isinstance(response["trajectories"], list)
+    # In Phase 1, count is 0 as trajectories are simulated, not stored
+    assert response["count"] == 0
+    assert response["filters"]["success_only"] is False
+    assert response["filters"]["min_reward"] is None
+    assert response["pagination"]["limit"] == 1000  # Default
+    assert response["pagination"]["offset"] == 0  # Default
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_with_success_filter(sample_training_data, sample_config, init_test_db):
+    """Test trajectory export with success_only filter."""
+    start_request = JsonRpcRequest(
+        method="training.start_grpo",
+        params={
+            "agent_id": "export-agent-success",
+            "training_queries": sample_training_data,
+            "config": sample_config,
+        },
+    )
+
+    start_response = await handle_start_grpo(start_request)
+    job_id = start_response["job_id"]
+
+    # Export only successful trajectories
+    export_request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": job_id,
+            "success_only": True,
+        },
+    )
+
+    response = await handle_export_trajectories(export_request)
+
+    assert response["success"] is True
+    assert response["filters"]["success_only"] is True
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_with_min_reward(sample_training_data, sample_config, init_test_db):
+    """Test trajectory export with min_reward filter."""
+    start_request = JsonRpcRequest(
+        method="training.start_grpo",
+        params={
+            "agent_id": "export-agent-reward",
+            "training_queries": sample_training_data,
+            "config": sample_config,
+        },
+    )
+
+    start_response = await handle_start_grpo(start_request)
+    job_id = start_response["job_id"]
+
+    # Export trajectories with minimum reward
+    export_request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": job_id,
+            "min_reward": 0.5,
+        },
+    )
+
+    response = await handle_export_trajectories(export_request)
+
+    assert response["success"] is True
+    assert response["filters"]["min_reward"] == 0.5
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_with_both_filters(sample_training_data, sample_config, init_test_db):
+    """Test trajectory export with both success_only and min_reward filters."""
+    start_request = JsonRpcRequest(
+        method="training.start_grpo",
+        params={
+            "agent_id": "export-agent-both",
+            "training_queries": sample_training_data,
+            "config": sample_config,
+        },
+    )
+
+    start_response = await handle_start_grpo(start_request)
+    job_id = start_response["job_id"]
+
+    # Export with both filters
+    export_request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": job_id,
+            "success_only": True,
+            "min_reward": 0.7,
+        },
+    )
+
+    response = await handle_export_trajectories(export_request)
+
+    assert response["success"] is True
+    assert response["filters"]["success_only"] is True
+    assert response["filters"]["min_reward"] == 0.7
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_with_pagination(sample_training_data, sample_config, init_test_db):
+    """Test trajectory export with pagination parameters."""
+    start_request = JsonRpcRequest(
+        method="training.start_grpo",
+        params={
+            "agent_id": "export-agent-paginate",
+            "training_queries": sample_training_data,
+            "config": sample_config,
+        },
+    )
+
+    start_response = await handle_start_grpo(start_request)
+    job_id = start_response["job_id"]
+
+    # Export with pagination
+    export_request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": job_id,
+            "limit": 50,
+            "offset": 10,
+        },
+    )
+
+    response = await handle_export_trajectories(export_request)
+
+    assert response["success"] is True
+    assert response["pagination"]["limit"] == 50
+    assert response["pagination"]["offset"] == 10
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_missing_job_id():
+    """Test error handling for missing job_id."""
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={},  # Missing job_id
+    )
+
+    with pytest.raises(ValueError, match="Parameter required: job_id"):
+        await handle_export_trajectories(request)
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_invalid_job_id():
+    """Test error handling for invalid job_id format."""
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={"job_id": "not-a-uuid"},
+    )
+
+    with pytest.raises(ValueError, match="Invalid job_id format"):
+        await handle_export_trajectories(request)
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_exceeds_max_limit():
+    """Test error handling when limit exceeds maximum allowed value."""
+    fake_uuid = "12345678-1234-1234-1234-123456789012"
+
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": fake_uuid,
+            "limit": 20000,  # Exceeds max of 10000
+        },
+    )
+
+    with pytest.raises(ValueError, match="limit exceeds maximum allowed value"):
+        await handle_export_trajectories(request)
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_invalid_success_only_type():
+    """Test error handling for invalid success_only type."""
+    fake_uuid = "12345678-1234-1234-1234-123456789012"
+
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": fake_uuid,
+            "success_only": "not-a-boolean",
+        },
+    )
+
+    with pytest.raises(ValueError, match="success_only must be a boolean"):
+        await handle_export_trajectories(request)
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_invalid_min_reward_type():
+    """Test error handling for invalid min_reward type."""
+    fake_uuid = "12345678-1234-1234-1234-123456789012"
+
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": fake_uuid,
+            "min_reward": "not-a-number",
+        },
+    )
+
+    with pytest.raises(ValueError, match="min_reward must be a number"):
+        await handle_export_trajectories(request)
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_invalid_limit_type():
+    """Test error handling for invalid limit type."""
+    fake_uuid = "12345678-1234-1234-1234-123456789012"
+
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": fake_uuid,
+            "limit": "not-an-integer",
+        },
+    )
+
+    with pytest.raises(ValueError, match="limit must be a positive integer"):
+        await handle_export_trajectories(request)
+
+
+@pytest.mark.asyncio
+async def test_export_trajectories_negative_offset():
+    """Test error handling for negative offset."""
+    fake_uuid = "12345678-1234-1234-1234-123456789012"
+
+    request = JsonRpcRequest(
+        method="training.export_trajectories",
+        params={
+            "job_id": fake_uuid,
+            "offset": -10,
+        },
+    )
+
+    with pytest.raises(ValueError, match="offset must be a non-negative integer"):
+        await handle_export_trajectories(request)
