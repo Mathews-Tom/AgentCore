@@ -659,7 +659,7 @@ Response:""",
                 task_id=task_id,
                 query=query,
                 response=response,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 success=True
             )
         )

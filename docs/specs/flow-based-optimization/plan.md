@@ -325,7 +325,7 @@ class Trajectory(BaseModel):
     steps: list[dict[str, Any]]
     reward: float = 0.0
     advantage: float = 0.0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def steps_to_json(self) -> str:
         """Serialize steps for JSONB storage."""
