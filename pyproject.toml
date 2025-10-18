@@ -39,6 +39,10 @@ dependencies = [
     "tiktoken>=0.12.0",
     "bandit>=1.8.6",
     "sse-starlette>=3.0.2",
+    "opentelemetry-api>=1.21.0",
+    "opentelemetry-sdk>=1.21.0",
+    "opentelemetry-instrumentation-fastapi>=0.42b0",
+    "opentelemetry-exporter-otlp>=1.21.0",
 ]
 
 [project.optional-dependencies]
