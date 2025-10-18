@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
 from uuid import uuid4
@@ -71,7 +71,7 @@ class EventMessage:
             event_type=event_type,
             topic=topic,
             payload=payload,
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
             source=source,
             metadata=metadata or {},
         )
