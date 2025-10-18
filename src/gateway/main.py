@@ -42,6 +42,15 @@ from gateway.middleware.validation import InputValidationMiddleware
 from gateway.realtime.connection_pool import connection_pool
 from gateway.realtime.event_bus import event_bus
 from gateway.routes import auth, health, oauth, realtime
+from gateway.docs.openapi_metadata import (
+    OPENAPI_CONTACT,
+    OPENAPI_DESCRIPTION,
+    OPENAPI_EXTERNAL_DOCS,
+    OPENAPI_LICENSE,
+    OPENAPI_SECURITY_SCHEMES,
+    OPENAPI_SERVERS,
+    OPENAPI_TAGS,
+)
 
 
 @asynccontextmanager
@@ -192,12 +201,48 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.GATEWAY_NAME,
-        description="High-performance API gateway for AgentCore providing unified entry point for all external interactions",
+        description=OPENAPI_DESCRIPTION,
         version=settings.GATEWAY_VERSION,
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
+        openapi_tags=OPENAPI_TAGS,
+        license_info=OPENAPI_LICENSE,
+        contact=OPENAPI_CONTACT,
+        servers=OPENAPI_SERVERS,
         lifespan=lifespan,
     )
+
+    # Customize OpenAPI schema
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+
+        from fastapi.openapi.utils import get_openapi
+
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+            servers=OPENAPI_SERVERS,
+            tags=OPENAPI_TAGS,
+        )
+
+        # Add security schemes
+        openapi_schema["components"] = openapi_schema.get("components", {})
+        openapi_schema["components"]["securitySchemes"] = OPENAPI_SECURITY_SCHEMES
+
+        # Add external documentation
+        openapi_schema["externalDocs"] = OPENAPI_EXTERNAL_DOCS
+
+        # Add global security requirement (can be overridden per endpoint)
+        # Most endpoints require BearerAuth, but some are public (health, docs)
+        # We'll let individual routes specify their security requirements
+
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi
 
     # Setup CORS middleware (first in chain)
     setup_cors(app)

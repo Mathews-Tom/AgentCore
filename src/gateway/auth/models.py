@@ -41,23 +41,104 @@ class User(BaseModel):
 class TokenRequest(BaseModel):
     """Token generation request."""
 
-    grant_type: str = Field(..., description="OAuth grant type (password, client_credentials, refresh_token)")
-    username: str | None = Field(None, description="Username for password grant")
-    password: str | None = Field(None, description="Password for password grant")
-    client_id: str | None = Field(None, description="Client ID for client credentials")
-    client_secret: str | None = Field(None, description="Client secret for client credentials")
-    refresh_token: str | None = Field(None, description="Refresh token for token refresh")
-    scope: str | None = Field(None, description="Requested token scope")
+    grant_type: str = Field(
+        ...,
+        description="OAuth grant type (password, client_credentials, refresh_token)",
+        examples=["password", "client_credentials"],
+    )
+    username: str | None = Field(
+        None,
+        description="Username for password grant",
+        examples=["user", "admin"],
+    )
+    password: str | None = Field(
+        None,
+        description="Password for password grant",
+        examples=["user123"],
+    )
+    client_id: str | None = Field(
+        None,
+        description="Client ID for client credentials",
+        examples=["service"],
+    )
+    client_secret: str | None = Field(
+        None,
+        description="Client secret for client credentials",
+        examples=["service123"],
+    )
+    refresh_token: str | None = Field(
+        None,
+        description="Refresh token for token refresh",
+        examples=["eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."],
+    )
+    scope: str | None = Field(
+        None,
+        description="Requested token scope",
+        examples=["user:read user:write agent:read agent:execute"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "grant_type": "password",
+                    "username": "user",
+                    "password": "user123",
+                    "scope": "user:read user:write",
+                },
+                {
+                    "grant_type": "client_credentials",
+                    "client_id": "service",
+                    "client_secret": "service123",
+                    "scope": "service:read service:write",
+                },
+            ]
+        }
+    }
 
 
 class TokenResponse(BaseModel):
     """JWT token response."""
 
-    access_token: str = Field(..., description="JWT access token")
-    token_type: str = Field(default="Bearer", description="Token type")
-    expires_in: int = Field(..., description="Token expiration time in seconds")
-    refresh_token: str | None = Field(None, description="Refresh token for token renewal")
-    scope: str | None = Field(None, description="Granted token scope")
+    access_token: str = Field(
+        ...,
+        description="JWT access token",
+        examples=["eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJ1c2VybmFtZSI6InVzZXIiLCJyb2xlcyI6WyJ1c2VyIl0sInNlc3Npb25faWQiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJpYXQiOjE3MjkzMjAwMDAsImV4cCI6MTcyOTMyMzYwMCwic2NvcGUiOiJ1c2VyOnJlYWQgdXNlcjp3cml0ZSIsImp0aSI6Ijc3MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9.signature"],
+    )
+    token_type: str = Field(
+        default="Bearer",
+        description="Token type",
+        examples=["Bearer"],
+    )
+    expires_in: int = Field(
+        ...,
+        description="Token expiration time in seconds",
+        examples=[3600],
+    )
+    refresh_token: str | None = Field(
+        None,
+        description="Refresh token for token renewal",
+        examples=["eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJzZXNzaW9uX2lkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIiwiaWF0IjoxNzI5MzIwMDAwLCJleHAiOjE3Mjk5MjQ4MDAsImp0aSI6Ijg4MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCIsInRva2VuX3R5cGUiOiJyZWZyZXNoIn0.signature"],
+    )
+    scope: str | None = Field(
+        None,
+        description="Granted token scope",
+        examples=["user:read user:write"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJ1c2VybmFtZSI6InVzZXIiLCJyb2xlcyI6WyJ1c2VyIl0sInNlc3Npb25faWQiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJpYXQiOjE3MjkzMjAwMDAsImV4cCI6MTcyOTMyMzYwMCwic2NvcGUiOiJ1c2VyOnJlYWQgdXNlcjp3cml0ZSIsImp0aSI6Ijc3MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9.signature",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                    "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJzZXNzaW9uX2lkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIiwiaWF0IjoxNzI5MzIwMDAwLCJleHAiOjE3Mjk5MjQ4MDAsImp0aSI6Ijg4MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCIsInRva2VuX3R5cGUiOiJyZWZyZXNoIn0.signature",
+                    "scope": "user:read user:write",
+                }
+            ]
+        }
+    }
 
 
 class TokenPayload(BaseModel):
