@@ -51,6 +51,9 @@ from gateway.docs.openapi_metadata import (
     OPENAPI_SERVERS,
     OPENAPI_TAGS,
 )
+from gateway.monitoring.tracing import configure_tracing, instrument_fastapi
+from gateway.monitoring.metrics import set_gateway_info
+from gateway.monitoring.health import HealthChecker
 
 
 @asynccontextmanager
@@ -64,6 +67,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             version=settings.GATEWAY_VERSION,
             name=settings.GATEWAY_NAME
         )
+
+        # Configure distributed tracing
+        if settings.TRACING_ENABLED:
+            configure_tracing(
+                service_name=settings.GATEWAY_NAME,
+                service_version=settings.GATEWAY_VERSION,
+                otlp_endpoint=settings.TRACING_EXPORT_ENDPOINT,
+                sample_rate=settings.TRACING_SAMPLE_RATE,
+                enable_console_export=settings.DEBUG,
+            )
+            logger.info("Distributed tracing configured")
+
+        # Set gateway info metrics
+        set_gateway_info(
+            name=settings.GATEWAY_NAME,
+            version=settings.GATEWAY_VERSION,
+        )
+        logger.info("Gateway metrics initialized")
+
+        # Initialize health checker
+        backend_services = {
+            "a2a_protocol": settings.A2A_PROTOCOL_URL,
+            "agent_runtime": settings.AGENT_RUNTIME_URL,
+        }
+        health_checker = HealthChecker(
+            redis_url=settings.RATE_LIMIT_REDIS_URL if settings.RATE_LIMIT_ENABLED else None,
+            backend_services=backend_services,
+            check_timeout=5.0,
+        )
+        app.state.health_checker = health_checker
+        logger.info("Health checker initialized")
 
         # Initialize JWT manager
         await jwt_manager.initialize()
@@ -126,6 +160,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         yield
     finally:
         logger.info("Shutting down API Gateway")
+
+        # Cleanup health checker
+        if hasattr(app.state, "health_checker"):
+            await app.state.health_checker.close()
+            logger.info("Health checker closed")
 
         # Cleanup rate limiter
         if settings.RATE_LIMIT_ENABLED and hasattr(app.state, "rate_limiter"):
@@ -310,6 +349,10 @@ def create_app() -> FastAPI:
     # Prometheus instrumentation
     if settings.ENABLE_METRICS:
         Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+    # OpenTelemetry FastAPI instrumentation
+    if settings.TRACING_ENABLED:
+        instrument_fastapi(app)
 
     return app
 

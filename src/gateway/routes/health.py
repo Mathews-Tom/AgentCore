@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from gateway.config import settings
 from gateway.models.health import (
@@ -25,13 +25,33 @@ logger = structlog.get_logger()
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check() -> HealthResponse:
+async def health_check(request: Request) -> HealthResponse:
     """
-    Basic health check endpoint.
+    Comprehensive health check endpoint with metrics.
 
-    Returns the service status and version information.
-    Used by monitoring systems to verify service is running.
+    Returns the service status, version information, and dependency health.
+    Used by monitoring systems to verify service and dependencies are healthy.
     """
+    # Use health checker if available
+    if hasattr(request.app.state, "health_checker"):
+        result = await request.app.state.health_checker.check_all()
+
+        checks = {
+            name: HealthCheckDetail(
+                status=check["status"],
+                details=check["message"]
+            )
+            for name, check in result["checks"].items()
+        }
+
+        return HealthResponse(
+            status=result["status"],
+            version=settings.GATEWAY_VERSION,
+            timestamp=datetime.now(UTC).isoformat(),
+            checks=checks,
+        )
+
+    # Fallback to basic health check
     return HealthResponse(
         status="healthy",
         version=settings.GATEWAY_VERSION,
@@ -45,13 +65,30 @@ async def health_check() -> HealthResponse:
 
 
 @router.get("/ready", response_model=ReadinessResponse)
-async def readiness_check() -> ReadinessResponse:
+async def readiness_check(request: Request) -> ReadinessResponse:
     """
-    Readiness check endpoint.
+    Readiness check endpoint with dependency validation.
 
     Verifies that the service is ready to accept requests.
-    Checks connectivity to backend services and dependencies.
+    Checks connectivity to critical dependencies (Redis, backend services).
     """
+    # Use health checker if available
+    if hasattr(request.app.state, "health_checker"):
+        result = await request.app.state.health_checker.check_readiness()
+
+        if result["status"] != "ready":
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=result.get("reason", "Service not ready")
+            )
+
+        return ReadinessResponse(
+            status=result["status"],
+            ready=True,
+            checks={"critical_dependencies": True}
+        )
+
+    # Fallback to basic readiness check
     checks: dict[str, bool] = {}
     all_ready = True
 
@@ -64,8 +101,7 @@ async def readiness_check() -> ReadinessResponse:
         all_ready = False
         logger.error("Application readiness check failed", error=str(e))
 
-    # Future: Check backend services connectivity
-    # For now, mark as ready (placeholder for GATE-007 backend routing)
+    # Backend services placeholder
     checks["backend_services"] = True
 
     if not all_ready:
