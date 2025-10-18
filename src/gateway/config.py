@@ -44,9 +44,42 @@ class GatewaySettings(BaseSettings):
     ENABLE_METRICS: bool = Field(default=True, description="Enable Prometheus metrics")
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 
-    # Rate Limiting (placeholder for future implementation)
-    RATE_LIMIT_ENABLED: bool = Field(default=False, description="Enable rate limiting")
-    RATE_LIMIT_REQUESTS: int = Field(default=100, description="Requests per minute")
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
+    RATE_LIMIT_REDIS_URL: str = Field(
+        default="redis://localhost:6379/2",
+        description="Redis URL for rate limiting"
+    )
+    RATE_LIMIT_ALGORITHM: str = Field(
+        default="sliding_window",
+        description="Rate limit algorithm (sliding_window, fixed_window, token_bucket, leaky_bucket)"
+    )
+
+    # Default Rate Limit Policies
+    RATE_LIMIT_CLIENT_IP_LIMIT: int = Field(default=1000, description="Requests per minute per client IP")
+    RATE_LIMIT_CLIENT_IP_WINDOW: int = Field(default=60, description="Client IP rate limit window in seconds")
+    RATE_LIMIT_ENDPOINT_LIMIT: int = Field(default=100, description="Requests per minute per endpoint")
+    RATE_LIMIT_ENDPOINT_WINDOW: int = Field(default=60, description="Endpoint rate limit window in seconds")
+    RATE_LIMIT_USER_LIMIT: int = Field(default=5000, description="Requests per minute per authenticated user")
+    RATE_LIMIT_USER_WINDOW: int = Field(default=60, description="User rate limit window in seconds")
+
+    # DDoS Protection
+    DDOS_PROTECTION_ENABLED: bool = Field(default=True, description="Enable DDoS protection")
+    DDOS_GLOBAL_REQUESTS_PER_SECOND: int = Field(default=10000, description="Global requests per second")
+    DDOS_GLOBAL_REQUESTS_PER_MINUTE: int = Field(default=500000, description="Global requests per minute")
+    DDOS_IP_REQUESTS_PER_SECOND: int = Field(default=100, description="Per-IP requests per second")
+    DDOS_IP_REQUESTS_PER_MINUTE: int = Field(default=1000, description="Per-IP requests per minute")
+    DDOS_BURST_THRESHOLD_MULTIPLIER: float = Field(default=5.0, description="Burst detection threshold multiplier")
+    DDOS_BURST_WINDOW_SECONDS: int = Field(default=10, description="Burst detection window in seconds")
+    DDOS_AUTO_BLOCKING_ENABLED: bool = Field(default=True, description="Enable automatic IP blocking")
+    DDOS_AUTO_BLOCK_DURATION_SECONDS: int = Field(default=3600, description="Auto-block duration in seconds")
+    DDOS_AUTO_BLOCK_THRESHOLD: int = Field(default=10, description="Violations before auto-block")
+
+    # Rate Limiting Exempt Paths
+    RATE_LIMIT_EXEMPT_PATHS: list[str] = Field(
+        default=["/health", "/metrics", "/.well-known/"],
+        description="Paths exempt from rate limiting"
+    )
 
     # JWT Authentication
     JWT_ALGORITHM: str = Field(default="RS256", description="JWT signing algorithm (RS256 for RSA)")
