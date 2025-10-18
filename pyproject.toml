@@ -119,6 +119,7 @@ agentcore = "agentcore_cli.main:cli_main"
 dev = [
     "httpx>=0.28.1",
     "locust>=2.41.2",
+    "pyjwt>=2.10.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "pytest-benchmark>=5.1.0",
