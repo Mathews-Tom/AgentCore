@@ -1,0 +1,244 @@
+groups:
+  - name: gateway_alerts
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (sum(rate(gateway_http_requests_total{status_code=~"5.."}[5m]))
+          / sum(rate(gateway_http_requests_total[5m]))) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "High error rate detected on gateway"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          dashboard: "https://grafana/d/gateway-overview"
+
+      # High Latency Alert
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(gateway_http_request_duration_seconds_bucket[5m])
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High latency detected on gateway"
+          description: "P95 latency is {{ $value }}s (threshold: 0.5s)"
+          dashboard: "https://grafana/d/service-performance"
+
+      # Critical Latency Alert
+      - alert: CriticalLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(gateway_http_request_duration_seconds_bucket[5m])
+          ) > 1.0
+        for: 2m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "Critical latency detected on gateway"
+          description: "P95 latency is {{ $value }}s (threshold: 1.0s)"
+          dashboard: "https://grafana/d/service-performance"
+
+      # Circuit Breaker Open Alert
+      - alert: CircuitBreakerOpen
+        expr: gateway_circuit_breaker_state > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "Circuit breaker opened for {{ $labels.service }}"
+          description: "Circuit breaker state: {{ $value }} (0=closed, 1=open, 2=half-open)"
+          dashboard: "https://grafana/d/service-performance"
+
+      # DDoS Attack Detected
+      - alert: DDoSAttackDetected
+        expr: sum(rate(gateway_ddos_blocks_total[1m])) > 10
+        for: 1m
+        labels:
+          severity: critical
+          component: gateway
+          security: true
+        annotations:
+          summary: "Potential DDoS attack detected"
+          description: "DDoS blocks rate is {{ $value }} blocks/sec (threshold: 10)"
+          dashboard: "https://grafana/d/security"
+
+      # High Authentication Failure Rate
+      - alert: HighAuthFailureRate
+        expr: |
+          sum(rate(gateway_auth_failures_total[5m]))
+          / (sum(rate(gateway_auth_success_total[5m]))
+          + sum(rate(gateway_auth_failures_total[5m]))) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+          security: true
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Auth failure rate is {{ $value | humanizePercentage }} (threshold: 30%)"
+          dashboard: "https://grafana/d/security"
+
+      # Suspicious Authentication Activity
+      - alert: SuspiciousAuthActivity
+        expr: sum(rate(gateway_auth_failures_total[1m])) > 100
+        for: 2m
+        labels:
+          severity: critical
+          component: gateway
+          security: true
+        annotations:
+          summary: "Suspicious authentication activity detected"
+          description: "Authentication failures: {{ $value }}/sec (threshold: 100/sec)"
+          dashboard: "https://grafana/d/security"
+
+      # Gateway Unhealthy
+      - alert: GatewayUnhealthy
+        expr: gateway_health_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "Gateway health check failing"
+          description: "Gateway overall health status is unhealthy"
+          dashboard: "https://grafana/d/gateway-overview"
+
+      # Component Unhealthy
+      - alert: ComponentUnhealthy
+        expr: gateway_component_health_status == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "Gateway component {{ $labels.component }} is unhealthy"
+          description: "Component health check failing for {{ $labels.component }}"
+          dashboard: "https://grafana/d/gateway-overview"
+
+      # High Rate Limit Hit Rate
+      - alert: HighRateLimitHits
+        expr: sum(rate(gateway_rate_limit_hits_total[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High rate limit hit rate detected"
+          description: "Rate limit hits: {{ $value }}/sec (threshold: 100/sec)"
+          dashboard: "https://grafana/d/security"
+
+      # Backend Service High Error Rate
+      - alert: BackendServiceErrors
+        expr: |
+          (sum by (service) (rate(gateway_backend_errors_total[5m]))
+          / sum by (service) (rate(gateway_backend_requests_total[5m]))) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High error rate for backend service {{ $labels.service }}"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+          dashboard: "https://grafana/d/service-performance"
+
+      # Backend Service High Latency
+      - alert: BackendServiceHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service, le) (rate(gateway_backend_request_duration_seconds_bucket[5m]))
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High latency for backend service {{ $labels.service }}"
+          description: "P95 latency is {{ $value }}s (threshold: 2.0s)"
+          dashboard: "https://grafana/d/service-performance"
+
+      # WebSocket Connection Limit Approaching
+      - alert: WebSocketConnectionsHigh
+        expr: gateway_websocket_connections_active > 8000
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "WebSocket connections approaching limit"
+          description: "Active connections: {{ $value }} (limit: 10000)"
+          dashboard: "https://grafana/d/realtime"
+
+      # Low Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: |
+          sum(rate(gateway_cache_hits_total[5m]))
+          / (sum(rate(gateway_cache_hits_total[5m]))
+          + sum(rate(gateway_cache_misses_total[5m]))) < 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: gateway
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+          dashboard: "https://grafana/d/service-performance"
+
+      # High Memory Usage (if available from node_exporter)
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: gateway
+        annotations:
+          summary: "High memory usage on gateway instance"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 90%)"
+
+      # Request Rate Spike
+      - alert: RequestRateSpike
+        expr: |
+          (rate(gateway_http_requests_total[1m])
+          / rate(gateway_http_requests_total[10m])) > 2
+        for: 2m
+        labels:
+          severity: info
+          component: gateway
+        annotations:
+          summary: "Request rate spike detected"
+          description: "Current rate is {{ $value }}x the average rate"
+          dashboard: "https://grafana/d/realtime"
+
+      # TLS Handshake Errors
+      - alert: TLSHandshakeErrors
+        expr: sum(rate(gateway_tls_errors_total[5m])) > 10
+        for: 3m
+        labels:
+          severity: warning
+          component: gateway
+          security: true
+        annotations:
+          summary: "High TLS handshake error rate"
+          description: "TLS errors: {{ $value }}/sec (threshold: 10/sec)"
+          dashboard: "https://grafana/d/security"
+
+      # Gateway Not Ready
+      - alert: GatewayNotReady
+        expr: gateway_readiness_status == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "Gateway is not ready to serve traffic"
+          description: "Gateway readiness check is failing"
+          dashboard: "https://grafana/d/gateway-overview"
