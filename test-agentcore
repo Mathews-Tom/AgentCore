@@ -1,0 +1,35 @@
+#!/bin/bash
+# Convenience wrapper for the AgentCore test runner
+#
+# This script runs the comprehensive test suite for all AgentCore components
+# with detailed reporting on test status, coverage, and performance metrics.
+#
+# Usage: ./test-agentcore [options]
+#
+# Options:
+#   --components <name>    Run specific component(s) (comma-separated)
+#   --parallel             Run test components in parallel
+#   --no-coverage          Skip coverage reporting
+#   --verbose              Show verbose output
+#   --json <file>          Output results as JSON to file
+#
+# Components:
+#   a2a_protocol    Agent-to-Agent Protocol (A2A)
+#   agent_runtime   Agent Runtime Layer (ART)
+#   reasoning       Bounded Context Reasoning (BCR)
+#   training        Training System (FLOW)
+#   orchestration   Orchestration Engine (ORCH)
+#   integration     Integration Tests (INT)
+#   cli             CLI (not yet implemented)
+#   gateway         API Gateway (not yet implemented)
+#   config          Configuration tests
+#   load            Load tests
+#
+# Examples:
+#   ./test-agentcore                                    # Run all tests
+#   ./test-agentcore --parallel                         # Run tests in parallel
+#   ./test-agentcore --components a2a_protocol,training # Run specific components
+#   ./test-agentcore --no-coverage --verbose            # Verbose without coverage
+#   ./test-agentcore --json results.json                # Save results to JSON
+
+uv run python tests/run_tests.py "$@"

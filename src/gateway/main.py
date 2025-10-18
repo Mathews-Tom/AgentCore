@@ -32,7 +32,9 @@ from gateway.middleware.rate_limiter import (
     RateLimitPolicy,
     RateLimiter,
 )
-from gateway.routes import auth, health, oauth
+from gateway.realtime.connection_pool import connection_pool
+from gateway.realtime.event_bus import event_bus
+from gateway.routes import auth, health, oauth, realtime
 
 
 @asynccontextmanager
@@ -91,6 +93,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             initialize_oauth_providers()
             logger.info("OAuth providers initialized")
 
+        # Initialize real-time communication
+        if settings.REALTIME_ENABLED:
+            # Initialize connection pool
+            await connection_pool.start()
+            app.state.connection_pool = connection_pool
+            logger.info("Connection pool initialized")
+
+            # Initialize event bus
+            await event_bus.start()
+            app.state.event_bus = event_bus
+            logger.info("Event bus initialized")
+
         # Future: Initialize backend service connections
 
         yield
@@ -110,6 +124,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.OAUTH_ENABLED:
             await oauth_state_manager.close()
             logger.info("OAuth state manager closed")
+
+        # Cleanup real-time communication
+        if settings.REALTIME_ENABLED:
+            # Stop event bus
+            if hasattr(app.state, "event_bus"):
+                await app.state.event_bus.stop()
+                logger.info("Event bus stopped")
+
+            # Stop connection pool
+            if hasattr(app.state, "connection_pool"):
+                await app.state.connection_pool.stop()
+                logger.info("Connection pool stopped")
 
 
 def _setup_rate_limiting(app: FastAPI) -> None:
@@ -190,6 +216,10 @@ def create_app() -> FastAPI:
     # Include OAuth router if enabled
     if settings.OAUTH_ENABLED:
         app.include_router(oauth.router, tags=["oauth"])
+
+    # Include real-time router if enabled
+    if settings.REALTIME_ENABLED:
+        app.include_router(realtime.router, tags=["realtime"])
 
     # Prometheus instrumentation
     if settings.ENABLE_METRICS:

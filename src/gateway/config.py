@@ -151,6 +151,14 @@ class GatewaySettings(BaseSettings):
     SAML_SSO_URL: str | None = Field(None, description="SAML SSO URL")
     SAML_X509_CERT: str | None = Field(None, description="SAML X.509 certificate")
 
+    # Real-time Communication Configuration
+    REALTIME_ENABLED: bool = Field(default=True, description="Enable WebSocket and SSE support")
+    REALTIME_MAX_CONNECTIONS: int = Field(default=10000, description="Maximum concurrent connections")
+    REALTIME_HEARTBEAT_INTERVAL: int = Field(default=30, description="Heartbeat interval in seconds")
+    REALTIME_CONNECTION_TIMEOUT: int = Field(default=300, description="Connection timeout in seconds")
+    REALTIME_KEEPALIVE_INTERVAL: int = Field(default=30, description="SSE keepalive interval in seconds")
+    REALTIME_EVENT_QUEUE_SIZE: int = Field(default=10000, description="Event queue size")
+
     model_config = {
         "env_file": ".env",
         "env_prefix": "GATEWAY_",
