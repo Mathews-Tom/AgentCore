@@ -159,6 +159,76 @@ class GatewaySettings(BaseSettings):
     REALTIME_KEEPALIVE_INTERVAL: int = Field(default=30, description="SSE keepalive interval in seconds")
     REALTIME_EVENT_QUEUE_SIZE: int = Field(default=10000, description="Event queue size")
 
+    # Security Headers
+    SECURITY_HSTS_ENABLED: bool = Field(default=True, description="Enable HSTS header")
+    SECURITY_HSTS_MAX_AGE: int = Field(default=31536000, description="HSTS max age in seconds (1 year)")
+    SECURITY_X_FRAME_OPTIONS: str = Field(default="DENY", description="X-Frame-Options header value")
+    SECURITY_CSP_ENABLED: bool = Field(default=True, description="Enable Content-Security-Policy")
+    SECURITY_CSP_POLICY: str = Field(
+        default="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+        description="Content-Security-Policy value"
+    )
+    SECURITY_REFERRER_POLICY: str = Field(
+        default="strict-origin-when-cross-origin",
+        description="Referrer-Policy header value"
+    )
+    SECURITY_PERMISSIONS_POLICY: str = Field(
+        default="geolocation=(), microphone=(), camera=()",
+        description="Permissions-Policy header value"
+    )
+    SECURITY_CUSTOM_HEADERS: dict[str, str] = Field(
+        default={},
+        description="Custom security headers"
+    )
+
+    # Input Validation
+    VALIDATION_ENABLED: bool = Field(default=True, description="Enable input validation")
+    VALIDATION_SQL_INJECTION_CHECK: bool = Field(default=True, description="Check for SQL injection")
+    VALIDATION_XSS_CHECK: bool = Field(default=True, description="Check for XSS attacks")
+    VALIDATION_PATH_TRAVERSAL_CHECK: bool = Field(default=True, description="Check for path traversal")
+    VALIDATION_COMMAND_INJECTION_CHECK: bool = Field(default=True, description="Check for command injection")
+    VALIDATION_MAX_PARAM_LENGTH: int = Field(default=10000, description="Maximum parameter length")
+    VALIDATION_MAX_HEADER_LENGTH: int = Field(default=8192, description="Maximum header length")
+
+    # Response Compression
+    COMPRESSION_ENABLED: bool = Field(default=True, description="Enable response compression")
+    COMPRESSION_MIN_SIZE: int = Field(default=1024, description="Minimum response size to compress (bytes)")
+    COMPRESSION_LEVEL: int = Field(default=6, description="Gzip compression level (1-9)")
+
+    # Cache Control
+    CACHE_CONTROL_ENABLED: bool = Field(default=True, description="Enable cache control headers")
+    CACHE_CONTROL_ETAG_ENABLED: bool = Field(default=True, description="Enable ETag generation")
+    CACHE_CONTROL_DEFAULT_MAX_AGE: int = Field(default=0, description="Default cache max-age in seconds")
+
+    # Backend Service Discovery (for routing)
+    SERVICE_DISCOVERY_ENABLED: bool = Field(default=False, description="Enable service discovery")
+    SERVICE_REGISTRY_URL: str = Field(
+        default="http://localhost:8500",
+        description="Service registry URL (e.g., Consul)"
+    )
+    SERVICE_HEALTH_CHECK_INTERVAL: int = Field(default=10, description="Health check interval in seconds")
+    SERVICE_HEALTH_CHECK_TIMEOUT: int = Field(default=5, description="Health check timeout in seconds")
+
+    # Circuit Breaker
+    CIRCUIT_BREAKER_ENABLED: bool = Field(default=True, description="Enable circuit breaker pattern")
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = Field(default=5, description="Failures before opening circuit")
+    CIRCUIT_BREAKER_RECOVERY_TIMEOUT: int = Field(default=60, description="Recovery timeout in seconds")
+    CIRCUIT_BREAKER_EXPECTED_EXCEPTION_TYPES: list[str] = Field(
+        default=["TimeoutError", "ConnectionError"],
+        description="Exception types that trigger circuit breaker"
+    )
+
+    # Load Balancing
+    LOAD_BALANCER_ALGORITHM: str = Field(
+        default="round_robin",
+        description="Load balancing algorithm (round_robin, least_connections, weighted, random)"
+    )
+
+    # Distributed Tracing
+    TRACING_ENABLED: bool = Field(default=True, description="Enable distributed tracing")
+    TRACING_SAMPLE_RATE: float = Field(default=0.1, description="Trace sampling rate (0.0-1.0)")
+    TRACING_EXPORT_ENDPOINT: str | None = Field(None, description="Trace export endpoint (e.g., Jaeger)")
+
     model_config = {
         "env_file": ".env",
         "env_prefix": "GATEWAY_",

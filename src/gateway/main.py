@@ -22,6 +22,7 @@ from gateway.auth.oauth.registry import initialize_oauth_providers
 from gateway.auth.oauth.state import oauth_state_manager
 from gateway.auth.session import session_manager
 from gateway.config import settings
+from gateway.middleware.compression import CompressionMiddleware
 from gateway.middleware.cors import setup_cors
 from gateway.middleware.ddos_protection import DDoSConfig, DDoSProtector
 from gateway.middleware.logging import logging_middleware
@@ -32,6 +33,12 @@ from gateway.middleware.rate_limiter import (
     RateLimitPolicy,
     RateLimiter,
 )
+from gateway.middleware.security_headers import SecurityHeadersMiddleware
+from gateway.middleware.transformation import (
+    CacheControlMiddleware,
+    TransformationMiddleware,
+)
+from gateway.middleware.validation import InputValidationMiddleware
 from gateway.realtime.connection_pool import connection_pool
 from gateway.realtime.event_bus import event_bus
 from gateway.routes import auth, health, oauth, realtime
@@ -192,8 +199,42 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Setup CORS middleware
+    # Setup CORS middleware (first in chain)
     setup_cors(app)
+
+    # Add security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add input validation middleware
+    if settings.VALIDATION_ENABLED:
+        app.add_middleware(
+            InputValidationMiddleware,
+            enable_sql_injection_check=settings.VALIDATION_SQL_INJECTION_CHECK,
+            enable_xss_check=settings.VALIDATION_XSS_CHECK,
+            enable_path_traversal_check=settings.VALIDATION_PATH_TRAVERSAL_CHECK,
+            enable_command_injection_check=settings.VALIDATION_COMMAND_INJECTION_CHECK,
+            max_param_length=settings.VALIDATION_MAX_PARAM_LENGTH,
+            max_header_length=settings.VALIDATION_MAX_HEADER_LENGTH,
+        )
+
+    # Add transformation middleware (trace IDs, request IDs)
+    app.add_middleware(TransformationMiddleware)
+
+    # Add cache control middleware
+    if settings.CACHE_CONTROL_ENABLED:
+        app.add_middleware(
+            CacheControlMiddleware,
+            enable_etag=settings.CACHE_CONTROL_ETAG_ENABLED,
+            default_max_age=settings.CACHE_CONTROL_DEFAULT_MAX_AGE,
+        )
+
+    # Add compression middleware
+    if settings.COMPRESSION_ENABLED:
+        app.add_middleware(
+            CompressionMiddleware,
+            min_size=settings.COMPRESSION_MIN_SIZE,
+            compression_level=settings.COMPRESSION_LEVEL,
+        )
 
     # Setup rate limiting middleware (deferred initialization)
     _setup_rate_limiting(app)
