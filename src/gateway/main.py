@@ -18,12 +18,14 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import Response
 
 from gateway.auth.jwt import jwt_manager
+from gateway.auth.oauth.registry import initialize_oauth_providers
+from gateway.auth.oauth.state import oauth_state_manager
 from gateway.auth.session import session_manager
 from gateway.config import settings
 from gateway.middleware.cors import setup_cors
 from gateway.middleware.logging import logging_middleware
 from gateway.middleware.metrics import metrics_middleware
-from gateway.routes import auth, health
+from gateway.routes import auth, health, oauth
 
 
 @asynccontextmanager
@@ -46,9 +48,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await session_manager.initialize()
         logger.info("Session manager initialized")
 
+        # Initialize OAuth state manager
+        if settings.OAUTH_ENABLED:
+            await oauth_state_manager.initialize()
+            logger.info("OAuth state manager initialized")
+
+            # Initialize OAuth providers
+            initialize_oauth_providers()
+            logger.info("OAuth providers initialized")
+
         # Future: Initialize backend service connections
         # Future: Setup rate limiting
-        # Future: Initialize OAuth providers (GATE-003)
 
         yield
     finally:
@@ -58,7 +68,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await session_manager.close()
         logger.info("Session manager closed")
 
-        # Future: Cleanup other connections
+        # Cleanup OAuth state manager
+        if settings.OAUTH_ENABLED:
+            await oauth_state_manager.close()
+            logger.info("OAuth state manager closed")
 
 
 def create_app() -> FastAPI:
@@ -90,6 +103,10 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health.router, tags=["health"])
     app.include_router(auth.router, tags=["authentication"])
+
+    # Include OAuth router if enabled
+    if settings.OAUTH_ENABLED:
+        app.include_router(oauth.router, tags=["oauth"])
 
     # Prometheus instrumentation
     if settings.ENABLE_METRICS:

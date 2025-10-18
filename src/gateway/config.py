@@ -78,9 +78,45 @@ class GatewaySettings(BaseSettings):
         description="Session cleanup interval in minutes"
     )
 
-    # OAuth 3.0 (prepare for GATE-003)
-    OAUTH_ENABLED: bool = Field(default=False, description="Enable OAuth 3.0 providers")
-    OAUTH_PROVIDERS: list[str] = Field(default=[], description="Enabled OAuth providers")
+    # OAuth 2.0/3.0 Configuration
+    OAUTH_ENABLED: bool = Field(default=False, description="Enable OAuth providers")
+    OAUTH_PROVIDERS: list[str] = Field(default=[], description="Enabled OAuth providers (google, github, microsoft)")
+
+    # Google OAuth
+    OAUTH_GOOGLE_CLIENT_ID: str | None = Field(None, description="Google OAuth client ID")
+    OAUTH_GOOGLE_CLIENT_SECRET: str | None = Field(None, description="Google OAuth client secret")
+    OAUTH_GOOGLE_REDIRECT_URI: str | None = Field(None, description="Google OAuth redirect URI")
+
+    # GitHub OAuth
+    OAUTH_GITHUB_CLIENT_ID: str | None = Field(None, description="GitHub OAuth client ID")
+    OAUTH_GITHUB_CLIENT_SECRET: str | None = Field(None, description="GitHub OAuth client secret")
+    OAUTH_GITHUB_REDIRECT_URI: str | None = Field(None, description="GitHub OAuth redirect URI")
+
+    # Microsoft OAuth
+    OAUTH_MICROSOFT_CLIENT_ID: str | None = Field(None, description="Microsoft OAuth client ID")
+    OAUTH_MICROSOFT_CLIENT_SECRET: str | None = Field(None, description="Microsoft OAuth client secret")
+    OAUTH_MICROSOFT_REDIRECT_URI: str | None = Field(None, description="Microsoft OAuth redirect URI")
+    OAUTH_MICROSOFT_TENANT_ID: str | None = Field(None, description="Microsoft OAuth tenant ID")
+
+    # OAuth State Management
+    OAUTH_STATE_TTL_MINUTES: int = Field(default=10, description="OAuth state TTL in minutes")
+
+    # Enterprise SSO Configuration
+    SSO_ENABLED: bool = Field(default=False, description="Enable enterprise SSO")
+    SSO_LDAP_ENABLED: bool = Field(default=False, description="Enable LDAP authentication")
+    SSO_SAML_ENABLED: bool = Field(default=False, description="Enable SAML authentication")
+
+    # LDAP Configuration
+    LDAP_SERVER_URI: str | None = Field(None, description="LDAP server URI")
+    LDAP_BIND_DN: str | None = Field(None, description="LDAP bind DN")
+    LDAP_BIND_PASSWORD: str | None = Field(None, description="LDAP bind password")
+    LDAP_BASE_DN: str | None = Field(None, description="LDAP base DN")
+    LDAP_USE_TLS: bool = Field(default=True, description="Use TLS for LDAP connections")
+
+    # SAML Configuration
+    SAML_ENTITY_ID: str | None = Field(None, description="SAML entity ID")
+    SAML_SSO_URL: str | None = Field(None, description="SAML SSO URL")
+    SAML_X509_CERT: str | None = Field(None, description="SAML X.509 certificate")
 
     model_config = {
         "env_file": ".env",
