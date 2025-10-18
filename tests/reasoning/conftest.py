@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from unittest.mock import _patch
 
 import pytest
 from prometheus_client import REGISTRY
@@ -37,3 +38,23 @@ def clear_prometheus_registry_session():
     _clear_metrics_and_registry()
     yield
     _clear_metrics_and_registry()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_prometheus_registry_function():
+    """Clear Prometheus registry before each test to avoid duplicate metric registration."""
+    _clear_metrics_and_registry()
+    yield
+    _clear_metrics_and_registry()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def stop_all_patches():
+    """Stop all active mocks after each test to prevent state pollution."""
+    yield
+    # Stop all active patches
+    for patch_obj in list(_patch._active_patches):
+        try:
+            patch_obj.stop()
+        except RuntimeError:
+            pass  # Patch already stopped
