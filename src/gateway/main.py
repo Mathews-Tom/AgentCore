@@ -17,11 +17,13 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import Response
 
+from gateway.auth.jwt import jwt_manager
+from gateway.auth.session import session_manager
 from gateway.config import settings
 from gateway.middleware.cors import setup_cors
 from gateway.middleware.logging import logging_middleware
 from gateway.middleware.metrics import metrics_middleware
-from gateway.routes import health
+from gateway.routes import auth, health
 
 
 @asynccontextmanager
@@ -36,15 +38,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             name=settings.GATEWAY_NAME
         )
 
+        # Initialize JWT manager
+        await jwt_manager.initialize()
+        logger.info("JWT manager initialized")
+
+        # Initialize session manager
+        await session_manager.initialize()
+        logger.info("Session manager initialized")
+
         # Future: Initialize backend service connections
         # Future: Setup rate limiting
-        # Future: Initialize authentication providers
+        # Future: Initialize OAuth providers (GATE-003)
 
         yield
     finally:
         logger.info("Shutting down API Gateway")
 
-        # Future: Cleanup connections
+        # Cleanup session manager
+        await session_manager.close()
+        logger.info("Session manager closed")
+
+        # Future: Cleanup other connections
 
 
 def create_app() -> FastAPI:
@@ -75,6 +89,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(health.router, tags=["health"])
+    app.include_router(auth.router, tags=["authentication"])
 
     # Prometheus instrumentation
     if settings.ENABLE_METRICS:
