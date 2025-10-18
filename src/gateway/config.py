@@ -48,6 +48,40 @@ class GatewaySettings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = Field(default=False, description="Enable rate limiting")
     RATE_LIMIT_REQUESTS: int = Field(default=100, description="Requests per minute")
 
+    # JWT Authentication
+    JWT_ALGORITHM: str = Field(default="RS256", description="JWT signing algorithm (RS256 for RSA)")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60, description="Access token expiration in minutes")
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, description="Refresh token expiration in days")
+    JWT_ISSUER: str = Field(default="agentcore-gateway", description="JWT token issuer")
+    JWT_AUDIENCE: str = Field(default="agentcore-api", description="JWT token audience")
+
+    # RSA Key Management
+    RSA_PRIVATE_KEY_PATH: str = Field(
+        default="/tmp/agentcore_rsa_private.pem",
+        description="Path to RSA private key file"
+    )
+    RSA_PUBLIC_KEY_PATH: str = Field(
+        default="/tmp/agentcore_rsa_public.pem",
+        description="Path to RSA public key file"
+    )
+    RSA_KEY_SIZE: int = Field(default=2048, description="RSA key size in bits")
+    RSA_KEY_ROTATION_DAYS: int = Field(default=90, description="Days before RSA key rotation")
+
+    # Session Management
+    SESSION_REDIS_URL: str = Field(
+        default="redis://localhost:6379/1",
+        description="Redis URL for session storage"
+    )
+    SESSION_MAX_AGE_HOURS: int = Field(default=24, description="Maximum session age in hours")
+    SESSION_CLEANUP_INTERVAL_MINUTES: int = Field(
+        default=60,
+        description="Session cleanup interval in minutes"
+    )
+
+    # OAuth 3.0 (prepare for GATE-003)
+    OAUTH_ENABLED: bool = Field(default=False, description="Enable OAuth 3.0 providers")
+    OAUTH_PROVIDERS: list[str] = Field(default=[], description="Enabled OAuth providers")
+
     model_config = {
         "env_file": ".env",
         "env_prefix": "GATEWAY_",
