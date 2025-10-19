@@ -6,6 +6,7 @@ Tests WebSocket connection, authentication, subscriptions, and event broadcastin
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -14,10 +15,12 @@ from starlette.testclient import TestClient
 
 @pytest.fixture
 def test_client(redis_container):
-    """Create test client for WebSocket testing."""
+    """Create test client for WebSocket testing with lifespan support."""
     # Import app AFTER Redis container is configured via conftest
     from gateway.main import app
 
+    # Use TestClient which handles lifespan events properly
+    # The app's lifespan manager will initialize connection_pool and event_bus
     with TestClient(app) as client:
         yield client
 
@@ -63,9 +66,10 @@ class TestWebSocketIntegration:
             # Receive subscription confirmation
             data = websocket.receive_json()
 
-            assert data["type"] == "subscription"
-            assert data["status"] == "subscribed"
+            assert data["type"] == "subscribed"
             assert "subscription_id" in data
+            assert data["topics"] == ["agent.test-123"]
+            assert set(data["event_types"]) == {"task.created", "task.completed"}
 
     def test_websocket_unsubscribe(self, test_client):
         """Test WebSocket unsubscribe."""
@@ -94,8 +98,8 @@ class TestWebSocketIntegration:
             # Receive unsubscribe confirmation
             data = websocket.receive_json()
 
-            assert data["type"] == "subscription"
-            assert data["status"] == "unsubscribed"
+            assert data["type"] == "unsubscribed"
+            assert data["subscription_id"] == subscription_id
 
     def test_websocket_ping_pong(self, test_client):
         """Test WebSocket ping/pong heartbeat."""
