@@ -38,6 +38,11 @@ class CommandType(str, Enum):
     RETRY_TASK = "retry_task"
     CANCEL_TASK = "cancel_task"
 
+    # Handoff commands
+    INITIATE_HANDOFF = "initiate_handoff"
+    EXECUTE_HANDOFF = "execute_handoff"
+    ROLLBACK_HANDOFF = "rollback_handoff"
+
 
 class Command(BaseModel):
     """
@@ -251,6 +256,37 @@ class CommandHandler(ABC):
 
 
 CommandHandlerType = Callable[[Command], CommandResult]
+
+
+class InitiateHandoffCommand(Command):
+    """Command to initiate a task handoff."""
+
+    command_type: CommandType = Field(default=CommandType.INITIATE_HANDOFF, frozen=True)
+    task_id: UUID = Field(description="Task identifier")
+    task_type: str = Field(description="Type of task")
+    source_agent_id: str = Field(description="Source agent identifier")
+    target_agent_id: str = Field(description="Target agent identifier")
+    task_data: dict[str, Any] = Field(
+        default_factory=dict, description="Task data to transfer"
+    )
+    handoff_metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Handoff metadata"
+    )
+
+
+class ExecuteHandoffCommand(Command):
+    """Command to execute a pending handoff."""
+
+    command_type: CommandType = Field(default=CommandType.EXECUTE_HANDOFF, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier to execute")
+
+
+class RollbackHandoffCommand(Command):
+    """Command to rollback a handoff."""
+
+    command_type: CommandType = Field(default=CommandType.ROLLBACK_HANDOFF, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier to rollback")
+    reason: str = Field(description="Reason for rollback")
 
 
 class CommandBus:

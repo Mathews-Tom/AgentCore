@@ -4,6 +4,18 @@ Orchestration Patterns
 Built-in orchestration patterns for multi-agent coordination.
 """
 
+from agentcore.orchestration.patterns.handoff import (
+    CapabilityGate,
+    HandoffConfig,
+    HandoffContext,
+    HandoffCoordinator,
+    HandoffGate,
+    HandoffRecord,
+    HandoffStatus,
+    InputValidationGate,
+    OutputValidationGate,
+    ValidationResult,
+)
 from agentcore.orchestration.patterns.hierarchical import (
     AuthorityLevel,
     DelegationPolicy,
@@ -36,4 +48,15 @@ __all__ = [
     "AuthorityLevel",
     "EscalationReason",
     "DelegationPolicy",
+    # Handoff Pattern
+    "HandoffCoordinator",
+    "HandoffConfig",
+    "HandoffContext",
+    "HandoffRecord",
+    "HandoffStatus",
+    "HandoffGate",
+    "InputValidationGate",
+    "OutputValidationGate",
+    "CapabilityGate",
+    "ValidationResult",
 ]

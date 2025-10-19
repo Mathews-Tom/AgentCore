@@ -40,6 +40,13 @@ class EventType(str, Enum):
     TASK_FAILED = "task_failed"
     TASK_RETRIED = "task_retried"
 
+    # Handoff events
+    HANDOFF_INITIATED = "handoff_initiated"
+    HANDOFF_VALIDATED = "handoff_validated"
+    HANDOFF_COMPLETED = "handoff_completed"
+    HANDOFF_FAILED = "handoff_failed"
+    HANDOFF_ROLLED_BACK = "handoff_rolled_back"
+
     # State events
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
 
@@ -271,6 +278,63 @@ class StateSnapshotCreatedEvent(DomainEvent):
     snapshot_data: dict[str, Any] = Field(description="Snapshot state data")
 
 
+class HandoffInitiatedEvent(DomainEvent):
+    """Event published when a handoff is initiated."""
+
+    event_type: EventType = Field(default=EventType.HANDOFF_INITIATED, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier")
+    task_id: UUID = Field(description="Task identifier")
+    source_agent_id: str = Field(description="Source agent identifier")
+    target_agent_id: str = Field(description="Target agent identifier")
+    task_type: str = Field(description="Type of task being handed off")
+
+
+class HandoffValidatedEvent(DomainEvent):
+    """Event published when handoff validation completes."""
+
+    event_type: EventType = Field(default=EventType.HANDOFF_VALIDATED, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier")
+    validation_passed: bool = Field(description="Whether validation passed")
+    validation_results: list[dict[str, Any]] = Field(
+        default_factory=list, description="Quality gate validation results"
+    )
+
+
+class HandoffCompletedEvent(DomainEvent):
+    """Event published when a handoff completes successfully."""
+
+    event_type: EventType = Field(default=EventType.HANDOFF_COMPLETED, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier")
+    task_id: UUID = Field(description="Task identifier")
+    source_agent_id: str = Field(description="Source agent identifier")
+    target_agent_id: str = Field(description="Target agent identifier")
+    handoff_chain: list[str] = Field(
+        default_factory=list, description="Complete handoff chain"
+    )
+
+
+class HandoffFailedEvent(DomainEvent):
+    """Event published when a handoff fails."""
+
+    event_type: EventType = Field(default=EventType.HANDOFF_FAILED, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier")
+    task_id: UUID = Field(description="Task identifier")
+    source_agent_id: str = Field(description="Source agent identifier")
+    target_agent_id: str = Field(description="Target agent identifier")
+    error_message: str = Field(description="Error message")
+    failure_reason: str = Field(description="Reason for failure")
+
+
+class HandoffRolledBackEvent(DomainEvent):
+    """Event published when a handoff is rolled back."""
+
+    event_type: EventType = Field(default=EventType.HANDOFF_ROLLED_BACK, frozen=True)
+    handoff_id: UUID = Field(description="Handoff identifier")
+    task_id: UUID = Field(description="Task identifier")
+    rollback_reason: str = Field(description="Reason for rollback")
+    restored_to_agent: str = Field(description="Agent task was restored to")
+
+
 def deserialize_event(event_data: dict[str, Any]) -> DomainEvent:
     """
     Deserialize event data to appropriate event class.
@@ -308,6 +372,11 @@ def deserialize_event(event_data: dict[str, Any]) -> DomainEvent:
         EventType.TASK_COMPLETED: TaskCompletedEvent,
         EventType.TASK_FAILED: TaskFailedEvent,
         EventType.TASK_RETRIED: TaskRetriedEvent,
+        EventType.HANDOFF_INITIATED: HandoffInitiatedEvent,
+        EventType.HANDOFF_VALIDATED: HandoffValidatedEvent,
+        EventType.HANDOFF_COMPLETED: HandoffCompletedEvent,
+        EventType.HANDOFF_FAILED: HandoffFailedEvent,
+        EventType.HANDOFF_ROLLED_BACK: HandoffRolledBackEvent,
         EventType.STATE_SNAPSHOT_CREATED: StateSnapshotCreatedEvent,
     }
 
