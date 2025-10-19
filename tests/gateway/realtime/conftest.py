@@ -1,56 +1,40 @@
-"""Realtime tests configuration with Redis container setup."""
+"""Realtime tests configuration."""
 
 from __future__ import annotations
 
 import asyncio
 import os
-import time
 
 import pytest
 import pytest_asyncio
-from testcontainers.redis import RedisContainer
 
 
 @pytest.fixture(scope="module")
-def redis_container():
-    """Start a Redis container for WebSocket testing."""
-    container = RedisContainer("redis:7-alpine")
+def realtime_redis_db(redis_container):
+    """
+    Configure Redis database for realtime tests.
 
-    try:
-        container.start()
+    Uses database 1 to avoid conflicts with other test modules.
+    The session-scoped redis_container fixture is provided by tests/gateway/conftest.py.
+    """
+    port = redis_container.get_exposed_port(6379)
+    # Use database 1 for realtime tests
+    redis_url = f"redis://localhost:{port}/1"
 
-        # Wait for Redis to be ready
-        max_retries = 30
-        retry_count = 0
+    # Temporarily override environment variables for this module
+    old_rate_limit_url = os.environ.get("GATEWAY_RATE_LIMIT_REDIS_URL")
+    old_session_url = os.environ.get("GATEWAY_SESSION_REDIS_URL")
 
-        while retry_count < max_retries:
-            try:
-                port = container.get_exposed_port(6379)
-                # Set Redis URL environment variables BEFORE any gateway imports
-                redis_url = f"redis://localhost:{port}/0"
-                os.environ["GATEWAY_RATE_LIMIT_REDIS_URL"] = redis_url
-                os.environ["GATEWAY_SESSION_REDIS_URL"] = redis_url
+    os.environ["GATEWAY_RATE_LIMIT_REDIS_URL"] = redis_url
+    os.environ["GATEWAY_SESSION_REDIS_URL"] = redis_url
 
-                # Test connection
-                import redis
-                client = redis.from_url(redis_url)
-                client.ping()
-                client.close()
+    yield redis_container
 
-                break
-            except Exception:
-                retry_count += 1
-                if retry_count >= max_retries:
-                    raise
-                time.sleep(0.5)
-
-        yield container
-
-    finally:
-        try:
-            container.stop()
-        except Exception:
-            pass  # Ignore errors during cleanup
+    # Restore original values
+    if old_rate_limit_url:
+        os.environ["GATEWAY_RATE_LIMIT_REDIS_URL"] = old_rate_limit_url
+    if old_session_url:
+        os.environ["GATEWAY_SESSION_REDIS_URL"] = old_session_url
 
 
 @pytest.fixture

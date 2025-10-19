@@ -14,9 +14,10 @@ from starlette.testclient import TestClient
 
 
 @pytest.fixture
-def test_client(redis_container):
+def test_client(realtime_redis_db):
     """Create test client for WebSocket testing with lifespan support."""
-    # Import app AFTER Redis container is configured via conftest
+    # Import app AFTER Redis database is configured via conftest
+    # realtime_redis_db fixture ensures Redis is ready with unique database
     from gateway.main import app
 
     # Use TestClient which handles lifespan events properly
