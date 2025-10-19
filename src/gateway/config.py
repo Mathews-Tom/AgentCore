@@ -229,6 +229,16 @@ class GatewaySettings(BaseSettings):
     TRACING_SAMPLE_RATE: float = Field(default=0.1, description="Trace sampling rate (0.0-1.0)")
     TRACING_EXPORT_ENDPOINT: str | None = Field(None, description="Trace export endpoint (e.g., Jaeger)")
 
+    # Performance Optimization (GATE-010)
+    PERFORMANCE_CONNECTION_POOL_MAX: int = Field(default=1000, description="Max total connections")
+    PERFORMANCE_CONNECTION_POOL_KEEPALIVE: int = Field(default=500, description="Max keep-alive connections")
+    PERFORMANCE_CONNECTION_KEEPALIVE_EXPIRY: float = Field(default=30.0, description="Keep-alive timeout in seconds")
+    PERFORMANCE_HTTP2_ENABLED: bool = Field(default=True, description="Enable HTTP/2 support")
+    PERFORMANCE_RESPONSE_CACHE_ENABLED: bool = Field(default=True, description="Enable response caching")
+    PERFORMANCE_RESPONSE_CACHE_TTL: int = Field(default=300, description="Cache TTL in seconds")
+    PERFORMANCE_RESPONSE_CACHE_MAX_SIZE: int = Field(default=10000, description="Max cached items")
+    PERFORMANCE_RESPONSE_CACHE_STRATEGY: str = Field(default="lru", description="Cache eviction strategy (lru, lfu, ttl)")
+
     model_config = {
         "env_file": ".env",
         "env_prefix": "GATEWAY_",
