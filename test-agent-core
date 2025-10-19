@@ -1,6 +1,0 @@
-#!/bin/bash
-# Convenience wrapper for the test runner
-# Usage: ./test [options]
-# Example: ./test --parallel --no-coverage
-
-uv run python tests/run_tests.py "$@"
