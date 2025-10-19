@@ -22,31 +22,6 @@ def test_client(redis_container):
         yield client
 
 
-@pytest.fixture
-async def authenticated_token(redis_container):
-    """Create authenticated JWT token for testing."""
-    # Import AFTER Redis container is configured
-    from gateway.auth.jwt import jwt_manager
-    from gateway.auth.models import User, UserRole
-
-    # Initialize JWT manager
-    await jwt_manager.initialize()
-
-    user = User(
-        id="test-user-123",
-        username="testuser",
-        email="test@example.com",
-        roles=[UserRole.USER],
-    )
-
-    token = jwt_manager.create_access_token(
-        user=user,
-        session_id="test-session",
-    )
-
-    return token
-
-
 class TestWebSocketIntegration:
     """WebSocket integration tests using Starlette TestClient."""
 
