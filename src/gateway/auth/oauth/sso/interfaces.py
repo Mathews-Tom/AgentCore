@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -113,11 +113,15 @@ class SSOUserInfo(BaseModel):
     last_name: str | None = Field(None, description="Last name")
     display_name: str | None = Field(None, description="Display name")
     groups: list[str] = Field(default_factory=list, description="User groups")
-    status: SSOUserStatus = Field(default=SSOUserStatus.ACTIVE, description="Account status")
-    attributes: dict[str, Any] = Field(default_factory=dict, description="Additional attributes")
+    status: SSOUserStatus = Field(
+        default=SSOUserStatus.ACTIVE, description="Account status"
+    )
+    attributes: dict[str, Any] = Field(
+        default_factory=dict, description="Additional attributes"
+    )
     authenticated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="Authentication timestamp"
+        default_factory=lambda: datetime.now(UTC),
+        description="Authentication timestamp",
     )
 
 
@@ -262,9 +266,7 @@ class LDAPAuthProvider(SSOAuthProvider):
         Returns:
             User information if found, None otherwise
         """
-        raise NotImplementedError(
-            "LDAP user lookup requires concrete implementation."
-        )
+        raise NotImplementedError("LDAP user lookup requires concrete implementation.")
 
     async def get_user_groups(self, user_id: str) -> list[str]:
         """
@@ -276,9 +278,7 @@ class LDAPAuthProvider(SSOAuthProvider):
         Returns:
             List of group DNs or names
         """
-        raise NotImplementedError(
-            "LDAP group lookup requires concrete implementation."
-        )
+        raise NotImplementedError("LDAP group lookup requires concrete implementation.")
 
     async def validate_user(self, user_id: str) -> bool:
         """
@@ -403,9 +403,7 @@ class SAMLAuthProvider(SSOAuthProvider):
         Returns:
             User information if found, None otherwise
         """
-        raise NotImplementedError(
-            "SAML user lookup requires concrete implementation."
-        )
+        raise NotImplementedError("SAML user lookup requires concrete implementation.")
 
     async def get_user_groups(self, user_id: str) -> list[str]:
         """
@@ -417,9 +415,7 @@ class SAMLAuthProvider(SSOAuthProvider):
         Returns:
             List of group names
         """
-        raise NotImplementedError(
-            "SAML group lookup requires concrete implementation."
-        )
+        raise NotImplementedError("SAML group lookup requires concrete implementation.")
 
     async def validate_user(self, user_id: str) -> bool:
         """

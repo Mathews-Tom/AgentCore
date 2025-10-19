@@ -307,8 +307,9 @@ class SessionSnapshotDB(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     # Use native PostgreSQL enums (created by migrations)
-    state = Column(SQLEnum(SessionState, name='sessionstate', create_type=False), nullable=False, default=SessionState.ACTIVE, index=True)
-    priority = Column(SQLEnum(SessionPriority, name='sessionpriority', create_type=False), nullable=False, default=SessionPriority.NORMAL)
+    # values_callable ensures we use the .value property of str enums
+    state = Column(SQLEnum(SessionState, name='sessionstate', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False, default=SessionState.ACTIVE, index=True)
+    priority = Column(SQLEnum(SessionPriority, name='sessionpriority', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False, default=SessionPriority.NORMAL)
 
     # Participants
     owner_agent = Column(String(255), nullable=False, index=True)

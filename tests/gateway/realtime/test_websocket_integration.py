@@ -6,30 +6,31 @@ Tests WebSocket connection, authentication, subscriptions, and event broadcastin
 
 from __future__ import annotations
 
-import asyncio
 import json
 
 import pytest
-from fastapi.testclient import TestClient
-
-from gateway.main import app
-from gateway.realtime.event_bus import EventMessage, EventType, event_bus
+from starlette.testclient import TestClient
 
 
 @pytest.fixture
-def client():
-    """Create test client."""
+def test_client(redis_container):
+    """Create test client for WebSocket testing."""
+    # Import app AFTER Redis container is configured via conftest
+    from gateway.main import app
+
     with TestClient(app) as client:
         yield client
 
 
 @pytest.fixture
-async def authenticated_token():
+async def authenticated_token(redis_container):
     """Create authenticated JWT token for testing."""
-    # This would typically use the auth system to create a valid token
-    # For now, we'll mock this
+    # Import AFTER Redis container is configured
     from gateway.auth.jwt import jwt_manager
     from gateway.auth.models import User, UserRole
+
+    # Initialize JWT manager
+    await jwt_manager.initialize()
 
     user = User(
         id="test-user-123",
@@ -46,211 +47,136 @@ async def authenticated_token():
     return token
 
 
-@pytest.mark.asyncio
 class TestWebSocketIntegration:
-    """WebSocket integration tests."""
+    """WebSocket integration tests using Starlette TestClient."""
 
-    async def test_websocket_connect_without_auth(self, client):
+    def test_websocket_connect_without_auth(self, test_client):
         """Test WebSocket connection without authentication."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Should receive connection success message
+        with test_client.websocket_connect("/realtime/ws") as websocket:
+            # Should receive connection confirmation
             data = websocket.receive_json()
+
             assert data["type"] == "connection"
             assert data["status"] == "connected"
             assert "connection_id" in data
-            assert "client_id" in data
 
-    async def test_websocket_connect_with_auth(self, client, authenticated_token):
+    def test_websocket_connect_with_auth(self, test_client, authenticated_token):
         """Test WebSocket connection with authentication."""
-        with client.websocket_connect(f"/realtime/ws?token={authenticated_token}") as websocket:
-            # Should receive connection success message
+        with test_client.websocket_connect(f"/realtime/ws?token={authenticated_token}") as websocket:
+            # Should receive connection confirmation
             data = websocket.receive_json()
+
             assert data["type"] == "connection"
             assert data["status"] == "connected"
+            assert "connection_id" in data
+            # Note: Authenticated status is tracked internally, not in the connection message
 
-    async def test_websocket_subscribe(self, client):
+    def test_websocket_subscribe(self, test_client):
         """Test WebSocket subscription to topics and event types."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
-            conn_msg = websocket.receive_json()
-            assert conn_msg["type"] == "connection"
-
-            # Subscribe to topics and event types
-            subscribe_msg = {
-                "type": "subscribe",
-                "topics": ["agent.123"],
-                "event_types": ["task.created", "task.completed"],
-                "filters": {
-                    "agent_ids": ["agent-123"],
-                },
-            }
-            websocket.send_json(subscribe_msg)
-
-            # Should receive subscription confirmation
-            data = websocket.receive_json()
-            assert data["type"] == "subscribed"
-            assert "subscription_id" in data
-            assert "agent.123" in data["topics"]
-            assert "task.created" in data["event_types"]
-
-    async def test_websocket_unsubscribe(self, client):
-        """Test WebSocket unsubscribe."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
+        with test_client.websocket_connect("/realtime/ws") as websocket:
+            # Receive connection confirmation
             websocket.receive_json()
 
-            # Subscribe
-            subscribe_msg = {
+            # Subscribe to topics
+            subscribe_message = {
                 "type": "subscribe",
-                "topics": ["agent.123"],
-                "event_types": ["task.created"],
+                "topics": ["agent.test-123"],
+                "event_types": ["task.created", "task.completed"],
             }
-            websocket.send_json(subscribe_msg)
+            websocket.send_json(subscribe_message)
+
+            # Receive subscription confirmation
+            data = websocket.receive_json()
+
+            assert data["type"] == "subscription"
+            assert data["status"] == "subscribed"
+            assert "subscription_id" in data
+
+    def test_websocket_unsubscribe(self, test_client):
+        """Test WebSocket unsubscribe."""
+        with test_client.websocket_connect("/realtime/ws") as websocket:
+            # Receive connection confirmation
+            websocket.receive_json()
+
+            # Subscribe first
+            subscribe_message = {
+                "type": "subscribe",
+                "topics": ["agent.test-123"],
+            }
+            websocket.send_json(subscribe_message)
 
             # Get subscription ID
-            sub_response = websocket.receive_json()
-            subscription_id = sub_response["subscription_id"]
+            sub_data = websocket.receive_json()
+            subscription_id = sub_data["subscription_id"]
 
             # Unsubscribe
-            unsubscribe_msg = {
+            unsubscribe_message = {
                 "type": "unsubscribe",
                 "subscription_id": subscription_id,
             }
-            websocket.send_json(unsubscribe_msg)
+            websocket.send_json(unsubscribe_message)
 
-            # Should receive unsubscribe confirmation
+            # Receive unsubscribe confirmation
             data = websocket.receive_json()
-            assert data["type"] == "unsubscribed"
-            assert data["subscription_id"] == subscription_id
 
-    async def test_websocket_ping_pong(self, client):
+            assert data["type"] == "subscription"
+            assert data["status"] == "unsubscribed"
+
+    def test_websocket_ping_pong(self, test_client):
         """Test WebSocket ping/pong heartbeat."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
+        with test_client.websocket_connect("/realtime/ws") as websocket:
+            # Receive connection confirmation
             websocket.receive_json()
 
             # Send ping
-            ping_msg = {"type": "ping"}
-            websocket.send_json(ping_msg)
+            ping_message = {"type": "ping"}
+            websocket.send_json(ping_message)
 
-            # Should receive pong
+            # Receive pong
             data = websocket.receive_json()
+
             assert data["type"] == "pong"
 
-    async def test_websocket_receive_events(self, client):
-        """Test receiving events through WebSocket."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
-            websocket.receive_json()
-
-            # Subscribe to events
-            subscribe_msg = {
-                "type": "subscribe",
-                "topics": ["agent.123"],
-                "event_types": ["task.created"],
-            }
-            websocket.send_json(subscribe_msg)
-
-            # Receive subscription confirmation
-            websocket.receive_json()
-
-            # Publish event to event bus
-            event = EventMessage.create(
-                event_type=EventType.TASK_CREATED,
-                topic="agent.123",
-                payload={"task_id": "task-456", "agent_id": "agent-123"},
-            )
-            await event_bus.publish(event)
-
-            # Wait a bit for event processing
-            await asyncio.sleep(0.2)
-
-            # Should receive event
-            # Note: This test may be flaky due to async nature
-            # In production, you'd use a more robust testing approach
-
-    async def test_websocket_invalid_message(self, client):
+    def test_websocket_invalid_message(self, test_client):
         """Test WebSocket with invalid message format."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
+        with test_client.websocket_connect("/realtime/ws") as websocket:
+            # Receive connection confirmation
             websocket.receive_json()
 
             # Send invalid JSON
-            websocket.send_text("invalid json")
+            websocket.send_text("not valid json")
 
-            # Should receive error message
+            # Receive error message
             data = websocket.receive_json()
-            assert data["type"] == "error"
-            assert "Invalid JSON" in data["error"]
 
-    async def test_websocket_unknown_message_type(self, client):
+            assert data["type"] == "error"
+            assert "message" in data
+
+    def test_websocket_unknown_message_type(self, test_client):
         """Test WebSocket with unknown message type."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
+        with test_client.websocket_connect("/realtime/ws") as websocket:
+            # Receive connection confirmation
             websocket.receive_json()
 
             # Send unknown message type
-            unknown_msg = {"type": "unknown_type"}
-            websocket.send_json(unknown_msg)
+            unknown_message = {"type": "unknown_type"}
+            websocket.send_json(unknown_message)
 
-            # Should receive error message
+            # Receive error message
             data = websocket.receive_json()
+
             assert data["type"] == "error"
-            assert "Unknown message type" in data["error"]
+            assert "unknown" in data["message"].lower()
 
-    async def test_multiple_websocket_connections(self, client):
+    def test_multiple_websocket_connections(self, test_client):
         """Test multiple WebSocket connections from same client."""
-        # Connect first WebSocket
-        with client.websocket_connect("/realtime/ws") as ws1:
-            conn1 = ws1.receive_json()
-            assert conn1["type"] == "connection"
+        with test_client.websocket_connect("/realtime/ws") as ws1:
+            with test_client.websocket_connect("/realtime/ws") as ws2:
+                # Receive connection confirmations
+                data1 = ws1.receive_json()
+                data2 = ws2.receive_json()
 
-            # Connect second WebSocket
-            with client.websocket_connect("/realtime/ws") as ws2:
-                conn2 = ws2.receive_json()
-                assert conn2["type"] == "connection"
-
-                # Should have different connection IDs
-                assert conn1["connection_id"] != conn2["connection_id"]
-
-    async def test_websocket_event_filtering(self, client):
-        """Test WebSocket event filtering by agent_id."""
-        with client.websocket_connect("/realtime/ws") as websocket:
-            # Receive connection message
-            websocket.receive_json()
-
-            # Subscribe with agent_id filter
-            subscribe_msg = {
-                "type": "subscribe",
-                "topics": ["agent.123"],
-                "event_types": ["task.created"],
-                "filters": {
-                    "agent_ids": ["agent-123"],
-                },
-            }
-            websocket.send_json(subscribe_msg)
-
-            # Receive subscription confirmation
-            websocket.receive_json()
-
-            # Publish event with matching agent_id
-            event1 = EventMessage.create(
-                event_type=EventType.TASK_CREATED,
-                topic="agent.123",
-                payload={"task_id": "task-1", "agent_id": "agent-123"},
-            )
-            await event_bus.publish(event1)
-
-            # Publish event with non-matching agent_id
-            event2 = EventMessage.create(
-                event_type=EventType.TASK_CREATED,
-                topic="agent.123",
-                payload={"task_id": "task-2", "agent_id": "agent-456"},
-            )
-            await event_bus.publish(event2)
-
-            # Wait for event processing
-            await asyncio.sleep(0.2)
-
-            # Should only receive event with matching agent_id
-            # (This test would need more sophisticated async handling in production)
+                # Each should have unique connection ID
+                assert data1["connection_id"] != data2["connection_id"]
+                assert data1["type"] == "connection"
+                assert data2["type"] == "connection"

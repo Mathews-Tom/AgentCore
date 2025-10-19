@@ -83,7 +83,7 @@ class HealthChecker:
         try:
             import redis.asyncio as aioredis
 
-            redis_client = await aioredis.from_url(self.redis_url)
+            redis_client = aioredis.from_url(self.redis_url)
             await asyncio.wait_for(redis_client.ping(), timeout=self.check_timeout)
             await redis_client.aclose()
 
@@ -104,7 +104,7 @@ class HealthChecker:
             COMPONENT_HEALTH.labels(component="redis").set(0)
             HEALTH_CHECK_DURATION.labels(component="redis").set(duration)
             logger.error(f"Redis health check failed: {e}")
-            return False, f"Redis error: {str(e)}"
+            return False, f"Redis error: {str(e).lower()}"
 
     async def check_backend_service(
         self, service_name: str, service_url: str

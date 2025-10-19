@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -128,7 +128,7 @@ class OAuthStateManager:
         Returns:
             OAuth state object
         """
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC)
         expires_at = created_at + timedelta(minutes=self.state_ttl_minutes)
 
         oauth_state = OAuthState(
@@ -178,7 +178,7 @@ class OAuthStateManager:
         oauth_state = OAuthState.model_validate_json(state_data)
 
         # Check if state is expired
-        if datetime.utcnow() >= oauth_state.expires_at:
+        if datetime.now(UTC) >= oauth_state.expires_at:
             logger.warning("OAuth state expired", state=state)
             await self.delete_state(state)
             return None
@@ -266,7 +266,7 @@ class OAuthStateManager:
             try:
                 oauth_state = OAuthState.model_validate_json(state_data)
 
-                if datetime.utcnow() >= oauth_state.expires_at:
+                if datetime.now(UTC) >= oauth_state.expires_at:
                     await self.client.delete(key)
                     cleaned += 1
             except Exception as e:

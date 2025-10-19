@@ -21,20 +21,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create enum types with checkfirst=True to avoid duplicates
-    session_state = postgresql.ENUM(
-        'active', 'paused', 'suspended', 'completed', 'failed', 'expired',
-        name='sessionstate',
-        create_type=False
-    )
-    session_state.create(op.get_bind(), checkfirst=True)
-
-    session_priority = postgresql.ENUM(
-        'low', 'normal', 'high', 'critical',
-        name='sessionpriority',
-        create_type=False
-    )
-    session_priority.create(op.get_bind(), checkfirst=True)
+    # Create enum types
+    op.execute("CREATE TYPE sessionstate AS ENUM ('active', 'paused', 'suspended', 'completed', 'failed', 'expired')")
+    op.execute("CREATE TYPE sessionpriority AS ENUM ('low', 'normal', 'high', 'critical')")
 
     # Create session_snapshots table
     op.create_table(
@@ -44,8 +33,8 @@ def upgrade() -> None:
         # Session metadata
         sa.Column('name', sa.String(200), nullable=False),
         sa.Column('description', sa.Text, nullable=True),
-        sa.Column('state', sa.Enum('active', 'paused', 'suspended', 'completed', 'failed', 'expired', name='sessionstate'), nullable=False, server_default='active', index=True),
-        sa.Column('priority', sa.Enum('low', 'normal', 'high', 'critical', name='sessionpriority'), nullable=False, server_default='normal'),
+        sa.Column('state', postgresql.ENUM('active', 'paused', 'suspended', 'completed', 'failed', 'expired', name='sessionstate', create_type=False), nullable=False, server_default='active', index=True),
+        sa.Column('priority', postgresql.ENUM('low', 'normal', 'high', 'critical', name='sessionpriority', create_type=False), nullable=False, server_default='normal'),
 
         # Participants
         sa.Column('owner_agent', sa.String(255), nullable=False, index=True),
@@ -97,5 +86,5 @@ def downgrade() -> None:
     op.drop_table('session_snapshots')
 
     # Drop enums
-    sa.Enum(name='sessionstate').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='sessionpriority').drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS sessionpriority")
+    op.execute("DROP TYPE IF EXISTS sessionstate")

@@ -6,16 +6,27 @@ Intelligent routing to backend services with service discovery and proxying.
 
 from __future__ import annotations
 
-from gateway.routing.discovery import ServiceDiscovery, ServiceInstance
-from gateway.routing.load_balancer import LoadBalancer, LoadBalancerAlgorithm
-from gateway.routing.proxy import BackendProxy
-from gateway.routing.router import ServiceRouter
+from .circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerOpenError,
+    CircuitBreakerRegistry,
+    CircuitState,
+)
+from .discovery import ServiceDiscovery, ServiceInstance, ServiceStatus
+from .load_balancer import LoadBalancer, LoadBalancingAlgorithm
+from .proxy import ServiceProxy
 
 __all__ = [
+    "CircuitBreaker",
+    "CircuitBreakerConfig",
+    "CircuitBreakerOpenError",
+    "CircuitBreakerRegistry",
+    "CircuitState",
+    "LoadBalancer",
+    "LoadBalancingAlgorithm",
     "ServiceDiscovery",
     "ServiceInstance",
-    "LoadBalancer",
-    "LoadBalancerAlgorithm",
-    "BackendProxy",
-    "ServiceRouter",
+    "ServiceProxy",
+    "ServiceStatus",
 ]

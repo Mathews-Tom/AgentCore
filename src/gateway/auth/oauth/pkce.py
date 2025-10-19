@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from base64 import urlsafe_b64encode
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from gateway.auth.oauth.models import PKCEChallenge, PKCEChallengeMethod
 
@@ -153,7 +153,7 @@ class PKCEGenerator:
 
         # Calculate expiration
         ttl = ttl_minutes if ttl_minutes is not None else cls.DEFAULT_TTL_MINUTES
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC)
         expires_at = created_at + timedelta(minutes=ttl)
 
         return PKCEChallenge(

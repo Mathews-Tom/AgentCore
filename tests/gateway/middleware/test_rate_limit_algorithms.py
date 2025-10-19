@@ -11,6 +11,7 @@ import time
 
 import pytest
 import redis.asyncio as aioredis
+from testcontainers.redis import RedisContainer
 
 from gateway.middleware.rate_limit_algorithms import (
     FixedWindowCounter,
@@ -20,11 +21,21 @@ from gateway.middleware.rate_limit_algorithms import (
 )
 
 
+@pytest.fixture(scope="module")
+def redis_container():
+    """Start a Redis container for testing."""
+    container = RedisContainer("redis:7-alpine")
+    container.start()
+    yield container
+    container.stop()
+
+
 @pytest.fixture
-async def redis_client():
+async def redis_client(redis_container):
     """Create Redis client for testing."""
+    redis_url = f"redis://localhost:{redis_container.get_exposed_port(6379)}/15"
     client = aioredis.from_url(
-        "redis://localhost:6379/15",  # Use DB 15 for tests
+        redis_url,
         decode_responses=False,
     )
 
@@ -286,11 +297,11 @@ class TestLeakyBucketCounter:
                 redis_client=redis_client,
             )
 
-        # Wait for leakage
-        await asyncio.sleep(0.5)  # Should leak ~5 requests
+        # Wait for leakage - wait a full second to ensure deterministic results
+        await asyncio.sleep(1.1)  # Should leak all 10 requests
 
-        # Should allow some requests now
-        for _ in range(5):
+        # Should allow all requests now since queue has leaked
+        for _ in range(10):
             allowed, _ = await algorithm.is_allowed(
                 key="test_key",
                 limit=10,

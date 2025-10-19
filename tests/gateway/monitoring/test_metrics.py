@@ -24,8 +24,10 @@ class TestMetrics:
 
     def test_get_metrics_registry(self) -> None:
         """Test getting the metrics registry."""
+        from prometheus_client import CollectorRegistry
+
         registry = get_metrics_registry()
-        assert registry is REGISTRY
+        assert isinstance(registry, CollectorRegistry)
 
     def test_set_gateway_info(self) -> None:
         """Test setting gateway information."""

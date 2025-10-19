@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -317,7 +317,7 @@ class JWTManager:
         if not exp_timestamp:
             raise JWTError("Token missing expiration claim")
 
-        return datetime.fromtimestamp(exp_timestamp)
+        return datetime.fromtimestamp(exp_timestamp, tz=UTC)
 
     def is_token_expired(self, token: str) -> bool:
         """
@@ -331,7 +331,7 @@ class JWTManager:
         """
         try:
             expiry = self.get_token_expiry(token)
-            return datetime.utcnow() >= expiry
+            return datetime.now(UTC) >= expiry
         except JWTError:
             return True
 
@@ -348,10 +348,13 @@ class JWTManager:
         return {
             "algorithm": self.algorithm,
             "key_size": self.key_size,
-            "created_at": self._key_created_at.isoformat() if self._key_created_at else None,
+            "created_at": self._key_created_at.isoformat()
+            if self._key_created_at
+            else None,
             "rotation_days": self.rotation_days,
         }
 
 
 # Global JWT manager instance
+jwt_manager = JWTManager()
 jwt_manager = JWTManager()

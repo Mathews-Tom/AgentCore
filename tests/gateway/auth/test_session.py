@@ -271,12 +271,13 @@ class TestSessionManager:
         """Test expired sessions are not returned."""
         # Override max_age for this test
         original_max_age = session_manager_test.max_age_hours
-        session_manager_test.max_age_hours = 0  # Expire immediately
+        # Use 1 second (Redis doesn't accept 0 TTL)
+        session_manager_test.max_age_hours = 1 / 3600  # 1 second in hours
 
         session = await session_manager_test.create_session(user=test_user)
 
-        # Wait a moment
-        await asyncio.sleep(0.1)
+        # Wait for expiration
+        await asyncio.sleep(1.1)
 
         # Session should be expired
         retrieved = await session_manager_test.get_session(session.session_id)

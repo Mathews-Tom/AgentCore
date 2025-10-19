@@ -7,7 +7,7 @@ and PKCE challenge/response.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -45,20 +45,28 @@ class OAuthProviderConfig(BaseModel):
     provider: OAuthProvider = Field(..., description="Provider identifier")
     client_id: str = Field(..., description="OAuth client ID")
     client_secret: str = Field(..., description="OAuth client secret")
-    authorization_endpoint: HttpUrl = Field(..., description="Authorization endpoint URL")
+    authorization_endpoint: HttpUrl = Field(
+        ..., description="Authorization endpoint URL"
+    )
     token_endpoint: HttpUrl = Field(..., description="Token endpoint URL")
-    userinfo_endpoint: HttpUrl | None = Field(None, description="User info endpoint URL")
-    revocation_endpoint: HttpUrl | None = Field(None, description="Token revocation endpoint URL")
-    scopes: list[str] = Field(default_factory=list, description="Default scopes to request")
+    userinfo_endpoint: HttpUrl | None = Field(
+        None, description="User info endpoint URL"
+    )
+    revocation_endpoint: HttpUrl | None = Field(
+        None, description="Token revocation endpoint URL"
+    )
+    scopes: list[str] = Field(
+        default_factory=list, description="Default scopes to request"
+    )
     redirect_uri: str = Field(..., description="Redirect URI for OAuth callback")
-    use_pkce: bool = Field(default=True, description="Enable PKCE for authorization code flow")
+    use_pkce: bool = Field(
+        default=True, description="Enable PKCE for authorization code flow"
+    )
     pkce_challenge_method: PKCEChallengeMethod = Field(
-        default=PKCEChallengeMethod.S256,
-        description="PKCE challenge method"
+        default=PKCEChallengeMethod.S256, description="PKCE challenge method"
     )
     additional_params: dict[str, str] = Field(
-        default_factory=dict,
-        description="Additional provider-specific parameters"
+        default_factory=dict, description="Additional provider-specific parameters"
     )
     enabled: bool = Field(default=True, description="Provider enabled status")
 
@@ -69,12 +77,15 @@ class PKCEChallenge(BaseModel):
     """PKCE challenge and verifier pair."""
 
     code_verifier: str = Field(..., description="PKCE code verifier (random string)")
-    code_challenge: str = Field(..., description="PKCE code challenge (hashed verifier)")
-    code_challenge_method: PKCEChallengeMethod = Field(
-        default=PKCEChallengeMethod.S256,
-        description="Challenge method used"
+    code_challenge: str = Field(
+        ..., description="PKCE code challenge (hashed verifier)"
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Challenge creation time")
+    code_challenge_method: PKCEChallengeMethod = Field(
+        default=PKCEChallengeMethod.S256, description="Challenge method used"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Challenge creation time"
+    )
     expires_at: datetime = Field(..., description="Challenge expiration time")
 
 
@@ -87,12 +98,10 @@ class OAuthAuthorizationRequest(BaseModel):
     redirect_uri: str | None = Field(None, description="Custom redirect URI")
     code_challenge: str | None = Field(None, description="PKCE code challenge")
     code_challenge_method: PKCEChallengeMethod | None = Field(
-        None,
-        description="PKCE challenge method"
+        None, description="PKCE challenge method"
     )
     additional_params: dict[str, str] = Field(
-        default_factory=dict,
-        description="Additional provider-specific parameters"
+        default_factory=dict, description="Additional provider-specific parameters"
     )
 
 
@@ -110,13 +119,23 @@ class OAuthTokenExchangeRequest(BaseModel):
     """OAuth token exchange request."""
 
     grant_type: OAuthGrantType = Field(..., description="OAuth grant type")
-    code: str | None = Field(None, description="Authorization code (for authorization_code grant)")
-    redirect_uri: str | None = Field(None, description="Redirect URI (for authorization_code grant)")
+    code: str | None = Field(
+        None, description="Authorization code (for authorization_code grant)"
+    )
+    redirect_uri: str | None = Field(
+        None, description="Redirect URI (for authorization_code grant)"
+    )
     code_verifier: str | None = Field(None, description="PKCE code verifier")
-    refresh_token: str | None = Field(None, description="Refresh token (for refresh_token grant)")
+    refresh_token: str | None = Field(
+        None, description="Refresh token (for refresh_token grant)"
+    )
     scope: str | None = Field(None, description="Requested scope")
-    client_id: str | None = Field(None, description="Client ID (for client_credentials grant)")
-    client_secret: str | None = Field(None, description="Client secret (for client_credentials grant)")
+    client_id: str | None = Field(
+        None, description="Client ID (for client_credentials grant)"
+    )
+    client_secret: str | None = Field(
+        None, description="Client secret (for client_credentials grant)"
+    )
 
 
 class OAuthTokenResponse(BaseModel):
@@ -128,7 +147,9 @@ class OAuthTokenResponse(BaseModel):
     refresh_token: str | None = Field(None, description="Refresh token")
     scope: str | None = Field(None, description="Granted scopes")
     id_token: str | None = Field(None, description="OpenID Connect ID token")
-    issued_at: datetime = Field(default_factory=datetime.utcnow, description="Token issue time")
+    issued_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Token issue time"
+    )
 
 
 class OAuthUserInfo(BaseModel):
@@ -143,7 +164,9 @@ class OAuthUserInfo(BaseModel):
     family_name: str | None = Field(None, description="User last name")
     picture: str | None = Field(None, description="User profile picture URL")
     locale: str | None = Field(None, description="User locale")
-    raw_data: dict[str, Any] = Field(default_factory=dict, description="Raw provider response")
+    raw_data: dict[str, Any] = Field(
+        default_factory=dict, description="Raw provider response"
+    )
 
 
 class OAuthState(BaseModel):
@@ -154,15 +177,21 @@ class OAuthState(BaseModel):
     redirect_uri: str = Field(..., description="Callback redirect URI")
     code_verifier: str | None = Field(None, description="PKCE code verifier")
     requested_scopes: str | None = Field(None, description="Requested scopes")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="State creation time")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="State creation time"
+    )
     expires_at: datetime = Field(..., description="State expiration time")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class OAuthError(BaseModel):
     """OAuth error response."""
 
     error: str = Field(..., description="Error code")
-    error_description: str | None = Field(None, description="Human-readable error description")
+    error_description: str | None = Field(
+        None, description="Human-readable error description"
+    )
     error_uri: str | None = Field(None, description="URI for error details")
     state: str | None = Field(None, description="State parameter if provided")

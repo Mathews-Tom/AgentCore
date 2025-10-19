@@ -79,6 +79,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "respx" },
     { name = "testcontainers", extra = ["redis"] },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -146,6 +147,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "respx", specifier = ">=0.22.0" },
     { name = "testcontainers", extras = ["redis"], specifier = ">=4.13.1" },
+    { name = "websockets", specifier = ">=15.0.1" },
 ]
 
 [[package]]

@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir uv
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./

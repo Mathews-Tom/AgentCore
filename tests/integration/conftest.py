@@ -147,7 +147,11 @@ def jsonrpc_request_template():
 
 @pytest.fixture(scope="function")
 async def init_test_db():
-    """Initialize test database for session tests."""
+    """Initialize test database for session tests.
+
+    Note: Assumes Alembic migrations have been run on the test database.
+    Run `uv run alembic upgrade head` before running integration tests.
+    """
     from agentcore.a2a_protocol.database import init_db, close_db
 
     # Initialize database connection

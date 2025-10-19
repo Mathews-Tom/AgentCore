@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -142,7 +142,7 @@ class SessionManager:
             Created session
         """
         session_id = str(uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expires_at = now + timedelta(hours=self.max_age_hours)
 
         session = Session(
@@ -199,7 +199,7 @@ class SessionManager:
         session = Session.model_validate_json(session_data)
 
         # Check if session is expired
-        if datetime.utcnow() >= session.expires_at:
+        if datetime.now(UTC) >= session.expires_at:
             await self.delete_session(session_id)
             return None
 
@@ -221,12 +221,12 @@ class SessionManager:
             return False
 
         # Update last activity
-        session.last_activity = datetime.utcnow()
+        session.last_activity = datetime.now(UTC)
 
         # Save updated session
         session_key = self._get_session_key(session_id)
         session_data = session.model_dump_json()
-        ttl_seconds = int((session.expires_at - datetime.utcnow()).total_seconds())
+        ttl_seconds = int((session.expires_at - datetime.now(UTC)).total_seconds())
 
         if ttl_seconds > 0:
             await self.client.setex(session_key, ttl_seconds, session_data)
@@ -346,7 +346,7 @@ class SessionManager:
 
         # Extend expiration
         extension_hours = hours or self.max_age_hours
-        session.expires_at = datetime.utcnow() + timedelta(hours=extension_hours)
+        session.expires_at = datetime.now(UTC) + timedelta(hours=extension_hours)
 
         # Save updated session
         session_key = self._get_session_key(session_id)

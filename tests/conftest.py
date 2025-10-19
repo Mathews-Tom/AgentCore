@@ -9,19 +9,33 @@ from prometheus_client import REGISTRY
 # Configure pytest plugins at top level
 pytest_plugins = ('pytest_asyncio',)
 
+# Global metrics cache that persists across module reloads
+_GLOBAL_GATEWAY_METRICS_CACHE: dict = {}
+
+# Inject global cache IMMEDIATELY at module level (before pytest_configure)
+# This ensures it's available for ALL imports during collection
+sys.modules["__gateway_metrics_cache__"] = type(sys)("__gateway_metrics_cache__")
+sys.modules["__gateway_metrics_cache__"].cache = _GLOBAL_GATEWAY_METRICS_CACHE
+
 
 def pytest_configure(config):
     """Pytest configuration hook - runs before any imports or collection."""
-    # Clear Prometheus registry before any test modules are imported
-    collectors = list(REGISTRY._collector_to_names.keys())
-    for collector in collectors:
-        try:
-            REGISTRY.unregister(collector)
-        except Exception:
-            pass
+    # Only clear registry if gateway metrics haven't been loaded yet
+    # If they have, leave registry alone so cached metrics remain valid
+    if "gateway.monitoring.metrics" not in sys.modules:
+        # Clear Prometheus registry before any test modules are imported
+        collectors = list(REGISTRY._collector_to_names.keys())
+        for collector in collectors:
+            try:
+                REGISTRY.unregister(collector)
+            except Exception:
+                pass
 
     # Clear metrics cache if already imported
     if "agentcore.reasoning.services.metrics" in sys.modules:
         from agentcore.reasoning.services import metrics
 
         metrics._metrics_cache.clear()
+
+    # Do NOT delete gateway modules - let them be imported once and cached
+    # The global metrics cache will handle multiple imports gracefully

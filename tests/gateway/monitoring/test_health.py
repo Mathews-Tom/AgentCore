@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -31,12 +32,12 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test Redis health check when healthy."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_client = AsyncMock()
-            mock_client.ping = AsyncMock(return_value=True)
-            mock_client.aclose = AsyncMock()
-            mock_redis.return_value = mock_client
+        # Mock redis.asyncio module at import time
+        mock_client = AsyncMock()
+        mock_client.ping = AsyncMock(return_value=True)
+        mock_client.aclose = AsyncMock()
 
+        with patch("redis.asyncio.from_url", return_value=mock_client):
             is_healthy, message = await health_checker.check_redis()
 
             assert is_healthy is True
@@ -49,9 +50,7 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test Redis health check when unhealthy."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_redis.side_effect = ConnectionError("Connection refused")
-
+        with patch("redis.asyncio.from_url", side_effect=ConnectionError("Connection refused")):
             is_healthy, message = await health_checker.check_redis()
 
             assert is_healthy is False
@@ -62,19 +61,15 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test Redis health check timeout."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_client = AsyncMock()
-            mock_client.ping = AsyncMock(side_effect=TimeoutError())
-            mock_client.aclose = AsyncMock()
-            mock_redis.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.ping = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_client.aclose = AsyncMock()
 
-            with patch("gateway.monitoring.health.asyncio.wait_for") as mock_wait:
-                mock_wait.side_effect = TimeoutError()
+        with patch("redis.asyncio.from_url", return_value=mock_client):
+            is_healthy, message = await health_checker.check_redis()
 
-                is_healthy, message = await health_checker.check_redis()
-
-                assert is_healthy is False
-                assert "timeout" in message.lower()
+            assert is_healthy is False
+            assert ("timeout" in message.lower() or "timed out" in message.lower())
 
     @pytest.mark.asyncio
     async def test_check_backend_service_healthy(
@@ -140,12 +135,11 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test comprehensive health check when all components are healthy."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_client = AsyncMock()
-            mock_client.ping = AsyncMock(return_value=True)
-            mock_client.aclose = AsyncMock()
-            mock_redis.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.ping = AsyncMock(return_value=True)
+        mock_client.aclose = AsyncMock()
 
+        with patch("redis.asyncio.from_url", return_value=mock_client):
             mock_response = MagicMock()
             mock_response.status_code = 200
 
@@ -167,9 +161,7 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test comprehensive health check when components are unhealthy."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_redis.side_effect = ConnectionError("Connection refused")
-
+        with patch("redis.asyncio.from_url", side_effect=ConnectionError("Connection refused")):
             result = await health_checker.check_all()
 
             assert result["status"] == "unhealthy"
@@ -181,12 +173,11 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test readiness check when service is ready."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_client = AsyncMock()
-            mock_client.ping = AsyncMock(return_value=True)
-            mock_client.aclose = AsyncMock()
-            mock_redis.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.ping = AsyncMock(return_value=True)
+        mock_client.aclose = AsyncMock()
 
+        with patch("redis.asyncio.from_url", return_value=mock_client):
             result = await health_checker.check_readiness()
 
             assert result["status"] == "ready"
@@ -196,9 +187,7 @@ class TestHealthChecker:
         self, health_checker: HealthChecker
     ) -> None:
         """Test readiness check when service is not ready."""
-        with patch("redis.asyncio.from_url") as mock_redis:
-            mock_redis.side_effect = ConnectionError("Connection refused")
-
+        with patch("redis.asyncio.from_url", side_effect=ConnectionError("Connection refused")):
             result = await health_checker.check_readiness()
 
             assert result["status"] == "not_ready"

@@ -30,11 +30,11 @@ def upgrade() -> None:
 
     # Add pgvector column for semantic capability matching (A2A-016)
     # 384 dimensions for sentence-transformers/all-MiniLM-L6-v2
-    op.add_column('agents', sa.Column('capability_embedding', postgresql.ARRAY(sa.Float), nullable=True))
+    op.execute('ALTER TABLE agents ADD COLUMN capability_embedding vector(384)')
 
     # Add context engineering fields (A2A-018)
     op.add_column('agents', sa.Column('system_context', sa.Text(), nullable=True))
-    op.add_column('agents', sa.Column('interaction_examples', sa.JSON(), nullable=True))
+    op.add_column('agents', sa.Column('interaction_examples', postgresql.JSONB(), nullable=True))
 
     # Create HNSW index for vector similarity search
     # m=16 (number of connections), ef_construction=64 (search quality)

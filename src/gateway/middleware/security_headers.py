@@ -60,7 +60,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Permissions-Policy"] = settings.SECURITY_PERMISSIONS_POLICY
 
         # Remove server identification
-        response.headers.pop("Server", None)
+        # Note: MutableHeaders doesn't support .pop(), use del instead
+        if "Server" in response.headers:
+            del response.headers["Server"]
 
         # Add custom security headers
         for header, value in settings.SECURITY_CUSTOM_HEADERS.items():

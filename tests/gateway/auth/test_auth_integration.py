@@ -7,7 +7,7 @@ Tests complete authentication flows including token generation, refresh, and pro
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from testcontainers.redis import RedisContainer
 
 from gateway.auth.jwt import jwt_manager
@@ -43,17 +43,20 @@ async def app_with_auth(redis_container):
 
 
 @pytest.fixture
-def client(app_with_auth):
-    """Create test client."""
-    return TestClient(app_with_auth)
+async def client(app_with_auth):
+    """Create async HTTP client."""
+    transport = ASGITransport(app=app_with_auth)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
 
 class TestAuthenticationEndpoints:
     """Test authentication endpoint integration."""
 
-    def test_token_password_grant(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_password_grant(self, client: AsyncClient) -> None:
         """Test token generation with password grant."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -70,9 +73,10 @@ class TestAuthenticationEndpoints:
         assert data["token_type"] == "Bearer"
         assert data["expires_in"] > 0
 
-    def test_token_invalid_credentials(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_invalid_credentials(self, client: AsyncClient) -> None:
         """Test token generation with invalid credentials."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -84,9 +88,10 @@ class TestAuthenticationEndpoints:
         assert response.status_code == 401
         assert "Invalid username or password" in response.json()["detail"]
 
-    def test_token_client_credentials_grant(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_client_credentials_grant(self, client: AsyncClient) -> None:
         """Test token generation with client credentials grant."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "client_credentials",
@@ -101,9 +106,10 @@ class TestAuthenticationEndpoints:
         assert "access_token" in data
         assert "refresh_token" in data
 
-    def test_token_missing_username(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_missing_username(self, client: AsyncClient) -> None:
         """Test token generation with missing username."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -113,9 +119,10 @@ class TestAuthenticationEndpoints:
 
         assert response.status_code == 400
 
-    def test_token_unsupported_grant_type(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_unsupported_grant_type(self, client: AsyncClient) -> None:
         """Test token generation with unsupported grant type."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "implicit",
@@ -127,10 +134,11 @@ class TestAuthenticationEndpoints:
         assert response.status_code == 400
         assert "Unsupported grant type" in response.json()["detail"]
 
-    def test_refresh_token(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_refresh_token(self, client: AsyncClient) -> None:
         """Test token refresh flow."""
         # Get initial tokens
-        login_response = client.post(
+        login_response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -142,7 +150,7 @@ class TestAuthenticationEndpoints:
         refresh_token = login_response.json()["refresh_token"]
 
         # Refresh token
-        refresh_response = client.post(
+        refresh_response = await client.post(
             "/auth/refresh",
             params={"refresh_token": refresh_token},
         )
@@ -154,19 +162,21 @@ class TestAuthenticationEndpoints:
         assert "refresh_token" in data
         assert data["access_token"] != login_response.json()["access_token"]
 
-    def test_refresh_token_invalid(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_refresh_token_invalid(self, client: AsyncClient) -> None:
         """Test refresh with invalid token."""
-        response = client.post(
+        response = await client.post(
             "/auth/refresh",
             params={"refresh_token": "invalid.token.here"},
         )
 
         assert response.status_code == 401
 
-    def test_get_current_user(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_get_current_user(self, client: AsyncClient) -> None:
         """Test getting current user information."""
         # Login first
-        login_response = client.post(
+        login_response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -177,7 +187,7 @@ class TestAuthenticationEndpoints:
         access_token = login_response.json()["access_token"]
 
         # Get current user
-        response = client.get(
+        response = await client.get(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -189,25 +199,28 @@ class TestAuthenticationEndpoints:
         assert "id" in data
         assert "roles" in data
 
-    def test_get_current_user_no_token(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_get_current_user_no_token(self, client: AsyncClient) -> None:
         """Test getting current user without token."""
-        response = client.get("/auth/me")
+        response = await client.get("/auth/me")
 
         assert response.status_code == 401
 
-    def test_get_current_user_invalid_token(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_get_current_user_invalid_token(self, client: AsyncClient) -> None:
         """Test getting current user with invalid token."""
-        response = client.get(
+        response = await client.get(
             "/auth/me",
             headers={"Authorization": "Bearer invalid.token.here"},
         )
 
         assert response.status_code == 401
 
-    def test_logout(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_logout(self, client: AsyncClient) -> None:
         """Test logout endpoint."""
         # Login first
-        login_response = client.post(
+        login_response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -218,7 +231,7 @@ class TestAuthenticationEndpoints:
         access_token = login_response.json()["access_token"]
 
         # Logout
-        response = client.post(
+        response = await client.post(
             "/auth/logout",
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -227,16 +240,17 @@ class TestAuthenticationEndpoints:
         assert "Successfully logged out" in response.json()["message"]
 
         # Token should be invalid after logout
-        response = client.get(
+        response = await client.get(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
         )
         assert response.status_code == 401
 
-    def test_get_user_sessions(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_get_user_sessions(self, client: AsyncClient) -> None:
         """Test getting user sessions."""
         # Login first
-        login_response = client.post(
+        login_response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -247,7 +261,7 @@ class TestAuthenticationEndpoints:
         access_token = login_response.json()["access_token"]
 
         # Get sessions
-        response = client.get(
+        response = await client.get(
             "/auth/sessions",
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -258,10 +272,11 @@ class TestAuthenticationEndpoints:
         assert "sessions" in data
         assert len(data["sessions"]) > 0
 
-    def test_delete_user_session(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_delete_user_session(self, client: AsyncClient) -> None:
         """Test deleting specific user session."""
         # Create two sessions
-        login1 = client.post(
+        login1 = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -271,7 +286,7 @@ class TestAuthenticationEndpoints:
         )
         token1 = login1.json()["access_token"]
 
-        login2 = client.post(
+        login2 = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -282,7 +297,7 @@ class TestAuthenticationEndpoints:
         token2 = login2.json()["access_token"]
 
         # Get sessions
-        sessions_response = client.get(
+        sessions_response = await client.get(
             "/auth/sessions",
             headers={"Authorization": f"Bearer {token1}"},
         )
@@ -291,16 +306,17 @@ class TestAuthenticationEndpoints:
 
         # Delete one session
         session_to_delete = sessions[0]["session_id"]
-        delete_response = client.delete(
+        delete_response = await client.delete(
             f"/auth/sessions/{session_to_delete}",
             headers={"Authorization": f"Bearer {token1}"},
         )
 
         assert delete_response.status_code == 200
 
-    def test_token_with_scope(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_with_scope(self, client: AsyncClient) -> None:
         """Test token generation with custom scope."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -315,10 +331,11 @@ class TestAuthenticationEndpoints:
 
         assert data["scope"] == "read:agents write:tasks"
 
-    def test_protected_route_requires_auth(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_protected_route_requires_auth(self, client: AsyncClient) -> None:
         """Test that protected routes require authentication."""
         # Try to access protected route without token
-        response = client.get("/auth/sessions")
+        response = await client.get("/auth/sessions")
 
         assert response.status_code == 401
         assert "WWW-Authenticate" in response.headers
@@ -327,10 +344,11 @@ class TestAuthenticationEndpoints:
 class TestAuthenticationSecurity:
     """Test authentication security features."""
 
-    def test_token_includes_user_roles(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_token_includes_user_roles(self, client: AsyncClient) -> None:
         """Test that tokens include user roles."""
         # Login as admin
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "password",
@@ -341,7 +359,7 @@ class TestAuthenticationSecurity:
         access_token = response.json()["access_token"]
 
         # Get user info
-        user_response = client.get(
+        user_response = await client.get(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -352,9 +370,10 @@ class TestAuthenticationSecurity:
         assert "admin" in roles
         assert "user" in roles
 
-    def test_service_account_authentication(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_service_account_authentication(self, client: AsyncClient) -> None:
         """Test service account authentication."""
-        response = client.post(
+        response = await client.post(
             "/auth/token",
             json={
                 "grant_type": "client_credentials",
@@ -367,7 +386,7 @@ class TestAuthenticationSecurity:
         access_token = response.json()["access_token"]
 
         # Verify service role
-        user_response = client.get(
+        user_response = await client.get(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -376,12 +395,13 @@ class TestAuthenticationSecurity:
         roles = user_response.json()["roles"]
         assert "service" in roles
 
-    def test_multiple_concurrent_sessions(self, client: TestClient) -> None:
+    @pytest.mark.asyncio
+    async def test_multiple_concurrent_sessions(self, client: AsyncClient) -> None:
         """Test multiple concurrent sessions for same user."""
         # Create multiple sessions
         tokens = []
         for _ in range(3):
-            response = client.post(
+            response = await client.post(
                 "/auth/token",
                 json={
                     "grant_type": "password",
@@ -393,7 +413,7 @@ class TestAuthenticationSecurity:
 
         # All tokens should be valid
         for token in tokens:
-            response = client.get(
+            response = await client.get(
                 "/auth/me",
                 headers={"Authorization": f"Bearer {token}"},
             )

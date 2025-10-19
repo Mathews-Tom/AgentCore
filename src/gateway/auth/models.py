@@ -6,7 +6,7 @@ Pydantic models for JWT tokens, user authentication, and session management.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -32,8 +32,8 @@ class User(BaseModel):
     roles: list[UserRole] = Field(default=[UserRole.USER], description="User roles")
     is_active: bool = Field(default=True, description="User account status")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional user metadata")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="User creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="User last update timestamp")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="User creation timestamp")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="User last update timestamp")
 
     model_config = {"from_attributes": True}
 

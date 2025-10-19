@@ -267,7 +267,7 @@ ws.send(JSON.stringify({
 
 ```python
 # Check token expiration and refresh
-if datetime.utcnow() >= client.token_expires_at - timedelta(minutes=5):
+if datetime.now(UTC) >= client.token_expires_at - timedelta(minutes=5):
     client.refresh_access_token()
 ```
 

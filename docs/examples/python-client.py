@@ -7,8 +7,8 @@ Demonstrates authentication, API calls, error handling, and real-time communicat
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from datetime import datetime, timedelta
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -46,13 +46,23 @@ class AgentCoreClient:
             total=3,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"],
+            allowed_methods=[
+                "HEAD",
+                "GET",
+                "PUT",
+                "DELETE",
+                "OPTIONS",
+                "TRACE",
+                "POST",
+            ],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def authenticate(self, username: str | None = None, password: str | None = None) -> dict[str, Any]:
+    def authenticate(
+        self, username: str | None = None, password: str | None = None
+    ) -> dict[str, Any]:
         """
         Authenticate with username/password and obtain JWT tokens.
 
@@ -95,7 +105,7 @@ class AgentCoreClient:
 
         # Calculate token expiration
         expires_in = token_data.get("expires_in", 3600)
-        self.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        self.token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         return token_data
 
@@ -127,7 +137,7 @@ class AgentCoreClient:
 
         # Update expiration
         expires_in = token_data.get("expires_in", 3600)
-        self.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        self.token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         return token_data
 
@@ -138,7 +148,9 @@ class AgentCoreClient:
             return
 
         # Check if token is about to expire (within 5 minutes)
-        if self.token_expires_at and datetime.utcnow() >= self.token_expires_at - timedelta(minutes=5):
+        if self.token_expires_at and datetime.now(
+            UTC
+        ) >= self.token_expires_at - timedelta(minutes=5):
             try:
                 self.refresh_access_token()
             except Exception:
@@ -170,9 +182,9 @@ class AgentCoreClient:
                 error_msg += f" | Request ID: {request_id}"
 
             raise Exception(error_msg)
-        except ValueError:
+        except ValueError as e:
             # Response is not JSON
-            raise Exception(f"HTTP {response.status_code}: {response.text}")
+            raise Exception(f"HTTP {response.status_code}: {response.text}") from e
 
     def get(self, path: str, **kwargs) -> Any:
         """
@@ -276,6 +288,7 @@ class AgentCoreClient:
 
 # Usage Examples
 
+
 def example_basic_authentication():
     """Example: Basic authentication and API calls."""
     print("Example: Basic Authentication")
@@ -354,7 +367,7 @@ def example_token_refresh():
     print(f"Access token expires at: {client.token_expires_at}")
 
     # Simulate token near expiration
-    client.token_expires_at = datetime.utcnow() + timedelta(minutes=3)
+    client.token_expires_at = datetime.now(UTC) + timedelta(minutes=3)
 
     # This will automatically refresh the token
     user = client.get_current_user()
