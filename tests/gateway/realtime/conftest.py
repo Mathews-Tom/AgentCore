@@ -45,11 +45,13 @@ def authenticated_token(redis_container):
     from gateway.auth.models import User, UserRole
 
     async def create_token():
+        import uuid
+
         # Initialize JWT manager
         await jwt_manager.initialize()
 
         user = User(
-            id="test-user-123",
+            id=str(uuid.uuid4()),  # Use valid UUID
             username="testuser",
             email="test@example.com",
             roles=[UserRole.USER],

@@ -16,8 +16,55 @@ from starlette.testclient import TestClient
 @pytest.fixture
 def test_client(realtime_redis_db):
     """Create test client for WebSocket testing with lifespan support."""
+    import sys
+    import importlib
+    from prometheus_client import REGISTRY
+
     # Import app AFTER Redis database is configured via conftest
     # realtime_redis_db fixture ensures Redis is ready with unique database
+
+    # CRITICAL: Clear Prometheus registry to avoid duplicate metrics errors
+    # Clear both the main REGISTRY and the test registry if it exists
+    collectors = list(REGISTRY._collector_to_names.keys())
+    for collector in collectors:
+        try:
+            REGISTRY.unregister(collector)
+        except Exception:
+            pass
+
+    # Clear test registry used by gateway.monitoring.metrics
+    if "__gateway_metrics_registry__" in sys.modules:
+        test_registry = sys.modules["__gateway_metrics_registry__"].registry
+        test_collectors = list(test_registry._collector_to_names.keys())
+        for collector in test_collectors:
+            try:
+                test_registry.unregister(collector)
+            except Exception:
+                pass
+
+    # Clear metrics cache BEFORE removing modules
+    if "gateway.monitoring.metrics" in sys.modules:
+        import gateway.monitoring.metrics as metrics_module
+        metrics_module._metrics_cache.clear()
+
+    # Also clear the global cache if it exists
+    if "__gateway_metrics_cache__" in sys.modules:
+        sys.modules["__gateway_metrics_cache__"].cache.clear()
+
+    # CRITICAL: Remove gateway modules from sys.modules to force fresh import
+    # This ensures all modules, especially config with settings object,
+    # are reloaded with the correct environment variables set by the fixture
+    modules_to_remove = [
+        mod for mod in list(sys.modules.keys())
+        if mod.startswith("gateway.")
+    ]
+    for mod in modules_to_remove:
+        del sys.modules[mod]
+
+    # Remove gateway root module as well
+    if "gateway" in sys.modules:
+        del sys.modules["gateway"]
+
     from gateway.main import app
 
     # Use TestClient which handles lifespan events properly
@@ -130,7 +177,7 @@ class TestWebSocketIntegration:
             data = websocket.receive_json()
 
             assert data["type"] == "error"
-            assert "message" in data
+            assert "error" in data
 
     def test_websocket_unknown_message_type(self, test_client):
         """Test WebSocket with unknown message type."""
@@ -146,7 +193,7 @@ class TestWebSocketIntegration:
             data = websocket.receive_json()
 
             assert data["type"] == "error"
-            assert "unknown" in data["message"].lower()
+            assert "unknown" in data["error"].lower()
 
     def test_multiple_websocket_connections(self, test_client):
         """Test multiple WebSocket connections from same client."""
