@@ -239,6 +239,15 @@ class GatewaySettings(BaseSettings):
     PERFORMANCE_RESPONSE_CACHE_MAX_SIZE: int = Field(default=10000, description="Max cached items")
     PERFORMANCE_RESPONSE_CACHE_STRATEGY: str = Field(default="lru", description="Cache eviction strategy (lru, lfu, ttl)")
 
+    # TLS Configuration (GATE-011)
+    TLS_ENABLED: bool = Field(default=False, description="Enable HTTPS/TLS")
+    TLS_CERT_PATH: str | None = Field(None, description="Path to TLS certificate file")
+    TLS_KEY_PATH: str | None = Field(None, description="Path to TLS private key file")
+    TLS_CA_CERT_PATH: str | None = Field(None, description="Path to CA certificate bundle")
+    TLS_MIN_VERSION: str = Field(default="TLSv1_3", description="Minimum TLS version (TLSv1_2, TLSv1_3)")
+    TLS_VERIFY_CLIENT: bool = Field(default=False, description="Require client certificate verification")
+    TLS_SESSION_TICKETS_ENABLED: bool = Field(default=True, description="Enable TLS session tickets")
+
     model_config = {
         "env_file": ".env",
         "env_prefix": "GATEWAY_",
