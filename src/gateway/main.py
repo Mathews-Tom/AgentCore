@@ -17,11 +17,43 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import Response
 
+from gateway.auth.jwt import jwt_manager
+from gateway.auth.oauth.registry import initialize_oauth_providers
+from gateway.auth.oauth.state import oauth_state_manager
+from gateway.auth.session import session_manager
 from gateway.config import settings
+from gateway.middleware.compression import CompressionMiddleware
 from gateway.middleware.cors import setup_cors
+from gateway.middleware.ddos_protection import DDoSConfig, DDoSProtector
 from gateway.middleware.logging import logging_middleware
 from gateway.middleware.metrics import metrics_middleware
-from gateway.routes import health
+from gateway.middleware.rate_limit import RateLimitMiddleware
+from gateway.middleware.rate_limiter import (
+    RateLimitAlgorithmType,
+    RateLimitPolicy,
+    RateLimiter,
+)
+from gateway.middleware.security_headers import SecurityHeadersMiddleware
+from gateway.middleware.transformation import (
+    CacheControlMiddleware,
+    TransformationMiddleware,
+)
+from gateway.middleware.validation import InputValidationMiddleware
+from gateway.realtime.connection_pool import connection_pool
+from gateway.realtime.event_bus import event_bus
+from gateway.routes import auth, health, oauth, realtime
+from gateway.docs.openapi_metadata import (
+    OPENAPI_CONTACT,
+    OPENAPI_DESCRIPTION,
+    OPENAPI_EXTERNAL_DOCS,
+    OPENAPI_LICENSE,
+    OPENAPI_SECURITY_SCHEMES,
+    OPENAPI_SERVERS,
+    OPENAPI_TAGS,
+)
+from gateway.monitoring.tracing import configure_tracing, instrument_fastapi
+from gateway.monitoring.metrics import set_gateway_info
+from gateway.monitoring.health import HealthChecker
 
 
 @asynccontextmanager
@@ -36,15 +68,171 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             name=settings.GATEWAY_NAME
         )
 
+        # Configure distributed tracing
+        if settings.TRACING_ENABLED:
+            configure_tracing(
+                service_name=settings.GATEWAY_NAME,
+                service_version=settings.GATEWAY_VERSION,
+                otlp_endpoint=settings.TRACING_EXPORT_ENDPOINT,
+                sample_rate=settings.TRACING_SAMPLE_RATE,
+                enable_console_export=settings.DEBUG,
+            )
+            logger.info("Distributed tracing configured")
+
+        # Set gateway info metrics
+        set_gateway_info(
+            name=settings.GATEWAY_NAME,
+            version=settings.GATEWAY_VERSION,
+        )
+        logger.info("Gateway metrics initialized")
+
+        # Initialize health checker
+        backend_services = {
+            "a2a_protocol": settings.A2A_PROTOCOL_URL,
+            "agent_runtime": settings.AGENT_RUNTIME_URL,
+        }
+        health_checker = HealthChecker(
+            redis_url=settings.RATE_LIMIT_REDIS_URL if settings.RATE_LIMIT_ENABLED else None,
+            backend_services=backend_services,
+            check_timeout=5.0,
+        )
+        app.state.health_checker = health_checker
+        logger.info("Health checker initialized")
+
+        # Initialize JWT manager
+        await jwt_manager.initialize()
+        logger.info("JWT manager initialized")
+
+        # Initialize session manager
+        await session_manager.initialize()
+        logger.info("Session manager initialized")
+
+        # Initialize rate limiter
+        if settings.RATE_LIMIT_ENABLED:
+            rate_limiter = RateLimiter(
+                redis_url=settings.RATE_LIMIT_REDIS_URL,
+                default_algorithm=RateLimitAlgorithmType(settings.RATE_LIMIT_ALGORITHM),
+            )
+            await rate_limiter.initialize()
+            app.state.rate_limiter = rate_limiter
+            logger.info("Rate limiter initialized")
+
+            # Initialize DDoS protector
+            if settings.DDOS_PROTECTION_ENABLED:
+                ddos_config = DDoSConfig(
+                    global_requests_per_second=settings.DDOS_GLOBAL_REQUESTS_PER_SECOND,
+                    global_requests_per_minute=settings.DDOS_GLOBAL_REQUESTS_PER_MINUTE,
+                    ip_requests_per_second=settings.DDOS_IP_REQUESTS_PER_SECOND,
+                    ip_requests_per_minute=settings.DDOS_IP_REQUESTS_PER_MINUTE,
+                    burst_threshold_multiplier=settings.DDOS_BURST_THRESHOLD_MULTIPLIER,
+                    burst_window_seconds=settings.DDOS_BURST_WINDOW_SECONDS,
+                    enable_auto_blocking=settings.DDOS_AUTO_BLOCKING_ENABLED,
+                    auto_block_duration_seconds=settings.DDOS_AUTO_BLOCK_DURATION_SECONDS,
+                    auto_block_threshold=settings.DDOS_AUTO_BLOCK_THRESHOLD,
+                )
+                ddos_protector = DDoSProtector(rate_limiter, ddos_config)
+                app.state.ddos_protector = ddos_protector
+                logger.info("DDoS protector initialized")
+
+        # Initialize OAuth state manager
+        if settings.OAUTH_ENABLED:
+            await oauth_state_manager.initialize()
+            logger.info("OAuth state manager initialized")
+
+            # Initialize OAuth providers
+            initialize_oauth_providers()
+            logger.info("OAuth providers initialized")
+
+        # Initialize real-time communication
+        if settings.REALTIME_ENABLED:
+            # Initialize connection pool
+            await connection_pool.start()
+            app.state.connection_pool = connection_pool
+            logger.info("Connection pool initialized")
+
+            # Initialize event bus
+            await event_bus.start()
+            app.state.event_bus = event_bus
+            logger.info("Event bus initialized")
+
         # Future: Initialize backend service connections
-        # Future: Setup rate limiting
-        # Future: Initialize authentication providers
 
         yield
     finally:
         logger.info("Shutting down API Gateway")
 
-        # Future: Cleanup connections
+        # Cleanup health checker
+        if hasattr(app.state, "health_checker"):
+            await app.state.health_checker.close()
+            logger.info("Health checker closed")
+
+        # Cleanup rate limiter
+        if settings.RATE_LIMIT_ENABLED and hasattr(app.state, "rate_limiter"):
+            await app.state.rate_limiter.close()
+            logger.info("Rate limiter closed")
+
+        # Cleanup session manager
+        await session_manager.close()
+        logger.info("Session manager closed")
+
+        # Cleanup OAuth state manager
+        if settings.OAUTH_ENABLED:
+            await oauth_state_manager.close()
+            logger.info("OAuth state manager closed")
+
+        # Cleanup real-time communication
+        if settings.REALTIME_ENABLED:
+            # Stop event bus
+            if hasattr(app.state, "event_bus"):
+                await app.state.event_bus.stop()
+                logger.info("Event bus stopped")
+
+            # Stop connection pool
+            if hasattr(app.state, "connection_pool"):
+                await app.state.connection_pool.stop()
+                logger.info("Connection pool stopped")
+
+
+def _setup_rate_limiting(app: FastAPI) -> None:
+    """Setup rate limiting middleware with deferred initialization."""
+    if not settings.RATE_LIMIT_ENABLED:
+        return
+
+    # Build default policies from configuration
+    default_policies = {
+        "client_ip": RateLimitPolicy(
+            limit=settings.RATE_LIMIT_CLIENT_IP_LIMIT,
+            window_seconds=settings.RATE_LIMIT_CLIENT_IP_WINDOW,
+            algorithm=RateLimitAlgorithmType(settings.RATE_LIMIT_ALGORITHM),
+        ),
+        "endpoint": RateLimitPolicy(
+            limit=settings.RATE_LIMIT_ENDPOINT_LIMIT,
+            window_seconds=settings.RATE_LIMIT_ENDPOINT_WINDOW,
+            algorithm=RateLimitAlgorithmType(settings.RATE_LIMIT_ALGORITHM),
+        ),
+        "user": RateLimitPolicy(
+            limit=settings.RATE_LIMIT_USER_LIMIT,
+            window_seconds=settings.RATE_LIMIT_USER_WINDOW,
+            algorithm=RateLimitAlgorithmType(settings.RATE_LIMIT_ALGORITHM),
+        ),
+    }
+
+    # Middleware that uses app state (initialized during lifespan)
+    @app.middleware("http")
+    async def rate_limit_middleware_wrapper(request, call_next):
+        if hasattr(app.state, "rate_limiter"):
+            middleware = RateLimitMiddleware(
+                app=app,
+                rate_limiter=app.state.rate_limiter,
+                ddos_protector=getattr(app.state, "ddos_protector", None),
+                default_policies=default_policies,
+                enable_ddos_protection=settings.DDOS_PROTECTION_ENABLED,
+                exempt_paths=settings.RATE_LIMIT_EXEMPT_PATHS,
+            )
+            return await middleware.dispatch(request, call_next)
+        else:
+            # Rate limiter not yet initialized, skip rate limiting
+            return await call_next(request)
 
 
 def create_app() -> FastAPI:
@@ -52,15 +240,88 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.GATEWAY_NAME,
-        description="High-performance API gateway for AgentCore providing unified entry point for all external interactions",
+        description=OPENAPI_DESCRIPTION,
         version=settings.GATEWAY_VERSION,
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
+        openapi_tags=OPENAPI_TAGS,
+        license_info=OPENAPI_LICENSE,
+        contact=OPENAPI_CONTACT,
+        servers=OPENAPI_SERVERS,
         lifespan=lifespan,
     )
 
-    # Setup CORS middleware
+    # Customize OpenAPI schema
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+
+        from fastapi.openapi.utils import get_openapi
+
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+            servers=OPENAPI_SERVERS,
+            tags=OPENAPI_TAGS,
+        )
+
+        # Add security schemes
+        openapi_schema["components"] = openapi_schema.get("components", {})
+        openapi_schema["components"]["securitySchemes"] = OPENAPI_SECURITY_SCHEMES
+
+        # Add external documentation
+        openapi_schema["externalDocs"] = OPENAPI_EXTERNAL_DOCS
+
+        # Add global security requirement (can be overridden per endpoint)
+        # Most endpoints require BearerAuth, but some are public (health, docs)
+        # We'll let individual routes specify their security requirements
+
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi
+
+    # Setup CORS middleware (first in chain)
     setup_cors(app)
+
+    # Add security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add input validation middleware
+    if settings.VALIDATION_ENABLED:
+        app.add_middleware(
+            InputValidationMiddleware,
+            enable_sql_injection_check=settings.VALIDATION_SQL_INJECTION_CHECK,
+            enable_xss_check=settings.VALIDATION_XSS_CHECK,
+            enable_path_traversal_check=settings.VALIDATION_PATH_TRAVERSAL_CHECK,
+            enable_command_injection_check=settings.VALIDATION_COMMAND_INJECTION_CHECK,
+            max_param_length=settings.VALIDATION_MAX_PARAM_LENGTH,
+            max_header_length=settings.VALIDATION_MAX_HEADER_LENGTH,
+        )
+
+    # Add transformation middleware (trace IDs, request IDs)
+    app.add_middleware(TransformationMiddleware)
+
+    # Add cache control middleware
+    if settings.CACHE_CONTROL_ENABLED:
+        app.add_middleware(
+            CacheControlMiddleware,
+            enable_etag=settings.CACHE_CONTROL_ETAG_ENABLED,
+            default_max_age=settings.CACHE_CONTROL_DEFAULT_MAX_AGE,
+        )
+
+    # Add compression middleware
+    if settings.COMPRESSION_ENABLED:
+        app.add_middleware(
+            CompressionMiddleware,
+            min_size=settings.COMPRESSION_MIN_SIZE,
+            compression_level=settings.COMPRESSION_LEVEL,
+        )
+
+    # Setup rate limiting middleware (deferred initialization)
+    _setup_rate_limiting(app)
 
     # Add logging middleware
     @app.middleware("http")
@@ -75,10 +336,23 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(health.router, tags=["health"])
+    app.include_router(auth.router, tags=["authentication"])
+
+    # Include OAuth router if enabled
+    if settings.OAUTH_ENABLED:
+        app.include_router(oauth.router, tags=["oauth"])
+
+    # Include real-time router if enabled
+    if settings.REALTIME_ENABLED:
+        app.include_router(realtime.router, tags=["realtime"])
 
     # Prometheus instrumentation
     if settings.ENABLE_METRICS:
         Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+    # OpenTelemetry FastAPI instrumentation
+    if settings.TRACING_ENABLED:
+        instrument_fastapi(app)
 
     return app
 

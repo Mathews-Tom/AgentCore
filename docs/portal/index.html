@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentCore API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .hero h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .quick-start {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .quick-start code {
+            background: #e9ecef;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .feature-card li {
+            padding: 0.3rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .feature-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .cta-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .cta-button {
+            display: block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .cta-button-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .resources {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .resources h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .resources ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resources li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .resources li:last-child {
+            border-bottom: none;
+        }
+
+        .resources a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .resources a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            background: #2d3748;
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        pre {
+            background: #2d3748;
+            color: #e9ecef;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AgentCore API Documentation</h1>
+        <p>High-performance API Gateway for Agentic AI Systems</p>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Welcome to AgentCore API Gateway</h2>
+            <p>
+                AgentCore API Gateway provides a unified, high-performance entry point for all interactions
+                with the AgentCore platform. Built on FastAPI, it delivers 60,000+ requests/second with
+                enterprise-grade security and developer-friendly documentation.
+            </p>
+
+            <div class="quick-start">
+                <h3>Quick Start in 3 Steps:</h3>
+                <ol>
+                    <li><strong>Authenticate:</strong> <code>POST /auth/token</code> with username/password</li>
+                    <li><strong>Get Token:</strong> Copy the <code>access_token</code> from response</li>
+                    <li><strong>Make Requests:</strong> Include token in <code>Authorization: Bearer TOKEN</code> header</li>
+                </ol>
+                <p style="margin-top: 1rem;">
+                    <strong>Demo credentials:</strong> username: <code>user</code>, password: <code>user123</code>
+                </p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <a href="/docs" class="cta-button">
+                Interactive API Explorer<br>
+                <small>Try endpoints in Swagger UI</small>
+            </a>
+            <a href="/redoc" class="cta-button-secondary">
+                API Reference<br>
+                <small>Complete documentation</small>
+            </a>
+            <a href="https://github.com/agentcore/agentcore" class="cta-button-secondary">
+                GitHub Repository<br>
+                <small>View source code</small>
+            </a>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>🔐 Authentication</h3>
+                <ul>
+                    <li>JWT tokens with RS256 signing</li>
+                    <li>OAuth 2.0 (Google, GitHub, Microsoft)</li>
+                    <li>Enterprise SSO (SAML, LDAP)</li>
+                    <li>Automatic token refresh</li>
+                    <li>Session management</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>⚡ High Performance</h3>
+                <ul>
+                    <li>60,000+ requests/second</li>
+                    <li>&lt;5ms routing latency</li>
+                    <li>10,000+ concurrent WebSocket connections</li>
+                    <li>Async/await architecture</li>
+                    <li>Connection pooling</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>🛡️ Security</h3>
+                <ul>
+                    <li>Rate limiting per IP/user/endpoint</li>
+                    <li>DDoS protection with auto-blocking</li>
+                    <li>Input validation (XSS, SQL injection)</li>
+                    <li>Security headers (HSTS, CSP, etc.)</li>
+                    <li>TLS 1.3 support</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>📡 Real-time</h3>
+                <ul>
+                    <li>WebSocket support</li>
+                    <li>Server-Sent Events (SSE)</li>
+                    <li>Event subscriptions</li>
+                    <li>Automatic reconnection</li>
+                    <li>Heartbeat monitoring</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>🔍 Observability</h3>
+                <ul>
+                    <li>Prometheus metrics</li>
+                    <li>Structured logging</li>
+                    <li>Distributed tracing</li>
+                    <li>Request/response logging</li>
+                    <li>Performance monitoring</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>👨‍💻 Developer Experience</h3>
+                <ul>
+                    <li>OpenAPI 3.0 specification</li>
+                    <li>Interactive Swagger UI</li>
+                    <li>Code examples (Python, JS, cURL)</li>
+                    <li>&lt;10 minute onboarding</li>
+                    <li>Comprehensive error messages</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="resources">
+            <h2>📚 Documentation</h2>
+            <ul>
+                <li><a href="/docs/api/getting-started.md">Getting Started Guide</a> - Quick 10-minute tutorial</li>
+                <li><a href="/docs/api/authentication.md">Authentication Guide</a> - JWT, OAuth, and SSO setup</li>
+                <li><a href="/docs/api/rate-limiting.md">Rate Limiting Guide</a> - Policies and best practices</li>
+                <li><a href="/docs/api/realtime.md">Real-time Communication</a> - WebSocket and SSE usage</li>
+                <li><a href="/docs/api/errors.md">Error Handling</a> - Error codes and troubleshooting</li>
+            </ul>
+
+            <h2 style="margin-top: 2rem;">💻 Code Examples</h2>
+            <ul>
+                <li><a href="/docs/examples/python-client.py">Python Client</a> - Full-featured Python SDK</li>
+                <li><a href="/docs/examples/javascript-client.js">JavaScript Client</a> - Browser and Node.js compatible</li>
+                <li><a href="/docs/examples/curl-examples.sh">cURL Examples</a> - Command-line examples</li>
+            </ul>
+
+            <h2 style="margin-top: 2rem;">🔗 API Endpoints</h2>
+            <ul>
+                <li><a href="/docs">/docs</a> - Interactive Swagger UI</li>
+                <li><a href="/redoc">/redoc</a> - Alternative API documentation</li>
+                <li><a href="/openapi.json">/openapi.json</a> - OpenAPI specification</li>
+                <li><a href="/health">/health</a> - Health check endpoint</li>
+                <li><a href="/metrics">/metrics</a> - Prometheus metrics</li>
+            </ul>
+        </div>
+
+        <div class="hero">
+            <h2>Performance Targets</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #667eea; font-weight: bold;">60,000+</div>
+                    <div>Requests/Second</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #667eea; font-weight: bold;">&lt;5ms</div>
+                    <div>p95 Latency</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #667eea; font-weight: bold;">99.99%</div>
+                    <div>Uptime</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; color: #667eea; font-weight: bold;">10,000+</div>
+                    <div>Concurrent Connections</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero">
+            <h2>Support</h2>
+            <p style="margin-bottom: 1rem;">Need help? We're here for you!</p>
+            <ul style="list-style: none; padding: 0;">
+                <li style="padding: 0.5rem 0;">📧 Email: <a href="mailto:api-support@agentcore.ai">api-support@agentcore.ai</a></li>
+                <li style="padding: 0.5rem 0;">💬 Discord: <a href="https://discord.gg/agentcore">discord.gg/agentcore</a></li>
+                <li style="padding: 0.5rem 0;">🐛 Issues: <a href="https://github.com/agentcore/agentcore/issues">GitHub Issues</a></li>
+                <li style="padding: 0.5rem 0;">📖 Docs: <a href="https://docs.agentcore.ai">docs.agentcore.ai</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 AgentCore. All rights reserved.</p>
+        <p style="margin-top: 0.5rem;">
+            <a href="https://agentcore.ai">Website</a> |
+            <a href="https://github.com/agentcore/agentcore">GitHub</a> |
+            <a href="/docs">API Docs</a> |
+            <a href="https://docs.agentcore.ai">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html>

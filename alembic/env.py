@@ -22,24 +22,23 @@ from agentcore.a2a_protocol.database import models  # noqa: F401 - Ensure models
 
 # Suppress automatic enum creation from table events during Alembic runs
 # Migrations will explicitly create enums using postgresql.ENUM().create()
-from sqlalchemy.dialects.postgresql.named_types import CreateEnumType
 from sqlalchemy import event as sa_event
-
-def suppress_enum_auto_create(metadata, connection, **kw):
-    """Prevent automatic enum creation when tables are created."""
-    # This event handler does nothing, effectively suppressing enum auto-creation
-    pass
 
 # Only suppress during Alembic runs
 if os.getenv('ALEMBIC_RUNNING'):
-    from sqlalchemy.sql.sqltypes import Enum
-    @sa_event.listens_for(Base.metadata, "before_create")
+    from sqlalchemy.sql.sqltypes import Enum as SQLAEnum
+    from sqlalchemy.dialects.postgresql import ENUM as PgENUM
+
+    # Disable enum auto-creation for all enum columns before metadata is processed
+    @sa_event.listens_for(Base.metadata, "before_create", propagate=True)
     def receive_before_create(target, connection, **kw):
         """Suppress automatic enum type creation - migrations handle this explicitly."""
-        # Skip automatic enum creation
-        for table in target.tables.values():
+        # Iterate through all tables and columns
+        for table_name, table in Base.metadata.tables.items():
             for column in table.columns:
-                if isinstance(column.type, Enum):
+                # Check if column type is an Enum
+                if isinstance(column.type, (SQLAEnum, PgENUM)):
+                    # Disable automatic creation
                     column.type.create_type = False
 
 # this is the Alembic Config object, which provides

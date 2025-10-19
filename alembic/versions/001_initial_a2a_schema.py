@@ -19,12 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ### Create enum types ###
-    agent_status = postgresql.ENUM('active', 'inactive', 'maintenance', 'error', name='agentstatus', create_type=False)
-    agent_status.create(op.get_bind(), checkfirst=True)
-
-    task_status = postgresql.ENUM('pending', 'running', 'completed', 'failed', 'cancelled', name='taskstatus', create_type=False)
-    task_status.create(op.get_bind(), checkfirst=True)
+    # ### Create enum types first ###
+    op.execute("CREATE TYPE agentstatus AS ENUM ('active', 'inactive', 'maintenance', 'error')")
+    op.execute("CREATE TYPE taskstatus AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled')")
 
     # ### Create agents table ###
     op.create_table(
@@ -32,11 +29,11 @@ def upgrade() -> None:
         sa.Column('id', sa.String(length=255), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('version', sa.String(length=50), nullable=False),
-        sa.Column('status', sa.Enum('active', 'inactive', 'maintenance', 'error', name='agentstatus'), nullable=False),
+        sa.Column('status', postgresql.ENUM('active', 'inactive', 'maintenance', 'error', name='agentstatus', create_type=False), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('capabilities', postgresql.JSON(astext_type=sa.Text()), nullable=False),
-        sa.Column('requirements', postgresql.JSON(astext_type=sa.Text()), nullable=True),
-        sa.Column('agent_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('capabilities', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('requirements', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column('agent_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('endpoint', sa.String(length=512), nullable=True),
         sa.Column('current_load', sa.Integer(), nullable=False),
         sa.Column('max_load', sa.Integer(), nullable=False),
@@ -56,19 +53,19 @@ def upgrade() -> None:
         sa.Column('id', sa.String(length=255), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('status', sa.Enum('pending', 'running', 'completed', 'failed', 'cancelled', name='taskstatus'), nullable=False),
+        sa.Column('status', postgresql.ENUM('pending', 'running', 'completed', 'failed', 'cancelled', name='taskstatus', create_type=False), nullable=False),
         sa.Column('priority', sa.Integer(), nullable=False),
-        sa.Column('required_capabilities', postgresql.JSON(astext_type=sa.Text()), nullable=False),
-        sa.Column('parameters', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('required_capabilities', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('parameters', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('assigned_agent_id', sa.String(length=255), nullable=True),
-        sa.Column('depends_on', postgresql.JSON(astext_type=sa.Text()), nullable=True),
-        sa.Column('result', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('depends_on', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column('result', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('error', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('started_at', sa.DateTime(), nullable=True),
         sa.Column('completed_at', sa.DateTime(), nullable=True),
-        sa.Column('task_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('task_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.ForeignKeyConstraint(['assigned_agent_id'], ['agents.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
@@ -106,8 +103,8 @@ def upgrade() -> None:
         'message_queue',
         sa.Column('id', sa.String(length=255), nullable=False),
         sa.Column('target_agent_id', sa.String(length=255), nullable=False),
-        sa.Column('required_capabilities', postgresql.JSON(astext_type=sa.Text()), nullable=False),
-        sa.Column('message_data', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+        sa.Column('required_capabilities', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('message_data', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column('priority', sa.Integer(), nullable=False),
         sa.Column('ttl_seconds', sa.Integer(), nullable=True),
         sa.Column('expires_at', sa.DateTime(), nullable=True),
@@ -130,8 +127,8 @@ def upgrade() -> None:
         'event_subscriptions',
         sa.Column('id', sa.String(length=255), nullable=False),
         sa.Column('subscriber_id', sa.String(length=255), nullable=False),
-        sa.Column('event_types', postgresql.JSON(astext_type=sa.Text()), nullable=False),
-        sa.Column('filters', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('event_types', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('filters', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('expires_at', sa.DateTime(), nullable=True),
         sa.Column('is_active', sa.Boolean(), nullable=False),
@@ -258,5 +255,5 @@ def downgrade() -> None:
     op.drop_table('agents')
 
     # ### Drop enum types ###
-    sa.Enum(name='taskstatus').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='agentstatus').drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS taskstatus")
+    op.execute("DROP TYPE IF EXISTS agentstatus")

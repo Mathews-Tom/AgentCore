@@ -15,9 +15,9 @@ services:
       timeout: 5s
       retries: 3
 
-  # PostgreSQL for persistent storage
+  # PostgreSQL with pgvector extension for persistent storage
   postgres:
-    image: postgres:14-alpine
+    image: pgvector/pgvector:pg17
     ports:
       - "5432:5432"
     environment:
