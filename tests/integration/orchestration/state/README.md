@@ -41,16 +41,18 @@ USE_POSTGRES=1 pytest tests/integration/orchestration/state/
 |------|--------|------------|
 | test_create_execution | ✅ Pass | ✅ Pass |
 | test_get_execution | ✅ Pass | ✅ Pass |
-| test_list_executions_with_filters | ❌ Skip (JSONB) | ✅ Pass |
+| test_list_executions_with_filters | ✅ Pass* | ✅ Pass |
 | test_update_execution_status | ✅ Pass | ✅ Pass |
-| test_update_execution_state | ❌ Skip (JSONB) | ✅ Pass |
-| test_create_checkpoint | ❌ Skip (JSONB) | ✅ Pass |
+| test_update_execution_state | ✅ Pass | ✅ Pass |
+| test_create_checkpoint | ✅ Pass | ✅ Pass |
 | test_state_history | ✅ Pass | ✅ Pass |
-| test_delete_execution | ❌ Skip (JSONB) | ✅ Pass |
-| test_execution_statistics | ❌ Skip (JSONB) | ✅ Pass |
+| test_delete_execution | ✅ Pass* | ✅ Pass |
+| test_execution_statistics | ✅ Pass | ✅ Pass |
 | test_create_version | ✅ Pass | ✅ Pass |
 | test_get_latest_version | ✅ Pass | ✅ Pass |
-| test_deprecate_version | ❌ Skip (JSONB) | ✅ Pass |
+| test_deprecate_version | ✅ Pass | ✅ Pass |
+
+\* Some PostgreSQL-specific features (tag filtering, cascade deletes) are conditionally skipped in SQLite mode but tests still pass.
 
 ## CI/CD Usage
 

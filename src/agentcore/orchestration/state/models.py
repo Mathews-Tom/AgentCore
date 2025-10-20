@@ -167,8 +167,8 @@ class WorkflowStateDB(Base):
 
     __tablename__ = "workflow_state_history"
 
-    # Primary key
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # Primary key (Integer for SQLite compatibility with autoincrement)
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Reference to execution
     execution_id = Column(

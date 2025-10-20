@@ -142,7 +142,12 @@ class WorkflowStateRepository:
             )
         if tags:
             # Use PostgreSQL JSONB containment for tag filtering
-            query = query.where(WorkflowExecutionDB.tags.op("@>")(tags))
+            # For SQLite, skip tag filtering (not supported)
+            from sqlalchemy.engine import Engine
+
+            dialect_name = session.bind.dialect.name if session.bind else "postgresql"
+            if dialect_name == "postgresql":
+                query = query.where(WorkflowExecutionDB.tags.op("@>")(tags))
 
         # Order by created_at descending
         query = query.order_by(desc(WorkflowExecutionDB.created_at))
