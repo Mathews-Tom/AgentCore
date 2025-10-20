@@ -25,11 +25,22 @@ from agentcore.orchestration.state.repository import (
 @pytest.fixture
 def db_session():
     """Create mock database session for unit tests."""
-    session = AsyncMock()
+    session = AsyncMock(spec=AsyncSession)
+
+    # Mock database operations
     session.add = MagicMock()
     session.flush = AsyncMock()
     session.commit = AsyncMock()
-    session.execute = AsyncMock()
+    session.rollback = AsyncMock()
+
+    # Mock execute to return a result object with proper methods
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)
+    mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+    mock_result.scalar = MagicMock(return_value=0)
+
+    session.execute = AsyncMock(return_value=mock_result)
+
     return session
 
 
