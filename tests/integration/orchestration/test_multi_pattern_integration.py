@@ -239,31 +239,35 @@ class TestMultiPatternIntegration:
     ) -> None:
         """Test custom orchestration pattern with hooks integration."""
         # Define custom pattern
+        from agentcore.orchestration.patterns.custom import PatternMetadata
+
         custom_pattern = PatternDefinition(
-            name="research_pipeline",
-            description="Custom research and analysis pipeline",
+            metadata=PatternMetadata(
+                name="research_pipeline",
+                description="Custom research and analysis pipeline",
+                version="1.0.0",
+            ),
             pattern_type=PatternType.CUSTOM,
-            coordination_model=CoordinationModel.HYBRID,
-            agent_requirements=[
-                AgentRequirement(
+            agents={
+                "researcher": AgentRequirement(
                     role="researcher",
                     capabilities=["web_search", "data_collection"],
                     min_count=1,
                     max_count=3,
                 ),
-                AgentRequirement(
+                "analyzer": AgentRequirement(
                     role="analyzer",
                     capabilities=["data_analysis", "ml_inference"],
                     min_count=1,
                     max_count=2,
                 ),
-                AgentRequirement(
+                "synthesizer": AgentRequirement(
                     role="synthesizer",
                     capabilities=["report_generation"],
                     min_count=1,
                     max_count=1,
                 ),
-            ],
+            },
             tasks=[
                 TaskNode(
                     task_id="research",
@@ -287,7 +291,7 @@ class TestMultiPatternIntegration:
                     parallel=False,
                 ),
             ],
-            coordination_config=CoordinationConfig(
+            coordination=CoordinationConfig(
                 model=CoordinationModel.HYBRID,
                 event_driven_triggers=["agent_status", "task_completion"],
                 graph_based_tasks=["task_dependencies"],
@@ -314,8 +318,8 @@ class TestMultiPatternIntegration:
         ]
 
         saga = SagaDefinition(
-            name=custom_pattern.name,
-            description=custom_pattern.description,
+            name=custom_pattern.metadata.name,
+            description=custom_pattern.metadata.description,
             steps=saga_steps,
             enable_state_persistence=True,
         )
@@ -391,7 +395,7 @@ class TestMultiPatternIntegration:
     async def test_fault_tolerance_coordinator(self) -> None:
         """Test fault tolerance coordinator with multiple patterns."""
         coordinator = FaultToleranceCoordinator(
-            coordinator_id="fault_tolerance_001"
+            coordinator_id=uuid4()
         )
 
         # Register multiple circuit breakers for different services
