@@ -64,7 +64,7 @@ class TestMultiPatternIntegration:
             recovery_timeout_seconds=60,
         )
         circuit_breaker = CircuitBreaker(
-            name="payment_service_breaker",
+            service_name="payment_service_breaker",
             config=circuit_config,
         )
 
@@ -181,7 +181,7 @@ class TestMultiPatternIntegration:
         swarm_config = SwarmConfig(
             min_agents=3,
             max_agents=10,
-            consensus_strategy=ConsensusStrategy.MAJORITY,
+            consensus_strategy=ConsensusStrategy.MAJORITY_VOTE,
             quorum_threshold=0.51,
             task_distribution_strategy="round_robin",
         )
@@ -195,7 +195,7 @@ class TestMultiPatternIntegration:
         agents = [
             AgentState(
                 agent_id=f"agent_{i}",
-                role=AgentRole.WORKER,
+                role=AgentRole.MEMBER,
                 capabilities=["task_processing"],
                 status="active",
             )
@@ -288,9 +288,10 @@ class TestMultiPatternIntegration:
                 ),
             ],
             coordination_config=CoordinationConfig(
-                event_driven_components=["agent_status", "task_completion"],
-                graph_based_components=["task_dependencies"],
-                enable_dynamic_routing=True,
+                model=CoordinationModel.HYBRID,
+                event_driven_triggers=["agent_status", "task_completion"],
+                graph_based_tasks=["task_dependencies"],
+                max_concurrent_tasks=10,
             ),
         )
 
@@ -396,21 +397,21 @@ class TestMultiPatternIntegration:
         # Register multiple circuit breakers for different services
         breakers = {
             "database": CircuitBreaker(
-                name="database_breaker",
+                service_name="database_breaker",
                 config=CircuitBreakerConfig(
                     failure_threshold=5,
                     timeout_seconds=60,
                 ),
             ),
             "api": CircuitBreaker(
-                name="api_breaker",
+                service_name="api_breaker",
                 config=CircuitBreakerConfig(
                     failure_threshold=3,
                     timeout_seconds=30,
                 ),
             ),
             "cache": CircuitBreaker(
-                name="cache_breaker",
+                service_name="cache_breaker",
                 config=CircuitBreakerConfig(
                     failure_threshold=10,
                     timeout_seconds=15,
