@@ -1,20 +1,21 @@
 """
-Unit Tests for Workflow State Repository
+Integration Tests for Workflow State Persistence
 
-Tests for PostgreSQL state persistence operations.
+Tests for state persistence with real database (SQLite in-memory).
 """
 
 import pytest
 from datetime import UTC, datetime
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from agentcore.orchestration.state.models import (
     WorkflowExecutionDB,
     WorkflowStateDB,
     WorkflowStateVersion,
     WorkflowStatus,
+    Base,
 )
 from agentcore.orchestration.state.repository import (
     WorkflowStateRepository,
@@ -23,25 +24,39 @@ from agentcore.orchestration.state.repository import (
 
 
 @pytest.fixture
-def db_session():
-    """Create mock database session for unit tests."""
-    session = AsyncMock(spec=AsyncSession)
+async def db_engine():
+    """
+    Create in-memory SQLite engine for testing.
 
-    # Mock database operations
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.commit = AsyncMock()
-    session.rollback = AsyncMock()
+    Note: SQLite uses JSON instead of JSONB. The models are designed for PostgreSQL
+    with JSONB, so this is a lightweight test. For full JSONB functionality testing,
+    use PostgreSQL (via testcontainers or docker-compose).
+    """
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
-    # Mock execute to return a result object with proper methods
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none = MagicMock(return_value=None)
-    mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
-    mock_result.scalar = MagicMock(return_value=0)
+    # Create tables - SQLite will use JSON instead of JSONB automatically
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    session.execute = AsyncMock(return_value=mock_result)
+    yield engine
 
-    return session
+    await engine.dispose()
+
+
+@pytest.fixture
+async def db_session(db_engine):
+    """Create database session for testing."""
+    async_session = async_sessionmaker(
+        db_engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with async_session() as session:
+        yield session
+        await session.rollback()
 
 
 class TestWorkflowStateRepository:

@@ -24,6 +24,9 @@ from sqlalchemy.orm import relationship
 
 from agentcore.a2a_protocol.database.connection import Base
 
+# Cross-database JSON type (JSONB for PostgreSQL, JSON for others)
+JSONType = JSON().with_variant(JSONB(), "postgresql")
+
 
 class WorkflowStatus(str, Enum):
     """Workflow execution status."""
@@ -71,32 +74,32 @@ class WorkflowExecutionDB(Base):
         index=True,
     )
 
-    # Workflow definition (JSONB for efficient queries)
+    # Workflow definition (JSONB for PostgreSQL, JSON for SQLite)
     workflow_definition = Column(
-        JSONB, nullable=False
+        JSONType, nullable=False
     )  # Original workflow definition
 
-    # Current execution state (JSONB for flexibility)
+    # Current execution state
     execution_state = Column(
-        JSONB, nullable=False, default=dict
+        JSONType, nullable=False, default=dict
     )  # Current state snapshot
 
     # Agent allocation
     allocated_agents = Column(
-        JSONB, nullable=False, default=dict
+        JSONType, nullable=False, default=dict
     )  # agent_role -> agent_id mapping
 
     # Task tracking
     task_states = Column(
-        JSONB, nullable=False, default=dict
+        JSONType, nullable=False, default=dict
     )  # task_id -> task state mapping
     completed_tasks = Column(
-        JSON, nullable=False, default=list
+        JSONType, nullable=False, default=list
     )  # List of completed task IDs
-    failed_tasks = Column(JSON, nullable=False, default=list)  # List of failed task IDs
+    failed_tasks = Column(JSONType, nullable=False, default=list)  # List of failed task IDs
 
     # Checkpointing
-    checkpoint_data = Column(JSONB, nullable=True)  # Latest checkpoint data
+    checkpoint_data = Column(JSONType, nullable=True)  # Latest checkpoint data
     checkpoint_count = Column(Integer, nullable=False, default=0)
     last_checkpoint_at = Column(DateTime, nullable=True)
 
@@ -120,10 +123,10 @@ class WorkflowExecutionDB(Base):
     compensation_errors = Column(JSON, nullable=False, default=list)
 
     # Metadata
-    input_data = Column(JSONB, nullable=True)  # Input parameters
-    output_data = Column(JSONB, nullable=True)  # Final output
+    input_data = Column(JSONType, nullable=True)  # Input parameters
+    output_data = Column(JSONType, nullable=True)  # Final output
     tags = Column(JSON, nullable=False, default=list)  # Tags for categorization
-    workflow_metadata = Column(JSONB, nullable=False, default=dict)  # Additional metadata
+    workflow_metadata = Column(JSONType, nullable=False, default=dict)  # Additional metadata
 
     # Relationships
     state_history = relationship(
@@ -183,7 +186,7 @@ class WorkflowStateDB(Base):
     )  # checkpoint, event, snapshot
 
     # State snapshot (JSONB for efficient storage)
-    state_snapshot = Column(JSONB, nullable=False)  # Complete state at this point
+    state_snapshot = Column(JSONType, nullable=False)  # Complete state at this point
 
     # Change tracking
     changed_fields = Column(
@@ -198,7 +201,7 @@ class WorkflowStateDB(Base):
 
     # Metadata
     created_by = Column(String(255), nullable=True)  # Agent or system that created state
-    state_metadata = Column(JSONB, nullable=False, default=dict)
+    state_metadata = Column(JSONType, nullable=False, default=dict)
 
     __table_args__ = (
         # Composite index for efficient version queries
@@ -229,7 +232,7 @@ class WorkflowStateVersion(Base):
     )  # Type of workflow (saga, supervisor, etc.)
 
     # Schema definition
-    state_schema = Column(JSONB, nullable=False)  # JSON schema for state validation
+    state_schema = Column(JSONType, nullable=False)  # JSON schema for state validation
     migration_script = Column(
         Text, nullable=True
     )  # SQL or Python script for migration
