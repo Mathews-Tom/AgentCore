@@ -19,7 +19,12 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 from testcontainers.redis import RedisContainer
 
-from agentcore.orchestration.state.models import Base
+from agentcore.orchestration.state.models import (
+    Base,
+    WorkflowExecutionDB,
+    WorkflowStateDB,
+    WorkflowStateVersion,
+)
 from agentcore.orchestration.streams.client import RedisStreamsClient
 from agentcore.orchestration.streams.config import StreamConfig
 
