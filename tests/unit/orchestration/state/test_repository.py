@@ -8,6 +8,7 @@ import pytest
 from datetime import UTC, datetime
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from agentcore.orchestration.state.models import (
     WorkflowExecutionDB,
