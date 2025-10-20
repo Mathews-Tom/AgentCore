@@ -56,10 +56,13 @@ class RedisStreamsClient:
             )
         else:
             # Use standalone Redis with connection pooling
+            # Increased pool size for high-throughput event processing (ORCH-010)
             self._pool = ConnectionPool.from_url(
                 self.redis_url,
                 decode_responses=False,
-                max_connections=10,
+                max_connections=100,  # Increased from 10 for 100k+ events/sec
+                socket_connect_timeout=5,
+                socket_keepalive=True,
             )
             self._client = aioredis.Redis(connection_pool=self._pool)
 
