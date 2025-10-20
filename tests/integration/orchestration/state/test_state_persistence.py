@@ -1,9 +1,16 @@
 """
 Integration Tests for Workflow State Persistence
 
-Tests for state persistence with real database (SQLite in-memory).
+Tests for state persistence with real database.
+- SQLite (default): Fast, in-memory, basic functionality
+- PostgreSQL (USE_POSTGRES=1): Full features including JSONB operators
+
+Usage:
+    pytest tests/integration/orchestration/state/  # SQLite
+    USE_POSTGRES=1 pytest tests/integration/orchestration/state/  # PostgreSQL
 """
 
+import os
 import pytest
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -22,23 +29,58 @@ from agentcore.orchestration.state.repository import (
     WorkflowVersionRepository,
 )
 
+# Check if PostgreSQL testing is enabled
+USE_POSTGRES = os.getenv("USE_POSTGRES", "0") == "1"
+
+if USE_POSTGRES:
+    try:
+        from testcontainers.postgres import PostgresContainer
+        POSTGRES_AVAILABLE = True
+    except ImportError:
+        POSTGRES_AVAILABLE = False
+        pytest.skip(
+            "testcontainers not available. Install with: uv add --dev 'testcontainers[postgres]'",
+            allow_module_level=True
+        )
+else:
+    POSTGRES_AVAILABLE = False
+
+
+@pytest.fixture(scope="module")
+def postgres_container():
+    """Start PostgreSQL container if USE_POSTGRES=1."""
+    if not USE_POSTGRES or not POSTGRES_AVAILABLE:
+        pytest.skip("PostgreSQL testing not enabled")
+
+    container = PostgresContainer("postgres:16-alpine")
+    container.start()
+
+    yield container
+
+    container.stop()
+
 
 @pytest.fixture
-async def db_engine():
+async def db_engine(postgres_container=None):
     """
-    Create in-memory SQLite engine for testing.
+    Create database engine for testing.
 
-    Note: SQLite uses JSON instead of JSONB. The models are designed for PostgreSQL
-    with JSONB, so this is a lightweight test. For full JSONB functionality testing,
-    use PostgreSQL (via testcontainers or docker-compose).
+    - Default: SQLite in-memory (fast, basic features)
+    - USE_POSTGRES=1: PostgreSQL container (full JSONB features)
     """
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    if USE_POSTGRES and POSTGRES_AVAILABLE:
+        # Use PostgreSQL container
+        db_url = postgres_container.get_connection_url().replace("psycopg2", "asyncpg")
+        engine = create_async_engine(db_url, echo=False)
+    else:
+        # Use SQLite in-memory (default)
+        engine = create_async_engine(
+            "sqlite+aiosqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
 
-    # Create tables - SQLite will use JSON instead of JSONB automatically
+    # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
