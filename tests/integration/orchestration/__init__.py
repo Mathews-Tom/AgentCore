@@ -1,1 +1,1 @@
-"""Integration tests for orchestration patterns."""
+"""Integration tests for orchestration engine."""
