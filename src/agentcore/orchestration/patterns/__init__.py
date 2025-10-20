@@ -36,6 +36,19 @@ from agentcore.orchestration.patterns.circuit_breaker import (
     RetryPolicy,
     RetryStrategy,
 )
+from agentcore.orchestration.patterns.custom import (
+    AgentRequirement,
+    CoordinationConfig,
+    CoordinationModel,
+    PatternDefinition,
+    PatternMetadata,
+    PatternRegistry,
+    PatternStatus,
+    PatternType,
+    TaskNode,
+    ValidationRule,
+    pattern_registry,
+)
 
 __all__ = [
     # Swarm Pattern
@@ -67,4 +80,16 @@ __all__ = [
     "HealthStatus",
     "RetryPolicy",
     "RetryStrategy",
+    # Custom Pattern Framework
+    "PatternDefinition",
+    "PatternMetadata",
+    "PatternRegistry",
+    "PatternType",
+    "PatternStatus",
+    "CoordinationModel",
+    "AgentRequirement",
+    "TaskNode",
+    "CoordinationConfig",
+    "ValidationRule",
+    "pattern_registry",
 ]
