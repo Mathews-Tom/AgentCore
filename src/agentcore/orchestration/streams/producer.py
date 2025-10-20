@@ -97,7 +97,8 @@ class StreamProducer:
         # Trim stream after batch
         await self._trim_stream_if_needed(stream)
 
-        return [str(r) for r in results]
+        # Decode bytes to strings
+        return [r.decode() if isinstance(r, bytes) else str(r) for r in results]
 
     def _serialize_event(self, event: OrchestrationEvent) -> dict[bytes, bytes]:
         """
@@ -144,7 +145,8 @@ class StreamProducer:
                 message_id = await self.client.client.xadd(
                     name=stream, fields=event_data
                 )
-                return str(message_id)
+                # Decode bytes to string
+                return message_id.decode() if isinstance(message_id, bytes) else str(message_id)
             except (aioredis.ConnectionError, aioredis.TimeoutError) as e:
                 last_error = e
                 if attempt < self.config.max_retries - 1:
