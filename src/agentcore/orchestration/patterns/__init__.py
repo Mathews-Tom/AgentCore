@@ -32,6 +32,27 @@ from agentcore.orchestration.patterns.supervisor import (
     WorkerState,
     WorkerStatus,
 )
+from agentcore.orchestration.patterns.swarm import (
+    AgentProposal,
+    AgentRole,
+    AgentState,
+    ConsensusStrategy,
+    ProposalStatus,
+    SwarmConfig,
+    SwarmCoordinator,
+    SwarmTask,
+    Vote,
+)
+from agentcore.orchestration.patterns.saga import (
+    CompensationStrategy,
+    SagaConfig,
+    SagaDefinition,
+    SagaExecution,
+    SagaOrchestrator,
+    SagaStatus,
+    SagaStep,
+    SagaStepStatus,
+)
 
 __all__ = [
     # Supervisor Pattern
@@ -59,4 +80,23 @@ __all__ = [
     "OutputValidationGate",
     "CapabilityGate",
     "ValidationResult",
+    # Swarm Pattern
+    "SwarmCoordinator",
+    "SwarmConfig",
+    "AgentState",
+    "Vote",
+    "AgentProposal",
+    "SwarmTask",
+    "ConsensusStrategy",
+    "AgentRole",
+    "ProposalStatus",
+    # Saga Pattern
+    "SagaOrchestrator",
+    "SagaConfig",
+    "SagaDefinition",
+    "SagaExecution",
+    "SagaStep",
+    "SagaStatus",
+    "SagaStepStatus",
+    "CompensationStrategy",
 ]
