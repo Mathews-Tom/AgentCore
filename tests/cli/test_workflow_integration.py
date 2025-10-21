@@ -391,7 +391,8 @@ class TestWorkflowListingAndFiltering:
         ])
 
         assert result.exit_code == 0
-        assert "running-workflow" in result.stdout
+        # Check for workflow ID which won't be truncated in table
+        assert "workflow-running" in result.stdout
 
         # Verify filter was passed to API
         call_args = mock_client.call.call_args
