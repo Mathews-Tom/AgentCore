@@ -213,7 +213,7 @@ class TestQueries:
 class TestEventStore:
     """Test event store functionality."""
 
-    async def test_append_and_retrieve_events(self):
+    async def test_append_and_retrieve_events(self, init_test_db):
         """Test appending and retrieving events."""
         async with get_session() as session:
             store = PostgreSQLEventStore(session)
@@ -249,7 +249,7 @@ class TestEventStore:
             assert result.events[0].event_type == EventType.WORKFLOW_CREATED
             assert result.events[1].event_type == EventType.WORKFLOW_STARTED
 
-    async def test_append_events_batch(self):
+    async def test_append_events_batch(self, init_test_db):
         """Test batch event appending."""
         async with get_session() as session:
             store = PostgreSQLEventStore(session)
@@ -278,7 +278,7 @@ class TestEventStore:
             result = await store.get_events(aggregate_id)
             assert result.total_events == 2
 
-    async def test_get_events_by_type(self):
+    async def test_get_events_by_type(self, init_test_db):
         """Test retrieving events by type."""
         async with get_session() as session:
             store = PostgreSQLEventStore(session)
@@ -301,7 +301,7 @@ class TestEventStore:
             assert len(events) >= 3
             assert all(e.event_type == EventType.WORKFLOW_CREATED for e in events)
 
-    async def test_snapshot_save_and_retrieve(self):
+    async def test_snapshot_save_and_retrieve(self, init_test_db):
         """Test saving and retrieving snapshots."""
         async with get_session() as session:
             store = PostgreSQLEventStore(session)
@@ -330,7 +330,7 @@ class TestEventStore:
 class TestProjections:
     """Test projection functionality."""
 
-    async def test_workflow_projection(self):
+    async def test_workflow_projection(self, init_test_db):
         """Test workflow projection updates read model."""
         async with get_session() as session:
             projection = WorkflowProjection()
@@ -355,7 +355,7 @@ class TestProjections:
 
             # Verify read model was updated (would need to query read model)
 
-    async def test_execution_projection(self):
+    async def test_execution_projection(self, init_test_db):
         """Test execution projection updates read model."""
         async with get_session() as session:
             projection = ExecutionProjection()
@@ -374,7 +374,7 @@ class TestProjections:
             assert projection.handles_event_type(EventType.WORKFLOW_STARTED)
             await projection.project(event, session)
 
-    async def test_projection_manager(self):
+    async def test_projection_manager(self, init_test_db):
         """Test projection manager coordinates multiple projections."""
         async with get_session() as session:
             manager = ProjectionManager()
@@ -402,7 +402,7 @@ class TestProjections:
 class TestEventualConsistency:
     """Test eventual consistency between write and read sides."""
 
-    async def test_command_to_query_flow(self):
+    async def test_command_to_query_flow(self, init_test_db):
         """Test full flow from command to query."""
         async with get_session() as session:
             # Setup
@@ -429,7 +429,7 @@ class TestEventualConsistency:
             # Query read model (read side)
             # Would query WorkflowReadModel here
 
-    async def test_multiple_events_projection(self):
+    async def test_multiple_events_projection(self, init_test_db):
         """Test projecting multiple events maintains consistency."""
         async with get_session() as session:
             event_store = PostgreSQLEventStore(session)
