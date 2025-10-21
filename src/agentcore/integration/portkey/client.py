@@ -7,7 +7,8 @@ Gateway and managing LLM requests across multiple providers.
 from __future__ import annotations
 
 import time
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import structlog
 from portkey_ai import AsyncPortkey
@@ -46,7 +47,7 @@ class PortkeyClient:
 
         Args:
             config: Optional PortkeyConfig instance. If not provided,
-                   configuration will be loaded from environment variables.
+                    configuration will be loaded from environment variables.
             **kwargs: Additional keyword arguments to override configuration
 
         Raises:
@@ -261,7 +262,9 @@ class PortkeyClient:
             Converted LLM response model
         """
         # Extract basic response data
-        response_dict = response.model_dump() if hasattr(response, "model_dump") else response
+        response_dict = (
+            response.model_dump() if hasattr(response, "model_dump") else response
+        )
 
         # Calculate cost (placeholder - will be implemented in INT-003)
         cost = self._calculate_cost(response_dict)
