@@ -87,40 +87,34 @@ def test_trace_id_header(client):
     assert response.headers["X-Trace-ID"] == response.headers["X-Request-ID"]
 
 
-def test_openapi_docs_debug_mode():
+def test_openapi_docs_debug_mode(monkeypatch):
     """Test OpenAPI docs are available in debug mode."""
+    import gateway.main
     from gateway.config import settings
-    original_debug = settings.DEBUG
 
-    try:
-        # Enable debug mode
-        settings.DEBUG = True
-        app = create_app()
-        client = TestClient(app)
+    # Patch the settings.DEBUG before calling create_app
+    monkeypatch.setattr(settings, "DEBUG", True)
 
-        response = client.get("/docs")
-        assert response.status_code == 200
-    finally:
-        # Restore original setting
-        settings.DEBUG = original_debug
+    app = gateway.main.create_app()
+    client = TestClient(app)
+
+    response = client.get("/docs")
+    assert response.status_code == 200
 
 
-def test_openapi_docs_production_mode():
+def test_openapi_docs_production_mode(monkeypatch):
     """Test OpenAPI docs are disabled in production mode."""
+    import gateway.main
     from gateway.config import settings
-    original_debug = settings.DEBUG
 
-    try:
-        # Disable debug mode
-        settings.DEBUG = False
-        app = create_app()
-        client = TestClient(app)
+    # Patch the settings.DEBUG before calling create_app
+    monkeypatch.setattr(settings, "DEBUG", False)
 
-        response = client.get("/docs")
-        assert response.status_code == 404
-    finally:
-        # Restore original setting
-        settings.DEBUG = original_debug
+    app = gateway.main.create_app()
+    client = TestClient(app)
+
+    response = client.get("/docs")
+    assert response.status_code == 404
 
 
 def test_metrics_endpoint(client):

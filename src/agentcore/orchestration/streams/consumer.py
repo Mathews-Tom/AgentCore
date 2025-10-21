@@ -100,6 +100,50 @@ class StreamConsumer:
         """Stop consuming events."""
         self._running = False
 
+    async def consume(self, count: int = 10) -> list[OrchestrationEvent]:
+        """
+        Consume a specific number of events (for testing).
+
+        Args:
+            count: Number of events to consume
+
+        Returns:
+            List of consumed events
+        """
+        events: list[OrchestrationEvent] = []
+        stream = self.config.stream_name
+
+        # Read messages from stream
+        messages = await self.client.client.xread(
+            {stream: "0"},  # Read from beginning
+            count=count,
+            block=100,
+        )
+
+        if messages:
+            for _, message_list in messages:
+                for message_id, fields in message_list:
+                    # Decode and parse event
+                    event_data = {}
+                    for key, value in fields.items():
+                        key_str = key.decode("utf-8") if isinstance(key, bytes) else key
+                        value_str = (
+                            value.decode("utf-8") if isinstance(value, bytes) else value
+                        )
+                        # Parse JSON value (producer serializes each value as JSON)
+                        try:
+                            import json
+                            event_data[key_str] = json.loads(value_str)
+                        except (json.JSONDecodeError, TypeError):
+                            event_data[key_str] = value_str
+
+                    # Create OrchestrationEvent from data
+                    if "event_type" in event_data:
+                        event = OrchestrationEvent(**event_data)
+                        events.append(event)
+
+        return events
+
     async def _consume_loop(self, stream: str) -> None:
         """
         Main consumption loop.
@@ -298,7 +342,11 @@ class StreamConsumer:
 
         return [
             {
-                "message_id": str(p["message_id"]),
+                "message_id": (
+                    p["message_id"].decode("utf-8")
+                    if isinstance(p["message_id"], bytes)
+                    else str(p["message_id"])
+                ),
                 "consumer": p["consumer"],
                 "time_since_delivered": p["time_since_delivered"],
                 "times_delivered": p["times_delivered"],
