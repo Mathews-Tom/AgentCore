@@ -8,8 +8,8 @@ Provides unified entry point for all external interactions with AgentCore.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI
@@ -22,26 +22,6 @@ from gateway.auth.oauth.registry import initialize_oauth_providers
 from gateway.auth.oauth.state import oauth_state_manager
 from gateway.auth.session import session_manager
 from gateway.config import settings
-from gateway.middleware.compression import CompressionMiddleware
-from gateway.middleware.cors import setup_cors
-from gateway.middleware.ddos_protection import DDoSConfig, DDoSProtector
-from gateway.middleware.logging import logging_middleware
-from gateway.middleware.metrics import metrics_middleware
-from gateway.middleware.rate_limit import RateLimitMiddleware
-from gateway.middleware.rate_limiter import (
-    RateLimitAlgorithmType,
-    RateLimitPolicy,
-    RateLimiter,
-)
-from gateway.middleware.security_headers import SecurityHeadersMiddleware
-from gateway.middleware.transformation import (
-    CacheControlMiddleware,
-    TransformationMiddleware,
-)
-from gateway.middleware.validation import InputValidationMiddleware
-from gateway.realtime.connection_pool import connection_pool
-from gateway.realtime.event_bus import event_bus
-from gateway.routes import auth, health, oauth, realtime
 from gateway.docs.openapi_metadata import (
     OPENAPI_CONTACT,
     OPENAPI_DESCRIPTION,
@@ -51,9 +31,29 @@ from gateway.docs.openapi_metadata import (
     OPENAPI_SERVERS,
     OPENAPI_TAGS,
 )
-from gateway.monitoring.tracing import configure_tracing, instrument_fastapi
-from gateway.monitoring.metrics import set_gateway_info
+from gateway.middleware.compression import CompressionMiddleware
+from gateway.middleware.cors import setup_cors
+from gateway.middleware.ddos_protection import DDoSConfig, DDoSProtector
+from gateway.middleware.logging import logging_middleware
+from gateway.middleware.metrics import metrics_middleware
+from gateway.middleware.rate_limit import RateLimitMiddleware
+from gateway.middleware.rate_limiter import (
+    RateLimitAlgorithmType,
+    RateLimiter,
+    RateLimitPolicy,
+)
+from gateway.middleware.security_headers import SecurityHeadersMiddleware
+from gateway.middleware.transformation import (
+    CacheControlMiddleware,
+    TransformationMiddleware,
+)
+from gateway.middleware.validation import InputValidationMiddleware
 from gateway.monitoring.health import HealthChecker
+from gateway.monitoring.metrics import set_gateway_info
+from gateway.monitoring.tracing import configure_tracing, instrument_fastapi
+from gateway.realtime.connection_pool import connection_pool
+from gateway.realtime.event_bus import event_bus
+from gateway.routes import auth, health, oauth, realtime
 
 
 @asynccontextmanager
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info(
             "Starting API Gateway",
             version=settings.GATEWAY_VERSION,
-            name=settings.GATEWAY_NAME
+            name=settings.GATEWAY_NAME,
         )
 
         # Configure distributed tracing
@@ -92,7 +92,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "agent_runtime": settings.AGENT_RUNTIME_URL,
         }
         health_checker = HealthChecker(
-            redis_url=settings.RATE_LIMIT_REDIS_URL if settings.RATE_LIMIT_ENABLED else None,
+            redis_url=settings.RATE_LIMIT_REDIS_URL
+            if settings.RATE_LIMIT_ENABLED
+            else None,
             backend_services=backend_services,
             check_timeout=5.0,
         )
@@ -330,6 +332,7 @@ def create_app() -> FastAPI:
 
     # Add metrics middleware if enabled
     if settings.ENABLE_METRICS:
+
         @app.middleware("http")
         async def add_metrics_middleware(request, call_next):
             return await metrics_middleware(request, call_next)
