@@ -112,7 +112,7 @@ class AgentAssignmentReadModel(Base):
     agent_role = Column(String(100), primary_key=True)
 
     # Agent details
-    capabilities = Column(JSONB, nullable=True)
+    capabilities = Column(JSONType, nullable=True)
 
     # Assignment metadata
     assigned_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
@@ -147,11 +147,11 @@ class TaskReadModel(Base):
     agent_id = Column(String(255), nullable=True, index=True)
 
     # Task data
-    input_data = Column(JSONB, nullable=True)
-    output_data = Column(JSONB, nullable=True)
+    input_data = Column(JSONType, nullable=True)
+    output_data = Column(JSONType, nullable=True)
 
     # Dependencies
-    dependencies = Column(JSONB, nullable=True)  # Array of task IDs
+    dependencies = Column(JSONType, nullable=True)  # Array of task IDs
 
     # Execution metadata
     scheduled_at = Column(DateTime, nullable=True)
