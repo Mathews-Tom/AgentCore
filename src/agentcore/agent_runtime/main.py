@@ -5,8 +5,8 @@ This module provides the FastAPI application for the Agent Runtime Layer,
 handling secure agent execution with Docker-based containerization.
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI
@@ -16,8 +16,8 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from .config import get_settings
 from .routers import agents, monitoring
 from .services.agent_lifecycle import AgentLifecycleManager
-from .services.container_manager import ContainerManager
 from .services.alerting_service import get_alerting_service
+from .services.container_manager import ContainerManager
 from .services.distributed_tracing import get_distributed_tracer
 from .services.metrics_collector import get_metrics_collector
 from .services.resource_manager import get_resource_manager
@@ -61,11 +61,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         resource_manager = get_resource_manager()
 
         # Set runtime info
-        metrics_collector.set_runtime_info({
-            "service": "agent-runtime",
-            "version": "0.1.0",
-            "port": str(settings.agent_runtime_port),
-        })
+        metrics_collector.set_runtime_info(
+            {
+                "service": "agent-runtime",
+                "version": "0.1.0",
+                "port": str(settings.agent_runtime_port),
+            }
+        )
 
         # Start resource manager
         await resource_manager.start()

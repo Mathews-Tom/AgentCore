@@ -8,10 +8,10 @@ Prevents cascading failures by failing fast when a service is unhealthy.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 import structlog
 

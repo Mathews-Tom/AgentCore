@@ -139,7 +139,9 @@ def create_ssl_context(config: TLSConfig) -> ssl.SSLContext:
     context.options |= ssl.OP_NO_COMPRESSION  # Disable TLS compression (CRIME)
     context.options |= ssl.OP_NO_RENEGOTIATION  # Disable renegotiation
     context.options |= ssl.OP_SINGLE_DH_USE  # Generate new DH key for each connection
-    context.options |= ssl.OP_SINGLE_ECDH_USE  # Generate new ECDH key for each connection
+    context.options |= (
+        ssl.OP_SINGLE_ECDH_USE
+    )  # Generate new ECDH key for each connection
 
     # TLS 1.3 specific options
     if config.min_version >= ssl.TLSVersion.TLSv1_3:

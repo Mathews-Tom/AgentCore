@@ -7,7 +7,8 @@ Supports custom reward functions via RewardRegistry.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 
@@ -332,4 +333,5 @@ class RewardEngine:
             True if verification step
         """
         step_type = action.get("step_type", "")
+        return "verify" in step_type.lower() or "check" in step_type.lower()
         return "verify" in step_type.lower() or "check" in step_type.lower()

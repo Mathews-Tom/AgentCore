@@ -93,7 +93,7 @@ class HealthChecker:
 
             return True, "Redis is healthy"
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = time.time() - start_time
             COMPONENT_HEALTH.labels(component="redis").set(0)
             HEALTH_CHECK_DURATION.labels(component="redis").set(duration)
@@ -136,7 +136,7 @@ class HealthChecker:
                 return True, f"{service_name} is healthy"
             return False, f"{service_name} returned status {response.status_code}"
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = time.time() - start_time
             COMPONENT_HEALTH.labels(component=service_name).set(0)
             HEALTH_CHECK_DURATION.labels(component=service_name).set(duration)
@@ -177,7 +177,9 @@ class HealthChecker:
         ]
 
         if backend_checks:
-            backend_results = await asyncio.gather(*backend_checks, return_exceptions=True)
+            backend_results = await asyncio.gather(
+                *backend_checks, return_exceptions=True
+            )
 
             for (name, _), result in zip(
                 self.backend_services.items(), backend_results, strict=False

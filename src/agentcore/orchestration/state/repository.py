@@ -276,7 +276,9 @@ class WorkflowStateRepository:
             # Update task counts
             execution.total_tasks = len(task_states)
             execution.completed_task_count = sum(
-                1 for state in task_states.values() if state.get("status") == "completed"
+                1
+                for state in task_states.values()
+                if state.get("status") == "completed"
             )
             execution.failed_task_count = sum(
                 1 for state in task_states.values() if state.get("status") == "failed"
@@ -472,9 +474,7 @@ class WorkflowStateRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def delete_execution(
-        session: AsyncSession, execution_id: str
-    ) -> bool:
+    async def delete_execution(session: AsyncSession, execution_id: str) -> bool:
         """
         Delete workflow execution and all history.
 

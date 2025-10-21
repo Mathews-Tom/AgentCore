@@ -6,7 +6,7 @@ Enables domain-specific reward strategies with validation and per-agent-type con
 
 from __future__ import annotations
 
-from typing import Any, Callable, Protocol
+from typing import Protocol
 
 import structlog
 

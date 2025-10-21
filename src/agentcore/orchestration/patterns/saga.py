@@ -7,9 +7,10 @@ Long-running transaction management with compensation actions for distributed wo
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -116,9 +117,7 @@ class SagaDefinition(BaseModel):
     enable_state_persistence: bool = Field(
         default=True, description="Enable state checkpointing"
     )
-    checkpoint_interval: int = Field(
-        default=1, description="Checkpoint every N steps"
-    )
+    checkpoint_interval: int = Field(default=1, description="Checkpoint every N steps")
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -139,7 +138,9 @@ class SagaExecution(BaseModel):
     completed_steps: list[UUID] = Field(
         default_factory=list, description="Completed step IDs"
     )
-    failed_steps: list[UUID] = Field(default_factory=list, description="Failed step IDs")
+    failed_steps: list[UUID] = Field(
+        default_factory=list, description="Failed step IDs"
+    )
     compensated_steps: list[UUID] = Field(
         default_factory=list, description="Compensated step IDs"
     )
@@ -237,7 +238,10 @@ class SagaOrchestrator:
         self._saga_definitions[saga.saga_id] = saga
 
     def register_action_handler(
-        self, step_name: str, handler: Callable, compensation_handler: Callable | None = None
+        self,
+        step_name: str,
+        handler: Callable,
+        compensation_handler: Callable | None = None,
     ) -> None:
         """
         Register action and compensation handlers for a step.
@@ -291,7 +295,9 @@ class SagaOrchestrator:
             )
 
         # Start execution in background
-        asyncio.create_task(self._execute_saga_steps(execution.execution_id, input_data or {}))
+        asyncio.create_task(
+            self._execute_saga_steps(execution.execution_id, input_data or {})
+        )
 
         return execution.execution_id
 
@@ -655,9 +661,7 @@ class SagaOrchestrator:
 
         # Restore state
         execution.current_step = checkpoint["current_step"]
-        execution.completed_steps = [
-            UUID(s) for s in checkpoint["completed_steps"]
-        ]
+        execution.completed_steps = [UUID(s) for s in checkpoint["completed_steps"]]
 
         # Resume execution from checkpoint
         # (Implementation would continue from current_step)

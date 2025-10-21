@@ -21,29 +21,24 @@ INJECTION_PATTERNS = [
     r"forget\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts|commands)",
     r"disregard\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts|commands)",
     r"system\s*:\s*.{0,50}(?:ignore|forget|disregard)",
-
     # Role manipulation
     r"you\s+are\s+now\s+(?:a|an)\s+\w+",
     r"act\s+as\s+(?:a|an)\s+\w+",
     r"pretend\s+(?:to\s+be|you\s+are)\s+(?:a|an)\s+\w+",
     r"roleplay\s+as\s+(?:a|an)\s+\w+",
-
     # Instruction injection
     r"new\s+(?:instruction|directive|command)\s*:",
     r"updated\s+(?:instruction|directive|command)\s*:",
     r"revised\s+(?:instruction|directive|command)\s*:",
-
     # Delimiter manipulation (trying to break out of context)
     r"</?\s*(?:system|user|assistant)\s*>",
     r"\[\s*/?\s*(?:SYSTEM|USER|ASSISTANT)\s*\]",
     r"<\|\s*(?:im_start|im_end)\s*\|>",
-
     # Command execution attempts
     r"(?:execute|run|eval)\s+(?:code|command|script)",
     r"import\s+os\s*;",
     r"subprocess\.(?:run|call|Popen)",
     r"__import__\s*\(",
-
     # Data exfiltration attempts
     r"print\s+(?:api_key|secret|password|token|credentials)",
     r"reveal\s+(?:api_key|secret|password|token|credentials)",
@@ -51,7 +46,9 @@ INJECTION_PATTERNS = [
 ]
 
 # Compile patterns for efficient matching
-COMPILED_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS]
+COMPILED_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS
+]
 
 
 class SanitizationResult(NamedTuple):
@@ -98,7 +95,9 @@ def sanitize_input(
 
     # Check for excessive special characters (unless allowed)
     if not allow_special_chars:
-        special_char_ratio = sum(1 for c in text if not c.isalnum() and not c.isspace()) / max(1, len(text))
+        special_char_ratio = sum(
+            1 for c in text if not c.isalnum() and not c.isspace()
+        ) / max(1, len(text))
         if special_char_ratio > 0.3:  # More than 30% special chars
             return SanitizationResult(
                 is_safe=False,

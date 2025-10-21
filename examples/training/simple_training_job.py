@@ -5,9 +5,9 @@ Demonstrates how to start a basic GRPO training job using the Training API.
 """
 
 import asyncio
-import httpx
 from typing import Any
 
+import httpx
 
 # Configuration
 API_URL = "http://localhost:8001/api/v1/jsonrpc"
@@ -21,10 +21,7 @@ async def start_training_job() -> dict[str, Any]:
     training_data = [
         {
             "query": f"Write a function to {task}",
-            "expected_outcome": {
-                "test_passed": True,
-                "execution_time_ms": 100
-            }
+            "expected_outcome": {"test_passed": True, "execution_time_ms": 100},
         }
         for task in [
             "sort a list",
@@ -33,7 +30,8 @@ async def start_training_job() -> dict[str, Any]:
             "calculate factorial",
             "check if palindrome",
             # ... add 95 more queries to reach minimum of 100
-        ] * 20  # Repeat to get 100+ queries
+        ]
+        * 20  # Repeat to get 100+ queries
     ]
 
     # Training configuration

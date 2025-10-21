@@ -7,8 +7,8 @@ Implements metrics export for training jobs, performance, and budget tracking.
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from prometheus_client import Counter, Gauge, Histogram
 

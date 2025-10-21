@@ -2,16 +2,9 @@
 
 from __future__ import annotations
 
-import re
-from typing import Any
-
 import structlog
 
-from ..models.plugin import (
-    PluginDependency,
-    PluginMetadata,
-    PluginVersionConflictError,
-)
+from ..models.plugin import PluginDependency, PluginMetadata, PluginVersionConflictError
 
 logger = structlog.get_logger()
 
@@ -36,9 +29,7 @@ class PluginVersionManager:
             runtime_version=self._runtime_version,
         )
 
-    def check_runtime_compatibility(
-        self, metadata: PluginMetadata
-    ) -> tuple[bool, str]:
+    def check_runtime_compatibility(self, metadata: PluginMetadata) -> tuple[bool, str]:
         """
         Check if plugin is compatible with current runtime version.
 
@@ -52,9 +43,7 @@ class PluginVersionManager:
         max_version = metadata.max_runtime_version
 
         # Check minimum version
-        if not self._satisfies_constraint(
-            self._runtime_version, f">={min_version}"
-        ):
+        if not self._satisfies_constraint(self._runtime_version, f">={min_version}"):
             return (
                 False,
                 f"Runtime version {self._runtime_version} is below minimum required {min_version}",
@@ -117,9 +106,7 @@ class PluginVersionManager:
             # Check if dependency is available
             if dependency.plugin_id not in available_plugins:
                 if not dependency.optional:
-                    missing.append(
-                        f"{dependency.plugin_id} (required, not found)"
-                    )
+                    missing.append(f"{dependency.plugin_id} (required, not found)")
                 continue
 
             # Check version compatibility
@@ -130,9 +117,7 @@ class PluginVersionManager:
             )
 
             if not is_compatible and not dependency.optional:
-                missing.append(
-                    f"{dependency.plugin_id} ({reason})"
-                )
+                missing.append(f"{dependency.plugin_id} ({reason})")
 
         return (len(missing) == 0, missing)
 
@@ -184,9 +169,7 @@ class PluginVersionManager:
 
         return max(versions, key=lambda v: self._parse_version(v))
 
-    def is_backward_compatible(
-        self, old_version: str, new_version: str
-    ) -> bool:
+    def is_backward_compatible(self, old_version: str, new_version: str) -> bool:
         """
         Check if new version is backward compatible with old version (same major version).
 

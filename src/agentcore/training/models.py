@@ -101,11 +101,11 @@ class TrajectoryStep(BaseModel):
     action: dict[str, object] = Field(
         description="Action taken (tool call, planning decision)"
     )
-    result: dict[str, object] = Field(
-        description="Result of action execution"
-    )
+    result: dict[str, object] = Field(description="Result of action execution")
     timestamp: datetime = Field(description="Step execution timestamp")
-    duration_ms: int = Field(ge=0, description="Step execution duration in milliseconds")
+    duration_ms: int = Field(
+        ge=0, description="Step execution duration in milliseconds"
+    )
 
 
 class Trajectory(BaseModel):
@@ -121,12 +121,8 @@ class Trajectory(BaseModel):
         default_factory=list, description="Execution steps"
     )
     reward: float = Field(default=0.0, description="Raw reward value")
-    normalized_reward: float = Field(
-        default=0.0, description="Group-normalized reward"
-    )
-    advantage: float = Field(
-        default=0.0, description="Advantage (for policy gradient)"
-    )
+    normalized_reward: float = Field(default=0.0, description="Group-normalized reward")
+    advantage: float = Field(default=0.0, description="Advantage (for policy gradient)")
     execution_time_ms: int | None = Field(
         default=None, ge=0, description="Total trajectory execution time"
     )
@@ -166,9 +162,7 @@ class TrainingJob(BaseModel):
     cost_usd: Decimal = Field(
         default=Decimal("0.00"), ge=Decimal("0"), description="Accumulated cost in USD"
     )
-    budget_usd: Decimal = Field(
-        ge=Decimal("0"), description="Budget limit in USD"
-    )
+    budget_usd: Decimal = Field(ge=Decimal("0"), description="Budget limit in USD")
     best_checkpoint_id: UUID | None = Field(
         default=None, description="ID of best checkpoint"
     )
@@ -207,8 +201,8 @@ class PolicyCheckpoint(BaseModel):
     agent_id: str = Field(min_length=1, max_length=255, description="Agent identifier")
     job_id: UUID = Field(description="Parent training job ID")
     iteration: int = Field(ge=0, description="Training iteration number")
-    policy_data: dict[str, object] | None = (
-        Field(default=None, description="Policy data for small policies (prompts)")
+    policy_data: dict[str, object] | None = Field(
+        default=None, description="Policy data for small policies (prompts)"
     )
     policy_s3_path: str | None = Field(
         default=None, max_length=500, description="S3 path for large policy weights"

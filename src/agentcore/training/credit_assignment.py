@@ -158,7 +158,7 @@ class CreditAssignment:
         # Compute normalization statistics
         mean_reward = sum(flat_rewards) / len(flat_rewards)
         variance = sum((r - mean_reward) ** 2 for r in flat_rewards) / len(flat_rewards)
-        std_reward = variance ** 0.5 if variance > 0 else 1.0
+        std_reward = variance**0.5 if variance > 0 else 1.0
 
         # Compute normalized advantages
         all_advantages = []

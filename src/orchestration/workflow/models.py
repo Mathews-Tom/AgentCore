@@ -85,7 +85,8 @@ class CoordinationConfig(BaseModel):
     """Configuration for workflow coordination."""
 
     coordination_type: str = Field(
-        default="hybrid", description="Type of coordination: event_driven, graph_based, or hybrid"
+        default="hybrid",
+        description="Type of coordination: event_driven, graph_based, or hybrid",
     )
     event_driven_events: list[str] = Field(
         default_factory=list, description="Events to handle in event-driven mode"

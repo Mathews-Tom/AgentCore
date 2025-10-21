@@ -5,9 +5,9 @@ Demonstrates how to manage multiple training jobs concurrently using batch JSON-
 """
 
 import asyncio
-import httpx
 from typing import Any
 
+import httpx
 
 # Configuration
 API_URL = "http://localhost:8001/api/v1/jsonrpc"
@@ -26,10 +26,7 @@ async def start_multiple_jobs(agents: list[str]) -> list[dict[str, Any]]:
     """
     # Common training data
     training_data = [
-        {
-            "query": f"Task {i}",
-            "expected_outcome": {"success": True}
-        }
+        {"query": f"Task {i}", "expected_outcome": {"success": True}}
         for i in range(100)  # Minimum 100 queries
     ]
 
@@ -106,7 +103,9 @@ async def check_multiple_statuses(job_ids: list[str]) -> list[dict[str, Any]]:
     return results
 
 
-async def cancel_jobs(job_ids: list[str], reason: str = "Batch cancellation") -> list[dict[str, Any]]:
+async def cancel_jobs(
+    job_ids: list[str], reason: str = "Batch cancellation"
+) -> list[dict[str, Any]]:
     """
     Cancel multiple jobs using batch JSON-RPC request.
 
@@ -155,6 +154,7 @@ async def export_trajectories_parallel(job_ids: list[str]) -> dict[str, Any]:
     Returns:
         Dictionary mapping job_id to trajectories
     """
+
     async def export_single_job(job_id: str) -> tuple[str, list[dict[str, Any]]]:
         """Export trajectories for a single job."""
         request = {
@@ -207,9 +207,9 @@ async def monitor_batch_progress(job_ids: list[str], interval: int = 30) -> None
         # Get status for all jobs
         statuses = await check_multiple_statuses(job_ids)
 
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"Batch Status Update ({len(completed)}/{len(job_ids)} completed)")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         for status_response in statuses:
             if "error" in status_response:
@@ -233,8 +233,10 @@ async def monitor_batch_progress(job_ids: list[str], interval: int = 30) -> None
             progress = f"{status.get('progress_percent', 0):.1f}%"
             cost = f"${status.get('cost_usd', 0)} / ${status.get('budget_usd', 0)}"
 
-            print(f"{status_icon} {job_id[:8]}... | {status['agent_id']:<20} | "
-                  f"{status['status']:<10} | {progress:>6} | {cost}")
+            print(
+                f"{status_icon} {job_id[:8]}... | {status['agent_id']:<20} | "
+                f"{status['status']:<10} | {progress:>6} | {cost}"
+            )
 
             # Mark as complete if terminal state
             if status["status"] in ["completed", "failed", "cancelled"]:
@@ -246,9 +248,9 @@ async def monitor_batch_progress(job_ids: list[str], interval: int = 30) -> None
         if len(completed) < len(job_ids):
             await asyncio.sleep(interval)
 
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"All jobs completed!")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
 
 async def main() -> None:
@@ -308,7 +310,9 @@ async def main() -> None:
 
         # 4. Export trajectories from successful jobs
         if completed_jobs:
-            print(f"\nExporting trajectories from {len(completed_jobs)} completed jobs...")
+            print(
+                f"\nExporting trajectories from {len(completed_jobs)} completed jobs..."
+            )
             trajectories = await export_trajectories_parallel(completed_jobs)
 
             total_trajectories = sum(len(trajs) for trajs in trajectories.values())

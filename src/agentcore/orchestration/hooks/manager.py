@@ -100,9 +100,7 @@ class HookManager:
 
         # Update stats
         self._stats["total_hooks"] = len(self._hooks)
-        self._stats["active_hooks"] = sum(
-            1 for h in self._hooks.values() if h.enabled
-        )
+        self._stats["active_hooks"] = sum(1 for h in self._hooks.values() if h.enabled)
 
         self.logger.info(
             "Hook registered",
@@ -136,13 +134,9 @@ class HookManager:
 
         # Update stats
         self._stats["total_hooks"] = len(self._hooks)
-        self._stats["active_hooks"] = sum(
-            1 for h in self._hooks.values() if h.enabled
-        )
+        self._stats["active_hooks"] = sum(1 for h in self._hooks.values() if h.enabled)
 
-        self.logger.info(
-            "Hook unregistered", hook_id=str(hook_id), hook_name=hook.name
-        )
+        self.logger.info("Hook unregistered", hook_id=str(hook_id), hook_name=hook.name)
 
         return True
 
@@ -409,9 +403,8 @@ class HookManager:
 
         # Update average execution time
         if execution.duration_ms:
-            total_time = (
-                self._stats["avg_execution_time_ms"]
-                * (self._stats["total_executions"] - 1)
+            total_time = self._stats["avg_execution_time_ms"] * (
+                self._stats["total_executions"] - 1
             )
             self._stats["avg_execution_time_ms"] = (
                 total_time + execution.duration_ms

@@ -133,6 +133,7 @@ class StreamConsumer:
                         # Parse JSON value (producer serializes each value as JSON)
                         try:
                             import json
+
                             event_data[key_str] = json.loads(value_str)
                         except (json.JSONDecodeError, TypeError):
                             event_data[key_str] = value_str
@@ -319,9 +320,7 @@ class StreamConsumer:
         # In production, implement retry logic with DLQ
         await self._ack_message(stream, message_id)
 
-    async def get_pending_messages(
-        self, stream: str
-    ) -> list[dict[str, Any]]:
+    async def get_pending_messages(self, stream: str) -> list[dict[str, Any]]:
         """
         Get list of pending messages for this consumer.
 

@@ -234,7 +234,9 @@ class WebSocketConnectionManager:
                     connection_id=connection_id,
                     message_type=message_type,
                 )
-                await self._send_error(connection_id, f"Unknown message type: {message_type}")
+                await self._send_error(
+                    connection_id, f"Unknown message type: {message_type}"
+                )
 
         except json.JSONDecodeError as e:
             logger.warning(
@@ -261,7 +263,8 @@ class WebSocketConnectionManager:
         """
         # Get connection info for this connection type
         websocket_connections = [
-            conn_id for conn_id, conn_info in self.connection_pool._connections.items()
+            conn_id
+            for conn_id, conn_info in self.connection_pool._connections.items()
             if conn_info.connection_type == ConnectionType.WEBSOCKET
         ]
 
@@ -442,11 +445,16 @@ class WebSocketConnectionManager:
             return False
 
         # Check event type match
-        if subscription.event_types and event.event_type not in subscription.event_types:
+        if (
+            subscription.event_types
+            and event.event_type not in subscription.event_types
+        ):
             return False
 
         # Check filters
-        if not subscription.filters.matches({**event.payload, **(event.metadata or {})}):
+        if not subscription.filters.matches(
+            {**event.payload, **(event.metadata or {})}
+        ):
             return False
 
         return True

@@ -7,27 +7,26 @@ Prometheus metrics collection for monitoring and observability.
 from __future__ import annotations
 
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
-    'gateway_http_requests_total',
-    'Total number of HTTP requests',
-    ['method', 'endpoint', 'status_code']
+    "gateway_http_requests_total",
+    "Total number of HTTP requests",
+    ["method", "endpoint", "status_code"],
 )
 
 REQUEST_DURATION = Histogram(
-    'gateway_http_request_duration_seconds',
-    'HTTP request duration in seconds',
-    ['method', 'endpoint']
+    "gateway_http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
 )
 
 ACTIVE_REQUESTS = Gauge(
-    'gateway_http_requests_active',
-    'Number of active HTTP requests'
+    "gateway_http_requests_active", "Number of active HTTP requests"
 )
 
 
@@ -47,12 +46,11 @@ async def metrics_middleware(request: Request, call_next: Callable) -> Response:
         REQUEST_COUNT.labels(
             method=request.method,
             endpoint=request.url.path,
-            status_code=response.status_code
+            status_code=response.status_code,
         ).inc()
 
         REQUEST_DURATION.labels(
-            method=request.method,
-            endpoint=request.url.path
+            method=request.method, endpoint=request.url.path
         ).observe(time.time() - start_time)
 
         return response
@@ -60,14 +58,11 @@ async def metrics_middleware(request: Request, call_next: Callable) -> Response:
     except Exception as exc:
         # Record error metrics
         REQUEST_COUNT.labels(
-            method=request.method,
-            endpoint=request.url.path,
-            status_code=500
+            method=request.method, endpoint=request.url.path, status_code=500
         ).inc()
 
         REQUEST_DURATION.labels(
-            method=request.method,
-            endpoint=request.url.path
+            method=request.method, endpoint=request.url.path
         ).observe(time.time() - start_time)
 
         raise

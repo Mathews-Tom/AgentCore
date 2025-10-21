@@ -1,7 +1,8 @@
 """Security middleware for sandbox permission checks and audit logging."""
 
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 
@@ -225,7 +226,11 @@ class SecurityMiddleware:
                 if not sandbox_id and args:
                     sandbox_id = args[0]
 
-                config = self._sandbox_service._sandboxes.get(sandbox_id) if sandbox_id else None
+                config = (
+                    self._sandbox_service._sandboxes.get(sandbox_id)
+                    if sandbox_id
+                    else None
+                )
 
                 try:
                     # Execute function
@@ -240,7 +245,10 @@ class SecurityMiddleware:
                                 agent_id=config.agent_id,
                                 operation=func.__name__,
                                 result=True,
-                                metadata={"args_count": len(args), "kwargs_count": len(kwargs)},
+                                metadata={
+                                    "args_count": len(args),
+                                    "kwargs_count": len(kwargs),
+                                },
                             )
                         )
 

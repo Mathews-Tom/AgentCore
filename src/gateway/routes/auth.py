@@ -14,13 +14,7 @@ from jose import JWTError
 
 from gateway.auth.dependencies import get_current_user, require_auth
 from gateway.auth.jwt import jwt_manager
-from gateway.auth.models import (
-    AuthError,
-    TokenRequest,
-    TokenResponse,
-    User,
-    UserRole,
-)
+from gateway.auth.models import AuthError, TokenRequest, TokenResponse, User, UserRole
 from gateway.auth.session import session_manager
 
 logger = structlog.get_logger()
@@ -205,6 +199,7 @@ async def create_token(
 
         # Calculate expiration times
         from datetime import timedelta
+
         from gateway.config import settings
 
         access_expire_seconds = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -224,7 +219,7 @@ async def create_token(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Token creation failed",
-        )
+        ) from e
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -284,6 +279,7 @@ async def refresh_token(
         )
 
         from datetime import timedelta
+
         from gateway.config import settings
 
         access_expire_seconds = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -301,7 +297,7 @@ async def refresh_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired refresh token: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
     except HTTPException:
         raise
     except Exception as e:
@@ -309,7 +305,7 @@ async def refresh_token(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Token refresh failed",
-        )
+        ) from e
 
 
 @router.post("/logout")
@@ -349,7 +345,7 @@ async def logout(
 
 @router.get("/me", response_model=User)
 async def get_current_user_info(
-    user: Annotated[User, Depends(get_current_user)]
+    user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     """
     Get current authenticated user information.
@@ -365,7 +361,7 @@ async def get_current_user_info(
 
 @router.get("/sessions")
 async def get_user_sessions(
-    user: Annotated[User, Depends(require_auth)]
+    user: Annotated[User, Depends(require_auth)],
 ) -> dict[str, list[dict]]:
     """
     Get all active sessions for current user.

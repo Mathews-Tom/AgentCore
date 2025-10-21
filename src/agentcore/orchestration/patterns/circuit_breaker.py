@@ -7,9 +7,10 @@ Fault tolerance with circuit breakers, retry policies, and health monitoring.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -109,9 +110,7 @@ class RetryPolicy(BaseModel):
         elif self.strategy == RetryStrategy.LINEAR:
             delay = self.initial_delay_seconds * (self.current_attempt + 1)
         elif self.strategy == RetryStrategy.EXPONENTIAL:
-            delay = self.initial_delay_seconds * (
-                self.multiplier**self.current_attempt
-            )
+            delay = self.initial_delay_seconds * (self.multiplier**self.current_attempt)
         else:
             delay = self.initial_delay_seconds
 
@@ -300,10 +299,7 @@ class CircuitBreaker(BaseModel):
 
         if self.state == CircuitState.HALF_OPEN:
             # Check if should close
-            if (
-                self.metrics.consecutive_successes
-                >= self.config.success_threshold
-            ):
+            if self.metrics.consecutive_successes >= self.config.success_threshold:
                 await self._transition_to_closed()
 
     async def record_failure(self, error: Exception | None = None) -> None:
@@ -317,10 +313,7 @@ class CircuitBreaker(BaseModel):
 
         if self.state == CircuitState.CLOSED:
             # Check if should open
-            if (
-                self.metrics.consecutive_failures
-                >= self.config.failure_threshold
-            ):
+            if self.metrics.consecutive_failures >= self.config.failure_threshold:
                 await self._transition_to_open()
 
         elif self.state == CircuitState.HALF_OPEN:
@@ -405,9 +398,7 @@ class HealthMonitor(BaseModel):
 
     monitor_id: UUID = Field(default_factory=uuid4, description="Monitor identifier")
     service_name: str = Field(description="Service being monitored")
-    check_interval_seconds: int = Field(
-        default=30, description="Health check interval"
-    )
+    check_interval_seconds: int = Field(default=30, description="Health check interval")
 
     current_status: HealthStatus = Field(
         default=HealthStatus.UNKNOWN, description="Current health status"
@@ -438,9 +429,7 @@ class HealthMonitor(BaseModel):
             return
 
         self.is_monitoring = True
-        self._monitor_task = asyncio.create_task(
-            self._monitor_loop(health_check_func)
-        )
+        self._monitor_task = asyncio.create_task(self._monitor_loop(health_check_func))
 
     async def stop_monitoring(self) -> None:
         """Stop health monitoring."""
@@ -539,7 +528,9 @@ class HealthMonitor(BaseModel):
     def get_health_summary(self) -> dict[str, Any]:
         """Get health monitoring summary."""
         recent_checks = self.check_history[-10:]
-        healthy_count = sum(1 for c in recent_checks if c.status == HealthStatus.HEALTHY)
+        healthy_count = sum(
+            1 for c in recent_checks if c.status == HealthStatus.HEALTHY
+        )
 
         return {
             "monitor_id": str(self.monitor_id),

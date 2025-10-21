@@ -4,27 +4,6 @@ Orchestration Patterns
 Built-in orchestration patterns for multi-agent coordination.
 """
 
-from agentcore.orchestration.patterns.swarm import (
-    AgentProposal,
-    AgentRole,
-    AgentState,
-    ConsensusStrategy,
-    ProposalStatus,
-    SwarmConfig,
-    SwarmCoordinator,
-    SwarmTask,
-    Vote,
-)
-from agentcore.orchestration.patterns.saga import (
-    CompensationStrategy,
-    SagaConfig,
-    SagaDefinition,
-    SagaExecution,
-    SagaOrchestrator,
-    SagaStatus,
-    SagaStep,
-    SagaStepStatus,
-)
 from agentcore.orchestration.patterns.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -48,6 +27,27 @@ from agentcore.orchestration.patterns.custom import (
     TaskNode,
     ValidationRule,
     pattern_registry,
+)
+from agentcore.orchestration.patterns.saga import (
+    CompensationStrategy,
+    SagaConfig,
+    SagaDefinition,
+    SagaExecution,
+    SagaOrchestrator,
+    SagaStatus,
+    SagaStep,
+    SagaStepStatus,
+)
+from agentcore.orchestration.patterns.swarm import (
+    AgentProposal,
+    AgentRole,
+    AgentState,
+    ConsensusStrategy,
+    ProposalStatus,
+    SwarmConfig,
+    SwarmCoordinator,
+    SwarmTask,
+    Vote,
 )
 
 __all__ = [

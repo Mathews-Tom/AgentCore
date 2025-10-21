@@ -423,7 +423,9 @@ class TrainingJobScheduler:
             workers_health = await self.get_worker_health()
 
             # Count active workers
-            active_workers = len([w for w in workers_health.values() if w["status"] == "healthy"])
+            active_workers = len(
+                [w for w in workers_health.values() if w["status"] == "healthy"]
+            )
 
             return {
                 "status": "healthy",
@@ -470,7 +472,9 @@ def get_scheduler() -> TrainingJobScheduler:
     return _scheduler
 
 
-async def init_scheduler(job_manager: TrainingJobManager, redis_url: str | None = None) -> TrainingJobScheduler:
+async def init_scheduler(
+    job_manager: TrainingJobManager, redis_url: str | None = None
+) -> TrainingJobScheduler:
     """
     Initialize global scheduler instance.
 

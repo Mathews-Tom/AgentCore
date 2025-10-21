@@ -116,16 +116,24 @@ Return ONLY a JSON object with this exact structure:
         """
         try:
             # Extract JSON from response (handle potential markdown formatting)
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            json_match = re.search(r"\{.*\}", content, re.DOTALL)
             if not json_match:
-                logger.warning("carryover_json_not_found", content_preview=content[:200])
+                logger.warning(
+                    "carryover_json_not_found", content_preview=content[:200]
+                )
                 return None
 
             json_str = json_match.group(0)
             data = json.loads(json_str)
 
             # Validate required fields
-            required_fields = ["current_strategy", "key_findings", "progress", "next_steps", "unresolved"]
+            required_fields = [
+                "current_strategy",
+                "key_findings",
+                "progress",
+                "next_steps",
+                "unresolved",
+            ]
             if not all(field in data for field in required_fields):
                 logger.warning("carryover_missing_fields", fields=list(data.keys()))
                 return None
@@ -142,7 +150,11 @@ Return ONLY a JSON object with this exact structure:
             return carryover
 
         except json.JSONDecodeError as e:
-            logger.warning("carryover_json_parse_error", error=str(e), content_preview=content[:200])
+            logger.warning(
+                "carryover_json_parse_error",
+                error=str(e),
+                content_preview=content[:200],
+            )
             return None
         except Exception as e:
             logger.error("carryover_parse_unexpected_error", error=str(e))
@@ -164,11 +176,15 @@ Return ONLY a JSON object with this exact structure:
             Fallback carryover content
         """
         # Extract first few sentences as progress
-        sentences = iteration_content.split('. ')[:3]
-        progress = '. '.join(sentences) + '.'
+        sentences = iteration_content.split(". ")[:3]
+        progress = ". ".join(sentences) + "."
 
         # Preserve previous strategy if available
-        strategy = previous_carryover.current_strategy if previous_carryover else "Continue reasoning"
+        strategy = (
+            previous_carryover.current_strategy
+            if previous_carryover
+            else "Continue reasoning"
+        )
 
         return CarryoverContent(
             current_strategy=strategy,
@@ -207,7 +223,9 @@ Return ONLY a JSON object with this exact structure:
         )
 
         # Build prompt
-        prompt = self._build_carryover_prompt(query, iteration_content, previous_carryover)
+        prompt = self._build_carryover_prompt(
+            query, iteration_content, previous_carryover
+        )
         prompt_tokens = self.llm_client.count_tokens(prompt)
 
         # Calculate max tokens for carryover
@@ -230,7 +248,9 @@ Return ONLY a JSON object with this exact structure:
                     "carryover_parse_failed_using_fallback",
                     generation_content_preview=generation.content[:200],
                 )
-                return self._create_fallback_carryover(iteration_content, previous_carryover)
+                return self._create_fallback_carryover(
+                    iteration_content, previous_carryover
+                )
 
             # Validate carryover size
             carryover_text = carryover.to_text()
@@ -243,10 +263,15 @@ Return ONLY a JSON object with this exact structure:
                     max_tokens=self.max_carryover_tokens,
                 )
                 # Trim key_findings and next_steps to fit
-                while carryover_tokens > self.max_carryover_tokens and (carryover.key_findings or carryover.next_steps):
+                while carryover_tokens > self.max_carryover_tokens and (
+                    carryover.key_findings or carryover.next_steps
+                ):
                     if carryover.key_findings:
                         carryover.key_findings.pop()
-                    if carryover_tokens > self.max_carryover_tokens and carryover.next_steps:
+                    if (
+                        carryover_tokens > self.max_carryover_tokens
+                        and carryover.next_steps
+                    ):
                         carryover.next_steps.pop()
                     carryover_text = carryover.to_text()
                     carryover_tokens = self.llm_client.count_tokens(carryover_text)
@@ -267,4 +292,6 @@ Return ONLY a JSON object with this exact structure:
                 error=str(e),
             )
             # Return fallback carryover
-            return self._create_fallback_carryover(iteration_content, previous_carryover)
+            return self._create_fallback_carryover(
+                iteration_content, previous_carryover
+            )

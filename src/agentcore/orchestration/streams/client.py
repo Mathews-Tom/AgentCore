@@ -126,9 +126,7 @@ class RedisStreamsClient:
                 return False
             raise
 
-    async def delete_consumer_group(
-        self, stream_name: str, group_name: str
-    ) -> bool:
+    async def delete_consumer_group(self, stream_name: str, group_name: str) -> bool:
         """
         Delete consumer group.
 
@@ -139,12 +137,12 @@ class RedisStreamsClient:
         Returns:
             True if deleted
         """
-        result = await self.client.xgroup_destroy(name=stream_name, groupname=group_name)
+        result = await self.client.xgroup_destroy(
+            name=stream_name, groupname=group_name
+        )
         return bool(result)
 
-    async def trim_stream(
-        self, stream_name: str, max_length: int | None = None
-    ) -> int:
+    async def trim_stream(self, stream_name: str, max_length: int | None = None) -> int:
         """
         Trim stream to maximum length.
 
@@ -156,7 +154,9 @@ class RedisStreamsClient:
             Number of entries removed
         """
         max_len = max_length or self.config.max_stream_length
-        result = await self.client.xtrim(name=stream_name, maxlen=max_len, approximate=True)
+        result = await self.client.xtrim(
+            name=stream_name, maxlen=max_len, approximate=True
+        )
         return int(result)
 
     async def get_stream_length(self, stream_name: str) -> int:
@@ -172,9 +172,7 @@ class RedisStreamsClient:
         result = await self.client.xlen(name=stream_name)
         return int(result)
 
-    async def get_pending_count(
-        self, stream_name: str, group_name: str
-    ) -> int:
+    async def get_pending_count(self, stream_name: str, group_name: str) -> int:
         """
         Get count of pending messages in consumer group.
 
@@ -185,7 +183,9 @@ class RedisStreamsClient:
         Returns:
             Number of pending messages
         """
-        pending_info = await self.client.xpending(name=stream_name, groupname=group_name)
+        pending_info = await self.client.xpending(
+            name=stream_name, groupname=group_name
+        )
         if pending_info and len(pending_info) > 0:
             return int(pending_info[0])
         return 0

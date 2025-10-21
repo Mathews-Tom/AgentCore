@@ -122,7 +122,9 @@ class TrajectoryRecorder:
                 },
                 action={
                     "step_type": raw_step.get("step_type", "unknown"),
-                    "content": raw_step.get("content", "")[:200],  # Truncate for storage
+                    "content": raw_step.get("content", "")[
+                        :200
+                    ],  # Truncate for storage
                 },
                 result={
                     "content": raw_step.get("content", ""),

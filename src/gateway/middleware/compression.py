@@ -7,8 +7,8 @@ Implements gzip compression for response payloads to reduce bandwidth.
 from __future__ import annotations
 
 import gzip
+from collections.abc import Callable
 from io import BytesIO
-from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware

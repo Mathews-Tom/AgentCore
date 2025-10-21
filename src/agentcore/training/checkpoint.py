@@ -145,7 +145,9 @@ class CheckpointManager:
             "policy_data": checkpoint.policy_data,
             "validation_score": checkpoint.validation_score,
             "metrics": checkpoint.metrics,
-            "created_at": checkpoint.created_at.isoformat() if checkpoint.created_at else None,
+            "created_at": checkpoint.created_at.isoformat()
+            if checkpoint.created_at
+            else None,
         }
 
         checkpoint_file.write_text(json.dumps(checkpoint_data, indent=2))

@@ -7,7 +7,8 @@ Implements comprehensive input validation to prevent injection attacks.
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -102,7 +103,8 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         # Compile regex patterns
         if enable_sql_injection_check:
             self.sql_injection_regex = [
-                re.compile(pattern, re.IGNORECASE) for pattern in self.SQL_INJECTION_PATTERNS
+                re.compile(pattern, re.IGNORECASE)
+                for pattern in self.SQL_INJECTION_PATTERNS
             ]
 
         if enable_xss_check:
@@ -112,7 +114,8 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
 
         if enable_path_traversal_check:
             self.path_traversal_regex = [
-                re.compile(pattern, re.IGNORECASE) for pattern in self.PATH_TRAVERSAL_PATTERNS
+                re.compile(pattern, re.IGNORECASE)
+                for pattern in self.PATH_TRAVERSAL_PATTERNS
             ]
 
         if enable_command_injection_check:
@@ -120,7 +123,9 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                 re.compile(pattern) for pattern in self.COMMAND_INJECTION_PATTERNS
             ]
 
-    def _check_patterns(self, value: str, patterns: list[re.Pattern], attack_type: str) -> None:
+    def _check_patterns(
+        self, value: str, patterns: list[re.Pattern], attack_type: str
+    ) -> None:
         """
         Check value against attack patterns.
 
@@ -174,7 +179,9 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
 
         # Check command injection
         if self.enable_command_injection_check:
-            self._check_patterns(value, self.command_injection_regex, "command injection")
+            self._check_patterns(
+                value, self.command_injection_regex, "command injection"
+            )
 
     def _validate_headers(self, headers: dict[str, str]) -> None:
         """

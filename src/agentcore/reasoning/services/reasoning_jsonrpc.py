@@ -131,8 +131,7 @@ def _validate_authentication(request: JsonRpcRequest) -> None:
             trace_id=request.a2a_context.trace_id if request.a2a_context else None,
         )
         raise ValueError(
-            "Authentication required: Missing JWT token. "
-            "Provide 'auth_token' in params"
+            "Authentication required: Missing JWT token. Provide 'auth_token' in params"
         )
 
     # Validate token
@@ -200,7 +199,9 @@ class BoundedReasoningParams(BaseModel):
         ```
     """
 
-    query: str = Field(..., min_length=1, max_length=100000, description="Problem to solve")
+    query: str = Field(
+        ..., min_length=1, max_length=100000, description="Problem to solve"
+    )
     system_prompt: str | None = Field(
         default=None, max_length=10000, description="Optional system prompt"
     )
@@ -222,9 +223,7 @@ class BoundedReasoningParams(BaseModel):
 
     @field_validator("carryover_size")
     @classmethod
-    def validate_carryover_less_than_chunk(
-        cls, v: int, info
-    ) -> int:
+    def validate_carryover_less_than_chunk(cls, v: int, info) -> int:
         """Validate carryover_size is less than chunk_size."""
         chunk_size = info.data.get("chunk_size", 8192)
         if v >= chunk_size:
@@ -565,7 +564,9 @@ async def handle_bounded_reasoning(request: JsonRpcRequest) -> dict[str, Any]:
 
     except ValueError as e:
         # Parameter validation errors
-        logger.error("bounded_reasoning_validation_error", error=str(e), trace_id=trace_id)
+        logger.error(
+            "bounded_reasoning_validation_error", error=str(e), trace_id=trace_id
+        )
         record_reasoning_error("validation_error")
         raise ValueError(f"Invalid parameters: {e}") from e
 

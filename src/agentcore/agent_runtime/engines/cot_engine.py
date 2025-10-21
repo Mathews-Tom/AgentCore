@@ -8,14 +8,14 @@ import structlog
 from ..config.settings import get_settings
 from ..models.agent_config import AgentConfig
 from ..models.agent_state import AgentExecutionState
-from ..services.llm_service import LLMConfig, LLMResponse, get_llm_service, initialize_llm_service
-from .base import PhilosophyEngine
-from .cot_models import (
-    CoTExecutionContext,
-    CoTPromptTemplate,
-    CoTStep,
-    CoTStepType,
+from ..services.llm_service import (
+    LLMConfig,
+    LLMResponse,
+    get_llm_service,
+    initialize_llm_service,
 )
+from .base import PhilosophyEngine
+from .cot_models import CoTExecutionContext, CoTPromptTemplate, CoTStep, CoTStepType
 
 logger = structlog.get_logger()
 
@@ -299,7 +299,9 @@ Please refine the reasoning step based on the feedback."""
                     agent_id=self.agent_id,
                 )
                 # Fall back to simulated response on error
-                logger.warning("cot_falling_back_to_simulated_llm", agent_id=self.agent_id)
+                logger.warning(
+                    "cot_falling_back_to_simulated_llm", agent_id=self.agent_id
+                )
 
         # Simulated LLM response for testing or fallback
         step_num = self.context.current_step
@@ -309,7 +311,9 @@ Please refine the reasoning step based on the feedback."""
             if "calculate" in self.context.goal.lower():
                 content = f"Step 1: Break down the calculation in {self.context.goal}"
             elif "analyze" in self.context.goal.lower():
-                content = f"Step 1: Identify key components to analyze in {self.context.goal}"
+                content = (
+                    f"Step 1: Identify key components to analyze in {self.context.goal}"
+                )
             else:
                 content = f"Step 1: Understand the goal - {self.context.goal}"
         elif step_num == 2:
@@ -407,7 +411,12 @@ Please refine the reasoning step based on the feedback."""
         Returns:
             True if contains conclusion
         """
-        conclusion_markers = ["CONCLUSION:", "FINAL ANSWER:", "IN CONCLUSION", "THEREFORE,"]
+        conclusion_markers = [
+            "CONCLUSION:",
+            "FINAL ANSWER:",
+            "IN CONCLUSION",
+            "THEREFORE,",
+        ]
         return any(marker in content.upper() for marker in conclusion_markers)
 
     def _extract_conclusion(self, content: str) -> str:
@@ -448,4 +457,6 @@ Please refine the reasoning step based on the feedback."""
             "revise",
             "refine",
         ]
-        return any(indicator in verification.lower() for indicator in refinement_indicators)
+        return any(
+            indicator in verification.lower() for indicator in refinement_indicators
+        )

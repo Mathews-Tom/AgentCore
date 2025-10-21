@@ -6,7 +6,7 @@ Implements comprehensive security headers following OWASP best practices.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -35,8 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # HSTS - Force HTTPS for 1 year with subdomain inclusion
         if settings.SECURITY_HSTS_ENABLED:
             response.headers["Strict-Transport-Security"] = (
-                f"max-age={settings.SECURITY_HSTS_MAX_AGE}; "
-                "includeSubDomains; preload"
+                f"max-age={settings.SECURITY_HSTS_MAX_AGE}; includeSubDomains; preload"
             )
 
         # Prevent MIME type sniffing
@@ -57,7 +56,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Permissions Policy (formerly Feature-Policy)
         if settings.SECURITY_PERMISSIONS_POLICY:
-            response.headers["Permissions-Policy"] = settings.SECURITY_PERMISSIONS_POLICY
+            response.headers["Permissions-Policy"] = (
+                settings.SECURITY_PERMISSIONS_POLICY
+            )
 
         # Remove server identification
         # Note: MutableHeaders doesn't support .pop(), use del instead

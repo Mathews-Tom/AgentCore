@@ -108,9 +108,7 @@ class OAuthProviderRegistry:
         """
         if enabled_only:
             return [
-                provider
-                for provider, config in self._configs.items()
-                if config.enabled
+                provider for provider, config in self._configs.items() if config.enabled
             ]
         return list(self._providers.keys())
 
@@ -212,7 +210,9 @@ def initialize_oauth_providers() -> None:
                 provider=OAuthProvider.GOOGLE,
                 client_id=google_client_id,
                 client_secret=google_client_secret,
-                authorization_endpoint=HttpUrl(GoogleOAuthProvider.AUTHORIZATION_ENDPOINT),
+                authorization_endpoint=HttpUrl(
+                    GoogleOAuthProvider.AUTHORIZATION_ENDPOINT
+                ),
                 token_endpoint=HttpUrl(GoogleOAuthProvider.TOKEN_ENDPOINT),
                 userinfo_endpoint=HttpUrl(GoogleOAuthProvider.USERINFO_ENDPOINT),
                 revocation_endpoint=HttpUrl(GoogleOAuthProvider.REVOCATION_ENDPOINT),
@@ -220,7 +220,7 @@ def initialize_oauth_providers() -> None:
                 redirect_uri=getattr(
                     settings,
                     "OAUTH_GOOGLE_REDIRECT_URI",
-                    f"http://{settings.HOST}:{settings.PORT}/oauth/callback/google"
+                    f"http://{settings.HOST}:{settings.PORT}/oauth/callback/google",
                 ),
                 use_pkce=True,
             )
@@ -236,14 +236,16 @@ def initialize_oauth_providers() -> None:
                 provider=OAuthProvider.GITHUB,
                 client_id=github_client_id,
                 client_secret=github_client_secret,
-                authorization_endpoint=HttpUrl(GitHubOAuthProvider.AUTHORIZATION_ENDPOINT),
+                authorization_endpoint=HttpUrl(
+                    GitHubOAuthProvider.AUTHORIZATION_ENDPOINT
+                ),
                 token_endpoint=HttpUrl(GitHubOAuthProvider.TOKEN_ENDPOINT),
                 userinfo_endpoint=HttpUrl(GitHubOAuthProvider.USERINFO_ENDPOINT),
                 scopes=GitHubOAuthProvider.DEFAULT_SCOPES,
                 redirect_uri=getattr(
                     settings,
                     "OAUTH_GITHUB_REDIRECT_URI",
-                    f"http://{settings.HOST}:{settings.PORT}/oauth/callback/github"
+                    f"http://{settings.HOST}:{settings.PORT}/oauth/callback/github",
                 ),
                 use_pkce=True,
             )

@@ -240,3 +240,4 @@ class MetricsCalculator:
         )
 
         return capacity
+        return capacity

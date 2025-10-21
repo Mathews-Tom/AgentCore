@@ -43,7 +43,9 @@ class OrchestrationBenchmarks:
     """
 
     @staticmethod
-    def benchmark_graph_planning(node_count: int, edge_density: float = 0.1) -> BenchmarkResult:
+    def benchmark_graph_planning(
+        node_count: int, edge_density: float = 0.1
+    ) -> BenchmarkResult:
         """
         Benchmark workflow graph planning performance.
 
@@ -64,6 +66,7 @@ class OrchestrationBenchmarks:
 
             # Add edges with constraint: i < j to guarantee DAG property
             import random
+
             random.seed(42)  # Deterministic for benchmarking
             target_edges = int(node_count * (node_count - 1) * edge_density / 2)
             edges_added = 0
@@ -243,7 +246,9 @@ class OrchestrationBenchmarks:
 
         # Event processing benchmarks
         for event_count in [1000, 10000, 50000, 100000]:
-            result = await OrchestrationBenchmarks.benchmark_event_processing(event_count)
+            result = await OrchestrationBenchmarks.benchmark_event_processing(
+                event_count
+            )
             results[result.name] = result
 
         return results
