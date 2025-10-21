@@ -31,11 +31,13 @@ from agentcore.orchestration.streams.config import StreamConfig
 
 @pytest.fixture
 async def test_db_engine() -> AsyncGenerator[AsyncEngine, None]:
-    """Create test database engine with in-memory SQLite."""
+    """Create test database engine with in-memory SQLite.
+
+    Each test gets a fresh database to avoid index/table conflicts.
+    """
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
+        "sqlite+aiosqlite://",
         echo=False,
-        poolclass=StaticPool,
         connect_args={"check_same_thread": False},
     )
 
@@ -45,6 +47,7 @@ async def test_db_engine() -> AsyncGenerator[AsyncEngine, None]:
 
     yield engine
 
+    # Clean up
     await engine.dispose()
 
 

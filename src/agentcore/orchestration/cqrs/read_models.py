@@ -10,10 +10,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from agentcore.a2a_protocol.database.connection import Base
+
+# Cross-database JSON type (JSONB for PostgreSQL, JSON for others)
+JSONType = JSON().with_variant(JSONB(), "postgresql")
 
 
 class WorkflowReadModel(Base):
@@ -31,9 +34,9 @@ class WorkflowReadModel(Base):
     status = Column(String(50), nullable=False, index=True)
 
     # Denormalized data
-    agent_requirements = Column(JSONB, nullable=True)
-    task_definitions = Column(JSONB, nullable=True)
-    workflow_config = Column(JSONB, nullable=True)
+    agent_requirements = Column(JSONType, nullable=True)
+    task_definitions = Column(JSONType, nullable=True)
+    workflow_config = Column(JSONType, nullable=True)
 
     # Metadata
     created_by = Column(String(255), nullable=True, index=True)
@@ -48,8 +51,8 @@ class WorkflowReadModel(Base):
     average_execution_time_ms = Column(Float, nullable=True)
 
     __table_args__ = (
-        Index("idx_workflow_status_created", "status", "created_at"),
-        Index("idx_workflow_pattern_status", "orchestration_pattern", "status"),
+        Index("idx_workflow_status_created", "status", "created_at", sqlite_where=None),
+        Index("idx_workflow_pattern_status", "orchestration_pattern", "status", sqlite_where=None),
     )
 
 
@@ -67,11 +70,11 @@ class ExecutionReadModel(Base):
     status = Column(String(50), nullable=False, index=True)
 
     # Input/Output
-    input_data = Column(JSONB, nullable=True)
-    output_data = Column(JSONB, nullable=True)
+    input_data = Column(JSONType, nullable=True)
+    output_data = Column(JSONType, nullable=True)
 
     # Execution options
-    execution_options = Column(JSONB, nullable=True)
+    execution_options = Column(JSONType, nullable=True)
 
     # Metadata
     started_by = Column(String(255), nullable=True)
