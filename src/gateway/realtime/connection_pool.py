@@ -447,11 +447,13 @@ class ConnectionPool:
     def _update_stats(self) -> None:
         """Update pool statistics."""
         websocket_count = sum(
-            1 for conn in self._connections.values()
+            1
+            for conn in self._connections.values()
             if conn.connection_type == ConnectionType.WEBSOCKET
         )
         sse_count = sum(
-            1 for conn in self._connections.values()
+            1
+            for conn in self._connections.values()
             if conn.connection_type == ConnectionType.SSE
         )
 

@@ -8,10 +8,9 @@ import asyncio
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from agentcore.a2a_protocol.services.event_manager import event_manager
-
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -20,7 +19,7 @@ router = APIRouter()
 @router.websocket("/ws/events")
 async def websocket_events_endpoint(
     websocket: WebSocket,
-    subscriber_id: str = Query(..., description="Subscriber identifier")
+    subscriber_id: str = Query(..., description="Subscriber identifier"),
 ):
     """
     WebSocket endpoint for real-time event notifications.
@@ -43,18 +42,20 @@ async def websocket_events_endpoint(
         logger.info(
             "WebSocket connection established",
             connection_id=connection_id,
-            subscriber_id=subscriber_id
+            subscriber_id=subscriber_id,
         )
 
         # Send connection confirmation
-        await websocket.send_json({
-            "message_type": "connected",
-            "payload": {
-                "connection_id": connection_id,
-                "subscriber_id": subscriber_id,
-                "message": "WebSocket connection established"
+        await websocket.send_json(
+            {
+                "message_type": "connected",
+                "payload": {
+                    "connection_id": connection_id,
+                    "subscriber_id": subscriber_id,
+                    "message": "WebSocket connection established",
+                },
             }
-        })
+        )
 
         # Keep connection alive and handle incoming messages
         while True:
@@ -67,17 +68,21 @@ async def websocket_events_endpoint(
 
                 if message_type == "ping":
                     # Respond to ping
-                    await websocket.send_json({
-                        "message_type": "pong",
-                        "payload": {"timestamp": data.get("payload", {}).get("timestamp")}
-                    })
+                    await websocket.send_json(
+                        {
+                            "message_type": "pong",
+                            "payload": {
+                                "timestamp": data.get("payload", {}).get("timestamp")
+                            },
+                        }
+                    )
 
                 elif message_type == "subscribe":
                     # Handle subscription request
                     logger.info(
                         "Subscription request via WebSocket",
                         connection_id=connection_id,
-                        subscriber_id=subscriber_id
+                        subscriber_id=subscriber_id,
                     )
                     # Subscriptions are handled via JSON-RPC methods
 
@@ -85,16 +90,13 @@ async def websocket_events_endpoint(
                     logger.warning(
                         "Unknown WebSocket message type",
                         message_type=message_type,
-                        connection_id=connection_id
+                        connection_id=connection_id,
                     )
 
             except asyncio.TimeoutError:
                 # Timeout waiting for message - send ping
                 try:
-                    await websocket.send_json({
-                        "message_type": "ping",
-                        "payload": {}
-                    })
+                    await websocket.send_json({"message_type": "ping", "payload": {}})
                 except Exception:
                     break
 
@@ -102,7 +104,7 @@ async def websocket_events_endpoint(
         logger.info(
             "WebSocket client disconnected",
             connection_id=connection_id,
-            subscriber_id=subscriber_id
+            subscriber_id=subscriber_id,
         )
 
     except Exception as e:
@@ -110,7 +112,7 @@ async def websocket_events_endpoint(
             "WebSocket error",
             connection_id=connection_id,
             subscriber_id=subscriber_id,
-            error=str(e)
+            error=str(e),
         )
 
     finally:
@@ -121,5 +123,5 @@ async def websocket_events_endpoint(
         logger.info(
             "WebSocket connection closed",
             connection_id=connection_id,
-            subscriber_id=subscriber_id
+            subscriber_id=subscriber_id,
         )

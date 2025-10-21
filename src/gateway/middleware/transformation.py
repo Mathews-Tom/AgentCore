@@ -7,7 +7,7 @@ Handles request preprocessing and response postprocessing.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -32,6 +32,7 @@ class TransformationMiddleware(BaseHTTPMiddleware):
         # Add trace ID to request state if not present
         if "X-Trace-ID" not in request.headers:
             import uuid
+
             request.state.trace_id = str(uuid.uuid4())
         else:
             request.state.trace_id = request.headers["X-Trace-ID"]
@@ -39,6 +40,7 @@ class TransformationMiddleware(BaseHTTPMiddleware):
         # Add request ID if not present
         if "X-Request-ID" not in request.headers:
             import uuid
+
             request.state.request_id = str(uuid.uuid4())
         else:
             request.state.request_id = request.headers["X-Request-ID"]
@@ -53,6 +55,7 @@ class TransformationMiddleware(BaseHTTPMiddleware):
         # Add timing header if available
         if hasattr(request.state, "start_time"):
             import time
+
             duration_ms = (time.time() - request.state.start_time) * 1000
             response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
 
@@ -116,6 +119,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
     def _generate_etag(self, content: bytes) -> str:
         """Generate ETag from response content."""
         import hashlib
+
         return hashlib.md5(content).hexdigest()
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

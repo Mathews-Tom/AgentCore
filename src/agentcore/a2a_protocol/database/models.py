@@ -5,7 +5,6 @@ SQLAlchemy ORM models for agents, tasks, and related entities.
 """
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlalchemy import (
     JSON,
@@ -13,7 +12,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum as SQLEnum,
     Float,
     ForeignKey,
     Index,
@@ -22,10 +20,12 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 try:
     from pgvector.sqlalchemy import Vector
+
     PGVECTOR_AVAILABLE = True
 except ImportError:
     PGVECTOR_AVAILABLE = False
@@ -34,8 +34,8 @@ except ImportError:
 
 from agentcore.a2a_protocol.database.connection import Base
 from agentcore.a2a_protocol.models.agent import AgentStatus
+from agentcore.a2a_protocol.models.session import SessionPriority, SessionState
 from agentcore.a2a_protocol.models.task import TaskStatus
-from agentcore.a2a_protocol.models.session import SessionState, SessionPriority
 
 
 class AgentDB(Base):
@@ -47,7 +47,12 @@ class AgentDB(Base):
     name = Column(String(255), nullable=False)
     version = Column(String(50), nullable=False)
     # Use native PostgreSQL enum (created by migrations)
-    status = Column(SQLEnum(AgentStatus, name='agentstatus', create_type=False), nullable=False, default=AgentStatus.INACTIVE, index=True)
+    status = Column(
+        SQLEnum(AgentStatus, name="agentstatus", create_type=False),
+        nullable=False,
+        default=AgentStatus.INACTIVE,
+        index=True,
+    )
     description = Column(Text, nullable=True)
 
     # Capabilities stored as JSON array
@@ -55,7 +60,9 @@ class AgentDB(Base):
 
     # A2A-016: Semantic capability matching - vector embeddings
     # 384 dimensions for sentence-transformers/all-MiniLM-L6-v2
-    capability_embedding = Column(Vector(384) if PGVECTOR_AVAILABLE else JSON, nullable=True)
+    capability_embedding = Column(
+        Vector(384) if PGVECTOR_AVAILABLE else JSON, nullable=True
+    )
 
     # Requirements stored as JSON object
     requirements = Column(JSON, nullable=True)
@@ -76,12 +83,23 @@ class AgentDB(Base):
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
     last_seen = Column(DateTime, nullable=True)
 
     # Relationships
-    tasks = relationship("TaskDB", back_populates="assigned_agent", foreign_keys="TaskDB.assigned_agent_id")
-    health_metrics = relationship("AgentHealthMetricDB", back_populates="agent", cascade="all, delete-orphan")
+    tasks = relationship(
+        "TaskDB",
+        back_populates="assigned_agent",
+        foreign_keys="TaskDB.assigned_agent_id",
+    )
+    health_metrics = relationship(
+        "AgentHealthMetricDB", back_populates="agent", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("idx_agent_status_load", "status", "current_load"),
@@ -100,7 +118,12 @@ class TaskDB(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     # Use native PostgreSQL enum (created by migrations)
-    status = Column(SQLEnum(TaskStatus, name='taskstatus', create_type=False), nullable=False, default=TaskStatus.PENDING, index=True)
+    status = Column(
+        SQLEnum(TaskStatus, name="taskstatus", create_type=False),
+        nullable=False,
+        default=TaskStatus.PENDING,
+        index=True,
+    )
     priority = Column(Integer, nullable=False, default=5, index=True)
 
     # Task requirements
@@ -108,8 +131,12 @@ class TaskDB(Base):
     parameters = Column(JSON, nullable=True)
 
     # Agent assignment
-    assigned_agent_id = Column(String(255), ForeignKey("agents.id"), nullable=True, index=True)
-    assigned_agent = relationship("AgentDB", back_populates="tasks", foreign_keys=[assigned_agent_id])
+    assigned_agent_id = Column(
+        String(255), ForeignKey("agents.id"), nullable=True, index=True
+    )
+    assigned_agent = relationship(
+        "AgentDB", back_populates="tasks", foreign_keys=[assigned_agent_id]
+    )
 
     # Task dependencies
     depends_on = Column(JSON, nullable=True)  # Array of task IDs
@@ -119,8 +146,15 @@ class TaskDB(Base):
     error = Column(Text, nullable=True)
 
     # Timing
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -139,7 +173,12 @@ class AgentHealthMetricDB(Base):
     __tablename__ = "agent_health_metrics"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    agent_id = Column(String(255), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id = Column(
+        String(255),
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     agent = relationship("AgentDB", back_populates="health_metrics")
 
     # Health status
@@ -158,7 +197,9 @@ class AgentHealthMetricDB(Base):
     memory_mb = Column(Float, nullable=True)
 
     # Timestamp
-    checked_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    checked_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
 
     __table_args__ = (
         Index("idx_health_agent_time", "agent_id", "checked_at"),
@@ -191,7 +232,9 @@ class MessageQueueDB(Base):
     last_error = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    created_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
     processed_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
@@ -237,7 +280,9 @@ class SecurityTokenDB(Base):
     token_type = Column(String(50), nullable=False)
 
     # Token lifecycle
-    issued_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    issued_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
     expires_at = Column(DateTime, nullable=False, index=True)
 
     # Revocation
@@ -260,7 +305,9 @@ class RateLimitDB(Base):
 
     # Rate limiting
     request_count = Column(Integer, nullable=False, default=0)
-    window_start = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    window_start = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
 
     # Configuration
     max_requests = Column(Integer, nullable=False, default=1000)
@@ -271,7 +318,12 @@ class RateLimitDB(Base):
     last_violation = Column(DateTime, nullable=True)
 
     # Timestamps
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
 
 
 class AgentPublicKeyDB(Base):
@@ -291,9 +343,7 @@ class AgentPublicKeyDB(Base):
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     replaced_by = Column(String(255), nullable=True)  # New key fingerprint
 
-    __table_args__ = (
-        Index("idx_public_key_active", "agent_id", "is_active"),
-    )
+    __table_args__ = (Index("idx_public_key_active", "agent_id", "is_active"),)
 
 
 class SessionSnapshotDB(Base):
@@ -308,12 +358,33 @@ class SessionSnapshotDB(Base):
     description = Column(Text, nullable=True)
     # Use native PostgreSQL enums (created by migrations)
     # values_callable ensures we use the .value property of str enums
-    state = Column(SQLEnum(SessionState, name='sessionstate', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False, default=SessionState.ACTIVE, index=True)
-    priority = Column(SQLEnum(SessionPriority, name='sessionpriority', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False, default=SessionPriority.NORMAL)
+    state = Column(
+        SQLEnum(
+            SessionState,
+            name="sessionstate",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=SessionState.ACTIVE,
+        index=True,
+    )
+    priority = Column(
+        SQLEnum(
+            SessionPriority,
+            name="sessionpriority",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=SessionPriority.NORMAL,
+    )
 
     # Participants
     owner_agent = Column(String(255), nullable=False, index=True)
-    participant_agents = Column(JSON, nullable=False, default=list)  # Array of agent IDs
+    participant_agents = Column(
+        JSON, nullable=False, default=list
+    )  # Array of agent IDs
 
     # Context and state (stored as JSON)
     context = Column(JSON, nullable=False, default=dict)  # SessionContext serialized
@@ -323,8 +394,15 @@ class SessionSnapshotDB(Base):
     artifact_ids = Column(JSON, nullable=False, default=list)  # Array of artifact IDs
 
     # Lifecycle tracking
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
     expires_at = Column(DateTime, nullable=True, index=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -344,7 +422,11 @@ class SessionSnapshotDB(Base):
     __table_args__ = (
         Index("idx_session_state", "state"),
         Index("idx_session_owner", "owner_agent"),
-        Index("idx_session_created_at", "created_at", postgresql_ops={"created_at": "DESC"}),
+        Index(
+            "idx_session_created_at",
+            "created_at",
+            postgresql_ops={"created_at": "DESC"},
+        ),
         Index("idx_session_expires_at", "expires_at"),
         Index("idx_session_tags", "tags", postgresql_using="gin"),
     )

@@ -10,7 +10,10 @@ from typing import Any
 
 import structlog
 
-from agentcore.training.credit_assignment import CreditAssignment, CreditAssignmentConfig
+from agentcore.training.credit_assignment import (
+    CreditAssignment,
+    CreditAssignmentConfig,
+)
 from agentcore.training.models import Trajectory
 from agentcore.training.rewards import RewardEngine
 
@@ -203,7 +206,11 @@ class GRPOTrainer:
             )
 
         # Filter positive advantages
-        positive_indices = [i for i, adv in enumerate(advantages) if adv > self.config.advantage_threshold]
+        positive_indices = [
+            i
+            for i, adv in enumerate(advantages)
+            if adv > self.config.advantage_threshold
+        ]
 
         if not positive_indices:
             logger.warning(
@@ -390,6 +397,10 @@ class GRPOTrainer:
         return clipped
 
     def reset_metrics(self) -> None:
+        """Reset training metrics."""
+        self.metrics = TrainingMetrics()
+        logger.info("training_metrics_reset")
+        logger.info("training_metrics_reset")
         """Reset training metrics."""
         self.metrics = TrainingMetrics()
         logger.info("training_metrics_reset")

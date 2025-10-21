@@ -14,14 +14,8 @@ from uuid import UUID, uuid4
 import structlog
 
 from agentcore.training.grpo import GRPOConfig, GRPOTrainer
-from agentcore.training.models import (
-    GRPOConfig as GRPOConfigModel,
-)
-from agentcore.training.models import (
-    TrainingJob,
-    TrainingJobStatus,
-    TrainingQuery,
-)
+from agentcore.training.models import GRPOConfig as GRPOConfigModel
+from agentcore.training.models import TrainingJob, TrainingJobStatus, TrainingQuery
 from agentcore.training.policy import PolicyUpdater
 from agentcore.training.rewards import RewardEngine
 from agentcore.training.trajectory import TrajectoryCollector
@@ -96,7 +90,9 @@ class TrainingJobManager:
         job = self.jobs[job_id]
 
         if job.status != TrainingJobStatus.QUEUED:
-            raise ValueError(f"Job {job_id} not in QUEUED state (current: {job.status})")
+            raise ValueError(
+                f"Job {job_id} not in QUEUED state (current: {job.status})"
+            )
 
         # Update status
         job.status = TrainingJobStatus.RUNNING
@@ -169,7 +165,9 @@ class TrainingJobManager:
                 "budget_usd": float(job.budget_usd),
                 "budget_remaining_usd": float(job.budget_usd - job.cost_usd),
             },
-            "best_checkpoint_id": str(job.best_checkpoint_id) if job.best_checkpoint_id else None,
+            "best_checkpoint_id": str(job.best_checkpoint_id)
+            if job.best_checkpoint_id
+            else None,
         }
 
     async def _execute_job(self, job_id: UUID) -> None:

@@ -6,30 +6,29 @@ Cross-cutting concerns including logging, metrics, and request handling.
 
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 import structlog
 from fastapi import FastAPI, Request, Response
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 from agentcore.a2a_protocol.config import settings
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
-    'http_requests_total',
-    'Total number of HTTP requests',
-    ['method', 'endpoint', 'status_code']
+    "http_requests_total",
+    "Total number of HTTP requests",
+    ["method", "endpoint", "status_code"],
 )
 
 REQUEST_DURATION = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request duration in seconds',
-    ['method', 'endpoint']
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
 )
 
 ACTIVE_CONNECTIONS = Gauge(
-    'websocket_connections_active',
-    'Number of active WebSocket connections'
+    "websocket_connections_active", "Number of active WebSocket connections"
 )
 
 logger = structlog.get_logger()
@@ -86,6 +85,7 @@ def setup_middleware(app: FastAPI) -> None:
             raise
 
     if settings.ENABLE_METRICS:
+
         @app.middleware("http")
         async def metrics_middleware(request: Request, call_next: Callable) -> Response:
             """Collect Prometheus metrics."""
@@ -98,12 +98,11 @@ def setup_middleware(app: FastAPI) -> None:
                 REQUEST_COUNT.labels(
                     method=request.method,
                     endpoint=request.url.path,
-                    status_code=response.status_code
+                    status_code=response.status_code,
                 ).inc()
 
                 REQUEST_DURATION.labels(
-                    method=request.method,
-                    endpoint=request.url.path
+                    method=request.method, endpoint=request.url.path
                 ).observe(time.time() - start_time)
 
                 return response
@@ -111,14 +110,11 @@ def setup_middleware(app: FastAPI) -> None:
             except Exception as exc:
                 # Record error metrics
                 REQUEST_COUNT.labels(
-                    method=request.method,
-                    endpoint=request.url.path,
-                    status_code=500
+                    method=request.method, endpoint=request.url.path, status_code=500
                 ).inc()
 
                 REQUEST_DURATION.labels(
-                    method=request.method,
-                    endpoint=request.url.path
+                    method=request.method, endpoint=request.url.path
                 ).observe(time.time() - start_time)
 
                 raise

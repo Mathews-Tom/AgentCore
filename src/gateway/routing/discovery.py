@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -48,13 +48,13 @@ class ServiceInstance:
     def mark_healthy(self) -> None:
         """Mark instance as healthy."""
         self.status = ServiceStatus.HEALTHY
-        self.last_health_check = datetime.now()
+        self.last_health_check = datetime.now(UTC)
         self.failure_count = 0
 
     def mark_unhealthy(self) -> None:
         """Mark instance as unhealthy."""
         self.status = ServiceStatus.UNHEALTHY
-        self.last_health_check = datetime.now()
+        self.last_health_check = datetime.now(UTC)
         self.failure_count += 1
 
 
@@ -123,7 +123,11 @@ class ServiceDiscovery:
 
         # Check if instance already registered
         existing = next(
-            (i for i in self._services[instance.service_name] if i.instance_id == instance.instance_id),
+            (
+                i
+                for i in self._services[instance.service_name]
+                if i.instance_id == instance.instance_id
+            ),
             None,
         )
 
@@ -163,7 +167,9 @@ class ServiceDiscovery:
             instance_id=instance_id,
         )
 
-    def get_instances(self, service_name: str, healthy_only: bool = True) -> list[ServiceInstance]:
+    def get_instances(
+        self, service_name: str, healthy_only: bool = True
+    ) -> list[ServiceInstance]:
         """
         Get all instances of a service.
 
@@ -181,7 +187,9 @@ class ServiceDiscovery:
 
         return instances
 
-    def get_instance(self, service_name: str, instance_id: str) -> ServiceInstance | None:
+    def get_instance(
+        self, service_name: str, instance_id: str
+    ) -> ServiceInstance | None:
         """
         Get a specific service instance.
 
@@ -209,7 +217,9 @@ class ServiceDiscovery:
                     for instance in instances:
                         try:
                             # Perform health check
-                            async with httpx.AsyncClient(timeout=self.health_check_timeout) as client:
+                            async with httpx.AsyncClient(
+                                timeout=self.health_check_timeout
+                            ) as client:
                                 response = await client.get(f"{instance.url}/health")
 
                                 if response.status_code == 200:

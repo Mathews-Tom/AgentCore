@@ -24,7 +24,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_token_payload(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)]
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> TokenPayload:
     """
     Extract and validate JWT token from Authorization header.
@@ -60,7 +60,7 @@ async def get_token_payload(
 
 
 async def get_current_user(
-    payload: Annotated[TokenPayload, Depends(get_token_payload)]
+    payload: Annotated[TokenPayload, Depends(get_token_payload)],
 ) -> User:
     """
     Get current authenticated user from token payload.
@@ -133,9 +133,7 @@ async def require_role(required_role: UserRole, user: User) -> User:
     return user
 
 
-def require_admin(
-    user: Annotated[User, Depends(get_current_user)]
-) -> User:
+def require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
     """
     Require admin role for access.
 
@@ -156,9 +154,7 @@ def require_admin(
     return user
 
 
-def require_auth(
-    user: Annotated[User, Depends(get_current_user)]
-) -> User:
+def require_auth(user: Annotated[User, Depends(get_current_user)]) -> User:
     """
     Require any authenticated user.
 

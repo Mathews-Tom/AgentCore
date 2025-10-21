@@ -17,19 +17,13 @@ from orchestration.workflow.models import (
 class WorkflowGraphError(Exception):
     """Base exception for workflow graph errors."""
 
-    pass
-
 
 class CycleDetectedError(WorkflowGraphError):
     """Exception raised when a cycle is detected in the workflow graph."""
 
-    pass
-
 
 class InvalidGraphError(WorkflowGraphError):
     """Exception raised when the graph structure is invalid."""
-
-    pass
 
 
 class WorkflowGraph:
@@ -103,9 +97,7 @@ class WorkflowGraph:
             edge_type: Type of edge (sequential or conditional)
             **attributes: Additional edge attributes
         """
-        self._graph.add_edge(
-            from_node, to_node, edge_type=edge_type, **attributes
-        )
+        self._graph.add_edge(from_node, to_node, edge_type=edge_type, **attributes)
 
     def get_node(self, node_id: str) -> TaskNode:
         """Get node data by ID.
@@ -150,9 +142,7 @@ class WorkflowGraph:
             List of node IDs with no predecessors
         """
         return [
-            node
-            for node in self._graph.nodes()
-            if self._graph.in_degree(node) == 0
+            node for node in self._graph.nodes() if self._graph.in_degree(node) == 0
         ]
 
     def get_exit_nodes(self) -> list[str]:
@@ -162,9 +152,7 @@ class WorkflowGraph:
             List of node IDs with no successors
         """
         return [
-            node
-            for node in self._graph.nodes()
-            if self._graph.out_degree(node) == 0
+            node for node in self._graph.nodes() if self._graph.out_degree(node) == 0
         ]
 
     def topological_sort(self) -> list[str]:
@@ -206,9 +194,7 @@ class WorkflowGraph:
         cycles = self.detect_cycles()
         if cycles:
             cycle_str = ", ".join(" -> ".join(cycle) for cycle in cycles)
-            raise CycleDetectedError(
-                f"Workflow graph contains cycles: {cycle_str}"
-            )
+            raise CycleDetectedError(f"Workflow graph contains cycles: {cycle_str}")
 
         # Check that all referenced nodes exist
         for node_id in self._graph.nodes():
@@ -219,9 +205,7 @@ class WorkflowGraph:
 
         # Check for disconnected components
         if not nx.is_weakly_connected(self._graph):
-            raise InvalidGraphError(
-                "Workflow graph contains disconnected components"
-            )
+            raise InvalidGraphError("Workflow graph contains disconnected components")
 
     def get_ready_nodes(self, completed_nodes: set[str]) -> list[str]:
         """Get nodes that are ready to execute.

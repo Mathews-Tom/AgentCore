@@ -37,7 +37,9 @@ async def oauth_authorize(
     provider: OAuthProvider,
     request: Request,
     scope: str | None = Query(None, description="Requested scopes (space-separated)"),
-    redirect_after_login: str | None = Query(None, description="URL to redirect after successful login"),
+    redirect_after_login: str | None = Query(
+        None, description="URL to redirect after successful login"
+    ),
 ) -> RedirectResponse:
     """
     Initiate OAuth authorization flow.
@@ -296,7 +298,9 @@ async def oauth_client_credentials(
 
     try:
         # Get client credentials token
-        token_response = await provider_instance.get_client_credentials_token(scope=scope)
+        token_response = await provider_instance.get_client_credentials_token(
+            scope=scope
+        )
 
         logger.info(
             "Client credentials token issued",

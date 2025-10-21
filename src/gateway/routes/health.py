@@ -37,10 +37,7 @@ async def health_check(request: Request) -> HealthResponse:
         result = await request.app.state.health_checker.check_all()
 
         checks = {
-            name: HealthCheckDetail(
-                status=check["status"],
-                details=check["message"]
-            )
+            name: HealthCheckDetail(status=check["status"], details=check["message"])
             for name, check in result["checks"].items()
         }
 
@@ -79,13 +76,11 @@ async def readiness_check(request: Request) -> ReadinessResponse:
         if result["status"] != "ready":
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=result.get("reason", "Service not ready")
+                detail=result.get("reason", "Service not ready"),
             )
 
         return ReadinessResponse(
-            status=result["status"],
-            ready=True,
-            checks={"critical_dependencies": True}
+            status=result["status"], ready=True, checks={"critical_dependencies": True}
         )
 
     # Fallback to basic readiness check

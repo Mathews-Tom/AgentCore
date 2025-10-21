@@ -264,7 +264,9 @@ class LoadBalancer:
         self.algorithm = algorithm
         self._strategy = self._create_strategy(algorithm)
 
-    def _create_strategy(self, algorithm: LoadBalancingAlgorithm) -> LoadBalancingStrategy:
+    def _create_strategy(
+        self, algorithm: LoadBalancingAlgorithm
+    ) -> LoadBalancingStrategy:
         """
         Create strategy instance based on algorithm.
 

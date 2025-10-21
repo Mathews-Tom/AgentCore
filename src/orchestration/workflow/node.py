@@ -37,7 +37,6 @@ class WorkflowNode(ABC):
         Raises:
             Exception: If execution fails
         """
-        pass
 
     def add_dependency(self, node_id: str) -> None:
         """Add a dependency to this node.

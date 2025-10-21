@@ -50,7 +50,11 @@ class PKCEGenerator:
         if length is None:
             length = PKCEGenerator.DEFAULT_VERIFIER_LENGTH
 
-        if not (PKCEGenerator.MIN_VERIFIER_LENGTH <= length <= PKCEGenerator.MAX_VERIFIER_LENGTH):
+        if not (
+            PKCEGenerator.MIN_VERIFIER_LENGTH
+            <= length
+            <= PKCEGenerator.MAX_VERIFIER_LENGTH
+        ):
             raise ValueError(
                 f"Code verifier length must be between {PKCEGenerator.MIN_VERIFIER_LENGTH} "
                 f"and {PKCEGenerator.MAX_VERIFIER_LENGTH} characters"
@@ -87,7 +91,11 @@ class PKCEGenerator:
         """
         verifier_length = len(code_verifier)
 
-        if not (PKCEGenerator.MIN_VERIFIER_LENGTH <= verifier_length <= PKCEGenerator.MAX_VERIFIER_LENGTH):
+        if not (
+            PKCEGenerator.MIN_VERIFIER_LENGTH
+            <= verifier_length
+            <= PKCEGenerator.MAX_VERIFIER_LENGTH
+        ):
             raise ValueError(
                 f"Code verifier length must be between {PKCEGenerator.MIN_VERIFIER_LENGTH} "
                 f"and {PKCEGenerator.MAX_VERIFIER_LENGTH} characters"
@@ -122,7 +130,9 @@ class PKCEGenerator:
             True if challenge matches verifier, False otherwise
         """
         try:
-            expected_challenge = PKCEGenerator.generate_code_challenge(code_verifier, method)
+            expected_challenge = PKCEGenerator.generate_code_challenge(
+                code_verifier, method
+            )
             return secrets.compare_digest(expected_challenge, code_challenge)
         except (ValueError, AttributeError):
             return False

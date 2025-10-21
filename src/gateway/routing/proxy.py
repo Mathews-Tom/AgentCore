@@ -13,7 +13,11 @@ import httpx
 import structlog
 from fastapi import HTTPException, Request, Response
 
-from .circuit_breaker import CircuitBreakerConfig, CircuitBreakerOpenError, CircuitBreakerRegistry
+from .circuit_breaker import (
+    CircuitBreakerConfig,
+    CircuitBreakerOpenError,
+    CircuitBreakerRegistry,
+)
 from .discovery import ServiceDiscovery
 from .load_balancer import LoadBalancer, LoadBalancingAlgorithm
 

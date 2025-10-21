@@ -481,7 +481,9 @@ class SessionRepository:
             tags=snapshot.tags,
             session_metadata=snapshot.metadata,
             checkpoint_interval_seconds=snapshot.checkpoint_interval_seconds,
-            last_checkpoint_at=SessionRepository._strip_timezone(snapshot.last_checkpoint_at),
+            last_checkpoint_at=SessionRepository._strip_timezone(
+                snapshot.last_checkpoint_at
+            ),
             checkpoint_count=snapshot.checkpoint_count,
         )
         session.add(session_db)
@@ -518,7 +520,9 @@ class SessionRepository:
                 completed_at=SessionRepository._strip_timezone(snapshot.completed_at),
                 tags=snapshot.tags,
                 session_metadata=snapshot.metadata,
-                last_checkpoint_at=SessionRepository._strip_timezone(snapshot.last_checkpoint_at),
+                last_checkpoint_at=SessionRepository._strip_timezone(
+                    snapshot.last_checkpoint_at
+                ),
                 checkpoint_count=snapshot.checkpoint_count,
             )
         )
@@ -646,6 +650,8 @@ class SessionRepository:
             tags=session_db.tags or [],
             metadata=session_db.session_metadata or {},
             checkpoint_interval_seconds=session_db.checkpoint_interval_seconds,
-            last_checkpoint_at=SessionRepository._add_timezone(session_db.last_checkpoint_at),
+            last_checkpoint_at=SessionRepository._add_timezone(
+                session_db.last_checkpoint_at
+            ),
             checkpoint_count=session_db.checkpoint_count,
         )

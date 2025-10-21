@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
 
 import redis.asyncio as aioredis
 
@@ -146,7 +145,11 @@ class StreamProducer:
                     name=stream, fields=event_data
                 )
                 # Decode bytes to string
-                return message_id.decode() if isinstance(message_id, bytes) else str(message_id)
+                return (
+                    message_id.decode()
+                    if isinstance(message_id, bytes)
+                    else str(message_id)
+                )
             except (aioredis.ConnectionError, aioredis.TimeoutError) as e:
                 last_error = e
                 if attempt < self.config.max_retries - 1:

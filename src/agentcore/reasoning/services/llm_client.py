@@ -41,7 +41,9 @@ class LLMClientConfig(BaseModel):
         description="LLM API base URL",
     )
     default_model: str = Field(default="gpt-4.1", description="Default LLM model")
-    timeout_seconds: int = Field(default=60, ge=5, le=300, description="Request timeout")
+    timeout_seconds: int = Field(
+        default=60, ge=5, le=300, description="Request timeout"
+    )
     max_retries: int = Field(default=3, ge=0, le=10, description="Max retry attempts")
     retry_delays: list[float] = Field(
         default=[1.0, 2.0, 4.0],
@@ -72,7 +74,9 @@ class GenerationResult(BaseModel):
 
     content: str = Field(..., description="Generated text content")
     tokens_used: int = Field(..., ge=0, description="Total tokens consumed")
-    finish_reason: str = Field(..., description="Reason for completion (stop, length, etc.)")
+    finish_reason: str = Field(
+        ..., description="Reason for completion (stop, length, etc.)"
+    )
     model: str = Field(..., description="Model used for generation")
     stop_sequence_found: str | None = Field(
         default=None,
@@ -162,11 +166,14 @@ class LLMClient:
             current_time = asyncio.get_event_loop().time()
             if (
                 self.circuit_opened_at is not None
-                and current_time - self.circuit_opened_at >= self.config.circuit_breaker_timeout
+                and current_time - self.circuit_opened_at
+                >= self.config.circuit_breaker_timeout
             ):
                 # Move to half-open state
                 self.circuit_state = CircuitState.HALF_OPEN
-                logger.info("circuit_breaker_half_open", attempt="testing service recovery")
+                logger.info(
+                    "circuit_breaker_half_open", attempt="testing service recovery"
+                )
             else:
                 raise RuntimeError(
                     f"Circuit breaker OPEN. Service unavailable. "
@@ -319,7 +326,9 @@ class LLMClient:
 
                 # Wait before retry (exponential backoff)
                 if attempt < self.config.max_retries - 1:
-                    delay = self.config.retry_delays[min(attempt, len(self.config.retry_delays) - 1)]
+                    delay = self.config.retry_delays[
+                        min(attempt, len(self.config.retry_delays) - 1)
+                    ]
                     await asyncio.sleep(delay)
 
         # All retries exhausted

@@ -9,8 +9,8 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from pydantic import BaseModel, Field
 
 from ..services.alerting_service import (
     AlertSeverity,
@@ -160,9 +160,7 @@ async def get_metrics_snapshot() -> MetricSnapshot:
 
 @router.get("/metrics/history", response_model=list[MetricSnapshot])
 async def get_metrics_history(
-    metric_name: str | None = Query(
-        default=None, description="Specific metric name"
-    ),
+    metric_name: str | None = Query(default=None, description="Specific metric name"),
     limit: int = Query(default=100, ge=1, le=1000, description="Number of snapshots"),
 ) -> list[MetricSnapshot]:
     """
@@ -313,7 +311,9 @@ async def acknowledge_alert(
     success = await alerting.acknowledge_alert(alert_id, request.acknowledged_by)
 
     if not success:
-        raise HTTPException(status_code=404, detail="Alert not found or already handled")
+        raise HTTPException(
+            status_code=404, detail="Alert not found or already handled"
+        )
 
     return {"success": True}
 
@@ -453,8 +453,7 @@ async def get_performance_dashboard() -> DashboardResponse:
     # Agent metrics
     agent_metrics = {
         "total_agents": sum(
-            collector.agents_total._metrics.get((p.value, "completed"), {})
-            ._value.get()
+            collector.agents_total._metrics.get((p.value, "completed"), {})._value.get()
             for p in ["react", "cot", "multi_agent", "autonomous"]
         ),
     }

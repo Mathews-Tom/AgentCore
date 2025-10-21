@@ -7,7 +7,8 @@ FastAPI middleware for automatic rate limiting with RFC 6585 compliant headers.
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 from fastapi import Request, Response, status
@@ -16,10 +17,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from gateway.middleware.ddos_protection import DDoSProtector, ThreatLevel
 from gateway.middleware.rate_limiter import (
+    RateLimiter,
     RateLimitPolicy,
     RateLimitResult,
     RateLimitType,
-    RateLimiter,
 )
 
 logger = structlog.get_logger()
@@ -299,9 +300,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # 3. Per-user rate limit (if authenticated)
         if user_id:
-            checks.append(
-                (RateLimitType.USER, user_id, self.default_policies["user"])
-            )
+            checks.append((RateLimitType.USER, user_id, self.default_policies["user"]))
 
         # Execute rate limit checks
         try:

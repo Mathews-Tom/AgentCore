@@ -14,7 +14,9 @@ from prometheus_client import REGISTRY, Counter, Histogram
 _metrics_cache: dict[str, Counter | Histogram] = {}
 
 
-def _get_or_create_counter(name: str, description: str, labelnames: list[str] | None = None) -> Counter:
+def _get_or_create_counter(
+    name: str, description: str, labelnames: list[str] | None = None
+) -> Counter:
     """Get existing counter or create new one, handling duplicates."""
     if name in _metrics_cache:
         return cast(Counter, _metrics_cache[name])
@@ -32,7 +34,9 @@ def _get_or_create_counter(name: str, description: str, labelnames: list[str] | 
         raise
 
 
-def _get_or_create_histogram(name: str, description: str, buckets: list[float]) -> Histogram:
+def _get_or_create_histogram(
+    name: str, description: str, buckets: list[float]
+) -> Histogram:
     """Get existing histogram or create new one, handling duplicates."""
     if name in _metrics_cache:
         return cast(Histogram, _metrics_cache[name])

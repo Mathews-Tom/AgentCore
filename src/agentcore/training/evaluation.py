@@ -13,7 +13,7 @@ from typing import Any
 
 from scipy import stats  # type: ignore
 
-from agentcore.training.models import Trajectory, TrainingQuery
+from agentcore.training.models import TrainingQuery, Trajectory
 
 
 @dataclass
@@ -84,7 +84,9 @@ class EvaluationFramework:
             Tuple of (train_queries, eval_queries)
         """
         if not 0 < held_out_ratio < 1:
-            raise ValueError(f"held_out_ratio must be between 0 and 1, got {held_out_ratio}")
+            raise ValueError(
+                f"held_out_ratio must be between 0 and 1, got {held_out_ratio}"
+            )
 
         split_idx = int(len(training_queries) * (1 - held_out_ratio))
 
@@ -136,16 +138,13 @@ class EvaluationFramework:
         # Tool accuracy (optional - depends on trajectory metadata)
         tool_accuracy: float | None = None
         tool_using_trajectories = [
-            t for t in trajectories
-            if any(
-                step.action.get("type") == "tool_call"
-                for step in t.steps
-            )
+            t
+            for t in trajectories
+            if any(step.action.get("type") == "tool_call" for step in t.steps)
         ]
         if tool_using_trajectories:
             correct_tool_usage = [
-                t for t in tool_using_trajectories
-                if self._check_tool_correctness(t)
+                t for t in tool_using_trajectories if self._check_tool_correctness(t)
             ]
             tool_accuracy = len(correct_tool_usage) / len(tool_using_trajectories)
 
@@ -199,7 +198,9 @@ class EvaluationFramework:
             StatisticalTest with t-statistic, p-value, and significance
         """
         if not baseline_trajectories or not trained_trajectories:
-            raise ValueError("Both baseline and trained trajectories required for comparison")
+            raise ValueError(
+                "Both baseline and trained trajectories required for comparison"
+            )
 
         # Extract metric values
         baseline_values = self._extract_metric(baseline_trajectories, metric_key)
@@ -263,7 +264,9 @@ class EvaluationFramework:
         Returns:
             True if evaluation should run, False otherwise
         """
-        return current_iteration > 0 and current_iteration % self.evaluation_interval == 0
+        return (
+            current_iteration > 0 and current_iteration % self.evaluation_interval == 0
+        )
 
     def run_evaluation(
         self,

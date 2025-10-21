@@ -11,7 +11,8 @@ Optimizations for workflow graph planning to achieve <1s planning for 1000+ node
 from __future__ import annotations
 
 import functools
-from typing import Any, Hashable
+from collections.abc import Hashable
+from typing import Any
 
 import networkx as nx
 
@@ -36,9 +37,7 @@ class GraphOptimizer:
         self._path_cache: dict[tuple[int, Hashable, Hashable], list[Hashable]] = {}
         self._levels_cache: dict[int, list[set[Hashable]]] = {}
 
-    def topological_sort_cached(
-        self, graph: nx.DiGraph
-    ) -> list[Hashable]:
+    def topological_sort_cached(self, graph: nx.DiGraph) -> list[Hashable]:
         """
         Cached topological sort for workflow execution ordering.
 
@@ -86,9 +85,7 @@ class GraphOptimizer:
 
         return self._path_cache[cache_key]
 
-    def compute_execution_levels(
-        self, graph: nx.DiGraph
-    ) -> list[set[Hashable]]:
+    def compute_execution_levels(self, graph: nx.DiGraph) -> list[set[Hashable]]:
         """
         Compute execution levels for parallel task scheduling.
 
@@ -111,7 +108,9 @@ class GraphOptimizer:
                 level_nodes = {
                     node
                     for node in remaining_nodes
-                    if not any(pred in remaining_nodes for pred in graph.predecessors(node))
+                    if not any(
+                        pred in remaining_nodes for pred in graph.predecessors(node)
+                    )
                 }
 
                 if not level_nodes:
@@ -236,5 +235,7 @@ def analyze_workflow_parallelism(graph: nx.DiGraph) -> dict[str, Any]:
         "avg_parallelism": avg_parallelism,
         "critical_path_length": len(critical_path),
         "total_nodes": graph.number_of_nodes(),
-        "parallelism_efficiency": avg_parallelism / max_parallelism if max_parallelism > 0 else 0,
+        "parallelism_efficiency": avg_parallelism / max_parallelism
+        if max_parallelism > 0
+        else 0,
     }

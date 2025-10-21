@@ -14,20 +14,22 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Index, and_, desc, select
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Index,
+    Integer,
+    String,
+    Text,
+    and_,
+    desc,
+    select,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 
 from agentcore.a2a_protocol.database.connection import Base
 from agentcore.orchestration.cqrs.events import DomainEvent, deserialize_event
-
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Integer,
-    String,
-    Text,
-)
 
 
 class EventRecord(Base):
@@ -183,9 +185,7 @@ class EventStore(ABC):
         pass
 
     @abstractmethod
-    async def get_snapshot(
-        self, aggregate_id: UUID
-    ) -> SnapshotData | None:
+    async def get_snapshot(self, aggregate_id: UUID) -> SnapshotData | None:
         """
         Get latest snapshot for aggregate.
 
@@ -327,16 +327,16 @@ class PostgreSQLEventStore(EventStore):
             aggregate_type=snapshot.aggregate_type,
             timestamp=snapshot.timestamp,
             snapshot_data=json.dumps(snapshot.state),
-            snapshot_metadata=json.dumps(snapshot.metadata) if snapshot.metadata else None,
+            snapshot_metadata=json.dumps(snapshot.metadata)
+            if snapshot.metadata
+            else None,
         )
 
         # Use merge to handle upsert
         await self.session.merge(record)
         await self.session.flush()
 
-    async def get_snapshot(
-        self, aggregate_id: UUID
-    ) -> SnapshotData | None:
+    async def get_snapshot(self, aggregate_id: UUID) -> SnapshotData | None:
         """Get latest snapshot for aggregate."""
         query = (
             select(SnapshotRecord)
@@ -357,7 +357,9 @@ class PostgreSQLEventStore(EventStore):
             version=record.version,
             timestamp=record.timestamp,
             state=json.loads(record.snapshot_data),
-            metadata=json.loads(record.snapshot_metadata) if record.snapshot_metadata else {},
+            metadata=json.loads(record.snapshot_metadata)
+            if record.snapshot_metadata
+            else {},
         )
 
 

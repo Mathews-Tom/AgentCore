@@ -83,9 +83,7 @@ class AgentProposal(BaseModel):
     proposal_id: UUID = Field(default_factory=uuid4)
     proposer_id: str = Field(description="Agent proposing the action")
     proposal_type: str = Field(description="Type of proposal")
-    proposal_data: dict[str, Any] = Field(
-        description="Proposal data and parameters"
-    )
+    proposal_data: dict[str, Any] = Field(description="Proposal data and parameters")
     status: ProposalStatus = Field(default=ProposalStatus.PENDING)
 
     required_votes: int | None = Field(
@@ -111,8 +109,12 @@ class SwarmTask(BaseModel):
 
     task_id: UUID = Field(default_factory=uuid4)
     task_type: str = Field(description="Type of task")
-    task_data: dict[str, Any] = Field(default_factory=dict, description="Task input data")
-    input_data: dict[str, Any] | None = Field(default=None, description="Alias for task_data")
+    task_data: dict[str, Any] = Field(
+        default_factory=dict, description="Task input data"
+    )
+    input_data: dict[str, Any] | None = Field(
+        default=None, description="Alias for task_data"
+    )
 
     assigned_agents: list[str] = Field(default_factory=list)
     status: str = Field(default="pending")
@@ -218,9 +220,7 @@ class SwarmCoordinator:
             agent: Agent state to register
         """
         if len(self._agents) >= self.config.max_swarm_size:
-            raise ValueError(
-                f"Swarm size limit reached ({self.config.max_swarm_size})"
-            )
+            raise ValueError(f"Swarm size limit reached ({self.config.max_swarm_size})")
         self._agents[agent.agent_id] = agent
 
     async def join_swarm(
@@ -370,9 +370,7 @@ class SwarmCoordinator:
             proposal = self._proposals[proposal_id]
 
             if proposal.status != ProposalStatus.VOTING:
-                raise ValueError(
-                    f"Proposal not in voting state: {proposal.status}"
-                )
+                raise ValueError(f"Proposal not in voting state: {proposal.status}")
 
             # Check if already voted
             if agent_id in self._vote_cache[proposal_id]:
@@ -463,9 +461,7 @@ class SwarmCoordinator:
             proposal = self._proposals[proposal_id]
 
             if proposal.status != ProposalStatus.ACCEPTED:
-                raise ValueError(
-                    f"Proposal not accepted: {proposal.status}"
-                )
+                raise ValueError(f"Proposal not accepted: {proposal.status}")
 
         # Execute proposal logic (implementation specific)
         result = {
@@ -706,9 +702,7 @@ class SwarmCoordinator:
                     "active": len(active_agents),
                     "inactive": len(self._agents) - len(active_agents),
                     "by_role": {
-                        role: sum(
-                            1 for a in active_agents if a.role == role
-                        )
+                        role: sum(1 for a in active_agents if a.role == role)
                         for role in AgentRole
                     },
                 },
@@ -805,9 +799,7 @@ class SwarmCoordinator:
         """
         # Simple assignment - pick active agents with matching capabilities
         active_agents = [
-            agent_id
-            for agent_id, agent in self._agents.items()
-            if agent.active
+            agent_id for agent_id, agent in self._agents.items() if agent.active
         ]
 
         # Assign based on required_agents if specified

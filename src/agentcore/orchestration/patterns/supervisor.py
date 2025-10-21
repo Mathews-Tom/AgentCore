@@ -87,7 +87,9 @@ class SupervisorConfig(BaseModel):
     enable_auto_recovery: bool = Field(
         default=True, description="Enable automatic worker failure recovery"
     )
-    max_task_retries: int = Field(default=3, ge=0, description="Max task retry attempts")
+    max_task_retries: int = Field(
+        default=3, ge=0, description="Max task retry attempts"
+    )
 
 
 class SupervisorCoordinator:
@@ -450,10 +452,14 @@ class SupervisorCoordinator:
                 "workers": {
                     "total": len(self._workers),
                     "idle": sum(
-                        1 for w in self._workers.values() if w.status == WorkerStatus.IDLE
+                        1
+                        for w in self._workers.values()
+                        if w.status == WorkerStatus.IDLE
                     ),
                     "busy": sum(
-                        1 for w in self._workers.values() if w.status == WorkerStatus.BUSY
+                        1
+                        for w in self._workers.values()
+                        if w.status == WorkerStatus.BUSY
                     ),
                     "failed": sum(
                         1

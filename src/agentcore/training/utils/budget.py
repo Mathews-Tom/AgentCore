@@ -59,7 +59,9 @@ class BudgetEnforcer:
             warning_90_pct=warning_threshold_90,
         )
 
-    def check_budget_available(self, required_amount: Decimal) -> tuple[bool, BudgetStatus]:
+    def check_budget_available(
+        self, required_amount: Decimal
+    ) -> tuple[bool, BudgetStatus]:
         """
         Check if budget is available for operation.
 

@@ -5,10 +5,10 @@ Demonstrates how to monitor a training job's progress and retrieve final results
 """
 
 import asyncio
-import httpx
+from datetime import UTC, datetime
 from typing import Any
-from datetime import datetime
 
+import httpx
 
 # Configuration
 API_URL = "http://localhost:8001/api/v1/jsonrpc"
@@ -50,28 +50,34 @@ async def monitor_job(job_id: str) -> dict[str, Any]:
         status = await get_job_status(job_id)
 
         # Display current status
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Status Update:")
+        print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] Status Update:")
         print(f"  Status: {status['status']}")
-        print(f"  Progress: {status['current_iteration']}/{status['total_iterations']} "
-              f"({status['progress_percent']:.1f}%)")
+        print(
+            f"  Progress: {status['current_iteration']}/{status['total_iterations']} "
+            f"({status['progress_percent']:.1f}%)"
+        )
 
         if "metrics" in status:
             metrics = status["metrics"]
             print(f"  Metrics:")
             print(f"    - Train Loss: {metrics.get('train_loss', 'N/A'):.4f}")
-            print(f"    - Validation Accuracy: {metrics.get('validation_accuracy', 'N/A'):.2f}")
+            print(
+                f"    - Validation Accuracy: {metrics.get('validation_accuracy', 'N/A'):.2f}"
+            )
             print(f"    - Avg Reward: {metrics.get('avg_reward', 'N/A'):.2f}")
             print(f"    - Trajectories: {metrics.get('trajectories_generated', 'N/A')}")
 
-        print(f"  Cost: ${status['cost_usd']} / ${status['budget_usd']} "
-              f"({status['budget_remaining_percent']:.1f}% remaining)")
+        print(
+            f"  Cost: ${status['cost_usd']} / ${status['budget_usd']} "
+            f"({status['budget_remaining_percent']:.1f}% remaining)"
+        )
 
         if "estimated_completion" in status:
             print(f"  ETA: {status['estimated_completion']}")
 
         # Check if job is complete
         if status["status"] in ["completed", "failed", "cancelled"]:
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"Job {status['status'].upper()}!")
 
             if status["status"] == "completed":
@@ -128,11 +134,10 @@ async def main(job_id: str) -> None:
         if final_status["status"] == "completed":
             print(f"\nRunning evaluation on best checkpoint...")
             eval_results = await evaluate_job(
-                job_id,
-                final_status.get("best_checkpoint_id")
+                job_id, final_status.get("best_checkpoint_id")
             )
 
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print("EVALUATION RESULTS:")
             print(f"  Success Rate: {eval_results['metrics']['success_rate']:.2%}")
             print(f"  Avg Reward: {eval_results['metrics']['avg_reward']:.4f}")
@@ -142,10 +147,16 @@ async def main(job_id: str) -> None:
             if "baseline_comparison" in eval_results:
                 comp = eval_results["baseline_comparison"]
                 print(f"\n  Baseline Comparison:")
-                print(f"    - Success Rate Improvement: {comp['success_rate_improvement']:+.2%}")
-                print(f"    - Avg Reward Improvement: {comp['avg_reward_improvement']:+.4f}")
-                print(f"    - Statistical Significance: {'Yes' if comp['statistically_significant'] else 'No'} "
-                      f"(p={comp['p_value']:.4f})")
+                print(
+                    f"    - Success Rate Improvement: {comp['success_rate_improvement']:+.2%}"
+                )
+                print(
+                    f"    - Avg Reward Improvement: {comp['avg_reward_improvement']:+.4f}"
+                )
+                print(
+                    f"    - Statistical Significance: {'Yes' if comp['statistically_significant'] else 'No'} "
+                    f"(p={comp['p_value']:.4f})"
+                )
 
             print(f"\n  Queries Evaluated: {eval_results['queries_evaluated']}")
             print(f"  Duration: {eval_results['evaluation_duration_ms'] / 1000:.1f}s")

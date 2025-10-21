@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 from uuid import uuid4
 
 import structlog
@@ -106,12 +107,14 @@ class SSEManager:
                     connection_id=connection_id,
                     error=str(e),
                 )
+
                 # Return error event
                 async def error_generator() -> AsyncGenerator[dict[str, str], None]:
                     yield {
                         "event": "error",
                         "data": json.dumps({"error": "Authentication failed"}),
                     }
+
                 return EventSourceResponse(error_generator())
 
         # Generate client ID
@@ -140,12 +143,16 @@ class SSEManager:
                 "Connection pool full",
                 connection_id=connection_id,
             )
+
             # Return error event
-            async def capacity_error_generator() -> AsyncGenerator[dict[str, str], None]:
+            async def capacity_error_generator() -> AsyncGenerator[
+                dict[str, str], None
+            ]:
                 yield {
                     "event": "error",
                     "data": json.dumps({"error": "Server capacity reached"}),
                 }
+
             return EventSourceResponse(capacity_error_generator())
 
         # Create event queue for this connection
@@ -198,11 +205,13 @@ class SSEManager:
                 # Send connection established event
                 yield {
                     "event": "connected",
-                    "data": json.dumps({
-                        "connection_id": connection_id,
-                        "client_id": client_id,
-                        "subscription_id": subscription_id,
-                    }),
+                    "data": json.dumps(
+                        {
+                            "connection_id": connection_id,
+                            "client_id": client_id,
+                            "subscription_id": subscription_id,
+                        }
+                    ),
                 }
 
                 # Start keepalive task
@@ -231,7 +240,13 @@ class SSEManager:
                                 # Keepalive message
                                 yield {
                                     "event": "keepalive",
-                                    "data": json.dumps({"timestamp": event.timestamp.isoformat() if hasattr(event, 'timestamp') else ""}),
+                                    "data": json.dumps(
+                                        {
+                                            "timestamp": event.timestamp.isoformat()
+                                            if hasattr(event, "timestamp")
+                                            else ""
+                                        }
+                                    ),
                                 }
                             else:
                                 # Send event
@@ -247,7 +262,7 @@ class SSEManager:
                                     len(json.dumps(event.to_dict())),
                                 )
 
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             # Continue to check for disconnect
                             continue
 
@@ -288,7 +303,9 @@ class SSEManager:
             return
 
         # Check if event matches subscription filters
-        if not subscription.filters.matches({**event.payload, **(event.metadata or {})}):
+        if not subscription.filters.matches(
+            {**event.payload, **(event.metadata or {})}
+        ):
             return
 
         # Queue event

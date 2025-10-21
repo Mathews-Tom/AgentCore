@@ -9,7 +9,16 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sse_starlette.sse import EventSourceResponse
 
 from gateway.auth.dependencies import get_current_user
@@ -173,7 +182,7 @@ async def sse_endpoint(
     Example:
     ```bash
     curl -N -H "Accept: text/event-stream" \
-      "http://localhost:8080/realtime/events?topics=agent.123&event_types=task.created&token=..."
+        "http://localhost:8080/realtime/events?topics=agent.123&event_types=task.created&token=..."
     ```
     """
     # Build filters

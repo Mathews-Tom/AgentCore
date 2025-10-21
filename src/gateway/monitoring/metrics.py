@@ -32,7 +32,9 @@ if _is_test_mode or "__gateway_metrics_cache__" in sys.modules:
     # Use a custom registry for tests
     if "__gateway_metrics_registry__" not in sys.modules:
         _test_registry = CollectorRegistry()
-        sys.modules["__gateway_metrics_registry__"] = type(sys)("__gateway_metrics_registry__")
+        sys.modules["__gateway_metrics_registry__"] = type(sys)(
+            "__gateway_metrics_registry__"
+        )
         sys.modules["__gateway_metrics_registry__"].registry = _test_registry
     _REGISTRY = sys.modules["__gateway_metrics_registry__"].registry
 else:
@@ -120,7 +122,9 @@ def _get_or_create_histogram(
 
     try:
         kwargs = {"buckets": buckets} if buckets else {}
-        metric = Histogram(name, documentation, labelnames or [], registry=_REGISTRY, **kwargs)
+        metric = Histogram(
+            name, documentation, labelnames or [], registry=_REGISTRY, **kwargs
+        )
         _metrics_cache[name] = metric
         return metric
     except ValueError:

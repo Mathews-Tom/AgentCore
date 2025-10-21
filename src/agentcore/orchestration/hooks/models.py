@@ -161,9 +161,7 @@ class HookExecution(BaseModel):
     )
     output_data: dict[str, Any] | None = Field(None, description="Hook output data")
     error_message: str | None = Field(None, description="Error message if failed")
-    error_traceback: str | None = Field(
-        None, description="Error traceback if failed"
-    )
+    error_traceback: str | None = Field(None, description="Error traceback if failed")
 
     # Retry tracking
     retry_count: int = Field(default=0, description="Number of retry attempts")

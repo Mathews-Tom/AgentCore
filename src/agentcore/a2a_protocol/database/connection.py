@@ -4,8 +4,8 @@ Database Connection Management
 SQLAlchemy engine, session factory, and connection pooling for PostgreSQL.
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from sqlalchemy import event
@@ -52,7 +52,9 @@ async def init_db() -> None:
         return
 
     database_url = get_database_url()
-    logger.info("Initializing database connection", url=database_url.split("@")[-1])  # Hide credentials
+    logger.info(
+        "Initializing database connection", url=database_url.split("@")[-1]
+    )  # Hide credentials
 
     # Create async engine with connection pooling
     engine = create_async_engine(
@@ -83,9 +85,11 @@ async def init_db() -> None:
         autoflush=False,
     )
 
-    logger.info("Database initialized successfully",
-               pool_size=settings.DATABASE_POOL_SIZE,
-               max_overflow=settings.DATABASE_MAX_OVERFLOW)
+    logger.info(
+        "Database initialized successfully",
+        pool_size=settings.DATABASE_POOL_SIZE,
+        max_overflow=settings.DATABASE_MAX_OVERFLOW,
+    )
 
 
 async def close_db() -> None:

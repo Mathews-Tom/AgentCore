@@ -5,8 +5,8 @@ A2A protocol compliant session management methods for creating, managing,
 and monitoring long-running workflow sessions.
 """
 
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any
 
 import structlog
 
@@ -14,10 +14,10 @@ from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.models.session import (
     SessionCreateRequest,
     SessionCreateResponse,
+    SessionPriority,
     SessionQuery,
     SessionQueryResponse,
     SessionState,
-    SessionPriority,
 )
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.a2a_protocol.services.session_manager import session_manager
@@ -26,7 +26,7 @@ logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("session.create")
-async def handle_session_create(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_create(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Create a new session.
 
@@ -87,14 +87,14 @@ async def handle_session_create(request: JsonRpcRequest) -> Dict[str, Any]:
         session_id=response.session_id,
         name=name,
         owner=owner_agent,
-        method="session.create"
+        method="session.create",
     )
 
     return response.model_dump()
 
 
 @register_jsonrpc_method("session.get")
-async def handle_session_get(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_get(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get session details.
 
@@ -121,7 +121,7 @@ async def handle_session_get(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("session.pause")
-async def handle_session_pause(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_pause(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Pause active session.
 
@@ -144,17 +144,19 @@ async def handle_session_pause(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Session pause failed: {session_id}")
 
-    logger.info("Session paused via JSON-RPC", session_id=session_id, method="session.pause")
+    logger.info(
+        "Session paused via JSON-RPC", session_id=session_id, method="session.pause"
+    )
 
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Session paused successfully"
+        "message": "Session paused successfully",
     }
 
 
 @register_jsonrpc_method("session.resume")
-async def handle_session_resume(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_resume(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Resume paused or suspended session.
 
@@ -177,17 +179,19 @@ async def handle_session_resume(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Session resume failed: {session_id}")
 
-    logger.info("Session resumed via JSON-RPC", session_id=session_id, method="session.resume")
+    logger.info(
+        "Session resumed via JSON-RPC", session_id=session_id, method="session.resume"
+    )
 
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Session resumed successfully"
+        "message": "Session resumed successfully",
     }
 
 
 @register_jsonrpc_method("session.suspend")
-async def handle_session_suspend(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_suspend(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Suspend session for later resumption.
 
@@ -210,17 +214,21 @@ async def handle_session_suspend(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Session suspend failed: {session_id}")
 
-    logger.info("Session suspended via JSON-RPC", session_id=session_id, method="session.suspend")
+    logger.info(
+        "Session suspended via JSON-RPC",
+        session_id=session_id,
+        method="session.suspend",
+    )
 
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Session suspended successfully"
+        "message": "Session suspended successfully",
     }
 
 
 @register_jsonrpc_method("session.complete")
-async def handle_session_complete(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_complete(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Mark session as completed.
 
@@ -243,17 +251,21 @@ async def handle_session_complete(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Session completion failed: {session_id}")
 
-    logger.info("Session completed via JSON-RPC", session_id=session_id, method="session.complete")
+    logger.info(
+        "Session completed via JSON-RPC",
+        session_id=session_id,
+        method="session.complete",
+    )
 
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Session completed successfully"
+        "message": "Session completed successfully",
     }
 
 
 @register_jsonrpc_method("session.fail")
-async def handle_session_fail(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_fail(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Mark session as failed.
 
@@ -279,18 +291,23 @@ async def handle_session_fail(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Session failure recording failed: {session_id}")
 
-    logger.info("Session failed via JSON-RPC", session_id=session_id, reason=reason, method="session.fail")
+    logger.info(
+        "Session failed via JSON-RPC",
+        session_id=session_id,
+        reason=reason,
+        method="session.fail",
+    )
 
     return {
         "success": True,
         "session_id": session_id,
         "reason": reason,
-        "message": "Session failure recorded successfully"
+        "message": "Session failure recorded successfully",
     }
 
 
 @register_jsonrpc_method("session.update_context")
-async def handle_session_update_context(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_update_context(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Update session context variables.
 
@@ -319,12 +336,12 @@ async def handle_session_update_context(request: JsonRpcRequest) -> Dict[str, An
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Context updated successfully"
+        "message": "Context updated successfully",
     }
 
 
 @register_jsonrpc_method("session.set_agent_state")
-async def handle_session_set_agent_state(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_set_agent_state(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Set state for a specific agent in session.
 
@@ -345,7 +362,9 @@ async def handle_session_set_agent_state(request: JsonRpcRequest) -> Dict[str, A
     state = request.params.get("state")
 
     if not session_id or not agent_id or state is None:
-        raise ValueError("Missing required parameters: session_id, agent_id, and/or state")
+        raise ValueError(
+            "Missing required parameters: session_id, agent_id, and/or state"
+        )
 
     success = await session_manager.set_agent_state(session_id, agent_id, state)
 
@@ -356,12 +375,12 @@ async def handle_session_set_agent_state(request: JsonRpcRequest) -> Dict[str, A
         "success": True,
         "session_id": session_id,
         "agent_id": agent_id,
-        "message": "Agent state updated successfully"
+        "message": "Agent state updated successfully",
     }
 
 
 @register_jsonrpc_method("session.get_agent_state")
-async def handle_session_get_agent_state(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_get_agent_state(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get state for a specific agent in session.
 
@@ -387,15 +406,11 @@ async def handle_session_get_agent_state(request: JsonRpcRequest) -> Dict[str, A
     if state is None:
         raise ValueError(f"Agent state not found: {agent_id} in session {session_id}")
 
-    return {
-        "session_id": session_id,
-        "agent_id": agent_id,
-        "state": state
-    }
+    return {"session_id": session_id, "agent_id": agent_id, "state": state}
 
 
 @register_jsonrpc_method("session.add_task")
-async def handle_session_add_task(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_add_task(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Add task to session.
 
@@ -425,12 +440,12 @@ async def handle_session_add_task(request: JsonRpcRequest) -> Dict[str, Any]:
         "success": True,
         "session_id": session_id,
         "task_id": task_id,
-        "message": "Task added to session successfully"
+        "message": "Task added to session successfully",
     }
 
 
 @register_jsonrpc_method("session.record_event")
-async def handle_session_record_event(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_record_event(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Record execution event in session history.
 
@@ -451,7 +466,9 @@ async def handle_session_record_event(request: JsonRpcRequest) -> Dict[str, Any]
     event_data = request.params.get("event_data")
 
     if not session_id or not event_type or event_data is None:
-        raise ValueError("Missing required parameters: session_id, event_type, and/or event_data")
+        raise ValueError(
+            "Missing required parameters: session_id, event_type, and/or event_data"
+        )
 
     success = await session_manager.record_event(session_id, event_type, event_data)
 
@@ -462,12 +479,12 @@ async def handle_session_record_event(request: JsonRpcRequest) -> Dict[str, Any]
         "success": True,
         "session_id": session_id,
         "event_type": event_type,
-        "message": "Event recorded successfully"
+        "message": "Event recorded successfully",
     }
 
 
 @register_jsonrpc_method("session.checkpoint")
-async def handle_session_checkpoint(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_checkpoint(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Create checkpoint for session.
 
@@ -490,17 +507,21 @@ async def handle_session_checkpoint(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Checkpoint creation failed: {session_id}")
 
-    logger.info("Session checkpoint created via JSON-RPC", session_id=session_id, method="session.checkpoint")
+    logger.info(
+        "Session checkpoint created via JSON-RPC",
+        session_id=session_id,
+        method="session.checkpoint",
+    )
 
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Checkpoint created successfully"
+        "message": "Checkpoint created successfully",
     }
 
 
 @register_jsonrpc_method("session.query")
-async def handle_session_query(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_query(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Query sessions with filtering and pagination.
 
@@ -543,7 +564,9 @@ async def handle_session_query(request: JsonRpcRequest) -> Dict[str, Any]:
 
         # List filters
         if "tags" in params:
-            query_params["tags"] = params["tags"] if isinstance(params["tags"], list) else [params["tags"]]
+            query_params["tags"] = (
+                params["tags"] if isinstance(params["tags"], list) else [params["tags"]]
+            )
 
         # Time filters
         for field in ["created_after", "created_before"]:
@@ -564,7 +587,12 @@ async def handle_session_query(request: JsonRpcRequest) -> Dict[str, Any]:
         # Execute query
         response = await session_manager.query_sessions(query)
 
-        logger.debug("Sessions queried via JSON-RPC", filters=query_params, count=len(response.sessions), method="session.query")
+        logger.debug(
+            "Sessions queried via JSON-RPC",
+            filters=query_params,
+            count=len(response.sessions),
+            method="session.query",
+        )
 
         return response.model_dump()
 
@@ -574,7 +602,7 @@ async def handle_session_query(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("session.cleanup_expired")
-async def handle_session_cleanup_expired(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_cleanup_expired(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Cleanup expired sessions.
 
@@ -587,12 +615,16 @@ async def handle_session_cleanup_expired(request: JsonRpcRequest) -> Dict[str, A
     try:
         cleanup_count = await session_manager.cleanup_expired_sessions()
 
-        logger.info("Expired sessions cleaned up via JSON-RPC", count=cleanup_count, method="session.cleanup_expired")
+        logger.info(
+            "Expired sessions cleaned up via JSON-RPC",
+            count=cleanup_count,
+            method="session.cleanup_expired",
+        )
 
         return {
             "success": True,
             "cleanup_count": cleanup_count,
-            "message": f"Cleaned up {cleanup_count} expired sessions"
+            "message": f"Cleaned up {cleanup_count} expired sessions",
         }
 
     except Exception as e:
@@ -601,7 +633,7 @@ async def handle_session_cleanup_expired(request: JsonRpcRequest) -> Dict[str, A
 
 
 @register_jsonrpc_method("session.cleanup_idle")
-async def handle_session_cleanup_idle(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_cleanup_idle(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Cleanup idle sessions.
 
@@ -614,12 +646,16 @@ async def handle_session_cleanup_idle(request: JsonRpcRequest) -> Dict[str, Any]
     try:
         cleanup_count = await session_manager.cleanup_idle_sessions()
 
-        logger.info("Idle sessions suspended via JSON-RPC", count=cleanup_count, method="session.cleanup_idle")
+        logger.info(
+            "Idle sessions suspended via JSON-RPC",
+            count=cleanup_count,
+            method="session.cleanup_idle",
+        )
 
         return {
             "success": True,
             "suspended_count": cleanup_count,
-            "message": f"Suspended {cleanup_count} idle sessions"
+            "message": f"Suspended {cleanup_count} idle sessions",
         }
 
     except Exception as e:
@@ -628,7 +664,7 @@ async def handle_session_cleanup_idle(request: JsonRpcRequest) -> Dict[str, Any]
 
 
 @register_jsonrpc_method("session.delete")
-async def handle_session_delete(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_delete(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Delete session (soft or hard delete).
 
@@ -655,18 +691,22 @@ async def handle_session_delete(request: JsonRpcRequest) -> Dict[str, Any]:
         raise ValueError(f"Session deletion failed: {session_id}")
 
     delete_type = "hard" if hard_delete else "soft"
-    logger.info(f"Session {delete_type} deleted via JSON-RPC", session_id=session_id, method="session.delete")
+    logger.info(
+        f"Session {delete_type} deleted via JSON-RPC",
+        session_id=session_id,
+        method="session.delete",
+    )
 
     return {
         "success": True,
         "session_id": session_id,
         "delete_type": delete_type,
-        "message": f"Session {delete_type} deleted successfully"
+        "message": f"Session {delete_type} deleted successfully",
     }
 
 
 @register_jsonrpc_method("session.export")
-async def handle_session_export(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_export(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Export session to JSON format.
 
@@ -692,17 +732,19 @@ async def handle_session_export(request: JsonRpcRequest) -> Dict[str, Any]:
     if not json_data:
         raise ValueError(f"Session not found: {session_id}")
 
-    logger.info("Session exported via JSON-RPC", session_id=session_id, method="session.export")
+    logger.info(
+        "Session exported via JSON-RPC", session_id=session_id, method="session.export"
+    )
 
     return {
         "session_id": session_id,
         "json_data": json_data,
-        "size_bytes": len(json_data)
+        "size_bytes": len(json_data),
     }
 
 
 @register_jsonrpc_method("session.import")
-async def handle_session_import(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_import(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Import session from JSON format.
 
@@ -726,12 +768,17 @@ async def handle_session_import(request: JsonRpcRequest) -> Dict[str, Any]:
     try:
         session_id = await session_manager.import_session(json_data, overwrite)
 
-        logger.info("Session imported via JSON-RPC", session_id=session_id, overwrite=overwrite, method="session.import")
+        logger.info(
+            "Session imported via JSON-RPC",
+            session_id=session_id,
+            overwrite=overwrite,
+            method="session.import",
+        )
 
         return {
             "success": True,
             "session_id": session_id,
-            "message": "Session imported successfully"
+            "message": "Session imported successfully",
         }
 
     except Exception as e:
@@ -740,7 +787,7 @@ async def handle_session_import(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("session.export_batch")
-async def handle_session_export_batch(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_export_batch(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Export multiple sessions to JSON format.
 
@@ -761,19 +808,25 @@ async def handle_session_export_batch(request: JsonRpcRequest) -> Dict[str, Any]
 
     include_history = request.params.get("include_history", True)
 
-    json_data = await session_manager.export_sessions_batch(session_ids, include_history)
+    json_data = await session_manager.export_sessions_batch(
+        session_ids, include_history
+    )
 
-    logger.info("Sessions batch exported via JSON-RPC", count=len(session_ids), method="session.export_batch")
+    logger.info(
+        "Sessions batch exported via JSON-RPC",
+        count=len(session_ids),
+        method="session.export_batch",
+    )
 
     return {
         "count": len(session_ids),
         "json_data": json_data,
-        "size_bytes": len(json_data)
+        "size_bytes": len(json_data),
     }
 
 
 @register_jsonrpc_method("session.import_batch")
-async def handle_session_import_batch(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_session_import_batch(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Import multiple sessions from JSON format.
 
@@ -803,13 +856,13 @@ async def handle_session_import_batch(request: JsonRpcRequest) -> Dict[str, Any]
             imported=results["imported"],
             skipped=results["skipped"],
             failed=results["failed"],
-            method="session.import_batch"
+            method="session.import_batch",
         )
 
         return {
             "success": True,
             "results": results,
-            "message": f"Imported {results['imported']} of {results['total']} sessions"
+            "message": f"Imported {results['imported']} of {results['total']} sessions",
         }
 
     except Exception as e:
@@ -818,12 +871,29 @@ async def handle_session_import_batch(request: JsonRpcRequest) -> Dict[str, Any]
 
 
 # Log registration on import
-logger.info("Session JSON-RPC methods registered",
-           methods=[
-               "session.create", "session.get", "session.pause", "session.resume",
-               "session.suspend", "session.complete", "session.fail", "session.delete",
-               "session.update_context", "session.set_agent_state", "session.get_agent_state",
-               "session.add_task", "session.record_event", "session.checkpoint",
-               "session.query", "session.cleanup_expired", "session.cleanup_idle",
-               "session.export", "session.import", "session.export_batch", "session.import_batch"
-           ])
+logger.info(
+    "Session JSON-RPC methods registered",
+    methods=[
+        "session.create",
+        "session.get",
+        "session.pause",
+        "session.resume",
+        "session.suspend",
+        "session.complete",
+        "session.fail",
+        "session.delete",
+        "session.update_context",
+        "session.set_agent_state",
+        "session.get_agent_state",
+        "session.add_task",
+        "session.record_event",
+        "session.checkpoint",
+        "session.query",
+        "session.cleanup_expired",
+        "session.cleanup_idle",
+        "session.export",
+        "session.import",
+        "session.export_batch",
+        "session.import_batch",
+    ],
+)

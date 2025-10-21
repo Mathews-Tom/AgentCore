@@ -48,7 +48,9 @@ class HandoffContext(BaseModel):
     Contains all task data, metadata, and history needed for continuation.
     """
 
-    handoff_id: UUID = Field(default_factory=uuid4, description="Unique handoff identifier")
+    handoff_id: UUID = Field(
+        default_factory=uuid4, description="Unique handoff identifier"
+    )
     task_id: UUID = Field(description="Task being handed off")
     task_type: str = Field(description="Type of task")
     task_data: dict[str, Any] = Field(
@@ -305,8 +307,12 @@ class HandoffRecord(BaseModel):
     initiated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Initiation timestamp"
     )
-    completed_at: datetime | None = Field(default=None, description="Completion timestamp")
-    error_message: str | None = Field(default=None, description="Error message if failed")
+    completed_at: datetime | None = Field(
+        default=None, description="Completion timestamp"
+    )
+    error_message: str | None = Field(
+        default=None, description="Error message if failed"
+    )
 
     model_config = {"frozen": False}
 
@@ -384,7 +390,9 @@ class HandoffCoordinator:
         Args:
             gate_name: Name of gate to remove
         """
-        self._quality_gates = [g for g in self._quality_gates if g.gate_name != gate_name]
+        self._quality_gates = [
+            g for g in self._quality_gates if g.gate_name != gate_name
+        ]
 
     async def initiate_handoff(
         self,
@@ -421,7 +429,9 @@ class HandoffCoordinator:
                 target_agent_id=target_agent_id,
                 task_data=task_data.copy(),
                 metadata=metadata or {},
-                previous_state=task_data.copy() if self.config.enable_rollback else None,
+                previous_state=task_data.copy()
+                if self.config.enable_rollback
+                else None,
             )
 
             # Build handoff chain

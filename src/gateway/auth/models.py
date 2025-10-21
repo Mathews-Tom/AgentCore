@@ -31,9 +31,16 @@ class User(BaseModel):
     email: str | None = Field(None, description="User email address")
     roles: list[UserRole] = Field(default=[UserRole.USER], description="User roles")
     is_active: bool = Field(default=True, description="User account status")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional user metadata")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="User creation timestamp")
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="User last update timestamp")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional user metadata"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="User creation timestamp"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="User last update timestamp",
+    )
 
     model_config = {"from_attributes": True}
 
@@ -103,7 +110,9 @@ class TokenResponse(BaseModel):
     access_token: str = Field(
         ...,
         description="JWT access token",
-        examples=["eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJ1c2VybmFtZSI6InVzZXIiLCJyb2xlcyI6WyJ1c2VyIl0sInNlc3Npb25faWQiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJpYXQiOjE3MjkzMjAwMDAsImV4cCI6MTcyOTMyMzYwMCwic2NvcGUiOiJ1c2VyOnJlYWQgdXNlcjp3cml0ZSIsImp0aSI6Ijc3MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9.signature"],
+        examples=[
+            "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJ1c2VybmFtZSI6InVzZXIiLCJyb2xlcyI6WyJ1c2VyIl0sInNlc3Npb25faWQiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJpYXQiOjE3MjkzMjAwMDAsImV4cCI6MTcyOTMyMzYwMCwic2NvcGUiOiJ1c2VyOnJlYWQgdXNlcjp3cml0ZSIsImp0aSI6Ijc3MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9.signature"
+        ],
     )
     token_type: str = Field(
         default="Bearer",
@@ -118,7 +127,9 @@ class TokenResponse(BaseModel):
     refresh_token: str | None = Field(
         None,
         description="Refresh token for token renewal",
-        examples=["eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJzZXNzaW9uX2lkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIiwiaWF0IjoxNzI5MzIwMDAwLCJleHAiOjE3Mjk5MjQ4MDAsImp0aSI6Ijg4MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCIsInRva2VuX3R5cGUiOiJyZWZyZXNoIn0.signature"],
+        examples=[
+            "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJzZXNzaW9uX2lkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIiwiaWF0IjoxNzI5MzIwMDAwLCJleHAiOjE3Mjk5MjQ4MDAsImp0aSI6Ijg4MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCIsInRva2VuX3R5cGUiOiJyZWZyZXNoIn0.signature"
+        ],
     )
     scope: str | None = Field(
         None,
@@ -177,7 +188,9 @@ class Session(BaseModel):
     last_activity: datetime = Field(..., description="Last activity timestamp")
     ip_address: str | None = Field(None, description="Client IP address")
     user_agent: str | None = Field(None, description="Client user agent")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Session metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Session metadata"
+    )
 
 
 class AuthError(BaseModel):

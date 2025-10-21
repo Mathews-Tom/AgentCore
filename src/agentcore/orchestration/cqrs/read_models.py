@@ -8,7 +8,6 @@ Read models are updated by projections from event store.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB

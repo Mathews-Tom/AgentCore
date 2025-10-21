@@ -260,7 +260,9 @@ class HookExecutor:
 
         # Retry on failure
         retry_count = 0
-        while retry_count < hook.max_retries and execution.status != HookStatus.COMPLETED:
+        while (
+            retry_count < hook.max_retries and execution.status != HookStatus.COMPLETED
+        ):
             retry_count += 1
 
             # Exponential backoff

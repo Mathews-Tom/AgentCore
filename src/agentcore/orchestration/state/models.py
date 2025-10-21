@@ -12,13 +12,13 @@ from sqlalchemy import (
     BigInteger,
     Column,
     DateTime,
-    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
 )
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -96,7 +96,9 @@ class WorkflowExecutionDB(Base):
     completed_tasks = Column(
         JSONType, nullable=False, default=list
     )  # List of completed task IDs
-    failed_tasks = Column(JSONType, nullable=False, default=list)  # List of failed task IDs
+    failed_tasks = Column(
+        JSONType, nullable=False, default=list
+    )  # List of failed task IDs
 
     # Checkpointing
     checkpoint_data = Column(JSONType, nullable=True)  # Latest checkpoint data
@@ -114,7 +116,10 @@ class WorkflowExecutionDB(Base):
         DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
     )
     updated_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
@@ -129,7 +134,9 @@ class WorkflowExecutionDB(Base):
     input_data = Column(JSONType, nullable=True)  # Input parameters
     output_data = Column(JSONType, nullable=True)  # Final output
     tags = Column(JSON, nullable=False, default=list)  # Tags for categorization
-    workflow_metadata = Column(JSONType, nullable=False, default=dict)  # Additional metadata
+    workflow_metadata = Column(
+        JSONType, nullable=False, default=dict
+    )  # Additional metadata
 
     # Relationships
     state_history = relationship(
@@ -203,7 +210,9 @@ class WorkflowStateDB(Base):
     )
 
     # Metadata
-    created_by = Column(String(255), nullable=True)  # Agent or system that created state
+    created_by = Column(
+        String(255), nullable=True
+    )  # Agent or system that created state
     state_metadata = Column(JSONType, nullable=False, default=dict)
 
     __table_args__ = (
@@ -236,9 +245,7 @@ class WorkflowStateVersion(Base):
 
     # Schema definition
     state_schema = Column(JSONType, nullable=False)  # JSON schema for state validation
-    migration_script = Column(
-        Text, nullable=True
-    )  # SQL or Python script for migration
+    migration_script = Column(Text, nullable=True)  # SQL or Python script for migration
 
     # Version metadata
     description = Column(Text, nullable=True)
@@ -255,6 +262,4 @@ class WorkflowStateVersion(Base):
         JSON, nullable=False, default=list
     )  # List of execution IDs migrated
 
-    __table_args__ = (
-        Index("idx_version_type_active", "workflow_type", "is_active"),
-    )
+    __table_args__ = (Index("idx_version_type_active", "workflow_type", "is_active"),)

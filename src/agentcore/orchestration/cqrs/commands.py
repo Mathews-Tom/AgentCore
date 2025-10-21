@@ -8,9 +8,10 @@ Commands represent intent to change state.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -75,9 +76,13 @@ class CommandResult(BaseModel):
     events_produced: list[UUID] = Field(
         default_factory=list, description="IDs of events produced"
     )
-    error_message: str | None = Field(default=None, description="Error message if failed")
+    error_message: str | None = Field(
+        default=None, description="Error message if failed"
+    )
     error_type: str | None = Field(default=None, description="Error type if failed")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Result metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Result metadata"
+    )
 
 
 class CreateWorkflowCommand(Command):
@@ -300,9 +305,7 @@ class CommandBus:
         """Initialize command bus."""
         self._handlers: dict[CommandType, CommandHandler] = {}
 
-    def register(
-        self, command_type: CommandType, handler: CommandHandler
-    ) -> None:
+    def register(self, command_type: CommandType, handler: CommandHandler) -> None:
         """
         Register a command handler.
 

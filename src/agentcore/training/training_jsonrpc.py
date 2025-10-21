@@ -17,12 +17,8 @@ from agentcore.a2a_protocol.database import get_session
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.training.job_manager import TrainingJobManager
-from agentcore.training.models import (
-    GRPOConfig as GRPOConfigModel,
-)
-from agentcore.training.models import (
-    TrainingQuery,
-)
+from agentcore.training.models import GRPOConfig as GRPOConfigModel
+from agentcore.training.models import TrainingQuery
 from agentcore.training.repositories import TrajectoryRepository
 
 logger = structlog.get_logger()
@@ -48,17 +44,17 @@ async def handle_start_grpo(request: JsonRpcRequest) -> dict[str, Any]:
     Params:
         - agent_id: string (required)
         - training_queries: array of objects (required)
-          - query: string
-          - expected_outcome: object
+            - query: string
+            - expected_outcome: object
         - config: object (optional)
-          - n_iterations: int (default: 10)
-          - batch_size: int (default: 16)
-          - n_trajectories_per_query: int (default: 8)
-          - learning_rate: float (default: 0.0001)
-          - max_budget_usd: string/decimal (default: "10.00")
-          - checkpoint_interval: int (default: 5)
-          - max_steps_per_trajectory: int (default: 20)
-          - gamma: float (default: 0.99)
+            - n_iterations: int (default: 10)
+            - batch_size: int (default: 16)
+            - n_trajectories_per_query: int (default: 8)
+            - learning_rate: float (default: 0.0001)
+            - max_budget_usd: string/decimal (default: "10.00")
+            - checkpoint_interval: int (default: 5)
+            - max_steps_per_trajectory: int (default: 20)
+            - gamma: float (default: 0.99)
 
     Returns:
         Training job details
@@ -300,9 +296,7 @@ async def handle_export_trajectories(request: JsonRpcRequest) -> dict[str, Any]:
     # Enforce maximum limit
     MAX_EXPORT_LIMIT = 10000
     if limit > MAX_EXPORT_LIMIT:
-        raise ValueError(
-            f"limit exceeds maximum allowed value of {MAX_EXPORT_LIMIT}"
-        )
+        raise ValueError(f"limit exceeds maximum allowed value of {MAX_EXPORT_LIMIT}")
 
     # Query trajectories from database
     async with get_session() as session:
@@ -325,7 +319,9 @@ async def handle_export_trajectories(request: JsonRpcRequest) -> dict[str, Any]:
             "steps": traj.steps,
             "reward": float(traj.reward),
             "normalized_reward": (
-                float(traj.normalized_reward) if traj.normalized_reward is not None else None
+                float(traj.normalized_reward)
+                if traj.normalized_reward is not None
+                else None
             ),
             "advantage": float(traj.advantage) if traj.advantage is not None else None,
             "execution_time_ms": traj.execution_time_ms,

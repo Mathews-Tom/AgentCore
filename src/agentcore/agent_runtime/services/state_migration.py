@@ -1,14 +1,11 @@
 """State migration service for schema version changes."""
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 
-from ..models.state_persistence import (
-    AgentStateSnapshot,
-    StateMigration,
-    StateVersion,
-)
+from ..models.state_persistence import AgentStateSnapshot, StateMigration, StateVersion
 from .state_serializer import CURRENT_STATE_VERSION
 
 logger = structlog.get_logger()
@@ -24,7 +21,9 @@ class StateMigrationService:
     def __init__(self) -> None:
         """Initialize migration service."""
         self._migrations: dict[tuple[str, str], StateMigration] = {}
-        self._migration_functions: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {}
+        self._migration_functions: dict[
+            str, Callable[[dict[str, Any]], dict[str, Any]]
+        ] = {}
 
         # Register built-in migrations
         self._register_builtin_migrations()
@@ -201,9 +200,7 @@ class StateMigrationService:
             return [self._migrations[direct_key]]
 
         # BFS to find shortest path
-        queue: list[tuple[StateVersion, list[StateMigration]]] = [
-            (from_version, [])
-        ]
+        queue: list[tuple[StateVersion, list[StateMigration]]] = [(from_version, [])]
         visited = {str(from_version)}
 
         while queue:

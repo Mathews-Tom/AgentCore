@@ -8,19 +8,19 @@ from __future__ import annotations
 
 from .client import RedisStreamsClient
 from .config import StreamConfig
-from .consumer import StreamConsumer, ConsumerGroup
+from .consumer import ConsumerGroup, StreamConsumer
 from .models import (
-    OrchestrationEvent,
-    EventType,
-    TaskCreatedEvent,
-    TaskCompletedEvent,
-    TaskFailedEvent,
     AgentStartedEvent,
     AgentStoppedEvent,
-    WorkflowCreatedEvent,
-    WorkflowStartedEvent,
+    EventType,
+    OrchestrationEvent,
+    TaskCompletedEvent,
+    TaskCreatedEvent,
+    TaskFailedEvent,
     WorkflowCompletedEvent,
+    WorkflowCreatedEvent,
     WorkflowFailedEvent,
+    WorkflowStartedEvent,
 )
 from .producer import StreamProducer
 

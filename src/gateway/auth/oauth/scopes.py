@@ -202,7 +202,9 @@ class ScopeManager:
         return scope in cls.SCOPE_DEFINITIONS
 
     @classmethod
-    def validate_scopes(cls, scopes: str | set[str] | list[str]) -> tuple[bool, list[str]]:
+    def validate_scopes(
+        cls, scopes: str | set[str] | list[str]
+    ) -> tuple[bool, list[str]]:
         """
         Validate multiple scopes.
 
@@ -392,10 +394,7 @@ class ScopeManager:
         Returns:
             List of scope information dictionaries
         """
-        return [
-            cls.get_scope_info(scope)
-            for scope in cls.SCOPE_DEFINITIONS.keys()
-        ]
+        return [cls.get_scope_info(scope) for scope in cls.SCOPE_DEFINITIONS.keys()]
 
     @classmethod
     def get_scopes_for_resource(cls, resource: str) -> list[str]:

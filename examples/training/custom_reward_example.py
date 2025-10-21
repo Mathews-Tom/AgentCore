@@ -4,15 +4,16 @@ Custom Reward Function Example
 Demonstrates how to create and register custom reward functions for agent training.
 """
 
+from datetime import UTC, datetime
+from uuid import uuid4
+
 from agentcore.training import (
+    RewardEngine,
+    RewardRegistry,
     Trajectory,
     TrajectoryStep,
-    RewardRegistry,
     get_global_registry,
-    RewardEngine,
 )
-from uuid import uuid4
-from datetime import datetime, timezone
 
 
 def documentation_quality_reward(trajectory: Trajectory) -> float:
@@ -170,7 +171,7 @@ def test_custom_reward() -> None:
                 "code_examples": 3,
                 "references": ["api_ref.md", "guide.md"],
             },
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             duration_ms=2000,
         ),
     ]
@@ -215,7 +216,7 @@ def demo_reward_engine_integration() -> None:
                     "coverage": 0.95,
                     "edge_cases_tested": True,
                 },
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=1500,
             ),
         ],
@@ -237,21 +238,22 @@ def demo_reward_engine_integration() -> None:
 
 def main() -> None:
     """Main execution."""
-    print("="*60)
+    print("=" * 60)
     print("Custom Reward Functions Example")
-    print("="*60)
+    print("=" * 60)
 
     # Test custom reward function
     test_custom_reward()
 
-    print(f"\n{'='*60}\n")
+    print(f"\n{'=' * 60}\n")
 
     # Demo RewardEngine integration
     demo_reward_engine_integration()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("✓ Examples completed successfully!")
 
 
 if __name__ == "__main__":
+    main()
     main()

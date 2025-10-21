@@ -361,9 +361,7 @@ class ResponseCache:
         Returns:
             Number of entries removed
         """
-        keys_to_remove = [
-            key for key, entry in self._cache.items() if entry.is_expired
-        ]
+        keys_to_remove = [key for key, entry in self._cache.items() if entry.is_expired]
 
         for key in keys_to_remove:
             del self._cache[key]

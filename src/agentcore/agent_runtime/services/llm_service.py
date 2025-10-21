@@ -1,7 +1,8 @@
 """LLM service using Portkey AI Gateway."""
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 import structlog

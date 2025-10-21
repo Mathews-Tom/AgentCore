@@ -44,8 +44,12 @@ class OAuthProviderBase(ABC):
         self.client_secret = config.client_secret
         self.authorization_endpoint = str(config.authorization_endpoint)
         self.token_endpoint = str(config.token_endpoint)
-        self.userinfo_endpoint = str(config.userinfo_endpoint) if config.userinfo_endpoint else None
-        self.revocation_endpoint = str(config.revocation_endpoint) if config.revocation_endpoint else None
+        self.userinfo_endpoint = (
+            str(config.userinfo_endpoint) if config.userinfo_endpoint else None
+        )
+        self.revocation_endpoint = (
+            str(config.revocation_endpoint) if config.revocation_endpoint else None
+        )
 
     def build_authorization_url(
         self,

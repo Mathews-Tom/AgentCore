@@ -58,9 +58,7 @@ class HierarchyNode(BaseModel):
     agent_id: str = Field(description="Agent identifier")
     authority_level: AuthorityLevel = Field(description="Authority level")
     parent_id: str | None = Field(default=None, description="Parent agent ID")
-    children_ids: list[str] = Field(
-        default_factory=list, description="Child agent IDs"
-    )
+    children_ids: list[str] = Field(default_factory=list, description="Child agent IDs")
     capabilities: list[str] = Field(default_factory=list)
     max_concurrent_tasks: int = Field(default=5)
     current_task_count: int = Field(default=0)
@@ -99,7 +97,9 @@ class HierarchicalConfig(BaseModel):
     """Configuration for hierarchical pattern."""
 
     max_hierarchy_depth: int = Field(default=5, ge=1, description="Maximum depth")
-    delegation_policy: DelegationPolicy = Field(default=DelegationPolicy.STRICT_HIERARCHY)
+    delegation_policy: DelegationPolicy = Field(
+        default=DelegationPolicy.STRICT_HIERARCHY
+    )
     enable_escalation: bool = Field(default=True)
     escalation_threshold_failures: int = Field(
         default=2, description="Failures before escalation"
@@ -370,7 +370,10 @@ class HierarchicalCoordinator:
                 task_id=task_id,
                 from_agent_id=agent_id,
                 reason=EscalationReason.FAILURE_THRESHOLD,
-                context={"error_message": error_message, "failure_count": failure_count},
+                context={
+                    "error_message": error_message,
+                    "failure_count": failure_count,
+                },
             )
             return target is not None
 
@@ -441,6 +444,7 @@ class HierarchicalCoordinator:
             Hierarchy tree as nested dictionary
         """
         async with self._lock:
+
             def build_tree(agent_id: str) -> dict[str, Any]:
                 node = self._hierarchy[agent_id]
                 return {
@@ -448,7 +452,9 @@ class HierarchicalCoordinator:
                     "authority_level": node.authority_level.name,
                     "capabilities": node.capabilities,
                     "current_tasks": node.current_task_count,
-                    "children": [build_tree(child_id) for child_id in node.children_ids],
+                    "children": [
+                        build_tree(child_id) for child_id in node.children_ids
+                    ],
                 }
 
             return {
@@ -539,7 +545,10 @@ class HierarchicalCoordinator:
         # Filter by capabilities and authority
         for candidate in candidates:
             # Check authority
-            if required_authority and candidate.authority_level.value > required_authority.value:
+            if (
+                required_authority
+                and candidate.authority_level.value > required_authority.value
+            ):
                 continue
 
             # Check capabilities

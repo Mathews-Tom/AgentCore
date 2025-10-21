@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -79,7 +79,9 @@ class TaskNode(BaseModel):
     """Task node in pattern workflow graph."""
 
     task_id: str = Field(description="Unique task identifier")
-    task_name: str = Field(default="", description="Task name (alias for task_id if not provided)")
+    task_name: str = Field(
+        default="", description="Task name (alias for task_id if not provided)"
+    )
     agent_role: str = Field(description="Agent role for this task")
     depends_on: list[str] = Field(default_factory=list, description="Task dependencies")
     parallel: bool = Field(default=False, description="Can execute in parallel")
@@ -209,7 +211,9 @@ class PatternDefinition(BaseModel):
     def _has_circular_dependencies(self) -> bool:
         """Check for circular dependencies in task graph."""
         # Build adjacency list
-        graph: dict[str, list[str]] = {task.task_id: task.depends_on for task in self.tasks}
+        graph: dict[str, list[str]] = {
+            task.task_id: task.depends_on for task in self.tasks
+        }
 
         # DFS to detect cycles
         visited: set[str] = set()
@@ -243,9 +247,7 @@ class PatternDefinition(BaseModel):
             "name": self.metadata.name,
             "version": self.metadata.version,
             "type": self.pattern_type.value,
-            "agents": {
-                role: req.model_dump() for role, req in self.agents.items()
-            },
+            "agents": {role: req.model_dump() for role, req in self.agents.items()},
             "tasks": [task.model_dump() for task in self.tasks],
             "coordination": self.coordination.model_dump(),
             "parameters": self.template_parameters,
@@ -329,7 +331,9 @@ class PatternRegistry:
         return None
 
     def list_patterns(
-        self, pattern_type: PatternType | None = None, status: PatternStatus | None = None
+        self,
+        pattern_type: PatternType | None = None,
+        status: PatternStatus | None = None,
     ) -> list[PatternDefinition]:
         """
         List patterns with optional filters.
@@ -387,7 +391,9 @@ class PatternRegistry:
 
         # Update average execution time
         total_time = pattern.avg_execution_time_seconds * (pattern.execution_count - 1)
-        pattern.avg_execution_time_seconds = (total_time + execution_time) / pattern.execution_count
+        pattern.avg_execution_time_seconds = (
+            total_time + execution_time
+        ) / pattern.execution_count
 
 
 # Global pattern registry instance

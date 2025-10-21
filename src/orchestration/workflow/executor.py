@@ -80,9 +80,7 @@ class WorkflowExecutor:
 
         # Initialize node states
         node_ids = [node.node_id for node in definition.nodes]
-        self.state_manager.initialize_node_states(
-            execution.execution_id, node_ids
-        )
+        self.state_manager.initialize_node_states(execution.execution_id, node_ids)
 
         # Update status to executing
         self.state_manager.update_execution_status(
@@ -104,9 +102,7 @@ class WorkflowExecutor:
             self.state_manager.update_execution_status(
                 execution.execution_id, WorkflowStatus.FAILED
             )
-            raise WorkflowExecutionError(
-                f"Workflow execution failed: {e}"
-            ) from e
+            raise WorkflowExecutionError(f"Workflow execution failed: {e}") from e
 
         return self.state_manager.get_execution(execution.execution_id) or execution
 
@@ -131,9 +127,7 @@ class WorkflowExecutor:
             # Execute in topological order
             execution_order = graph.topological_sort()
             for node_id in execution_order:
-                await self._execute_node(
-                    execution_id, node_id, graph, context
-                )
+                await self._execute_node(execution_id, node_id, graph, context)
                 completed_nodes.add(node_id)
 
         elif definition.coordination.coordination_type == "hybrid":
@@ -153,9 +147,7 @@ class WorkflowExecutor:
             # For now, fall back to sequential execution
             execution_order = graph.topological_sort()
             for node_id in execution_order:
-                await self._execute_node(
-                    execution_id, node_id, graph, context
-                )
+                await self._execute_node(execution_id, node_id, graph, context)
                 completed_nodes.add(node_id)
 
     async def _execute_node(
@@ -177,9 +169,7 @@ class WorkflowExecutor:
         node_def = graph.get_node(node_id)
 
         # Update status to running
-        self.state_manager.update_node_status(
-            execution_id, node_id, NodeStatus.RUNNING
-        )
+        self.state_manager.update_node_status(execution_id, node_id, NodeStatus.RUNNING)
 
         max_attempts = node_def.retry_policy.max_attempts
         attempt = 0
@@ -226,9 +216,8 @@ class WorkflowExecutor:
                     raise
 
                 # Calculate backoff delay
-                delay = (
-                    node_def.retry_policy.initial_delay_seconds
-                    * (node_def.retry_policy.backoff_multiplier ** (attempt - 1))
+                delay = node_def.retry_policy.initial_delay_seconds * (
+                    node_def.retry_policy.backoff_multiplier ** (attempt - 1)
                 )
                 delay = min(delay, node_def.retry_policy.max_delay_seconds)
 
@@ -265,9 +254,7 @@ class WorkflowExecutor:
         Args:
             execution_id: ID of the execution to pause
         """
-        self.state_manager.update_execution_status(
-            execution_id, WorkflowStatus.PAUSED
-        )
+        self.state_manager.update_execution_status(execution_id, WorkflowStatus.PAUSED)
 
     async def resume(self, execution_id: UUID) -> WorkflowExecution:
         """Resume a paused workflow execution.
@@ -283,14 +270,10 @@ class WorkflowExecutor:
         """
         execution = self.state_manager.get_execution(execution_id)
         if not execution:
-            raise WorkflowExecutionError(
-                f"Execution {execution_id} not found"
-            )
+            raise WorkflowExecutionError(f"Execution {execution_id} not found")
 
         if execution.status != WorkflowStatus.PAUSED:
-            raise WorkflowExecutionError(
-                f"Execution {execution_id} is not paused"
-            )
+            raise WorkflowExecutionError(f"Execution {execution_id} is not paused")
 
         # Update status to executing
         self.state_manager.update_execution_status(
@@ -303,9 +286,7 @@ class WorkflowExecutor:
 
         return execution
 
-    def get_execution_status(
-        self, execution_id: UUID
-    ) -> WorkflowExecution | None:
+    def get_execution_status(self, execution_id: UUID) -> WorkflowExecution | None:
         """Get the current status of a workflow execution.
 
         Args:

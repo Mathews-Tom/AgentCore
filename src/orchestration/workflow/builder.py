@@ -291,7 +291,9 @@ class WorkflowBuilder:
         nodes = []
         for node_data in data.get("nodes", []):
             retry_policy_data = node_data.get("retry_policy", {})
-            retry_policy = RetryPolicy(**retry_policy_data) if retry_policy_data else RetryPolicy()
+            retry_policy = (
+                RetryPolicy(**retry_policy_data) if retry_policy_data else RetryPolicy()
+            )
 
             node = TaskNode(
                 node_id=node_data["node_id"],

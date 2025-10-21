@@ -13,11 +13,7 @@ from typing import Any
 import redis.asyncio as aioredis
 import structlog
 
-from gateway.middleware.rate_limiter import (
-    RateLimitPolicy,
-    RateLimitType,
-    RateLimiter,
-)
+from gateway.middleware.rate_limiter import RateLimiter, RateLimitPolicy, RateLimitType
 
 logger = structlog.get_logger()
 
@@ -145,7 +141,9 @@ class DDoSProtector:
         if user_agent:
             ua_threat, ua_reasons = self._check_user_agent(user_agent)
             if ua_threat != ThreatLevel.NONE:
-                threat_level = max(threat_level, ua_threat, key=lambda x: list(ThreatLevel).index(x))
+                threat_level = max(
+                    threat_level, ua_threat, key=lambda x: list(ThreatLevel).index(x)
+                )
                 reasons.extend(ua_reasons)
                 metadata["user_agent"] = user_agent
 
@@ -163,7 +161,11 @@ class DDoSProtector:
         # 4. Check per-IP rate limits
         ip_check = await self._check_ip_limits(client_ip)
         if not ip_check.allowed:
-            threat_level = max(threat_level, ThreatLevel.MEDIUM, key=lambda x: list(ThreatLevel).index(x))
+            threat_level = max(
+                threat_level,
+                ThreatLevel.MEDIUM,
+                key=lambda x: list(ThreatLevel).index(x),
+            )
             is_blocked = True
             reasons.append("IP rate limit exceeded")
             metadata["ip_limit"] = {
@@ -177,7 +179,11 @@ class DDoSProtector:
 
         # 5. Check for burst traffic
         if await self._detect_burst(client_ip):
-            threat_level = max(threat_level, ThreatLevel.MEDIUM, key=lambda x: list(ThreatLevel).index(x))
+            threat_level = max(
+                threat_level,
+                ThreatLevel.MEDIUM,
+                key=lambda x: list(ThreatLevel).index(x),
+            )
             reasons.append("Burst traffic detected")
             metadata["burst_detected"] = True
 

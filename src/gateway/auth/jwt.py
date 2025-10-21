@@ -358,3 +358,4 @@ class JWTManager:
 # Global JWT manager instance
 jwt_manager = JWTManager()
 jwt_manager = JWTManager()
+jwt_manager = JWTManager()
