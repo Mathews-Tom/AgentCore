@@ -5,21 +5,21 @@ A2A protocol compliant task management methods for creating, managing,
 and monitoring task execution lifecycle.
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 import structlog
-from datetime import datetime
 
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.models.task import (
-    TaskDefinition,
+    TaskArtifact,
     TaskCreateRequest,
     TaskCreateResponse,
+    TaskDefinition,
+    TaskPriority,
     TaskQuery,
     TaskQueryResponse,
     TaskStatus,
-    TaskPriority,
-    TaskArtifact
 )
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.a2a_protocol.services.task_manager import task_manager
@@ -28,7 +28,7 @@ logger = structlog.get_logger()
 
 
 @register_jsonrpc_method("task.create")
-async def handle_task_create(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_create(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Create a new task.
 
@@ -43,7 +43,9 @@ async def handle_task_create(request: JsonRpcRequest) -> Dict[str, Any]:
     """
     try:
         if not request.params or not isinstance(request.params, dict):
-            raise ValueError("Parameters required: task_definition and optional auto_assign, preferred_agent")
+            raise ValueError(
+                "Parameters required: task_definition and optional auto_assign, preferred_agent"
+            )
 
         # Extract parameters
         task_definition_data = request.params.get("task_definition")
@@ -60,7 +62,7 @@ async def handle_task_create(request: JsonRpcRequest) -> Dict[str, Any]:
         task_request = TaskCreateRequest(
             task_definition=task_def,
             auto_assign=auto_assign,
-            preferred_agent=preferred_agent
+            preferred_agent=preferred_agent,
         )
 
         # Create task
@@ -71,10 +73,10 @@ async def handle_task_create(request: JsonRpcRequest) -> Dict[str, Any]:
             task_id=response.task_id,
             execution_id=response.execution_id,
             auto_assign=auto_assign,
-            method="task.create"
+            method="task.create",
         )
 
-        return response.model_dump(mode='json')
+        return response.model_dump(mode="json")
 
     except Exception as e:
         logger.error("Task creation failed", error=str(e))
@@ -82,7 +84,7 @@ async def handle_task_create(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("task.get")
-async def handle_task_get(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_get(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get task execution details.
 
@@ -106,15 +108,19 @@ async def handle_task_get(request: JsonRpcRequest) -> Dict[str, Any]:
         if not execution:
             raise ValueError(f"Task not found: {execution_id}")
 
-        return {"task": execution.model_dump(mode='json')}
+        return {"task": execution.model_dump(mode="json")}
 
     except Exception as e:
-        logger.error("Task retrieval failed", error=str(e), execution_id=execution_id if 'execution_id' in locals() else None)
+        logger.error(
+            "Task retrieval failed",
+            error=str(e),
+            execution_id=execution_id if "execution_id" in locals() else None,
+        )
         raise
 
 
 @register_jsonrpc_method("task.assign")
-async def handle_task_assign(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_assign(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Assign task to a specific agent.
 
@@ -140,18 +146,23 @@ async def handle_task_assign(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Task assignment failed: {execution_id} to {agent_id}")
 
-    logger.info("Task assigned via JSON-RPC", execution_id=execution_id, agent_id=agent_id, method="task.assign")
+    logger.info(
+        "Task assigned via JSON-RPC",
+        execution_id=execution_id,
+        agent_id=agent_id,
+        method="task.assign",
+    )
 
     return {
         "success": True,
         "execution_id": execution_id,
         "agent_id": agent_id,
-        "message": "Task assigned successfully"
+        "message": "Task assigned successfully",
     }
 
 
 @register_jsonrpc_method("task.start")
-async def handle_task_start(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_start(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Start task execution.
 
@@ -174,17 +185,19 @@ async def handle_task_start(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Task start failed: {execution_id}")
 
-    logger.info("Task started via JSON-RPC", execution_id=execution_id, method="task.start")
+    logger.info(
+        "Task started via JSON-RPC", execution_id=execution_id, method="task.start"
+    )
 
     return {
         "success": True,
         "execution_id": execution_id,
-        "message": "Task started successfully"
+        "message": "Task started successfully",
     }
 
 
 @register_jsonrpc_method("task.complete")
-async def handle_task_complete(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_complete(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Complete task execution.
 
@@ -206,33 +219,47 @@ async def handle_task_complete(request: JsonRpcRequest) -> Dict[str, Any]:
         artifacts_data = request.params.get("artifacts")
 
         if not execution_id or result_data is None:
-            raise ValueError("Missing required parameters: execution_id and/or result_data")
+            raise ValueError(
+                "Missing required parameters: execution_id and/or result_data"
+            )
 
         # Parse artifacts if provided
         parsed_artifacts = None
         if artifacts_data:
-            parsed_artifacts = [TaskArtifact.model_validate(artifact) for artifact in artifacts_data]
+            parsed_artifacts = [
+                TaskArtifact.model_validate(artifact) for artifact in artifacts_data
+            ]
 
-        success = await task_manager.complete_task(execution_id, result_data, parsed_artifacts)
+        success = await task_manager.complete_task(
+            execution_id, result_data, parsed_artifacts
+        )
 
         if not success:
             raise ValueError(f"Task completion failed: {execution_id}")
 
-        logger.info("Task completed via JSON-RPC", execution_id=execution_id, method="task.complete")
+        logger.info(
+            "Task completed via JSON-RPC",
+            execution_id=execution_id,
+            method="task.complete",
+        )
 
         return {
             "success": True,
             "execution_id": execution_id,
-            "message": "Task completed successfully"
+            "message": "Task completed successfully",
         }
 
     except Exception as e:
-        logger.error("Task completion handler failed", error=str(e), execution_id=execution_id if 'execution_id' in locals() else None)
+        logger.error(
+            "Task completion handler failed",
+            error=str(e),
+            execution_id=execution_id if "execution_id" in locals() else None,
+        )
         raise
 
 
 @register_jsonrpc_method("task.fail")
-async def handle_task_fail(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_fail(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Mark task as failed.
 
@@ -254,30 +281,43 @@ async def handle_task_fail(request: JsonRpcRequest) -> Dict[str, Any]:
         should_retry = request.params.get("should_retry", True)
 
         if not execution_id or not error_message:
-            raise ValueError("Missing required parameters: execution_id and/or error_message")
+            raise ValueError(
+                "Missing required parameters: execution_id and/or error_message"
+            )
 
-        success = await task_manager.fail_task(execution_id, error_message, should_retry)
+        success = await task_manager.fail_task(
+            execution_id, error_message, should_retry
+        )
 
         if not success:
             raise ValueError(f"Task failure recording failed: {execution_id}")
 
-        logger.info("Task failed via JSON-RPC", execution_id=execution_id, error=error_message, method="task.fail")
+        logger.info(
+            "Task failed via JSON-RPC",
+            execution_id=execution_id,
+            error=error_message,
+            method="task.fail",
+        )
 
         return {
             "success": True,
             "execution_id": execution_id,
             "error_message": error_message,
             "should_retry": should_retry,
-            "message": "Task failure recorded successfully"
+            "message": "Task failure recorded successfully",
         }
 
     except Exception as e:
-        logger.error("Task fail handler failed", error=str(e), execution_id=execution_id if 'execution_id' in locals() else None)
+        logger.error(
+            "Task fail handler failed",
+            error=str(e),
+            execution_id=execution_id if "execution_id" in locals() else None,
+        )
         raise
 
 
 @register_jsonrpc_method("task.cancel")
-async def handle_task_cancel(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_cancel(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Cancel task execution.
 
@@ -300,17 +340,19 @@ async def handle_task_cancel(request: JsonRpcRequest) -> Dict[str, Any]:
     if not success:
         raise ValueError(f"Task cancellation failed: {execution_id}")
 
-    logger.info("Task cancelled via JSON-RPC", execution_id=execution_id, method="task.cancel")
+    logger.info(
+        "Task cancelled via JSON-RPC", execution_id=execution_id, method="task.cancel"
+    )
 
     return {
         "success": True,
         "execution_id": execution_id,
-        "message": "Task cancelled successfully"
+        "message": "Task cancelled successfully",
     }
 
 
 @register_jsonrpc_method("task.update_progress")
-async def handle_task_update_progress(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_update_progress(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Update task execution progress.
 
@@ -333,7 +375,9 @@ async def handle_task_update_progress(request: JsonRpcRequest) -> Dict[str, Any]
     if not execution_id or percentage is None:
         raise ValueError("Missing required parameters: execution_id and/or percentage")
 
-    success = await task_manager.update_task_progress(execution_id, percentage, current_step)
+    success = await task_manager.update_task_progress(
+        execution_id, percentage, current_step
+    )
 
     if not success:
         raise ValueError(f"Task progress update failed: {execution_id}")
@@ -343,12 +387,12 @@ async def handle_task_update_progress(request: JsonRpcRequest) -> Dict[str, Any]
         "execution_id": execution_id,
         "percentage": percentage,
         "current_step": current_step,
-        "message": "Task progress updated successfully"
+        "message": "Task progress updated successfully",
     }
 
 
 @register_jsonrpc_method("task.query")
-async def handle_task_query(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_query(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Query tasks with filtering and pagination.
 
@@ -388,7 +432,9 @@ async def handle_task_query(request: JsonRpcRequest) -> Dict[str, Any]:
 
         # List filters
         if "tags" in params:
-            query_params["tags"] = params["tags"] if isinstance(params["tags"], list) else [params["tags"]]
+            query_params["tags"] = (
+                params["tags"] if isinstance(params["tags"], list) else [params["tags"]]
+            )
 
         # Priority filter
         if "priority" in params:
@@ -409,9 +455,14 @@ async def handle_task_query(request: JsonRpcRequest) -> Dict[str, Any]:
         # Execute query
         response = await task_manager.query_tasks(query)
 
-        logger.debug("Tasks queried via JSON-RPC", filters=query_params, count=len(response.tasks), method="task.query")
+        logger.debug(
+            "Tasks queried via JSON-RPC",
+            filters=query_params,
+            count=len(response.tasks),
+            method="task.query",
+        )
 
-        result = response.model_dump(mode='json')
+        result = response.model_dump(mode="json")
         # Add 'count' alias for compatibility
         result["count"] = len(response.tasks)
         return result
@@ -422,7 +473,7 @@ async def handle_task_query(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("task.dependencies")
-async def handle_task_dependencies(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_dependencies(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get task dependency information.
 
@@ -442,16 +493,17 @@ async def handle_task_dependencies(request: JsonRpcRequest) -> Dict[str, Any]:
 
     dependencies = await task_manager.get_task_dependencies(task_id)
 
-    logger.debug("Task dependencies queried via JSON-RPC", task_id=task_id, method="task.dependencies")
+    logger.debug(
+        "Task dependencies queried via JSON-RPC",
+        task_id=task_id,
+        method="task.dependencies",
+    )
 
-    return {
-        "task_id": task_id,
-        "dependencies": dependencies
-    }
+    return {"task_id": task_id, "dependencies": dependencies}
 
 
 @register_jsonrpc_method("task.ready")
-async def handle_task_ready(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_ready(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get tasks that are ready to be assigned.
 
@@ -463,16 +515,15 @@ async def handle_task_ready(request: JsonRpcRequest) -> Dict[str, Any]:
     """
     ready_tasks = await task_manager.get_ready_tasks()
 
-    logger.debug("Ready tasks queried via JSON-RPC", count=len(ready_tasks), method="task.ready")
+    logger.debug(
+        "Ready tasks queried via JSON-RPC", count=len(ready_tasks), method="task.ready"
+    )
 
-    return {
-        "ready_tasks": ready_tasks,
-        "count": len(ready_tasks)
-    }
+    return {"ready_tasks": ready_tasks, "count": len(ready_tasks)}
 
 
 @register_jsonrpc_method("task.cleanup")
-async def handle_task_cleanup(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_cleanup(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Cleanup old completed/failed tasks.
 
@@ -492,13 +543,18 @@ async def handle_task_cleanup(request: JsonRpcRequest) -> Dict[str, Any]:
     try:
         cleanup_count = await task_manager.cleanup_old_tasks(max_age_days)
 
-        logger.info("Tasks cleaned up via JSON-RPC", count=cleanup_count, max_age_days=max_age_days, method="task.cleanup")
+        logger.info(
+            "Tasks cleaned up via JSON-RPC",
+            count=cleanup_count,
+            max_age_days=max_age_days,
+            method="task.cleanup",
+        )
 
         return {
             "success": True,
             "cleanup_count": cleanup_count,
             "max_age_days": max_age_days,
-            "message": f"Cleaned up {cleanup_count} old tasks"
+            "message": f"Cleaned up {cleanup_count} old tasks",
         }
 
     except Exception as e:
@@ -507,7 +563,7 @@ async def handle_task_cleanup(request: JsonRpcRequest) -> Dict[str, Any]:
 
 
 @register_jsonrpc_method("task.summary")
-async def handle_task_summary(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_summary(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get task execution summary.
 
@@ -532,13 +588,17 @@ async def handle_task_summary(request: JsonRpcRequest) -> Dict[str, Any]:
 
     summary = execution.to_summary()
 
-    logger.debug("Task summary requested via JSON-RPC", execution_id=execution_id, method="task.summary")
+    logger.debug(
+        "Task summary requested via JSON-RPC",
+        execution_id=execution_id,
+        method="task.summary",
+    )
 
     return summary
 
 
 @register_jsonrpc_method("task.add_artifact")
-async def handle_task_add_artifact(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_add_artifact(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Add an artifact to a task execution.
 
@@ -563,26 +623,36 @@ async def handle_task_add_artifact(request: JsonRpcRequest) -> Dict[str, Any]:
     metadata = request.params.get("metadata")
 
     if not execution_id or not name or not artifact_type or content is None:
-        raise ValueError("Missing required parameters: execution_id, name, type, and/or content")
+        raise ValueError(
+            "Missing required parameters: execution_id, name, type, and/or content"
+        )
 
-    success = await task_manager.add_task_artifact(execution_id, name, artifact_type, content, metadata)
+    success = await task_manager.add_task_artifact(
+        execution_id, name, artifact_type, content, metadata
+    )
 
     if not success:
         raise ValueError(f"Artifact addition failed: {execution_id}")
 
-    logger.debug("Artifact added via JSON-RPC", execution_id=execution_id, name=name, type=artifact_type, method="task.add_artifact")
+    logger.debug(
+        "Artifact added via JSON-RPC",
+        execution_id=execution_id,
+        name=name,
+        type=artifact_type,
+        method="task.add_artifact",
+    )
 
     return {
         "success": True,
         "execution_id": execution_id,
         "artifact_name": name,
         "artifact_type": artifact_type,
-        "message": "Artifact added successfully"
+        "message": "Artifact added successfully",
     }
 
 
 @register_jsonrpc_method("task.get_artifacts")
-async def handle_task_get_artifacts(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_get_artifacts(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get all artifacts for a task execution.
 
@@ -605,17 +675,22 @@ async def handle_task_get_artifacts(request: JsonRpcRequest) -> Dict[str, Any]:
     if artifacts is None:
         raise ValueError(f"Task not found: {execution_id}")
 
-    logger.debug("Artifacts retrieved via JSON-RPC", execution_id=execution_id, count=len(artifacts), method="task.get_artifacts")
+    logger.debug(
+        "Artifacts retrieved via JSON-RPC",
+        execution_id=execution_id,
+        count=len(artifacts),
+        method="task.get_artifacts",
+    )
 
     return {
         "execution_id": execution_id,
-        "artifacts": [artifact.model_dump(mode='json') for artifact in artifacts],
-        "count": len(artifacts)
+        "artifacts": [artifact.model_dump(mode="json") for artifact in artifacts],
+        "count": len(artifacts),
     }
 
 
 @register_jsonrpc_method("task.status_transitions")
-async def handle_task_status_transitions(request: JsonRpcRequest) -> Dict[str, Any]:
+async def handle_task_status_transitions(request: JsonRpcRequest) -> dict[str, Any]:
     """
     Get valid status transitions for a task execution.
 
@@ -639,21 +714,41 @@ async def handle_task_status_transitions(request: JsonRpcRequest) -> Dict[str, A
 
     valid_transitions = await task_manager.get_task_status_transitions(execution_id)
 
-    logger.debug("Status transitions retrieved via JSON-RPC", execution_id=execution_id, method="task.status_transitions")
+    logger.debug(
+        "Status transitions retrieved via JSON-RPC",
+        execution_id=execution_id,
+        method="task.status_transitions",
+    )
 
     return {
         "execution_id": execution_id,
         "current_status": execution.status.value,
-        "valid_transitions": [status.value for status in valid_transitions] if valid_transitions else [],
-        "is_terminal": execution.is_terminal
+        "valid_transitions": [status.value for status in valid_transitions]
+        if valid_transitions
+        else [],
+        "is_terminal": execution.is_terminal,
     }
 
 
 # Log registration on import
-logger.info("Task JSON-RPC methods registered",
-           methods=[
-               "task.create", "task.get", "task.assign", "task.start",
-               "task.complete", "task.fail", "task.cancel", "task.update_progress",
-               "task.query", "task.dependencies", "task.ready", "task.cleanup", "task.summary",
-               "task.add_artifact", "task.get_artifacts", "task.status_transitions"
-           ])
+logger.info(
+    "Task JSON-RPC methods registered",
+    methods=[
+        "task.create",
+        "task.get",
+        "task.assign",
+        "task.start",
+        "task.complete",
+        "task.fail",
+        "task.cancel",
+        "task.update_progress",
+        "task.query",
+        "task.dependencies",
+        "task.ready",
+        "task.cleanup",
+        "task.summary",
+        "task.add_artifact",
+        "task.get_artifacts",
+        "task.status_transitions",
+    ],
+)

@@ -6,29 +6,31 @@ Provides JSON-RPC 2.0 compliant endpoints for agent communication.
 """
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from agentcore.a2a_protocol.config import settings
-from agentcore.a2a_protocol.routers import health, jsonrpc, wellknown, websocket
+from agentcore.a2a_protocol.database import close_db, init_db
 from agentcore.a2a_protocol.middleware import setup_middleware
-from agentcore.a2a_protocol.database import init_db, close_db
+from agentcore.a2a_protocol.routers import health, jsonrpc, websocket, wellknown
+
 # Import JSON-RPC methods to register them
 from agentcore.a2a_protocol.services import (
     agent_jsonrpc,
-    task_jsonrpc,
-    session_jsonrpc,
-    routing_jsonrpc,
-    security_jsonrpc,
     event_jsonrpc,
     health_jsonrpc,
+    routing_jsonrpc,
+    security_jsonrpc,
+    session_jsonrpc,
+    task_jsonrpc,
 )
+
 # Import reasoning JSON-RPC methods
 from agentcore.reasoning.services import reasoning_jsonrpc
 

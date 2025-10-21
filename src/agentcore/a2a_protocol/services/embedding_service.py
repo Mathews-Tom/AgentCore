@@ -6,7 +6,7 @@ Implements A2A-016: Semantic Capability Matching.
 """
 
 import logging
-from typing import List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class EmbeddingService:
             model_name: HuggingFace model name for embeddings
         """
         self.model_name = model_name
-        self._model: Optional[any] = None
+        self._model: any | None = None
         self.embedding_dim = 384  # all-MiniLM-L6-v2 output dimension
 
     def _load_model(self):
@@ -39,17 +39,19 @@ class EmbeddingService:
 
                 logger.info(f"Loading embedding model: {self.model_name}")
                 self._model = SentenceTransformer(self.model_name)
-                logger.info(f"Embedding model loaded successfully (dim={self.embedding_dim})")
-            except ImportError:
+                logger.info(
+                    f"Embedding model loaded successfully (dim={self.embedding_dim})"
+                )
+            except ImportError as e:
                 raise ImportError(
                     "sentence-transformers is required for semantic matching. "
                     "Install it with: uv add sentence-transformers"
-                )
+                ) from e
             except Exception as e:
                 logger.error(f"Failed to load embedding model: {e}")
                 raise
 
-    def generate_embedding(self, text: str) -> List[float]:
+    def generate_embedding(self, text: str) -> list[float]:
         """
         Generate embedding vector for a single text input.
 
@@ -77,9 +79,9 @@ class EmbeddingService:
 
         except Exception as e:
             logger.error(f"Failed to generate embedding: {e}")
-            raise RuntimeError(f"Embedding generation failed: {e}")
+            raise RuntimeError(f"Embedding generation failed: {e}") from e
 
-    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+    def generate_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for multiple texts (more efficient than individual calls).
 
@@ -105,16 +107,20 @@ class EmbeddingService:
 
         try:
             # Batch encode for better performance
-            embeddings = self._model.encode(valid_texts, convert_to_numpy=True, show_progress_bar=False)
+            embeddings = self._model.encode(
+                valid_texts, convert_to_numpy=True, show_progress_bar=False
+            )
 
             # Convert to list of lists
             return embeddings.tolist()
 
         except Exception as e:
             logger.error(f"Failed to generate batch embeddings: {e}")
-            raise RuntimeError(f"Batch embedding generation failed: {e}")
+            raise RuntimeError(f"Batch embedding generation failed: {e}") from e
 
-    def compute_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
+    def compute_similarity(
+        self, embedding1: list[float], embedding2: list[float]
+    ) -> float:
         """
         Compute cosine similarity between two embeddings.
 
@@ -150,7 +156,9 @@ class EmbeddingService:
         # Cosine similarity is in [-1, 1], normalize to [0, 1]
         return float((similarity + 1) / 2)
 
-    def generate_capability_embedding(self, capability_name: str, description: Optional[str] = None) -> List[float]:
+    def generate_capability_embedding(
+        self, capability_name: str, description: str | None = None
+    ) -> list[float]:
         """
         Generate embedding for an agent capability.
 
@@ -173,7 +181,7 @@ class EmbeddingService:
 
 
 # Global embedding service instance
-_embedding_service: Optional[EmbeddingService] = None
+_embedding_service: EmbeddingService | None = None
 
 
 def get_embedding_service() -> EmbeddingService:
@@ -186,4 +194,6 @@ def get_embedding_service() -> EmbeddingService:
     global _embedding_service
     if _embedding_service is None:
         _embedding_service = EmbeddingService()
+    return _embedding_service
+    return _embedding_service
     return _embedding_service
