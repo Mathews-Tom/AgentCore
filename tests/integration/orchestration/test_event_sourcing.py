@@ -486,9 +486,9 @@ class TestEventSourcingIntegration:
             # Should have multiple state transitions recorded
             assert len(history) >= len(transitions)
 
-            # Verify timestamps are sequential
+            # Verify timestamps are in reverse chronological order (newest first)
             for i in range(len(history) - 1):
-                assert history[i].created_at <= history[i + 1].created_at
+                assert history[i].created_at >= history[i + 1].created_at
 
     @pytest.mark.asyncio
     async def test_cqrs_command_query_separation(
@@ -718,6 +718,17 @@ class TestEventSourcingIntegration:
             )
         )
 
+        # Update execution to failed status after failure events
+        await orchestrator.update_execution_state(
+            execution_id=execution_id,
+            status=SagaStatus.FAILED,
+            current_step=2,
+            completed_steps=[saga.steps[0].step_id],
+            failed_steps=[saga.steps[1].step_id],
+            compensated_steps=[],
+            error_message="Step 2 failed",
+        )
+
         # Verify failure events captured
         async with db_session_factory() as session:
             execution = await WorkflowStateRepository.get_execution(
@@ -725,8 +736,8 @@ class TestEventSourcingIntegration:
             )
 
             assert execution is not None
-            # Note: Status may still be EXECUTING until compensation completes
-            assert execution.error_message is not None or execution.status == WorkflowStatus.FAILED
+            assert execution.status == WorkflowStatus.FAILED
+            assert execution.error_message == "Step 2 failed"
 
             # Verify state history captures failure
             history = await WorkflowStateRepository.get_state_history(

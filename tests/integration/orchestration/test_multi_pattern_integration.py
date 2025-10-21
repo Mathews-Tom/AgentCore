@@ -129,7 +129,7 @@ class TestMultiPatternIntegration:
 
         # Step 2: Payment processing fails (circuit breaker opens after threshold)
         for retry in range(3):
-            circuit_breaker.record_failure(
+            await circuit_breaker.record_failure(
                 error=Exception("Payment service timeout")
             )
 
@@ -209,7 +209,7 @@ class TestMultiPatternIntegration:
 
         # Create swarm task
         task = SwarmTask(
-            task_id=str(uuid4()),
+            task_id=uuid4(),
             task_type="distributed_computation",
             input_data={"data": list(range(100))},
             required_agents=3,
@@ -428,7 +428,7 @@ class TestMultiPatternIntegration:
 
         # Simulate failures in different services
         for _ in range(3):
-            breakers["api"].record_failure(Exception("API timeout"))
+            await breakers["api"].record_failure(Exception("API timeout"))
 
         assert breakers["api"].state == CircuitState.OPEN
         assert breakers["database"].state == CircuitState.CLOSED

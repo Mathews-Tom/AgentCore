@@ -196,8 +196,13 @@ class WorkflowStateRepository:
         ):
             execution.completed_at = datetime.now(UTC)
             if execution.started_at:
+                # Handle timezone-aware and timezone-naive datetime comparisons
+                started = execution.started_at
+                if started.tzinfo is None:
+                    # Assume UTC for naive datetimes (SQLite compatibility)
+                    started = started.replace(tzinfo=UTC)
                 execution.duration_seconds = int(
-                    (execution.completed_at - execution.started_at).total_seconds()
+                    (execution.completed_at - started).total_seconds()
                 )
 
         # Update error info

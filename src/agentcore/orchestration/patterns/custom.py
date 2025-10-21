@@ -79,6 +79,7 @@ class TaskNode(BaseModel):
     """Task node in pattern workflow graph."""
 
     task_id: str = Field(description="Unique task identifier")
+    task_name: str = Field(default="", description="Task name (alias for task_id if not provided)")
     agent_role: str = Field(description="Agent role for this task")
     depends_on: list[str] = Field(default_factory=list, description="Task dependencies")
     parallel: bool = Field(default=False, description="Can execute in parallel")
@@ -89,6 +90,11 @@ class TaskNode(BaseModel):
         default=None, description="Compensation action for saga pattern"
     )
     metadata: dict[str, Any] = Field(default_factory=dict, description="Task metadata")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Set task_name to task_id if not provided."""
+        if not self.task_name:
+            self.task_name = self.task_id
 
 
 class CoordinationConfig(BaseModel):
@@ -258,6 +264,18 @@ class PatternRegistry:
         self._patterns_by_name: dict[str, UUID] = {}
         self._patterns_by_type: dict[PatternType, set[UUID]] = {}
 
+    def register(self, pattern: PatternDefinition) -> tuple[bool, list[str]]:
+        """
+        Register a new pattern (alias for register_pattern).
+
+        Args:
+            pattern: Pattern definition to register
+
+        Returns:
+            Tuple of (success, error_messages)
+        """
+        return self.register_pattern(pattern)
+
     def register_pattern(self, pattern: PatternDefinition) -> tuple[bool, list[str]]:
         """
         Register a new pattern.
@@ -294,6 +312,10 @@ class PatternRegistry:
         self._patterns_by_type[pattern.pattern_type].add(pattern.pattern_id)
 
         return True, []
+
+    def get(self, pattern_id: UUID) -> PatternDefinition | None:
+        """Get pattern by ID (alias for get_pattern)."""
+        return self.get_pattern(pattern_id)
 
     def get_pattern(self, pattern_id: UUID) -> PatternDefinition | None:
         """Get pattern by ID."""

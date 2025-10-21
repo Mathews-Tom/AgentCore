@@ -175,8 +175,13 @@ class CircuitBreakerMetrics(BaseModel):
         self.last_success_at = datetime.now(UTC)
         self._add_to_window(True)
 
-    def record_failure(self) -> None:
-        """Record a failed request."""
+    def record_failure(self, error: Exception | None = None) -> None:
+        """
+        Record a failed request.
+
+        Args:
+            error: Optional exception that caused the failure
+        """
         self.total_requests += 1
         self.failed_requests += 1
         self.consecutive_failures += 1
@@ -301,9 +306,14 @@ class CircuitBreaker(BaseModel):
             ):
                 await self._transition_to_closed()
 
-    async def record_failure(self) -> None:
-        """Record failed execution."""
-        self.metrics.record_failure()
+    async def record_failure(self, error: Exception | None = None) -> None:
+        """
+        Record failed execution.
+
+        Args:
+            error: Optional exception that caused the failure
+        """
+        self.metrics.record_failure(error=error)
 
         if self.state == CircuitState.CLOSED:
             # Check if should open
@@ -574,16 +584,20 @@ class FaultToleranceCoordinator(BaseModel):
     def register_circuit_breaker(
         self,
         service_name: str,
-        config: CircuitBreakerConfig | None = None,
+        config_or_breaker: CircuitBreakerConfig | CircuitBreaker | None = None,
     ) -> CircuitBreaker:
         """Register a circuit breaker for a service."""
         if service_name in self._circuit_breakers:
             return self._circuit_breakers[service_name]
 
-        breaker = CircuitBreaker(
-            service_name=service_name,
-            config=config or CircuitBreakerConfig(),
-        )
+        # Handle both CircuitBreaker instance and config
+        if isinstance(config_or_breaker, CircuitBreaker):
+            breaker = config_or_breaker
+        else:
+            breaker = CircuitBreaker(
+                service_name=service_name,
+                config=config_or_breaker or CircuitBreakerConfig(),
+            )
         self._circuit_breakers[service_name] = breaker
         return breaker
 
@@ -716,6 +730,19 @@ class FaultToleranceCoordinator(BaseModel):
             )
         else:
             return await breaker.call(func, *args, **kwargs)
+
+    def get_available_services(self) -> list[str]:
+        """
+        Get list of services with closed circuit breakers (available).
+
+        Returns:
+            List of service names that are currently available
+        """
+        available = []
+        for name, breaker in self._circuit_breakers.items():
+            if breaker.state == CircuitState.CLOSED:
+                available.append(name)
+        return available
 
     async def get_coordinator_status(self) -> dict[str, Any]:
         """Get coordinator status summary."""

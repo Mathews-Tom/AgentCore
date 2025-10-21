@@ -251,6 +251,7 @@ class PersistentSagaOrchestrator:
         retry_count: int = 0,
         result: dict[str, Any] | None = None,
         error: str | None = None,
+        error_message: str | None = None,  # Alias for error
     ) -> None:
         """
         Update individual step state.
@@ -262,7 +263,11 @@ class PersistentSagaOrchestrator:
             retry_count: Retry count
             result: Step result
             error: Error message
+            error_message: Alias for error parameter
         """
+        # Handle both error and error_message parameters
+        if error_message is not None and error is None:
+            error = error_message
         async with self.session_factory() as session:
             # Get current execution
             execution = await WorkflowStateRepository.get_execution(

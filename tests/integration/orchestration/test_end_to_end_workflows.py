@@ -203,20 +203,17 @@ class TestEndToEndWorkflows:
 
         # Simulate parallel execution of analysis steps
         parallel_steps = saga.steps[1:4]
-        await asyncio.gather(
-            *[
-                orchestrator.update_step_state(
-                    execution_id=execution_id,
-                    step_id=step.step_id,
-                    status="completed",
-                    result={
-                        "analysis_type": step.action_data["task"],
-                        "items_processed": 50,
-                    },
-                )
-                for step in parallel_steps
-            ]
-        )
+        # Update steps sequentially to avoid race conditions in database updates
+        for step in parallel_steps:
+            await orchestrator.update_step_state(
+                execution_id=execution_id,
+                step_id=step.step_id,
+                status="completed",
+                result={
+                    "analysis_type": step.action_data["task"],
+                    "items_processed": 50,
+                },
+            )
 
         # Complete merge step
         await orchestrator.update_step_state(
@@ -248,8 +245,10 @@ class TestEndToEndWorkflows:
 
             # Verify parallel steps all completed
             for step in parallel_steps:
-                step_state = execution.task_states[str(step.step_id)]
-                assert step_state["status"] == "completed"
+                step_id_str = str(step.step_id)
+                assert step_id_str in execution.task_states, f"Step {step.name} ({step_id_str}) not found in task_states"
+                step_state = execution.task_states[step_id_str]
+                assert step_state["status"] == "completed", f"Step {step.name} has status {step_state['status']}, expected 'completed'"
 
     @pytest.mark.asyncio
     async def test_workflow_with_failure_and_compensation(

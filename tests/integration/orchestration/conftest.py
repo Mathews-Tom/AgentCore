@@ -16,11 +16,11 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 from testcontainers.redis import RedisContainer
 
+from agentcore.a2a_protocol.database.connection import Base
 from agentcore.orchestration.state.models import (
-    Base,
     WorkflowExecutionDB,
     WorkflowStateDB,
     WorkflowStateVersion,
@@ -35,7 +35,8 @@ async def test_db_engine() -> AsyncGenerator[AsyncEngine, None]:
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         echo=False,
-        poolclass=NullPool,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
     )
 
     # Create all tables

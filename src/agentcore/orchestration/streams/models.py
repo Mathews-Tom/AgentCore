@@ -193,6 +193,10 @@ class WorkflowCreatedEvent(OrchestrationEvent):
     orchestration_pattern: str = Field(
         description="Orchestration pattern type",
     )
+    total_tasks: int = Field(
+        default=0,
+        description="Total number of tasks in the workflow",
+    )
 
 
 class WorkflowStartedEvent(OrchestrationEvent):
@@ -201,6 +205,10 @@ class WorkflowStartedEvent(OrchestrationEvent):
     event_type: EventType = Field(default=EventType.WORKFLOW_STARTED, frozen=True)
     execution_id: UUID = Field(
         description="Workflow execution identifier",
+    )
+    workflow_name: str = Field(
+        default="",
+        description="Workflow name",
     )
 
 
@@ -211,12 +219,27 @@ class WorkflowCompletedEvent(OrchestrationEvent):
     execution_id: UUID = Field(
         description="Workflow execution identifier",
     )
+    workflow_name: str = Field(
+        default="",
+        description="Workflow name",
+    )
     total_execution_time_ms: int = Field(
+        default=0,
         description="Total workflow execution time",
     )
     tasks_completed: int = Field(
+        default=0,
         description="Number of tasks completed",
     )
+    total_tasks_completed: int | None = Field(
+        default=None,
+        description="Alias for tasks_completed",
+    )
+
+    def model_post_init(self, __context: Any) -> None:
+        """Handle total_tasks_completed alias."""
+        if self.total_tasks_completed is not None and self.tasks_completed == 0:
+            self.tasks_completed = self.total_tasks_completed
 
 
 class WorkflowFailedEvent(OrchestrationEvent):
@@ -225,6 +248,10 @@ class WorkflowFailedEvent(OrchestrationEvent):
     event_type: EventType = Field(default=EventType.WORKFLOW_FAILED, frozen=True)
     execution_id: UUID = Field(
         description="Workflow execution identifier",
+    )
+    workflow_name: str = Field(
+        default="",
+        description="Workflow name",
     )
     error_message: str = Field(
         description="Error message",

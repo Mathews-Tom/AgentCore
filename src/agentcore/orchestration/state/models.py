@@ -68,7 +68,7 @@ class WorkflowExecutionDB(Base):
 
     # Status tracking
     status = Column(
-        SQLEnum(WorkflowStatus, name="workflowstatus", create_type=False),
+        SQLEnum(WorkflowStatus, native_enum=False),
         nullable=False,
         default=WorkflowStatus.PENDING,
         index=True,
@@ -112,6 +112,9 @@ class WorkflowExecutionDB(Base):
     # Timing
     created_at = Column(
         DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
+    updated_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
