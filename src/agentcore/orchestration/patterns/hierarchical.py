@@ -349,26 +349,32 @@ class HierarchicalCoordinator:
         Returns:
             True if escalated, False otherwise
         """
+        # First, update failure count and check if escalation is needed
+        should_escalate = False
+        failure_count = 0
+
         async with self._lock:
             # Track failure count
             self._task_failures[task_id] = self._task_failures.get(task_id, 0) + 1
+            failure_count = self._task_failures[task_id]
 
             # Check escalation threshold
-            if (
+            should_escalate = (
                 self.config.enable_escalation
-                and self._task_failures[task_id]
-                >= self.config.escalation_threshold_failures
-            ):
-                # Escalate task
-                target = await self.escalate_task(
-                    task_id=task_id,
-                    from_agent_id=agent_id,
-                    reason=EscalationReason.FAILURE_THRESHOLD,
-                    context={"error_message": error_message, "failure_count": self._task_failures[task_id]},
-                )
-                return target is not None
+                and failure_count >= self.config.escalation_threshold_failures
+            )
 
-            return False
+        # Release lock before calling escalate_task to avoid deadlock
+        if should_escalate:
+            target = await self.escalate_task(
+                task_id=task_id,
+                from_agent_id=agent_id,
+                reason=EscalationReason.FAILURE_THRESHOLD,
+                context={"error_message": error_message, "failure_count": failure_count},
+            )
+            return target is not None
+
+        return False
 
     async def check_authority(
         self,
