@@ -8,6 +8,37 @@ authors = [
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
+keywords = [
+    "ai",
+    "agents",
+    "orchestration",
+    "a2a",
+    "agent2agent",
+    "llm",
+    "automation",
+    "workflow",
+    "cli",
+    "fastapi",
+    "jsonrpc",
+    "multi-agent",
+    "agent-framework",
+    "distributed-systems",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+    "Framework :: FastAPI",
+]
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
@@ -44,6 +75,13 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.42b0",
     "opentelemetry-exporter-otlp>=1.21.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/agentcore/agentcore"
+Documentation = "https://docs.agentcore.ai"
+Repository = "https://github.com/agentcore/agentcore"
+Issues = "https://github.com/agentcore/agentcore/issues"
+Changelog = "https://github.com/agentcore/agentcore/blob/main/docs/cli/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
