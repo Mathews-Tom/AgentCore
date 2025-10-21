@@ -8,9 +8,10 @@ Queries retrieve data from optimized read models.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -47,9 +48,7 @@ class Query(BaseModel):
     Queries retrieve data without side effects.
     """
 
-    query_id: UUID = Field(
-        default_factory=uuid4, description="Unique query identifier"
-    )
+    query_id: UUID = Field(default_factory=uuid4, description="Unique query identifier")
     query_type: QueryType = Field(description="Type of query")
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Query timestamp"
@@ -65,9 +64,13 @@ class QueryResult(BaseModel):
     data: dict[str, Any] | list[Any] | None = Field(
         default=None, description="Query result data"
     )
-    error_message: str | None = Field(default=None, description="Error message if failed")
+    error_message: str | None = Field(
+        default=None, description="Error message if failed"
+    )
     error_type: str | None = Field(default=None, description="Error type if failed")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Result metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Result metadata"
+    )
 
 
 class GetWorkflowQuery(Query):
@@ -75,12 +78,8 @@ class GetWorkflowQuery(Query):
 
     query_type: QueryType = Field(default=QueryType.GET_WORKFLOW, frozen=True)
     workflow_id: UUID = Field(description="Workflow identifier")
-    include_tasks: bool = Field(
-        default=False, description="Include task definitions"
-    )
-    include_agents: bool = Field(
-        default=False, description="Include agent assignments"
-    )
+    include_tasks: bool = Field(default=False, description="Include task definitions")
+    include_agents: bool = Field(default=False, description="Include agent assignments")
 
 
 class ListWorkflowsQuery(Query):
@@ -133,12 +132,8 @@ class GetAgentAssignmentsQuery(Query):
 
     query_type: QueryType = Field(default=QueryType.GET_AGENT_ASSIGNMENTS, frozen=True)
     agent_id: str = Field(description="Agent identifier")
-    workflow_id: UUID | None = Field(
-        default=None, description="Filter by workflow"
-    )
-    active_only: bool = Field(
-        default=True, description="Only active assignments"
-    )
+    workflow_id: UUID | None = Field(default=None, description="Filter by workflow")
+    active_only: bool = Field(default=True, description="Only active assignments")
 
 
 class ListAgentsInWorkflowQuery(Query):
@@ -165,9 +160,7 @@ class ListTasksQuery(Query):
 
     query_type: QueryType = Field(default=QueryType.LIST_TASKS, frozen=True)
     workflow_id: UUID = Field(description="Workflow identifier")
-    execution_id: UUID | None = Field(
-        default=None, description="Filter by execution"
-    )
+    execution_id: UUID | None = Field(default=None, description="Filter by execution")
     status: str | None = Field(default=None, description="Filter by task status")
     agent_id: str | None = Field(default=None, description="Filter by agent")
     limit: int = Field(default=50, ge=1, le=1000, description="Maximum results")
@@ -194,12 +187,8 @@ class ListExecutionsQuery(Query):
     query_type: QueryType = Field(default=QueryType.LIST_EXECUTIONS, frozen=True)
     workflow_id: UUID = Field(description="Workflow identifier")
     status: str | None = Field(default=None, description="Filter by execution status")
-    from_timestamp: datetime | None = Field(
-        default=None, description="Start timestamp"
-    )
-    to_timestamp: datetime | None = Field(
-        default=None, description="End timestamp"
-    )
+    from_timestamp: datetime | None = Field(default=None, description="Start timestamp")
+    to_timestamp: datetime | None = Field(default=None, description="End timestamp")
     limit: int = Field(default=50, ge=1, le=1000, description="Maximum results")
     offset: int = Field(default=0, ge=0, description="Pagination offset")
 
@@ -207,9 +196,7 @@ class ListExecutionsQuery(Query):
 class GetExecutionMetricsQuery(Query):
     """Query to get execution performance metrics."""
 
-    query_type: QueryType = Field(
-        default=QueryType.GET_EXECUTION_METRICS, frozen=True
-    )
+    query_type: QueryType = Field(default=QueryType.GET_EXECUTION_METRICS, frozen=True)
     execution_id: UUID = Field(description="Execution identifier")
 
 
@@ -261,9 +248,7 @@ class QueryBus:
         """Initialize query bus."""
         self._handlers: dict[QueryType, QueryHandler] = {}
 
-    def register(
-        self, query_type: QueryType, handler: QueryHandler
-    ) -> None:
+    def register(self, query_type: QueryType, handler: QueryHandler) -> None:
         """
         Register a query handler.
 

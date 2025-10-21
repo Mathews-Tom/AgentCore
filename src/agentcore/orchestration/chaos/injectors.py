@@ -10,8 +10,9 @@ from __future__ import annotations
 import asyncio
 import random
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -117,7 +118,9 @@ class NetworkFaultInjector(FaultInjector):
             async with self._lock:
                 if config.fault_type == FaultType.NETWORK_LATENCY:
                     if config.latency_ms is None:
-                        raise ValueError("latency_ms required for network latency fault")
+                        raise ValueError(
+                            "latency_ms required for network latency fault"
+                        )
                     self._latency_overrides[config.target_service] = config.latency_ms
                     result.metadata["latency_ms"] = config.latency_ms
 
@@ -137,7 +140,9 @@ class NetworkFaultInjector(FaultInjector):
                     result.metadata["partition"] = True
 
                 else:
-                    raise ValueError(f"Unsupported network fault type: {config.fault_type}")
+                    raise ValueError(
+                        f"Unsupported network fault type: {config.fault_type}"
+                    )
 
                 result.success = True
                 self._active_injections[result.injection_id] = result
@@ -196,9 +201,7 @@ class NetworkFaultInjector(FaultInjector):
         if service in self._packet_loss_rates:
             loss_rate = self._packet_loss_rates[service]
             if random.random() < loss_rate:
-                raise ConnectionError(
-                    f"Network packet loss simulated for {service}"
-                )
+                raise ConnectionError(f"Network packet loss simulated for {service}")
 
         # Apply latency
         if service in self._latency_overrides:
@@ -258,7 +261,9 @@ class ServiceCrashInjector(FaultInjector):
                     result.metadata["hang_duration"] = config.hang_duration_seconds
 
                 else:
-                    raise ValueError(f"Unsupported service fault type: {config.fault_type}")
+                    raise ValueError(
+                        f"Unsupported service fault type: {config.fault_type}"
+                    )
 
                 result.success = True
                 self._active_injections[result.injection_id] = result
@@ -428,10 +433,10 @@ class TimeoutInjector(FaultInjector):
 
         try:
             return await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError(
+        except TimeoutError as e:
+            raise TimeoutError(
                 f"Operation timed out for {service} after {timeout}s"
-            )
+            ) from e
 
     def get_timeout_status(self) -> dict[str, Any]:
         """Get current timeout fault status."""

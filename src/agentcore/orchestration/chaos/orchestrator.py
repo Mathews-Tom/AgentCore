@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID
 
 from agentcore.orchestration.chaos.injectors import (
@@ -182,7 +182,9 @@ class ChaosOrchestrator:
                 if injection_result.success:
                     result.faults_injected += 1
                     recovery_metrics.fault_injected_at = injection_result.injected_at
-                    result.logs.append(f"Fault injected: {injection_result.injection_id}")
+                    result.logs.append(
+                        f"Fault injected: {injection_result.injection_id}"
+                    )
                 else:
                     result.faults_failed += 1
                     result.logs.append(
@@ -245,9 +247,7 @@ class ChaosOrchestrator:
 
         return result
 
-    async def _inject_fault(
-        self, fault_config: Any, dry_run: bool
-    ) -> Any:
+    async def _inject_fault(self, fault_config: Any, dry_run: bool) -> Any:
         """Inject a fault."""
         if dry_run:
             # Return mock injection result
@@ -288,8 +288,7 @@ class ChaosOrchestrator:
         if recovery_metrics.fault_injected_at:
             recovery_metrics.fault_detected_at = datetime.now(UTC)
             recovery_metrics.time_to_detect_seconds = (
-                recovery_metrics.fault_detected_at
-                - recovery_metrics.fault_injected_at
+                recovery_metrics.fault_detected_at - recovery_metrics.fault_injected_at
             ).total_seconds()
 
         # Simulate recovery
@@ -339,9 +338,7 @@ class ChaosOrchestrator:
         # Validate saga compensation
         if scenario.validate_saga_compensation and self.saga_orchestrator:
             # Check if saga compensations were triggered
-            orchestrator_status = (
-                await self.saga_orchestrator.get_orchestrator_status()
-            )
+            orchestrator_status = await self.saga_orchestrator.get_orchestrator_status()
 
             # In a real implementation, would check for compensations
             # For now, mark as validated if saga orchestrator is present
