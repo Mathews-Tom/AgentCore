@@ -4,16 +4,107 @@ Provides multiple output formats:
 - JSON: Machine-readable format for scripting
 - Table: Human-readable tabular format (default)
 - Tree: Hierarchical visualization
+
+Features:
+- Color auto-detection (disabled for piped output)
+- Timestamp formatting options
+- Column selection for tables
+- Pagination support
 """
 
 from __future__ import annotations
 
 import json
+import sys
+from datetime import datetime
 from typing import Any
 
 from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
+
+
+def _should_use_color() -> bool:
+    """Determine if color output should be used.
+
+    Color is disabled when:
+    - Output is piped (not a TTY)
+    - NO_COLOR environment variable is set
+    - TERM is set to "dumb"
+
+    Returns:
+        True if color should be used, False otherwise
+    """
+    import os
+
+    # Check NO_COLOR environment variable
+    if os.environ.get("NO_COLOR"):
+        return False
+
+    # Check TERM environment variable
+    if os.environ.get("TERM") == "dumb":
+        return False
+
+    # Check if stdout is a TTY
+    if not sys.stdout.isatty():
+        return False
+
+    return True
+
+
+def _get_console(force_color: bool | None = None) -> Console:
+    """Get a Rich Console with appropriate color settings.
+
+    Args:
+        force_color: If True, force color output. If False, disable color.
+                    If None, auto-detect based on environment.
+
+    Returns:
+        Configured Console instance
+    """
+    if force_color is None:
+        force_color = _should_use_color()
+
+    return Console(
+        force_terminal=force_color,
+        no_color=not force_color,
+        legacy_windows=False,
+    )
+
+
+def _format_timestamp(
+    timestamp: str | datetime | None,
+    include_time: bool = False,
+) -> str:
+    """Format a timestamp for display.
+
+    Args:
+        timestamp: Timestamp as ISO string, datetime object, or None
+        include_time: Whether to include time portion (default: False)
+
+    Returns:
+        Formatted timestamp string or "N/A" if None
+    """
+    if timestamp is None:
+        return "N/A"
+
+    # Parse timestamp if it's a string
+    if isinstance(timestamp, str):
+        try:
+            # Try parsing ISO format
+            dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            # Return as-is if parsing fails
+            return timestamp
+    elif isinstance(timestamp, datetime):
+        dt = timestamp
+    else:
+        return str(timestamp)
+
+    # Format based on include_time flag
+    if include_time:
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return dt.strftime("%Y-%m-%d")
 
 
 def format_json(data: Any, pretty: bool = True) -> str:
@@ -35,6 +126,9 @@ def format_table(
     data: list[dict[str, Any]],
     columns: list[str] | None = None,
     title: str | None = None,
+    timestamps: bool = False,
+    limit: int | None = None,
+    force_color: bool | None = None,
 ) -> str:
     """Format data as a rich table.
 
@@ -42,6 +136,9 @@ def format_table(
         data: List of dictionaries to display as rows
         columns: Optional list of column keys to display (default: all keys)
         title: Optional table title
+        timestamps: Whether to include time in timestamp fields (default: False)
+        limit: Maximum number of rows to display (default: None for all)
+        force_color: Force color output (None for auto-detect)
 
     Returns:
         Formatted table string
@@ -49,9 +146,17 @@ def format_table(
     if not data:
         return "[dim]No data to display[/dim]"
 
+    # Apply limit if specified
+    if limit is not None and limit > 0:
+        data = data[:limit]
+
     # Auto-detect columns if not specified
     if columns is None:
         columns = list(data[0].keys()) if data else []
+    else:
+        # Filter to only columns that exist in data
+        first_row_keys = set(data[0].keys()) if data else set()
+        columns = [c for c in columns if c in first_row_keys]
 
     # Create table
     table = Table(title=title, show_header=True, header_style="bold magenta")
@@ -64,10 +169,20 @@ def format_table(
 
     # Add rows
     for row in data:
-        table.add_row(*[_format_value(row.get(col, "")) for col in columns])
+        formatted_row = []
+        for col in columns:
+            value = row.get(col, "")
+            # Format timestamps if column name suggests it's a timestamp
+            if timestamps and isinstance(value, str) and any(
+                time_field in col.lower()
+                for time_field in ["_at", "timestamp", "time", "date"]
+            ):
+                value = _format_timestamp(value, include_time=timestamps)
+            formatted_row.append(_format_value(value))
+        table.add_row(*formatted_row)
 
-    # Capture output
-    console = Console()
+    # Capture output with appropriate console
+    console = _get_console(force_color)
     with console.capture() as capture:
         console.print(table)
 
@@ -77,37 +192,47 @@ def format_table(
 def format_tree(
     data: dict[str, Any],
     label: str = "Root",
+    timestamps: bool = False,
+    force_color: bool | None = None,
 ) -> str:
     """Format data as a rich tree.
 
     Args:
         data: Dictionary to display as tree
         label: Root node label
+        timestamps: Whether to include time in timestamp fields (default: False)
+        force_color: Force color output (None for auto-detect)
 
     Returns:
         Formatted tree string
     """
     tree = Tree(label)
-    _build_tree(tree, data)
+    _build_tree(tree, data, timestamps=timestamps)
 
-    # Capture output
-    console = Console()
+    # Capture output with appropriate console
+    console = _get_console(force_color)
     with console.capture() as capture:
         console.print(tree)
 
     return capture.get()
 
 
-def format_agent_info(agent_data: dict[str, Any]) -> str:
+def format_agent_info(
+    agent_data: dict[str, Any],
+    timestamps: bool = False,
+    force_color: bool | None = None,
+) -> str:
     """Format agent information in a detailed view.
 
     Args:
         agent_data: Agent data dictionary
+        timestamps: Whether to include time in timestamp fields (default: False)
+        force_color: Force color output (None for auto-detect)
 
     Returns:
         Formatted agent info
     """
-    console = Console()
+    console = _get_console(force_color)
     output_lines = []
 
     # Basic info
@@ -136,11 +261,13 @@ def format_agent_info(agent_data: dict[str, Any]) -> str:
     # Timestamps
     registered = agent_data.get("registered_at") or agent_data.get("created_at")
     if registered:
-        output_lines.append(f"[bold]Registered:[/bold] {registered}")
+        formatted_registered = _format_timestamp(registered, include_time=timestamps)
+        output_lines.append(f"[bold]Registered:[/bold] {formatted_registered}")
 
     updated = agent_data.get("updated_at")
     if updated:
-        output_lines.append(f"[bold]Last Updated:[/bold] {updated}")
+        formatted_updated = _format_timestamp(updated, include_time=timestamps)
+        output_lines.append(f"[bold]Last Updated:[/bold] {formatted_updated}")
 
     # Health status
     health = agent_data.get("health_status")
@@ -155,7 +282,14 @@ def format_agent_info(agent_data: dict[str, Any]) -> str:
     return "\n".join(output_lines)
 
 
-def _build_tree(tree: Tree, data: Any, max_depth: int = 5, current_depth: int = 0) -> None:
+def _build_tree(
+    tree: Tree,
+    data: Any,
+    max_depth: int = 5,
+    current_depth: int = 0,
+    timestamps: bool = False,
+    parent_key: str = "",
+) -> None:
     """Recursively build a tree from data.
 
     Args:
@@ -163,6 +297,8 @@ def _build_tree(tree: Tree, data: Any, max_depth: int = 5, current_depth: int = 
         data: Data to add
         max_depth: Maximum tree depth
         current_depth: Current depth level
+        timestamps: Whether to include time in timestamp fields
+        parent_key: Parent key name for timestamp detection
     """
     if current_depth >= max_depth:
         tree.add("[dim]...[/dim]")
@@ -172,14 +308,35 @@ def _build_tree(tree: Tree, data: Any, max_depth: int = 5, current_depth: int = 
         for key, value in data.items():
             if isinstance(value, (dict, list)):
                 branch = tree.add(f"[bold]{key}[/bold]")
-                _build_tree(branch, value, max_depth, current_depth + 1)
+                _build_tree(
+                    branch,
+                    value,
+                    max_depth,
+                    current_depth + 1,
+                    timestamps,
+                    parent_key=key,
+                )
             else:
-                tree.add(f"[bold]{key}:[/bold] {_format_value(value)}")
+                # Format timestamp values if enabled
+                formatted_value = value
+                if timestamps and isinstance(value, str) and any(
+                    time_field in key.lower()
+                    for time_field in ["_at", "timestamp", "time", "date"]
+                ):
+                    formatted_value = _format_timestamp(value, include_time=timestamps)
+                tree.add(f"[bold]{key}:[/bold] {_format_value(formatted_value)}")
     elif isinstance(data, list):
         for i, item in enumerate(data):
             if isinstance(item, (dict, list)):
                 branch = tree.add(f"[bold][{i}][/bold]")
-                _build_tree(branch, item, max_depth, current_depth + 1)
+                _build_tree(
+                    branch,
+                    item,
+                    max_depth,
+                    current_depth + 1,
+                    timestamps,
+                    parent_key=parent_key,
+                )
             else:
                 tree.add(f"[{i}] {_format_value(item)}")
     else:
