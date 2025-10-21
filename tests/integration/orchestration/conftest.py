@@ -33,16 +33,19 @@ from agentcore.orchestration.streams.config import StreamConfig
 async def test_db_engine() -> AsyncGenerator[AsyncEngine, None]:
     """Create test database engine with in-memory SQLite.
 
-    Each test gets a fresh database to avoid index/table conflicts.
+    Uses StaticPool with shared cache to allow multiple connections,
+    but drops/creates tables for each test to avoid conflicts.
     """
     engine = create_async_engine(
-        "sqlite+aiosqlite://",
+        "sqlite+aiosqlite:///:memory:",
         echo=False,
+        poolclass=StaticPool,
         connect_args={"check_same_thread": False},
     )
 
-    # Create all tables
+    # Drop and create all tables fresh for this test
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
