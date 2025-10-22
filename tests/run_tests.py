@@ -13,8 +13,34 @@ Options:
     --parallel           Run test components in parallel
     --no-coverage        Skip coverage reporting
     --verbose            Show verbose output
-    --watch              Watch mode - rerun on file changes
-    --json               Output results as JSON
+    --json <file>        Output results as JSON to file
+
+Component Mapping:
+    Test Directory          Source Component        Ticket Prefix
+    ---------------         ----------------        -------------
+    a2a_protocol            a2a_protocol            A2A
+    agent_runtime           agent_runtime           ART
+    reasoning               reasoning               BCR
+    training                training                FLOW
+    orchestration           orchestration           ORCH
+    integration             integration             INT
+    cli                     (not yet implemented)   CLI
+    gateway                 (not yet implemented)   GATE
+    config                  (infrastructure tests)  N/A
+    load                    (load tests)            N/A
+
+Examples:
+    # Run all tests
+    uv run python tests/run_tests.py
+
+    # Run specific components
+    uv run python tests/run_tests.py --components a2a_protocol,training
+
+    # Run in parallel without coverage
+    uv run python tests/run_tests.py --parallel --no-coverage
+
+    # Save results to JSON
+    uv run python tests/run_tests.py --json test-results.json
 """
 
 import argparse
@@ -90,6 +116,41 @@ class TestReport:
 class TestRunner:
     """Orchestrates test execution and reporting."""
 
+    # Mapping between test directories and source components
+    # Keys are actual test directory names, values are source component paths
+    # None means no source component (infrastructure/not implemented)
+    COMPONENT_MAPPING = {
+        "a2a_protocol": "a2a_protocol",  # A2A - Agent-to-Agent Protocol
+        "agent_runtime": "agent_runtime",  # ART - Agent Runtime Layer
+        "reasoning": "reasoning",  # BCR - Bounded Context Reasoning
+        "training": "training",  # FLOW - Training System
+        "orchestration": "orchestration",  # ORCH - Orchestration Engine
+        "integration": "integration",  # INT - Integration Tests
+        "cli": None,  # CLI - Command Line Interface (not yet implemented)
+        "gateway": None,  # GATE - API Gateway (not yet implemented)
+        "config": None,  # Config tests (infrastructure, no source component)
+        "load": None,  # Load tests (infrastructure, no source component)
+    }
+
+    # Human-readable display names for components
+    DISPLAY_NAMES = {
+        "a2a_protocol": "A2A Protocol",
+        "agent_runtime": "Agent Runtime",
+        "reasoning": "Context Reasoning",
+        "training": "Training System",
+        "orchestration": "Orchestration Engine",
+        "integration": "Integration Tests",
+        "cli": "CLI",
+        "gateway": "API Gateway",
+        "config": "Configuration Tests",
+        "load": "Load Tests",
+    }
+
+    @classmethod
+    def get_display_name(cls, component: str) -> str:
+        """Get human-readable display name for a component."""
+        return cls.DISPLAY_NAMES.get(component, component)
+
     def __init__(
         self,
         components: list[str] | None = None,
@@ -137,14 +198,19 @@ class TestRunner:
         ]
 
         if self.coverage:
-            # Add coverage for the corresponding source component
-            src_path = f"src/agentcore/{component}"
+            # Measure full codebase coverage for all test runs to capture
+            # cross-component coverage (e.g., integration tests exercising a2a_protocol)
             cmd.extend(
                 [
-                    f"--cov={src_path}",
+                    "--cov=src/agentcore/a2a_protocol",
+                    "--cov=src/agentcore/agent_runtime",
+                    "--cov=src/agentcore/reasoning",
+                    "--cov=src/agentcore/training",
+                    "--cov=src/agentcore/orchestration",
+                    "--cov=src/agentcore/integration",
                     "--cov-report=term-missing",
                     "--cov-report=json:.coverage.json",
-                    "--no-cov-on-fail",
+                    "--cov-fail-under=0",  # Don't fail on coverage threshold for per-component runs
                 ]
             )
 
@@ -174,7 +240,7 @@ class TestRunner:
             status = "passed" if result.returncode == 0 else "failed"
 
             return ComponentResult(
-                name=component,
+                name=self.get_display_name(component),
                 passed=parsed["passed"],
                 failed=parsed["failed"],
                 skipped=parsed["skipped"],
@@ -189,7 +255,7 @@ class TestRunner:
         except subprocess.TimeoutExpired:
             duration = time.time() - start_time
             return ComponentResult(
-                name=component,
+                name=self.get_display_name(component),
                 passed=0,
                 failed=0,
                 skipped=0,
@@ -201,7 +267,7 @@ class TestRunner:
         except Exception as e:
             duration = time.time() - start_time
             return ComponentResult(
-                name=component,
+                name=self.get_display_name(component),
                 passed=0,
                 failed=0,
                 skipped=0,
@@ -268,10 +334,27 @@ class TestRunner:
         print(f"🧪 AgentCore Test Suite")
         print(f"{'=' * 80}")
         print(f"Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Components: {len(components)}")
+        print(f"Test Components: {len(components)}")
         print(f"Mode: {'Parallel' if self.parallel else 'Sequential'}")
         print(f"Coverage: {'Enabled' if self.coverage else 'Disabled'}")
-        print(f"{'=' * 80}\n")
+        print(f"{'=' * 80}")
+
+        # Show component mapping
+        print(f"\n📋 Component Coverage Map:")
+        print(f"{'-' * 80}")
+        with_source = []
+        without_source = []
+        for comp in sorted(components):
+            display_name = self.get_display_name(comp)
+            src_comp = self.COMPONENT_MAPPING.get(comp, comp)
+            if src_comp:
+                with_source.append(f"  ✅ {display_name:<30} → src/agentcore/{src_comp}")
+            else:
+                without_source.append(f"  ⚪ {display_name:<30} (no source component)")
+
+        for line in with_source + without_source:
+            print(line)
+        print(f"{'-' * 80}\n")
 
         results = []
 
@@ -284,8 +367,9 @@ class TestRunner:
         else:
             # Run sequentially with progress
             for i, component in enumerate(components, 1):
+                display_name = self.get_display_name(component)
                 print(
-                    f"[{i}/{len(components)}] Running {component}...",
+                    f"[{i}/{len(components)}] Running {display_name}...",
                     end=" ",
                     flush=True,
                 )
