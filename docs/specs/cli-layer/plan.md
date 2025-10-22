@@ -1,895 +1,732 @@
-# CLI Layer Implementation Plan
+# CLI Layer Implementation Plan v2.0 (Redesign)
 
-**Component:** CLI Layer
-**Timeline:** 4 weeks (2 sprints)
+**Component:** CLI Layer Redesign
+**Timeline:** 2 weeks (10 working days)
 **Team:** 1 senior Python developer
-**Total Effort:** 34 story points
+**Total Effort:** 42 story points
 **Created:** 2025-09-30
+**Updated:** 2025-10-22
+**Version:** 2.0
+**Status:** Redesign - Ready for Implementation
 
 ---
 
 ## Executive Summary
 
-The CLI Layer provides a developer-friendly command-line interface for AgentCore, significantly lowering the barrier to entry while maintaining full access to enterprise capabilities. This thin wrapper around the JSON-RPC 2.0 API follows familiar CLI patterns (docker, kubectl) and delivers time-to-first-task reduction from hours to minutes.
+The CLI Layer v2.0 redesign addresses critical A2A protocol compliance issues discovered in v1.0 by implementing a properly layered architecture with clear separation of concerns. This redesign ensures JSON-RPC 2.0 compliance while maintaining the developer-friendly interface.
 
 **Business Value:**
 
-- 3x increase in developer adoption (target metric)
-- Reduced onboarding time from days to hours
-- Improved developer experience without compromising architecture
-- Competitive parity with tools like Claude-Flow
+- **CRITICAL:** Fixes protocol violation preventing all CLI commands from working
+- Maintains developer adoption gains from v1.0
+- Establishes extensible architecture for future enhancements
+- Enables proper testing at every layer
+- **Risk Mitigation:** Phased migration prevents regression
 
 **Technical Approach:**
 
-- Python Click/Typer framework for robust CLI
-- Thin wrapper pattern (no business logic in CLI)
-- Multi-level configuration (CLI → env → file → defaults)
-- Rich output formatting for human readability
+- 4-layer architecture (CLI → Service → Protocol → Transport)
+- Pydantic models for JSON-RPC 2.0 validation
+- Dependency injection for testability
+- Side-by-side migration to minimize risk
+- Comprehensive test coverage at each layer
+
+**Why Redesign?**
+
+v1.0 CLI sends invalid JSON-RPC 2.0 requests:
+- **Current:** `{"jsonrpc": "2.0", "method": "agent.register", "id": 1, "name": "...", "capabilities": [...]}`
+- **Required:** `{"jsonrpc": "2.0", "method": "agent.register", "params": {"name": "...", "capabilities": [...]}, "id": 1}`
+
+**Impact:** All CLI commands currently fail with protocol errors.
 
 ---
 
 ## Phase Overview
 
-### Sprint 1: Core Framework (18 SP)
+### Phase 1: Foundation (18 SP, Days 1-3)
 
-**Duration:** Week 1-2
-**Goal:** Working CLI with basic agent and task commands
+**Duration:** 2-3 working days
+**Goal:** Build new 4-layer architecture alongside existing code
+**Team:** 1 senior developer
+**Risk:** Low (no changes to existing code)
+
 **Deliverables:**
+- Transport layer implementation
+- Protocol layer implementation
+- Service layer implementation
+- DI container implementation
+- Comprehensive unit tests
 
-- CLI framework setup
-- JSON-RPC client implementation
-- Configuration management
-- Agent and task commands
+### Phase 2: Proof of Concept (8 SP, Days 4-5)
 
-### Sprint 2: Advanced Features (16 SP)
+**Duration:** 1 working day
+**Goal:** Validate architecture with single command migration
+**Team:** 1 senior developer
+**Risk:** Medium (first integration test)
 
-**Duration:** Week 3-4
-**Goal:** Session management, workflow support, polished UX
 **Deliverables:**
+- Migrated `agent register` command
+- Side-by-side validation
+- Protocol compliance verification
+- Migration learnings documented
 
-- Session commands
-- Workflow commands
-- Multiple output formats
-- Interactive prompts
-- Testing and documentation
+### Phase 3: Full Migration (12 SP, Days 6-9)
+
+**Duration:** 3-4 working days
+**Goal:** Migrate all commands to new architecture
+**Team:** 1 senior developer
+**Risk:** Medium (bulk migration)
+
+**Deliverables:**
+- All agent commands migrated
+- All task commands migrated
+- All session commands migrated
+- All workflow commands migrated
+- All config commands migrated
+- Updated integration tests
+- Updated E2E tests
+
+### Phase 4: Cleanup (4 SP, Day 10)
+
+**Duration:** 1 working day
+**Goal:** Remove old code and finalize documentation
+**Team:** 1 senior developer
+**Risk:** Low (cleanup only)
+
+**Deliverables:**
+- Old client.py removed
+- Old command implementations removed
+- Documentation updated
+- Migration guide published
+- Final testing complete
 
 ---
 
-## Sprint 1: Core Framework (Week 1-2, 18 SP)
+## Detailed Phase Breakdown
 
-### Week 1: Foundation
+### Phase 1: Foundation
 
-#### Days 1-2: Project Setup (3 SP)
+#### 1.1 Transport Layer (5 SP)
 
-**Tasks:**
-
-- Initialize Python package structure
-- Choose CLI framework (Click vs Typer evaluation)
-- Configure build system (pyproject.toml)
-- Set up development environment
-- Configure testing framework (pytest)
-
-**Deliverables:**
-
-```text
-agentcore-cli/
-├── pyproject.toml
-├── README.md
-├── src/
-│   └── agentcore_cli/
-│       ├── __init__.py
-│       ├── cli.py
-│       ├── client.py
-│       ├── config.py
-│       └── formatters.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_cli.py
-│   └── test_client.py
-└── .github/
-    └── workflows/
-        └── test.yml
-```
-
-**Technology Decision:**
-
-```python
-# Option 1: Click (mature, widely used)
-import click
-
-@click.group()
-def cli():
-    pass
-
-@cli.command()
-@click.option('--name', required=True)
-def register(name):
-    pass
-
-# Option 2: Typer (modern, type-based)
-import typer
-
-app = typer.Typer()
-
-@app.command()
-def register(name: str):
-    pass
-```
-
-**Recommendation:** Typer (better type safety, automatic help generation, modern syntax)
-
-#### Days 3-4: JSON-RPC Client (5 SP)
-
-**Tasks:**
-
-- Implement JSON-RPC 2.0 client class
-- Add request/response handling
-- Implement retry logic with exponential backoff
-- Add connection pooling
-- Error translation (JSON-RPC errors → user-friendly messages)
+**Ticket:** CLI-R001
+**Files:** `src/agentcore_cli/transport/http.py`
 
 **Implementation:**
-
 ```python
-# src/agentcore_cli/client.py
-import requests
-from typing import Dict, Any, Optional
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
-class AgentCoreClient:
-    """JSON-RPC 2.0 client for AgentCore API"""
+class HttpTransport:
+    """HTTP transport for JSON-RPC requests."""
 
     def __init__(
         self,
-        api_url: str,
+        base_url: str,
         timeout: int = 30,
         retries: int = 3,
-        verify_ssl: bool = True
-    ):
-        self.api_url = f"{api_url}/api/v1/jsonrpc"
-        self.timeout = timeout
-        self.verify_ssl = verify_ssl
-        self.session = self._create_session(retries)
-        self.request_id = 0
+        verify_ssl: bool = True,
+    ) -> None:
+        # Initialize session with retry strategy
 
-    def _create_session(self, retries: int) -> requests.Session:
-        session = requests.Session()
-        retry_strategy = Retry(
-            total=retries,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-        return session
+    def post(
+        self,
+        endpoint: str,
+        data: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        # Send HTTP POST request
+        # Handle network errors
+        # Return parsed JSON
+```
 
+**Responsibilities:**
+- HTTP communication only
+- Connection pooling
+- Retry logic with exponential backoff
+- SSL/TLS verification
+- Network error translation
+
+**Tests:**
+- `test_http_transport_post_success()`
+- `test_http_transport_retry_on_failure()`
+- `test_http_transport_timeout()`
+- `test_http_transport_ssl_verification()`
+- `test_http_transport_connection_error()`
+
+**Acceptance Criteria:**
+- [ ] All HTTP operations work correctly
+- [ ] Retry logic tested with 3 attempts
+- [ ] SSL verification configurable
+- [ ] Network errors properly translated
+- [ ] 100% test coverage
+
+#### 1.2 Protocol Layer (7 SP)
+
+**Ticket:** CLI-R002
+**Files:**
+- `src/agentcore_cli/protocol/jsonrpc.py`
+- `src/agentcore_cli/protocol/models.py`
+
+**Implementation:**
+```python
+class JsonRpcRequest(BaseModel):
+    jsonrpc: str = Field(default="2.0", const=True)
+    method: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    id: int | str
+
+class JsonRpcClient:
     def call(
         self,
         method: str,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Make JSON-RPC 2.0 call"""
-        self.request_id += 1
-        payload = {
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params or {},
-            "id": self.request_id
-        }
-
-        try:
-            response = self.session.post(
-                self.api_url,
-                json=payload,
-                timeout=self.timeout,
-                verify=self.verify_ssl
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if "error" in data:
-                raise JsonRpcError(data["error"])
-
-            return data.get("result", {})
-
-        except requests.exceptions.RequestException as e:
-            raise ConnectionError(f"Failed to connect to AgentCore API: {e}")
+        params: dict[str, Any] | None = None,
+        a2a_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        # Build request with Pydantic validation
+        # Add A2A context
+        # Call transport layer
+        # Parse and validate response
+        # Handle protocol errors
 ```
 
-**Testing Strategy:**
+**Responsibilities:**
+- JSON-RPC 2.0 specification enforcement
+- Request/response Pydantic validation
+- A2A context management
+- Batch request handling
+- Protocol error translation
 
-```python
-# tests/test_client.py
-import pytest
-from unittest.mock import Mock, patch
-from agentcore_cli.client import AgentCoreClient
+**Tests:**
+- `test_jsonrpc_request_validation()`
+- `test_jsonrpc_call_builds_correct_request()`
+- `test_jsonrpc_params_wrapper_present()`
+- `test_jsonrpc_a2a_context_injection()`
+- `test_jsonrpc_batch_call()`
+- `test_jsonrpc_error_handling()`
 
-@patch('agentcore_cli.client.requests.Session.post')
-def test_successful_call(mock_post):
-    mock_post.return_value = Mock(
-        json=lambda: {"jsonrpc": "2.0", "result": {"success": True}, "id": 1},
-        status_code=200
-    )
+**Acceptance Criteria:**
+- [ ] All requests have proper `params` wrapper
+- [ ] Pydantic validates all requests/responses
+- [ ] A2A context properly injected
+- [ ] Batch requests supported
+- [ ] Protocol errors translated
+- [ ] 100% test coverage
 
-    client = AgentCoreClient("http://localhost:8001")
-    result = client.call("agent.list")
+#### 1.3 Service Layer (4 SP)
 
-    assert result == {"success": True}
-    assert mock_post.call_count == 1
-```
-
-#### Days 5: Configuration Management (5 SP)
-
-**Tasks:**
-
-- Implement configuration file loading (YAML)
-- Support multi-level config (global, project, env)
-- Implement precedence logic
-- Add config validation with Pydantic
-- Create `config init` command
-
-**Configuration Schema:**
-
-```python
-# src/agentcore_cli/config.py
-from pydantic import BaseModel, HttpUrl, Field
-from typing import Optional, Literal
-import os
-import yaml
-
-class ApiConfig(BaseModel):
-    url: HttpUrl = Field(default="http://localhost:8001")
-    timeout: int = Field(default=30, ge=1, le=300)
-    retries: int = Field(default=3, ge=0, le=10)
-    verify_ssl: bool = True
-
-class AuthConfig(BaseModel):
-    type: Literal["jwt", "api_key", "none"] = "none"
-    token: Optional[str] = None
-    api_key: Optional[str] = None
-
-class OutputConfig(BaseModel):
-    format: Literal["json", "table", "tree"] = "table"
-    color: bool = True
-    timestamps: bool = False
-    verbose: bool = False
-
-class Config(BaseModel):
-    api: ApiConfig = Field(default_factory=ApiConfig)
-    auth: AuthConfig = Field(default_factory=AuthConfig)
-    output: OutputConfig = Field(default_factory=OutputConfig)
-
-    @classmethod
-    def load(cls) -> "Config":
-        """Load configuration with precedence: CLI > env > project > global > defaults"""
-        config_data = {}
-
-        # 1. Load global config
-        global_config_path = Path.home() / ".agentcore" / "config.yaml"
-        if global_config_path.exists():
-            with open(global_config_path) as f:
-                config_data = yaml.safe_load(f) or {}
-
-        # 2. Load project config (override global)
-        project_config_path = Path.cwd() / ".agentcore.yaml"
-        if project_config_path.exists():
-            with open(project_config_path) as f:
-                project_data = yaml.safe_load(f) or {}
-                config_data = deep_merge(config_data, project_data)
-
-        # 3. Load environment variables (override files)
-        env_overrides = cls._load_from_env()
-        config_data = deep_merge(config_data, env_overrides)
-
-        return cls(**config_data)
-
-    @staticmethod
-    def _load_from_env() -> dict:
-        """Load configuration from environment variables"""
-        env_mapping = {
-            "AGENTCORE_API_URL": ["api", "url"],
-            "AGENTCORE_API_TIMEOUT": ["api", "timeout"],
-            "AGENTCORE_TOKEN": ["auth", "token"],
-            "AGENTCORE_OUTPUT_FORMAT": ["output", "format"],
-        }
-
-        result = {}
-        for env_var, path in env_mapping.items():
-            value = os.getenv(env_var)
-            if value:
-                set_nested(result, path, value)
-
-        return result
-```
-
-### Week 2: Core Commands
-
-#### Days 6-8: Agent Commands (5 SP)
-
-**Tasks:**
-
-- Implement `agent register` command
-- Implement `agent list` command
-- Implement `agent info` command
-- Implement `agent remove` command
-- Implement `agent search` command
-- Add input validation
-- Add output formatting
+**Ticket:** CLI-R003
+**Files:**
+- `src/agentcore_cli/services/agent.py`
+- `src/agentcore_cli/services/task.py`
+- `src/agentcore_cli/services/session.py`
+- `src/agentcore_cli/services/workflow.py`
 
 **Implementation:**
-
 ```python
-# src/agentcore_cli/commands/agent.py
-import typer
-from typing import List, Optional
-from agentcore_cli.client import AgentCoreClient
-from agentcore_cli.config import Config
-from agentcore_cli.formatters import format_table, format_json
+class AgentService:
+    def __init__(self, client: JsonRpcClient) -> None:
+        self.client = client
 
-agent_app = typer.Typer(help="Manage agents")
+    def register(
+        self,
+        name: str,
+        capabilities: list[str],
+        cost_per_request: float = 0.01,
+        requirements: dict[str, Any] | None = None,
+    ) -> str:
+        # Business validation
+        # Prepare parameters
+        # Call JSON-RPC method
+        # Validate result
+        # Return domain object
+```
 
-@agent_app.command()
+**Responsibilities:**
+- High-level business operations
+- Parameter validation
+- Data transformation
+- Domain error handling
+- Abstract JSON-RPC details
+
+**Tests:**
+- `test_agent_service_register_validation()`
+- `test_agent_service_register_success()`
+- `test_task_service_create_validation()`
+- `test_session_service_lifecycle()`
+- `test_workflow_service_execution()`
+
+**Acceptance Criteria:**
+- [ ] All services implement business operations
+- [ ] Parameter validation enforced
+- [ ] Domain errors properly raised
+- [ ] No JSON-RPC knowledge in services
+- [ ] 100% test coverage
+
+#### 1.4 DI Container (2 SP)
+
+**Ticket:** CLI-R004
+**File:** `src/agentcore_cli/container.py`
+
+**Implementation:**
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def get_config() -> Config:
+    return Config.load()
+
+@lru_cache(maxsize=1)
+def get_transport() -> HttpTransport:
+    config = get_config()
+    return HttpTransport(...)
+
+@lru_cache(maxsize=1)
+def get_jsonrpc_client() -> JsonRpcClient:
+    return JsonRpcClient(get_transport(), ...)
+
+def get_agent_service() -> AgentService:
+    return AgentService(get_jsonrpc_client())
+```
+
+**Responsibilities:**
+- Object creation and wiring
+- Configuration management
+- Instance caching
+- Dependency resolution
+
+**Tests:**
+- `test_container_creates_transport()`
+- `test_container_creates_client()`
+- `test_container_creates_services()`
+- `test_container_caching_works()`
+
+**Acceptance Criteria:**
+- [ ] All dependencies properly wired
+- [ ] Configuration loaded once
+- [ ] Instances cached appropriately
+- [ ] Easy to mock for tests
+- [ ] 100% test coverage
+
+---
+
+### Phase 2: Proof of Concept
+
+#### 2.1 Migrate Agent Register Command (5 SP)
+
+**Ticket:** CLI-R005
+**File:** `src/agentcore_cli/commands/agent_v2.py` (temporary)
+
+**Implementation:**
+```python
+@app.command()
 def register(
-    name: str = typer.Option(..., help="Agent name"),
-    capabilities: str = typer.Option(..., help="Comma-separated capabilities"),
-    cost_per_request: float = typer.Option(0.01, help="Cost per request"),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON"),
-):
-    """Register a new agent"""
-    config = Config.load()
-    client = AgentCoreClient(str(config.api.url))
+    name: str,
+    capabilities: str,
+    cost_per_request: float = 0.01,
+    json_output: bool = False,
+) -> None:
+    # Parse CLI inputs
+    cap_list = [c.strip() for c in capabilities.split(",")]
 
-    result = client.call("agent.register", {
-        "name": name,
-        "capabilities": capabilities.split(","),
-        "cost_per_request": cost_per_request
-    })
+    # Get service from container
+    service = get_agent_service()
 
+    # Call service
+    agent_id = service.register(name, cap_list, cost_per_request)
+
+    # Format output
     if json_output:
-        typer.echo(format_json(result))
+        console.print(format_json({"agent_id": agent_id}))
     else:
-        typer.echo(f"✓ Agent registered: {result['agent_id']}")
-
-@agent_app.command()
-def list(
-    status: Optional[str] = typer.Option(None, help="Filter by status"),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON"),
-):
-    """List all agents"""
-    config = Config.load()
-    client = AgentCoreClient(str(config.api.url))
-
-    params = {}
-    if status:
-        params["status"] = status
-
-    result = client.call("agent.list", params)
-
-    if json_output:
-        typer.echo(format_json(result))
-    else:
-        typer.echo(format_table(result["agents"], columns=["agent_id", "name", "status", "capabilities"]))
+        console.print(format_success(f"Agent registered: {agent_id}"))
 ```
 
-**Testing:**
+**Tests:**
+- `test_agent_register_v2_parses_args()`
+- `test_agent_register_v2_calls_service()`
+- `test_agent_register_v2_formats_output()`
+- `test_agent_register_v2_sends_proper_jsonrpc()` (integration)
 
-```python
-# tests/test_agent_commands.py
-from typer.testing import CliRunner
-from agentcore_cli.cli import app
+**Acceptance Criteria:**
+- [ ] Command works with new architecture
+- [ ] Sends proper JSON-RPC 2.0 request
+- [ ] Side-by-side validation passes
+- [ ] All tests pass
 
-runner = CliRunner()
+#### 2.2 Validation & Documentation (3 SP)
 
-def test_agent_register():
-    result = runner.invoke(app, [
-        "agent", "register",
-        "--name", "test-agent",
-        "--capabilities", "python,testing"
-    ])
-    assert result.exit_code == 0
-    assert "Agent registered" in result.stdout
-```
+**Ticket:** CLI-R006
+
+**Tasks:**
+1. Run side-by-side comparison (old vs new)
+2. Capture actual JSON-RPC requests
+3. Verify params wrapper present
+4. Document learnings
+5. Identify any issues for Phase 3
+
+**Deliverables:**
+- Validation report
+- Protocol compliance proof
+- Migration lessons learned
+- Phase 3 adjustments (if needed)
+
+**Acceptance Criteria:**
+- [ ] JSON-RPC 2.0 compliance verified
+- [ ] Side-by-side comparison documented
+- [ ] Lessons learned captured
+- [ ] Phase 3 plan validated
 
 ---
 
-## Sprint 2: Advanced Features (Week 3-4, 16 SP)
+### Phase 3: Full Migration
 
-### Week 3: Session and Workflow Commands
+#### 3.1 Migrate Agent Commands (3 SP)
 
-#### Days 9-11: Task Commands (5 SP)
+**Ticket:** CLI-R007
+**Files:** `src/agentcore_cli/commands/agent.py`
 
-**Tasks:**
+**Commands to Migrate:**
+- `agent register` (already migrated in Phase 2)
+- `agent list`
+- `agent info`
+- `agent remove`
+- `agent search`
 
-- Implement `task create` command
-- Implement `task status` command with `--watch` flag
-- Implement `task list` command with filtering
-- Implement `task cancel` command
-- Implement `task result` command
-- Add progress indicators for long operations
+**Acceptance Criteria:**
+- [ ] All agent commands use service layer
+- [ ] All tests updated
+- [ ] Integration tests pass
+- [ ] E2E tests pass
 
-**Watch Mode Implementation:**
+#### 3.2 Migrate Task Commands (3 SP)
 
-```python
-@task_app.command()
-def status(
-    task_id: str,
-    watch: bool = typer.Option(False, "--watch", "-w", help="Watch status updates"),
-    interval: int = typer.Option(5, help="Watch interval in seconds"),
-):
-    """Get task status"""
-    config = Config.load()
-    client = AgentCoreClient(str(config.api.url))
+**Ticket:** CLI-R008
+**Files:** `src/agentcore_cli/commands/task.py`
 
-    if watch:
-        import time
-        from rich.live import Live
-        from rich.table import Table
+**Commands to Migrate:**
+- `task create`
+- `task list`
+- `task info`
+- `task cancel`
+- `task logs`
 
-        with Live(refresh_per_second=1) as live:
-            while True:
-                result = client.call("task.status", {"task_id": task_id})
-                table = create_status_table(result)
-                live.update(table)
+**Acceptance Criteria:**
+- [ ] All task commands use service layer
+- [ ] All tests updated
+- [ ] Integration tests pass
+- [ ] E2E tests pass
 
-                if result["status"] in ["completed", "failed"]:
-                    break
+#### 3.3 Migrate Session Commands (2 SP)
 
-                time.sleep(interval)
-    else:
-        result = client.call("task.status", {"task_id": task_id})
-        typer.echo(format_table([result]))
-```
+**Ticket:** CLI-R009
+**Files:** `src/agentcore_cli/commands/session.py`
 
-#### Days 12-13: Session Commands (5 SP)
+**Commands to Migrate:**
+- `session create`
+- `session list`
+- `session info`
+- `session delete`
+- `session restore`
 
-**Tasks:**
+**Acceptance Criteria:**
+- [ ] All session commands use service layer
+- [ ] All tests updated
+- [ ] Integration tests pass
 
-- Implement `session save` command
-- Implement `session resume` command
-- Implement `session list` command
-- Implement `session info` command
-- Implement `session delete` command
-- Add session metadata support (tags, description)
+#### 3.4 Migrate Workflow Commands (2 SP)
 
-**Implementation:**
+**Ticket:** CLI-R010
+**Files:** `src/agentcore_cli/commands/workflow.py`
 
-```python
-# src/agentcore_cli/commands/session.py
-session_app = typer.Typer(help="Manage workflow sessions")
+**Commands to Migrate:**
+- `workflow run`
+- `workflow list`
+- `workflow info`
+- `workflow stop`
 
-@session_app.command()
-def save(
-    name: str = typer.Option(..., help="Session name"),
-    description: str = typer.Option("", help="Session description"),
-    tags: List[str] = typer.Option([], help="Session tags"),
-):
-    """Save current workflow session"""
-    config = Config.load()
-    client = AgentCoreClient(str(config.api.url))
+**Acceptance Criteria:**
+- [ ] All workflow commands use service layer
+- [ ] All tests updated
+- [ ] Integration tests pass
 
-    result = client.call("session.save", {
-        "name": name,
-        "description": description,
-        "tags": tags,
-        "metadata": {}
-    })
+#### 3.5 Migrate Config Commands (2 SP)
 
-    typer.echo(f"✓ Session saved: {result['session_id']}")
-    typer.echo(f"  Resume with: agentcore session resume {result['session_id']}")
+**Ticket:** CLI-R011
+**Files:** `src/agentcore_cli/commands/config.py`
 
-@session_app.command()
-def resume(session_id: str):
-    """Resume a saved session"""
-    config = Config.load()
-    client = AgentCoreClient(str(config.api.url))
+**Commands to Migrate:**
+- `config show`
+- `config set`
+- `config get`
+- `config init`
 
-    with typer.progressbar(length=100, label="Restoring session") as progress:
-        result = client.call("session.resume", {"session_id": session_id})
-        progress.update(100)
-
-    typer.echo(f"✓ Session resumed: {result['session_id']}")
-    typer.echo(f"  Tasks restored: {result['tasks_count']}")
-    typer.echo(f"  Agents restored: {result['agents_count']}")
-```
-
-#### Days 14: Workflow Commands (3 SP)
-
-**Tasks:**
-
-- Implement `workflow create` command
-- Implement `workflow execute` command
-- Implement `workflow status` command
-- Implement `workflow list` command
-- Support workflow definition files (YAML)
-
-### Week 4: Polish and Testing
-
-#### Days 15-16: Output Formatters (3 SP)
-
-**Tasks:**
-
-- Implement JSON formatter
-- Implement table formatter (using rich)
-- Implement tree formatter
-- Add color support
-- Add timestamp options
-
-**Rich Table Implementation:**
-
-```python
-# src/agentcore_cli/formatters.py
-from rich.console import Console
-from rich.table import Table
-from typing import List, Dict, Any
-
-def format_table(
-    data: List[Dict[str, Any]],
-    columns: List[str] = None,
-    title: str = None
-) -> str:
-    """Format data as a rich table"""
-    console = Console()
-    table = Table(title=title, show_header=True, header_style="bold magenta")
-
-    if not data:
-        return "No data"
-
-    # Auto-detect columns if not specified
-    if not columns:
-        columns = list(data[0].keys())
-
-    # Add columns
-    for col in columns:
-        table.add_column(col.replace("_", " ").title())
-
-    # Add rows
-    for row in data:
-        table.add_row(*[str(row.get(col, "")) for col in columns])
-
-    # Capture output
-    with console.capture() as capture:
-        console.print(table)
-
-    return capture.get()
-```
-
-#### Days 17-18: Interactive Features (3 SP)
-
-**Tasks:**
-
-- Add confirmation prompts for destructive operations
-- Add interactive wizards (optional)
-- Implement progress bars
-- Add `--watch` support for long operations
-
-#### Days 19-20: Testing and Documentation (2 SP)
-
-**Tasks:**
-
-- Write unit tests (target: 90%+ coverage)
-- Write integration tests with mock API
-- Write E2E tests (optional, Docker Compose)
-- Update README with installation and usage
-- Generate CLI reference documentation
-
-**Test Coverage Strategy:**
-
-```bash
-# Run tests with coverage
-pytest --cov=agentcore_cli --cov-report=html --cov-report=term
-
-# Target: 90%+ coverage
-# Key areas:
-# - Command parsing: 100%
-# - JSON-RPC client: 95%
-# - Configuration: 95%
-# - Formatters: 90%
-# - Error handling: 95%
-```
+**Acceptance Criteria:**
+- [ ] All config commands use service layer
+- [ ] All tests updated
+- [ ] Integration tests pass
 
 ---
 
-## Technical Architecture
+### Phase 4: Cleanup
 
-### Package Structure
+#### 4.1 Remove Old Code (2 SP)
 
-```
-agentcore-cli/
-├── pyproject.toml          # Poetry/setuptools config
-├── README.md               # Installation and quick start
-├── CHANGELOG.md            # Version history
-├── LICENSE                 # MIT License
-├── .github/
-│   └── workflows/
-│       ├── test.yml        # CI/CD pipeline
-│       └── publish.yml     # PyPI publishing
-├── src/
-│   └── agentcore_cli/
-│       ├── __init__.py     # Package version
-│       ├── cli.py          # Main CLI entry point
-│       ├── client.py       # JSON-RPC client
-│       ├── config.py       # Configuration management
-│       ├── exceptions.py   # Custom exceptions
-│       ├── formatters.py   # Output formatters
-│       ├── utils.py        # Helper functions
-│       └── commands/
-│           ├── __init__.py
-│           ├── agent.py    # Agent commands
-│           ├── task.py     # Task commands
-│           ├── session.py  # Session commands
-│           ├── workflow.py # Workflow commands
-│           └── config.py   # Config commands
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py         # Pytest fixtures
-│   ├── test_cli.py         # CLI tests
-│   ├── test_client.py      # Client tests
-│   ├── test_config.py      # Config tests
-│   ├── test_formatters.py  # Formatter tests
-│   └── integration/
-│       └── test_e2e.py     # End-to-end tests
-└── docs/
-    ├── installation.md     # Installation guide
-    ├── commands.md         # Command reference
-    └── configuration.md    # Configuration guide
-```
+**Ticket:** CLI-R012
 
-### Dependencies
+**Files to Remove:**
+- `src/agentcore_cli/client.py` (old monolithic client)
+- Any temporary v2 files
+- Dead code from migration
 
-**pyproject.toml:**
+**Acceptance Criteria:**
+- [ ] Old client.py removed
+- [ ] No dead code remains
+- [ ] All imports updated
+- [ ] All tests still pass
 
-```toml
-[project]
-name = "agentcore-cli"
-version = "0.1.0"
-description = "Command-line interface for AgentCore"
-requires-python = ">=3.12"
-dependencies = [
-    "typer[all]>=0.9.0",
-    "requests>=2.31.0",
-    "pyyaml>=6.0",
-    "pydantic>=2.0.0",
-    "rich>=13.0.0",
-]
+#### 4.2 Update Documentation (2 SP)
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "pytest-mock>=3.11.0",
-    "black>=23.7.0",
-    "mypy>=1.5.0",
-    "ruff>=0.0.287",
-]
+**Ticket:** CLI-R013
 
-[project.scripts]
-agentcore = "agentcore_cli.cli:main"
+**Documentation to Update:**
+- `README_CLI.md` - Update architecture diagrams
+- `docs/api/cli.md` - Update API reference
+- `CLAUDE.md` - Update development guide
+- `CONTRIBUTING.md` - Update contribution guidelines
 
-[build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
-```
+**New Documentation:**
+- `docs/architecture/cli-migration-guide.md`
+- `docs/architecture/cli-testing-guide.md`
+
+**Acceptance Criteria:**
+- [ ] All docs reflect new architecture
+- [ ] Migration guide complete
+- [ ] Testing guide complete
+- [ ] Examples updated
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests (90%+ Coverage Target)
+### Unit Tests (per layer)
 
-**Test Pyramid:**
+**Transport Layer (10 tests):**
+- HTTP operations
+- Retry logic
+- Timeout handling
+- SSL verification
+- Error translation
 
-- Unit tests: 70% of test suite
-- Integration tests: 20% of test suite
-- E2E tests: 10% of test suite
+**Protocol Layer (15 tests):**
+- Request validation
+- Response validation
+- Params wrapper
+- A2A context injection
+- Batch requests
+- Error handling
 
-**Coverage by Module:**
+**Service Layer (20 tests):**
+- Business validation
+- Method calls
+- Error handling
+- Data transformation
 
-| Module | Target Coverage | Priority |
-|--------|-----------------|----------|
-| cli.py | 100% | High |
-| client.py | 95% | High |
-| config.py | 95% | High |
-| commands/*.py | 90% | High |
-| formatters.py | 90% | Medium |
-| utils.py | 85% | Medium |
+**CLI Layer (25 tests):**
+- Argument parsing
+- Service calls
+- Output formatting
+- Exit codes
 
-### Integration Tests
+**Total Unit Tests:** 70
 
-**Mock API Server:**
+### Integration Tests (15 tests)
 
-```python
-# tests/conftest.py
-import pytest
-from unittest.mock import Mock
+- JSON-RPC 2.0 compliance validation
+- End-to-end command execution
+- Configuration precedence
+- Error propagation
 
-@pytest.fixture
-def mock_api_server():
-    """Mock AgentCore API server"""
-    def _handler(method: str, params: dict):
-        if method == "agent.list":
-            return {"agents": []}
-        elif method == "agent.register":
-            return {"agent_id": "agent-12345"}
-        # Add more handlers
+### E2E Tests (10 tests)
 
-    return _handler
+- Complete workflows
+- Agent lifecycle
+- Task lifecycle
+- Session management
+
+**Total Test Count:** 95 tests
+**Target Coverage:** 90%+
+
+---
+
+## Risk Management
+
+### Risk 1: Migration breaks existing functionality
+
+**Mitigation:**
+- Phase 2 proof of concept validates approach
+- Side-by-side testing in Phase 2
+- Gradual migration in Phase 3
+- Comprehensive test coverage
+
+**Contingency:**
+- Rollback to old implementation
+- Fix issues before proceeding
+- Extend timeline if needed
+
+### Risk 2: Performance degradation
+
+**Mitigation:**
+- Connection pooling in transport layer
+- Caching in DI container
+- Benchmark before/after
+
+**Contingency:**
+- Performance profiling
+- Optimize hot paths
+- Adjust caching strategy
+
+### Risk 3: Increased complexity
+
+**Mitigation:**
+- Clear documentation
+- Code examples
+- Developer guide
+
+**Contingency:**
+- Simplify where possible
+- More documentation
+- Training materials
+
+---
+
+## Success Metrics
+
+### Functional
+- [ ] All CLI commands execute successfully
+- [ ] All requests are JSON-RPC 2.0 compliant
+- [ ] No protocol errors in logs
+- [ ] Integration tests pass (95+)
+
+### Code Quality
+- [ ] 90%+ test coverage maintained
+- [ ] No mypy errors (strict mode)
+- [ ] No ruff linting issues
+- [ ] All Pydantic models validated
+
+### Documentation
+- [ ] Architecture documented
+- [ ] Migration guide complete
+- [ ] Testing guide complete
+- [ ] Developer guide updated
+
+### Performance
+- [ ] No regression in command latency
+- [ ] Connection pooling reduces overhead
+- [ ] Memory usage stable
+
+---
+
+## Timeline
+
 ```
+Week 1: Foundation & POC
+├─ Mon-Wed: Phase 1 (Foundation)
+│  ├─ Transport layer
+│  ├─ Protocol layer
+│  ├─ Service layer
+│  └─ DI container
+└─ Thu-Fri: Phase 2 (POC)
+   ├─ Migrate agent register
+   └─ Validation & documentation
 
-### E2E Tests (Optional)
-
-**Docker Compose Test Environment:**
-
-```yaml
-# tests/docker-compose.test.yml
-version: '3.8'
-services:
-  agentcore:
-    image: agentcore:latest
-    ports:
-      - "8001:8001"
-
-  cli-test:
-    build: .
-    depends_on:
-      - agentcore
-    environment:
-      - AGENTCORE_API_URL=http://agentcore:8001
-    command: pytest tests/integration/test_e2e.py
+Week 2: Migration & Cleanup
+├─ Mon-Thu: Phase 3 (Migration)
+│  ├─ Agent commands
+│  ├─ Task commands
+│  ├─ Session commands
+│  ├─ Workflow commands
+│  └─ Config commands
+└─ Fri: Phase 4 (Cleanup)
+   ├─ Remove old code
+   └─ Update documentation
 ```
 
 ---
 
-## Distribution and Deployment
+## Dependencies
 
-### PyPI Publishing
+**Internal:**
+- A2A Protocol Layer (must be running)
+- AgentCore API Server (for integration tests)
 
-**Build and Publish:**
+**External:**
+- Python 3.12+
+- uv package manager
+- pytest, mypy, ruff
+- requests library
+- Pydantic v2
 
-```bash
-# Build distribution
-python -m build
-
-# Test with TestPyPI
-python -m twine upload --repository testpypi dist/*
-
-# Publish to PyPI
-python -m twine upload dist/*
-```
-
-**GitHub Actions Workflow:**
-
-```yaml
-# .github/workflows/publish.yml
-name: Publish to PyPI
-
-on:
-  release:
-    types: [published]
-
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      - name: Build package
-        run: |
-          pip install build
-          python -m build
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-```
-
-### Installation Methods
-
-**PyPI (production):**
-
-```bash
-pip install agentcore-cli
-```
-
-**UV (recommended for AgentCore users):**
-
-```bash
-uv add agentcore-cli
-```
-
-**Development:**
-
-```bash
-git clone https://github.com/agentcore/agentcore-cli
-cd agentcore-cli
-pip install -e ".[dev]"
-```
+**Infrastructure:**
+- Development environment
+- CI/CD pipeline (for automated tests)
 
 ---
 
-## Success Criteria
+## Deliverables
 
-### Functional Requirements
+### Code
+- [ ] Transport layer implementation
+- [ ] Protocol layer implementation
+- [ ] Service layer implementation
+- [ ] DI container implementation
+- [ ] All commands migrated
+- [ ] Comprehensive test suite
 
-- ✅ All agent commands working (register, list, info, remove, search)
-- ✅ All task commands working (create, status, list, cancel, result)
-- ✅ Session management commands (save, resume, list, info, delete)
-- ✅ Workflow commands (create, execute, status, list)
-- ✅ Configuration management (init, show, validate)
-- ✅ Multiple output formats (JSON, table, tree)
+### Documentation
+- [ ] Updated specification (spec.md)
+- [ ] Updated plan (this document)
+- [ ] Migration guide
+- [ ] Testing guide
+- [ ] Developer guide
 
-### Non-Functional Requirements
-
-- ✅ 90%+ code coverage
-- ✅ <200ms startup time for simple commands
-- ✅ <50MB memory usage
-- ✅ User-friendly error messages
-- ✅ Comprehensive documentation
-
-### User Experience
-
-- ✅ Time-to-first-task < 5 minutes (vs hours for API)
-- ✅ Intuitive command structure (docker/kubectl familiar)
-- ✅ Helpful error messages with suggestions
-- ✅ Interactive prompts for complex operations
+### Validation
+- [ ] 95+ tests passing
+- [ ] 90%+ code coverage
+- [ ] JSON-RPC 2.0 compliance verified
+- [ ] Performance benchmarks
 
 ---
 
-## Risk Mitigation
+## Appendix A: Ticket Summary
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| CLI framework choice (Click vs Typer) | Low | Medium | Evaluate both in first 2 days, choose based on type safety and DX |
-| Session API not ready | Medium | High | Mock session commands, integrate when API available |
-| Performance issues | Low | Medium | Profile early, optimize hot paths, lazy import heavy libraries |
-| Testing complexity | Medium | Medium | Start with unit tests, add integration tests incrementally |
-
----
-
-## Future Enhancements (Post-MVP)
-
-### Phase 2 Features
-
-1. Shell completion (bash, zsh, fish)
-2. Interactive REPL mode
-3. Batch operations from file
-4. Advanced filtering (JMESPath, SQL-like)
-5. Workflow templates and marketplace
-
-### Phase 3 Features
-
-1. Plugin architecture for custom commands
-2. Custom output formatters
-3. Secure credential storage (keychain)
-4. TUI (Terminal UI) mode
-5. Remote config management
+| ID | Title | Phase | SP | Days |
+|----|-------|-------|----|----|
+| CLI-R001 | Transport Layer | 1 | 5 | 1 |
+| CLI-R002 | Protocol Layer | 1 | 7 | 1.5 |
+| CLI-R003 | Service Layer | 1 | 4 | 0.5 |
+| CLI-R004 | DI Container | 1 | 2 | 0.25 |
+| CLI-R005 | Migrate Agent Register | 2 | 5 | 0.75 |
+| CLI-R006 | Validation & Docs | 2 | 3 | 0.25 |
+| CLI-R007 | Migrate Agent Commands | 3 | 3 | 0.75 |
+| CLI-R008 | Migrate Task Commands | 3 | 3 | 0.75 |
+| CLI-R009 | Migrate Session Commands | 3 | 2 | 0.5 |
+| CLI-R010 | Migrate Workflow Commands | 3 | 2 | 0.5 |
+| CLI-R011 | Migrate Config Commands | 3 | 2 | 0.5 |
+| CLI-R012 | Remove Old Code | 4 | 2 | 0.5 |
+| CLI-R013 | Update Documentation | 4 | 2 | 0.5 |
+| **TOTAL** | | | **42** | **10** |
 
 ---
 
-## Timeline Summary
+## Appendix B: Comparison with v1.0
 
-| Week | Sprint | Focus | Deliverables | Story Points |
-|------|--------|-------|--------------|--------------|
-| 1 | Sprint 1 | Foundation | CLI framework, JSON-RPC client, config | 8 SP |
-| 2 | Sprint 1 | Core Commands | Agent commands, basic testing | 10 SP |
-| 3 | Sprint 2 | Advanced Commands | Task, session, workflow commands | 13 SP |
-| 4 | Sprint 2 | Polish | Formatters, testing, documentation | 3 SP |
-
-**Total:** 4 weeks, 34 story points
-
----
-
-## References
-
-- [CLI Layer Specification](spec.md)
-- [CLI Layer Tasks](tasks.md)
-- [A2A Protocol API Reference](../a2a-protocol/spec.md)
-- [Typer Documentation](https://typer.tiangolo.com/)
-- [Rich Documentation](https://rich.readthedocs.io/)
+| Aspect | v1.0 Plan | v2.0 Plan |
+|--------|-----------|-----------|
+| **Duration** | 4 weeks | 2 weeks |
+| **Story Points** | 34 SP | 42 SP |
+| **Phases** | 2 sprints | 4 phases |
+| **Focus** | New implementation | Redesign + Migration |
+| **Risk** | Medium | Low (phased) |
+| **Architecture** | Monolithic | 4-layer |
+| **Testing** | Integration only | Unit + Integration |
 
 ---
 
-**End of Implementation Plan**
+**End of Implementation Plan v2.0**
