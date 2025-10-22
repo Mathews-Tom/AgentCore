@@ -50,8 +50,10 @@ services:
     volumes:
       - ./src:/app/src
     command: >
-      sh -c "python -m uvicorn agentcore.a2a_protocol.main:app
-             --host 0.0.0.0 --port 8001 --reload"
+      uvicorn agentcore.a2a_protocol.main:app
+      --host 0.0.0.0
+      --port 8001
+      --reload
 
 volumes:
   redis_data:

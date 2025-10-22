@@ -136,6 +136,7 @@ class TestAgentRegisterCommand:
         # Verify exit code
         assert result.exit_code == 0
 
+
         # Verify JSON output (note: JSON is pretty-printed with indentation)
         assert '"agent_id": "agent-003"' in result.output
         assert '"name": "json-agent"' in result.output
