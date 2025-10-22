@@ -58,3 +58,37 @@ def stop_all_patches():
             patch_obj.stop()
         except RuntimeError:
             pass  # Patch already stopped
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_app_state():
+    """Reset FastAPI app state before each test."""
+    # Clear any cached dependencies or state
+    from agentcore.a2a_protocol.main import app
+
+    # Clear dependency overrides
+    app.dependency_overrides.clear()
+
+    # Reset the global security service instance to prevent state pollution
+    # This must be done BEFORE tests run to avoid authentication errors
+    import sys
+
+    if "agentcore.a2a_protocol.services.security_service" in sys.modules:
+        from agentcore.a2a_protocol.services.security_service import SecurityService
+
+        # Get the module and reset the singleton
+        security_module = sys.modules["agentcore.a2a_protocol.services.security_service"]
+        # Create fresh instance
+        security_module.security_service = SecurityService()
+
+    yield
+
+    # Clean up after test
+    app.dependency_overrides.clear()
+
+    # Reset security service again
+    if "agentcore.a2a_protocol.services.security_service" in sys.modules:
+        from agentcore.a2a_protocol.services.security_service import SecurityService
+
+        security_module = sys.modules["agentcore.a2a_protocol.services.security_service"]
+        security_module.security_service = SecurityService()

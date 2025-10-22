@@ -39,3 +39,16 @@ def pytest_configure(config):
 
     # Do NOT delete gateway modules - let them be imported once and cached
     # The global metrics cache will handle multiple imports gracefully
+
+
+def pytest_runtest_setup(item):
+    """Reset security service before each test to prevent state pollution."""
+    import sys
+
+    if "agentcore.a2a_protocol.services.security_service" in sys.modules:
+        from agentcore.a2a_protocol.services.security_service import SecurityService
+
+        # Get the module and reset the singleton
+        security_module = sys.modules["agentcore.a2a_protocol.services.security_service"]
+        # Create fresh instance
+        security_module.security_service = SecurityService()
