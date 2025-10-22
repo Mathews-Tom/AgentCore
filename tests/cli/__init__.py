@@ -1,1 +1,1 @@
-"""CLI unit tests."""
+"""Tests for AgentCore CLI."""
