@@ -128,18 +128,18 @@ class HttpTransport:
     def post(
         self,
         endpoint: str,
-        data: dict[str, Any],
+        data: dict[str, Any] | list[dict[str, Any]],
         headers: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Send HTTP POST request.
 
         Args:
             endpoint: API endpoint path (e.g., "/api/v1/jsonrpc")
-            data: Request body data (will be JSON-encoded)
+            data: Request body data (dict or list, will be JSON-encoded)
             headers: Optional HTTP headers
 
         Returns:
-            Parsed JSON response body
+            Parsed JSON response body (dict or list)
 
         Raises:
             NetworkError: If connection fails
