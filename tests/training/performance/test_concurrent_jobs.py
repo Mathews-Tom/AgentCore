@@ -78,16 +78,13 @@ def sample_config():
 
 @pytest.fixture
 def sample_training_data():
-    """Create sample training data."""
+    """Create sample training data (minimum 100 required)."""
     return [
         TrainingQuery(
-            query="Test query 1",
-            expected_output="Test output 1",
-        ),
-        TrainingQuery(
-            query="Test query 2",
-            expected_output="Test output 2",
-        ),
+            query=f"Test query {i}",
+            expected_outcome={"output": f"Test output {i}"},
+        )
+        for i in range(100)
     ]
 
 
