@@ -195,6 +195,105 @@ All JSON-RPC requests can include `a2a_context` with `trace_id`, `source_agent`,
 4. Add validation in agent registration JSON-RPC handler
 5. Write integration test for new capability
 
+## CLI Layer
+
+AgentCore includes a command-line interface (CLI) that wraps the JSON-RPC 2.0 API with developer-friendly commands.
+
+### CLI Architecture
+
+The CLI follows a strict 4-layer architecture for maintainability and A2A protocol compliance:
+
+**Layer 1: CLI Layer** (`src/agentcore_cli/commands/`)
+- Argument parsing and validation using Typer
+- User interaction (prompts, confirmations)
+- Output formatting (table, JSON formats)
+- Exit code handling (0=success, 1=error, 2=usage, 3=connection, 4=auth)
+
+**Layer 2: Service Layer** (`src/agentcore_cli/services/`)
+- High-level business operations (AgentService, TaskService, SessionService, WorkflowService)
+- Parameter validation and transformation
+- Domain error handling
+- Abstracts JSON-RPC details
+
+**Layer 3: Protocol Layer** (`src/agentcore_cli/protocol/`)
+- JSON-RPC 2.0 specification enforcement via `JsonRpcClient`
+- Pydantic models for request/response validation
+- A2A context management (trace_id, source_agent, etc.)
+- Protocol-level error translation
+
+**Layer 4: Transport Layer** (`src/agentcore_cli/transport/`)
+- HTTP communication via `HttpTransport`
+- Connection pooling (10 connections)
+- Retry logic with exponential backoff
+- SSL/TLS verification and timeout handling
+
+### CLI Development Commands
+
+```bash
+# Run CLI from source
+uv run agentcore [COMMAND]
+
+# Run CLI tests
+uv run pytest tests/cli/
+
+# Run specific CLI test
+uv run pytest tests/cli/test_agent_commands.py
+
+# Type checking CLI code
+uv run mypy src/agentcore_cli/
+```
+
+### CLI Command Structure
+
+```bash
+agentcore agent register --name NAME --capabilities CAPS
+agentcore agent list [--status STATUS] [--json]
+agentcore agent info AGENT_ID [--json]
+agentcore agent remove AGENT_ID [--force]
+
+agentcore task create --description DESC
+agentcore task list [--status STATUS] [--json]
+agentcore task info TASK_ID [--json]
+
+agentcore session create --name NAME
+agentcore session list [--json]
+
+agentcore config show [--json]
+agentcore config set KEY VALUE
+```
+
+### CLI Configuration
+
+Configuration precedence (highest to lowest):
+1. CLI arguments
+2. Environment variables (`AGENTCORE_*`)
+3. Project config (`.agentcore.toml`)
+4. Global config (`~/.agentcore/config.toml`)
+5. Defaults
+
+Configuration schema:
+```toml
+[api]
+url = "http://localhost:8001"
+timeout = 30
+retries = 3
+verify_ssl = true
+
+[auth]
+type = "jwt"  # "none", "jwt", "api_key"
+token = ""
+```
+
+### Adding New CLI Commands
+
+1. Create service in `src/agentcore_cli/services/{resource}.py`
+2. Add factory function in `src/agentcore_cli/container.py`
+3. Create command in `src/agentcore_cli/commands/{resource}.py`
+4. Register command in `src/agentcore_cli/main.py`
+5. Write tests in `tests/cli/test_{resource}_commands.py`
+
+See `docs/architecture/cli-migration-learnings.md` for patterns and best practices.
+
 ## Deployment
 
 **Local Development:** Use `docker-compose.dev.yml` for full stack (app, PostgreSQL, Redis)

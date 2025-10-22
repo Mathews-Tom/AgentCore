@@ -1,28 +1,31 @@
-"""Agent management commands for AgentCore CLI."""
+"""Agent management commands.
+
+This module provides CLI commands for agent lifecycle management:
+- register: Register a new agent
+- list: List registered agents
+- info: Get agent information
+- remove: Remove an agent
+- search: Search agents by capability
+
+All commands use the service layer for business logic and abstract
+JSON-RPC protocol details.
+"""
 
 from __future__ import annotations
 
-import json
-import sys
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.table import Table
+import json
 
-from agentcore_cli.client import AgentCoreClient
-from agentcore_cli.config import Config
-from agentcore_cli.exceptions import (
-    AgentCoreError,
-    AuthenticationError,
-    ConnectionError as CliConnectionError,
-)
-from agentcore_cli.formatters import (
-    format_agent_info,
-    format_error,
-    format_json,
-    format_success,
-    format_table,
-    format_warning,
+from agentcore_cli.container import get_agent_service
+from agentcore_cli.services.exceptions import (
+    ValidationError,
+    AgentNotFoundError,
+    OperationError,
+    ServiceError,
 )
 
 app = typer.Typer(
@@ -36,408 +39,390 @@ console = Console()
 
 @app.command()
 def register(
-    name: Annotated[
-        str,
-        typer.Option("--name", "-n", help="Agent name (required)"),
-    ],
+    name: Annotated[str, typer.Option("--name", "-n", help="Agent name (must be unique)")],
     capabilities: Annotated[
         str,
-        typer.Option("--capabilities", "-c", help="Comma-separated capabilities (required)"),
+        typer.Option(
+            "--capabilities",
+            "-c",
+            help="Comma-separated list of agent capabilities (e.g., 'python,analysis')",
+        ),
     ],
     cost_per_request: Annotated[
         float,
-        typer.Option("--cost-per-request", help="Cost per request in USD"),
+        typer.Option(
+            "--cost-per-request",
+            "-r",
+            help="Cost per request in dollars",
+        ),
     ] = 0.01,
-    requirements: Annotated[
-        Optional[str],
-        typer.Option("--requirements", "-r", help="JSON string of requirements"),
-    ] = None,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
     """Register a new agent with AgentCore.
 
-    Example:
-        agentcore agent register --name "code-analyzer" --capabilities "python,analysis"
+    This command registers a new agent with the specified capabilities.
+    The agent will be available for task assignment and discovery.
 
-    With requirements:
-        agentcore agent register \\
-            --name "code-analyzer" \\
-            --capabilities "python,analysis,linting" \\
-            --requirements '{"memory": "512MB", "cpu": "0.5"}' \\
-            --cost-per-request 0.01
+    Examples:
+        # Register a simple agent
+        agentcore agent register --name analyzer --capabilities python,analysis
+
+        # Register with custom cost
+        agentcore agent register -n executor -c python,execution -r 0.05
+
+        # Get JSON output
+        agentcore agent register -n tester -c testing,qa --json
     """
     try:
-        # Load configuration
-        config = Config.load()
-
-        # Parse capabilities
+        # Parse capabilities (split by comma and strip whitespace)
         cap_list = [c.strip() for c in capabilities.split(",") if c.strip()]
-        if not cap_list:
-            console.print(format_error("At least one capability is required"))
-            sys.exit(2)
 
-        # Parse requirements if provided
-        req_dict = {}
-        if requirements:
-            try:
-                req_dict = json.loads(requirements)
-                if not isinstance(req_dict, dict):
-                    console.print(format_error("Requirements must be a JSON object"))
-                    sys.exit(2)
-            except json.JSONDecodeError as e:
-                console.print(format_error(f"Invalid JSON in requirements: {e}"))
-                sys.exit(2)
+        # Get service from DI container
+        service = get_agent_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
+        # Call service method
+        agent_id = service.register(
+            name=name,
+            capabilities=cap_list,
+            cost_per_request=cost_per_request,
         )
 
-        # Call API
-        result = client.call("agent.register", {
-            "name": name,
-            "capabilities": cap_list,
-            "cost_per_request": cost_per_request,
-            "requirements": req_dict,
-        })
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(result))
+            result = {
+                "agent_id": agent_id,
+                "name": name,
+                "capabilities": cap_list,
+                "cost_per_request": cost_per_request,
+            }
+            console.print(json.dumps(result, indent=2))
         else:
-            agent_id = result.get("agent_id", "N/A")
-            console.print(format_success(f"Agent registered: {agent_id}"))
-            console.print(f"  Name: {name}")
-            console.print(f"  Capabilities: {', '.join(cap_list)}")
+            console.print(f"[green]✓[/green] Agent registered successfully")
+            console.print(f"[bold]Agent ID:[/bold] {agent_id}")
+            console.print(f"[bold]Name:[/bold] {name}")
+            console.print(f"[bold]Capabilities:[/bold] {', '.join(cap_list)}")
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        if e.details:
+            console.print(f"[dim]Details: {e.details}[/dim]")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
-@app.command("list")
-def list_agents(
+@app.command()
+def list(
     status: Annotated[
-        Optional[str],
-        typer.Option("--status", "-s", help="Filter by status (active, inactive, etc.)"),
+        str | None,
+        typer.Option(
+            "--status",
+            "-s",
+            help="Filter by status (active, inactive, error)",
+        ),
     ] = None,
     limit: Annotated[
         int,
-        typer.Option("--limit", "-l", help="Maximum number of agents to display"),
+        typer.Option(
+            "--limit",
+            "-l",
+            help="Maximum number of agents to return",
+        ),
     ] = 100,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """List all registered agents.
+    """List registered agents.
 
-    Example:
+    Examples:
+        # List all agents
         agentcore agent list
 
-    Filter by status:
+        # Filter by status
         agentcore agent list --status active
 
-    JSON output:
+        # Limit results
+        agentcore agent list --limit 10
+
+        # Get JSON output
         agentcore agent list --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_agent_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        agents = service.list_agents(status=status, limit=limit)
 
-        # Build parameters
-        params = {"limit": limit}
-        if status:
-            params["status"] = status
-
-        # Call API
-        result = client.call("agent.list", params)
-
-        # Extract agents list
-        agents = result.get("agents", [])
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(agents))
+            console.print(json.dumps(agents, indent=2))
         else:
             if not agents:
-                console.print("[dim]No agents found[/dim]")
+                console.print("[yellow]No agents found[/yellow]")
                 return
 
-            # Display as table
-            columns = ["agent_id", "name", "status", "capabilities"]
-            table_output = format_table(agents, columns=columns, title="Registered Agents")
-            console.print(table_output)
+            # Create table
+            table = Table(title=f"Registered Agents ({len(agents)})")
+            table.add_column("Agent ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Status", style="yellow")
+            table.add_column("Capabilities", style="blue")
 
-            # Show count
-            console.print(f"\n[dim]Total: {len(agents)} agent(s)[/dim]")
+            for agent in agents:
+                agent_id = agent.get("agent_id", "N/A")
+                name = agent.get("name", "N/A")
+                status_val = agent.get("status", "N/A")
+                caps = agent.get("capabilities", [])
+                caps_str = ", ".join(caps) if caps else "N/A"
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+                table.add_row(agent_id, name, status_val, caps_str)
+
+            console.print(table)
+
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
 def info(
-    agent_id: Annotated[
-        str,
-        typer.Argument(help="Agent ID to retrieve information for"),
-    ],
+    agent_id: Annotated[str, typer.Argument(help="Agent identifier")],
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """Get detailed information about a specific agent.
+    """Get detailed information about an agent.
 
-    Example:
-        agentcore agent info agent-12345
+    Examples:
+        # Get agent info
+        agentcore agent info agent-001
 
-    JSON output:
-        agentcore agent info agent-12345 --json
+        # Get JSON output
+        agentcore agent info agent-001 --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_agent_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        agent = service.get(agent_id)
 
-        # Call API
-        result = client.call("agent.info", {"agent_id": agent_id})
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(result))
+            console.print(json.dumps(agent, indent=2))
         else:
-            agent_info = format_agent_info(result)
-            console.print(agent_info)
+            console.print(f"[bold]Agent Information[/bold]")
+            console.print(f"[bold]ID:[/bold] {agent.get('agent_id', 'N/A')}")
+            console.print(f"[bold]Name:[/bold] {agent.get('name', 'N/A')}")
+            console.print(f"[bold]Status:[/bold] {agent.get('status', 'N/A')}")
+            console.print(
+                f"[bold]Capabilities:[/bold] {', '.join(agent.get('capabilities', []))}"
+            )
+            console.print(
+                f"[bold]Cost per request:[/bold] ${agent.get('cost_per_request', 0)}"
+            )
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except AgentNotFoundError as e:
+        console.print(f"[red]Agent not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
 def remove(
-    agent_id: Annotated[
-        str,
-        typer.Argument(help="Agent ID to remove"),
-    ],
+    agent_id: Annotated[str, typer.Argument(help="Agent identifier")],
     force: Annotated[
         bool,
-        typer.Option("--force", "-f", help="Skip confirmation prompt"),
+        typer.Option(
+            "--force",
+            "-f",
+            help="Force removal even if agent is active",
+        ),
     ] = False,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """Remove an agent from AgentCore.
+    """Remove an agent.
 
-    Example:
-        agentcore agent remove agent-12345
+    Examples:
+        # Remove an agent
+        agentcore agent remove agent-001
 
-    Skip confirmation:
-        agentcore agent remove agent-12345 --force
+        # Force removal
+        agentcore agent remove agent-001 --force
+
+        # Get JSON output
+        agentcore agent remove agent-001 --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_agent_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        success = service.remove(agent_id, force=force)
 
-        # Get agent info for confirmation
-        if not force and not json_output:
-            try:
-                agent_info = client.call("agent.info", {"agent_id": agent_id})
-                agent_name = agent_info.get("name", agent_id)
-
-                console.print(format_warning(
-                    f"Remove agent '{agent_name}' ({agent_id})?\n"
-                    "   This action cannot be undone."
-                ))
-
-                confirm = typer.confirm("Continue?", default=False)
-                if not confirm:
-                    console.print("[yellow]Operation cancelled[/yellow]")
-                    sys.exit(0)
-            except typer.Exit:
-                # Re-raise typer.Exit to maintain exit code
-                raise
-            except AgentCoreError:
-                # Agent might not exist, proceed anyway
-                pass
-
-        # Call API
-        result = client.call("agent.remove", {"agent_id": agent_id})
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(result))
+            result = {"success": success, "agent_id": agent_id}
+            console.print(json.dumps(result, indent=2))
         else:
-            console.print(format_success(f"Agent removed: {agent_id}"))
+            if success:
+                console.print(f"[green]✓[/green] Agent removed successfully")
+                console.print(f"[bold]Agent ID:[/bold] {agent_id}")
+            else:
+                console.print(f"[red]Failed to remove agent {agent_id}[/red]")
+                raise typer.Exit(1)
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except AgentNotFoundError as e:
+        console.print(f"[red]Agent not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
 def search(
     capability: Annotated[
-        list[str],
-        typer.Option("--capability", "-c", help="Capability to search for (can specify multiple)"),
+        str,
+        typer.Option(
+            "--capability",
+            "-c",
+            help="Capability to search for",
+        ),
     ],
     limit: Annotated[
         int,
-        typer.Option("--limit", "-l", help="Maximum number of agents to return"),
+        typer.Option(
+            "--limit",
+            "-l",
+            help="Maximum number of agents to return",
+        ),
     ] = 100,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """Search for agents by capability.
+    """Search agents by capability.
 
-    Example:
+    Examples:
+        # Search for agents with Python capability
         agentcore agent search --capability python
 
-    Multiple capabilities:
-        agentcore agent search --capability python --capability testing
+        # Limit results
+        agentcore agent search -c analysis --limit 10
 
-    JSON output:
-        agentcore agent search --capability python --json
+        # Get JSON output
+        agentcore agent search -c testing --json
     """
-    if not capability:
-        console.print(format_error("At least one capability is required"))
-        console.print("Use: agentcore agent search --capability <name>")
-        sys.exit(2)
-
     try:
+        # Get service from DI container
+        service = get_agent_service()
 
-        # Load configuration
-        config = Config.load()
+        # Call service method
+        agents = service.search(capability=capability, limit=limit)
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
-
-        # Call API
-        result = client.call("agent.search", {
-            "capabilities": capability,
-            "limit": limit,
-        })
-
-        # Extract agents
-        agents = result.get("agents", [])
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(agents))
+            console.print(json.dumps(agents, indent=2))
         else:
             if not agents:
-                caps_str = ", ".join(capability)
-                console.print(f"[dim]No agents found with capabilities: {caps_str}[/dim]")
+                console.print(f"[yellow]No agents found with capability '{capability}'[/yellow]")
                 return
 
-            # Display as table
-            columns = ["agent_id", "name", "status", "capabilities"]
-            caps_str = ", ".join(capability)
-            table_output = format_table(
-                agents,
-                columns=columns,
-                title=f"Agents with capabilities: {caps_str}"
-            )
-            console.print(table_output)
+            # Create table
+            table = Table(title=f"Agents with '{capability}' capability ({len(agents)})")
+            table.add_column("Agent ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Status", style="yellow")
+            table.add_column("Capabilities", style="blue")
 
-            # Show count
-            console.print(f"\n[dim]Total: {len(agents)} agent(s)[/dim]")
+            for agent in agents:
+                agent_id = agent.get("agent_id", "N/A")
+                name = agent.get("name", "N/A")
+                status_val = agent.get("status", "N/A")
+                caps = agent.get("capabilities", [])
+                caps_str = ", ".join(caps) if caps else "N/A"
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+                table.add_row(agent_id, name, status_val, caps_str)
+
+            console.print(table)
+
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)

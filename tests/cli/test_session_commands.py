@@ -1,483 +1,919 @@
-"""Unit tests for session commands."""
+"""Integration tests for session commands.
+
+These tests verify that the session commands properly use the service layer
+and send JSON-RPC 2.0 compliant requests to the API.
+"""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import Mock, patch
 import pytest
 from typer.testing import CliRunner
 
-from agentcore_cli.exceptions import (
-    AuthenticationError,
-    ConnectionError as CliConnectionError,
-    JsonRpcError,
-)
 from agentcore_cli.main import app
-
-runner = CliRunner()
-
-
-@pytest.fixture
-def mock_config():
-    """Mock configuration."""
-    with patch("agentcore_cli.commands.session.Config") as mock_config_class:
-        config = MagicMock()
-        config.api.url = "http://localhost:8001"
-        config.api.timeout = 30
-        config.api.retries = 3
-        config.api.verify_ssl = True
-        config.auth.type = "none"
-        config.auth.token = None
-        mock_config_class.load.return_value = config
-        yield config
+from agentcore_cli.services.exceptions import (
+    ValidationError,
+    SessionNotFoundError,
+    OperationError,
+)
 
 
 @pytest.fixture
-def mock_client():
-    """Mock AgentCore client."""
-    with patch("agentcore_cli.commands.session.AgentCoreClient") as mock_client_class:
-        client = MagicMock()
-        mock_client_class.return_value = client
-        yield client
+def runner() -> CliRunner:
+    """Create a CLI runner for testing."""
+    return CliRunner()
 
 
-class TestSessionSave:
-    """Tests for session save command."""
+@pytest.fixture
+def mock_session_service() -> Mock:
+    """Create a mock session service."""
+    return Mock()
 
-    def test_save_success(self, mock_config, mock_client):
-        """Test successful session save."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-            "status": "active",
-        }
 
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-        ])
+class TestSessionCreateCommand:
+    """Test suite for session create command."""
 
+    def test_create_success(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test successful session creation."""
+        # Mock service response
+        mock_session_service.create.return_value = "session-001"
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "create",
+                    "--name",
+                    "analysis-session",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+
+        # Verify output
+        assert "Session created successfully" in result.output
+        assert "session-001" in result.output
+        assert "analysis-session" in result.output
+
+        # Verify service was called correctly
+        mock_session_service.create.assert_called_once_with(
+            name="analysis-session",
+            context=None,
+        )
+
+    def test_create_with_context(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session creation with context."""
+        # Mock service response
+        mock_session_service.create.return_value = "session-002"
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "create",
+                    "--name",
+                    "test-session",
+                    "--context",
+                    '{"user": "alice", "project": "foo"}',
+                ],
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Session saved: session-12345" in result.stdout
-        assert "Name: feature-dev" in result.stdout
-        mock_client.call.assert_called_once()
-        call_args = mock_client.call.call_args
-        assert call_args[0][0] == "session.save"
-        assert call_args[0][1]["name"] == "feature-dev"
-        assert call_args[0][1]["description"] == ""
-        assert call_args[0][1]["tags"] == []
 
-    def test_save_with_all_options(self, mock_config, mock_client):
-        """Test session save with all options."""
-        mock_client.call.return_value = {"session_id": "session-12345"}
+        # Verify output
+        assert "Session created successfully" in result.output
+        assert "session-002" in result.output
 
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-            "--description", "Building authentication",
-            "--tag", "auth",
-            "--tag", "backend",
-            "--metadata", '{"branch": "main", "sprint": "S1"}',
-        ])
+        # Verify service was called correctly
+        mock_session_service.create.assert_called_once_with(
+            name="test-session",
+            context={"user": "alice", "project": "foo"},
+        )
 
+    def test_create_json_output(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session creation with JSON output."""
+        # Mock service response
+        mock_session_service.create.return_value = "session-003"
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "create",
+                    "--name",
+                    "my-session",
+                    "--json",
+                ],
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        call_args = mock_client.call.call_args[0][1]
-        assert call_args["name"] == "feature-dev"
-        assert call_args["description"] == "Building authentication"
-        assert call_args["tags"] == ["auth", "backend"]
-        assert call_args["metadata"] == {"branch": "main", "sprint": "S1"}
 
-    def test_save_json_output(self, mock_config, mock_client):
-        """Test session save with JSON output."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-        }
+        # Verify output is valid JSON
+        import json
+        output = json.loads(result.output)
+        assert output["session_id"] == "session-003"
+        assert output["name"] == "my-session"
 
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-            "--json",
-        ])
+    def test_create_validation_error(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session creation with validation error."""
+        # Mock service to raise validation error
+        mock_session_service.create.side_effect = ValidationError(
+            "Session name cannot be empty"
+        )
 
-        assert result.exit_code == 0
-        assert '"session_id": "session-12345"' in result.stdout
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "create",
+                    "--name",
+                    "",
+                ],
+            )
 
-    def test_save_invalid_metadata_json(self, mock_config, mock_client):
-        """Test session save with invalid metadata JSON."""
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-            "--metadata", "invalid-json",
-        ])
-
+        # Verify exit code (2 = validation error)
         assert result.exit_code == 2
-        assert "Invalid JSON in metadata" in result.stdout
 
-    def test_save_metadata_not_dict(self, mock_config, mock_client):
-        """Test session save with metadata not being a dict."""
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-            "--metadata", '["not", "a", "dict"]',
-        ])
+        # Verify error message
+        assert "Validation error" in result.output
+        assert "Session name cannot be empty" in result.output
 
-        assert result.exit_code == 2
-        assert "Metadata must be a JSON object" in result.stdout
+    def test_create_operation_error(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session creation with operation error."""
+        # Mock service to raise operation error
+        mock_session_service.create.side_effect = OperationError(
+            "Session creation failed: API error"
+        )
 
-    def test_save_connection_error(self, mock_config, mock_client):
-        """Test session save with connection error."""
-        mock_client.call.side_effect = CliConnectionError("Cannot connect")
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "create",
+                    "--name",
+                    "test-session",
+                ],
+            )
 
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-        ])
-
-        assert result.exit_code == 3
-        assert "Cannot connect" in result.stdout
-
-    def test_save_authentication_error(self, mock_config, mock_client):
-        """Test session save with authentication error."""
-        mock_client.call.side_effect = AuthenticationError("Auth failed")
-
-        result = runner.invoke(app, [
-            "session", "save",
-            "--name", "feature-dev",
-        ])
-
-        assert result.exit_code == 4
-        assert "Auth failed" in result.stdout
-
-
-class TestSessionResume:
-    """Tests for session resume command."""
-
-    def test_resume_success(self, mock_config, mock_client):
-        """Test successful session resume."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-            "tasks_count": 5,
-            "agents_count": 2,
-        }
-
-        result = runner.invoke(app, ["session", "resume", "session-12345"])
-
-        assert result.exit_code == 0
-        assert "Session resumed: session-12345" in result.stdout
-        assert "Tasks restored: 5" in result.stdout
-        assert "Agents restored: 2" in result.stdout
-        mock_client.call.assert_called_once_with("session.resume", {
-            "session_id": "session-12345"
-        })
-
-    def test_resume_json_output(self, mock_config, mock_client):
-        """Test session resume with JSON output."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "tasks_count": 5,
-            "agents_count": 2,
-        }
-
-        result = runner.invoke(app, [
-            "session", "resume", "session-12345", "--json"
-        ])
-
-        assert result.exit_code == 0
-        assert '"session_id": "session-12345"' in result.stdout
-
-    def test_resume_not_found(self, mock_config, mock_client):
-        """Test resume for non-existent session."""
-        mock_client.call.side_effect = JsonRpcError({
-            "code": -32602,
-            "message": "Session not found"
-        })
-
-        result = runner.invoke(app, ["session", "resume", "session-99999"])
-
+        # Verify exit code (1 = operation error)
         assert result.exit_code == 1
-        assert "Session not found" in result.stdout
+
+        # Verify error message
+        assert "Operation failed" in result.output
+        assert "API error" in result.output
+
+    def test_create_invalid_json_context(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session creation with invalid JSON context."""
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "create",
+                    "--name",
+                    "test-session",
+                    "--context",
+                    "invalid-json",
+                ],
+            )
+
+        # Verify exit code (2 = validation error)
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Invalid JSON in context" in result.output
 
 
-class TestSessionList:
-    """Tests for session list command."""
+class TestSessionListCommand:
+    """Test suite for session list command."""
 
-    def test_list_success(self, mock_config, mock_client):
+    def test_list_success(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
         """Test successful session listing."""
-        mock_client.call.return_value = {
-            "sessions": [
-                {
-                    "session_id": "session-1",
-                    "name": "feature-dev",
-                    "status": "active",
-                    "tasks_count": 5,
-                    "created_at": "2025-10-21T10:00:00Z",
-                },
-                {
-                    "session_id": "session-2",
-                    "name": "bugfix",
-                    "status": "completed",
-                    "tasks_count": 3,
-                    "created_at": "2025-10-21T09:00:00Z",
-                },
-            ]
-        }
-
-        result = runner.invoke(app, ["session", "list"])
-
-        assert result.exit_code == 0
-        assert "session-1" in result.stdout
-        assert "session-2" in result.stdout
-        assert "Total: 2 session(s)" in result.stdout
-        mock_client.call.assert_called_once_with("session.list", {"limit": 100})
-
-    def test_list_with_status_filter(self, mock_config, mock_client):
-        """Test session listing with status filter."""
-        mock_client.call.return_value = {"sessions": []}
-
-        result = runner.invoke(app, [
-            "session", "list",
-            "--status", "active",
-        ])
-
-        assert result.exit_code == 0
-        mock_client.call.assert_called_once_with("session.list", {
-            "limit": 100,
-            "status": "active",
-        })
-
-    def test_list_with_limit(self, mock_config, mock_client):
-        """Test session listing with custom limit."""
-        mock_client.call.return_value = {"sessions": []}
-
-        result = runner.invoke(app, [
-            "session", "list",
-            "--limit", "10",
-        ])
-
-        assert result.exit_code == 0
-        mock_client.call.assert_called_once_with("session.list", {"limit": 10})
-
-    def test_list_empty(self, mock_config, mock_client):
-        """Test listing when no sessions exist."""
-        mock_client.call.return_value = {"sessions": []}
-
-        result = runner.invoke(app, ["session", "list"])
-
-        assert result.exit_code == 0
-        assert "No sessions found" in result.stdout
-
-    def test_list_json_output(self, mock_config, mock_client):
-        """Test session listing with JSON output."""
-        mock_client.call.return_value = {
-            "sessions": [{"session_id": "session-1", "name": "test"}]
-        }
-
-        result = runner.invoke(app, ["session", "list", "--json"])
-
-        assert result.exit_code == 0
-        assert '"session_id": "session-1"' in result.stdout
-
-
-class TestSessionInfo:
-    """Tests for session info command."""
-
-    def test_info_success(self, mock_config, mock_client):
-        """Test successful session info retrieval."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-            "status": "active",
-            "description": "Building authentication",
-            "tags": ["auth", "backend"],
-            "tasks_count": 5,
-            "agents_count": 2,
-            "created_at": "2025-10-21T10:00:00Z",
-            "metadata": {"branch": "main"},
-        }
-
-        result = runner.invoke(app, ["session", "info", "session-12345"])
-
-        assert result.exit_code == 0
-        assert "Session ID: session-12345" in result.stdout
-        assert "Name: feature-dev" in result.stdout
-        assert "Status:" in result.stdout
-        assert "Tasks: 5" in result.stdout
-        assert "Agents: 2" in result.stdout
-        mock_client.call.assert_called_once_with("session.info", {
-            "session_id": "session-12345"
-        })
-
-    def test_info_json_output(self, mock_config, mock_client):
-        """Test session info with JSON output."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-        }
-
-        result = runner.invoke(app, [
-            "session", "info", "session-12345", "--json"
-        ])
-
-        assert result.exit_code == 0
-        assert '"session_id": "session-12345"' in result.stdout
-
-    def test_info_not_found(self, mock_config, mock_client):
-        """Test info for non-existent session."""
-        mock_client.call.side_effect = JsonRpcError({
-            "code": -32602,
-            "message": "Session not found"
-        })
-
-        result = runner.invoke(app, ["session", "info", "session-99999"])
-
-        assert result.exit_code == 1
-        assert "Session not found" in result.stdout
-
-
-class TestSessionDelete:
-    """Tests for session delete command."""
-
-    def test_delete_with_force(self, mock_config, mock_client):
-        """Test session deletion with force flag."""
-        mock_client.call.return_value = {"success": True}
-
-        result = runner.invoke(app, [
-            "session", "delete", "session-12345", "--force"
-        ])
-
-        assert result.exit_code == 0
-        assert "Session deleted: session-12345" in result.stdout
-        mock_client.call.assert_called_once_with("session.delete", {
-            "session_id": "session-12345"
-        })
-
-    def test_delete_with_confirmation(self, mock_config, mock_client):
-        """Test session deletion with confirmation prompt."""
-        # Mock session info call, then delete call
-        mock_client.call.side_effect = [
-            {"session_id": "session-12345", "name": "feature-dev", "status": "active"},
-            {"success": True}
+        # Mock service response
+        mock_session_service.list_sessions.return_value = [
+            {
+                "session_id": "session-001",
+                "name": "analysis-session",
+                "state": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "session_id": "session-002",
+                "name": "test-session",
+                "state": "inactive",
+                "created_at": "2024-01-02T00:00:00Z",
+            },
         ]
 
-        result = runner.invoke(app, [
-            "session", "delete", "session-12345"
-        ], input="y\n")
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(app, ["session", "list"])
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Session deleted: session-12345" in result.stdout
-        assert mock_client.call.call_count == 2
 
-    def test_delete_declined(self, mock_config, mock_client):
-        """Test session deletion declined by user."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-            "status": "active"
-        }
+        # Verify output
+        assert "session-001" in result.output
+        assert "analysis-session" in result.output
+        assert "session-002" in result.output
+        assert "test-session" in result.output
 
-        result = runner.invoke(app, [
-            "session", "delete", "session-12345"
-        ], input="n\n")
+        # Verify service was called correctly
+        mock_session_service.list_sessions.assert_called_once_with(
+            state=None,
+            limit=100,
+            offset=0,
+        )
 
+    def test_list_with_state_filter(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session listing with state filter."""
+        # Mock service response
+        mock_session_service.list_sessions.return_value = [
+            {
+                "session_id": "session-001",
+                "name": "active-session",
+                "state": "active",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "list",
+                    "--state",
+                    "active",
+                ],
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Operation cancelled" in result.stdout
 
-    def test_delete_json_output(self, mock_config, mock_client):
-        """Test session deletion with JSON output."""
-        mock_client.call.return_value = {"success": True}
+        # Verify service was called with filter
+        mock_session_service.list_sessions.assert_called_once_with(
+            state="active",
+            limit=100,
+            offset=0,
+        )
 
-        result = runner.invoke(app, [
-            "session", "delete", "session-12345", "--force", "--json"
-        ])
+    def test_list_with_limit(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session listing with limit."""
+        # Mock service response
+        mock_session_service.list_sessions.return_value = []
 
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "list",
+                    "--limit",
+                    "10",
+                ],
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        assert '"success": true' in result.stdout
 
+        # Verify service was called with limit
+        mock_session_service.list_sessions.assert_called_once_with(
+            state=None,
+            limit=10,
+            offset=0,
+        )
 
-class TestSessionExport:
-    """Tests for session export command."""
+    def test_list_with_pagination(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session listing with pagination."""
+        # Mock service response
+        mock_session_service.list_sessions.return_value = []
 
-    def test_export_success(self, mock_config, mock_client, tmp_path):
-        """Test successful session export."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
-            "tasks": [],
-        }
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "list",
+                    "--limit",
+                    "10",
+                    "--offset",
+                    "20",
+                ],
+            )
 
-        output_file = tmp_path / "session.json"
-        result = runner.invoke(app, [
-            "session", "export", "session-12345",
-            "--output", str(output_file),
-        ])
-
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Session exported to:" in result.stdout
-        assert output_file.exists()
 
-        # Verify file contents
+        # Verify service was called with pagination
+        mock_session_service.list_sessions.assert_called_once_with(
+            state=None,
+            limit=10,
+            offset=20,
+        )
+
+    def test_list_json_output(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session listing with JSON output."""
+        # Mock service response
+        sessions = [
+            {
+                "session_id": "session-001",
+                "name": "test-session",
+                "state": "active",
+            }
+        ]
+        mock_session_service.list_sessions.return_value = sessions
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "list",
+                    "--json",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output is valid JSON
         import json
-        with open(output_file) as f:
-            data = json.load(f)
-            assert data["session_id"] == "session-12345"
+        output = json.loads(result.output)
+        assert len(output) == 1
+        assert output[0]["session_id"] == "session-001"
 
-    def test_export_pretty_json(self, mock_config, mock_client, tmp_path):
-        """Test session export with pretty-printing (default)."""
-        mock_client.call.return_value = {
-            "session_id": "session-12345",
-            "name": "feature-dev",
+    def test_list_empty(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session listing with no sessions."""
+        # Mock service response
+        mock_session_service.list_sessions.return_value = []
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(app, ["session", "list"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "No sessions found" in result.output
+
+    def test_list_validation_error(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session listing with validation error."""
+        # Mock service to raise validation error
+        mock_session_service.list_sessions.side_effect = ValidationError(
+            "Limit must be positive"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "list",
+                ],
+            )
+
+        # Verify exit code (2 = validation error)
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Validation error" in result.output
+
+
+class TestSessionInfoCommand:
+    """Test suite for session info command."""
+
+    def test_info_success(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test successful session info retrieval."""
+        # Mock service response
+        mock_session_service.get.return_value = {
+            "session_id": "session-001",
+            "name": "analysis-session",
+            "state": "active",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-02T00:00:00Z",
+            "context": {"user": "alice"},
         }
 
-        output_file = tmp_path / "session.json"
-        result = runner.invoke(app, [
-            "session", "export", "session-12345",
-            "--output", str(output_file),
-            "--pretty",
-        ])
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "info",
+                    "session-001",
+                ],
+            )
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert output_file.exists()
 
-        # Verify file has pretty formatting (indentation)
+        # Verify output
+        assert "Session Information" in result.output
+        assert "session-001" in result.output
+        assert "analysis-session" in result.output
+        assert "active" in result.output
+
+        # Verify service was called correctly
+        mock_session_service.get.assert_called_once_with("session-001")
+
+    def test_info_json_output(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session info with JSON output."""
+        # Mock service response
+        session_data = {
+            "session_id": "session-001",
+            "name": "test-session",
+            "state": "active",
+        }
+        mock_session_service.get.return_value = session_data
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "info",
+                    "session-001",
+                    "--json",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output is valid JSON
         import json
-        with open(output_file) as f:
-            data = json.load(f)
-            # Verify it's valid JSON and has expected content
-            assert data["session_id"] == "session-12345"
+        output = json.loads(result.output)
+        assert output["session_id"] == "session-001"
+        assert output["name"] == "test-session"
 
-        # Check file has indentation
-        with open(output_file) as f:
-            content = f.read()
-            assert "  " in content  # Has indentation
+    def test_info_not_found(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session info for non-existent session."""
+        # Mock service to raise not found error
+        mock_session_service.get.side_effect = SessionNotFoundError(
+            "Session 'session-999' not found"
+        )
 
-    def test_export_not_found(self, mock_config, mock_client, tmp_path):
-        """Test export for non-existent session."""
-        mock_client.call.side_effect = JsonRpcError({
-            "code": -32602,
-            "message": "Session not found"
-        })
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "info",
+                    "session-999",
+                ],
+            )
 
-        output_file = tmp_path / "session.json"
-        result = runner.invoke(app, [
-            "session", "export", "session-99999",
-            "--output", str(output_file),
-        ])
-
+        # Verify exit code (1 = error)
         assert result.exit_code == 1
-        assert "Session not found" in result.stdout
-        assert not output_file.exists()
 
-    def test_export_connection_error(self, mock_config, mock_client, tmp_path):
-        """Test export with connection error."""
-        mock_client.call.side_effect = CliConnectionError("Cannot connect")
+        # Verify error message
+        assert "Session not found" in result.output
+        assert "session-999" in result.output
 
-        output_file = tmp_path / "session.json"
-        result = runner.invoke(app, [
-            "session", "export", "session-12345",
-            "--output", str(output_file),
-        ])
+    def test_info_validation_error(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session info with validation error."""
+        # Mock service to raise validation error
+        mock_session_service.get.side_effect = ValidationError(
+            "Session ID cannot be empty"
+        )
 
-        assert result.exit_code == 3
-        assert "Cannot connect" in result.stdout
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "info",
+                    "",
+                ],
+            )
+
+        # Verify exit code (2 = validation error)
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Validation error" in result.output
+
+
+class TestSessionDeleteCommand:
+    """Test suite for session delete command."""
+
+    def test_delete_success(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test successful session deletion."""
+        # Mock service response
+        mock_session_service.delete.return_value = True
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "delete",
+                    "session-001",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "Session deleted successfully" in result.output
+        assert "session-001" in result.output
+
+        # Verify service was called correctly
+        mock_session_service.delete.assert_called_once_with(
+            "session-001",
+            force=False,
+        )
+
+    def test_delete_with_force(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session deletion with force flag."""
+        # Mock service response
+        mock_session_service.delete.return_value = True
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "delete",
+                    "session-001",
+                    "--force",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with force=True
+        mock_session_service.delete.assert_called_once_with(
+            "session-001",
+            force=True,
+        )
+
+    def test_delete_json_output(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session deletion with JSON output."""
+        # Mock service response
+        mock_session_service.delete.return_value = True
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "delete",
+                    "session-001",
+                    "--json",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output is valid JSON
+        import json
+        output = json.loads(result.output)
+        assert output["success"] is True
+        assert output["session_id"] == "session-001"
+
+    def test_delete_not_found(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session deletion for non-existent session."""
+        # Mock service to raise not found error
+        mock_session_service.delete.side_effect = SessionNotFoundError(
+            "Session 'session-999' not found"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "delete",
+                    "session-999",
+                ],
+            )
+
+        # Verify exit code (1 = error)
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Session not found" in result.output
+        assert "session-999" in result.output
+
+    def test_delete_failed(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session deletion failure."""
+        # Mock service to return False
+        mock_session_service.delete.return_value = False
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "delete",
+                    "session-001",
+                ],
+            )
+
+        # Verify exit code (1 = error)
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Failed to delete session" in result.output
+
+
+class TestSessionRestoreCommand:
+    """Test suite for session restore command."""
+
+    def test_restore_success(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test successful session restoration."""
+        # Mock service response
+        mock_session_service.restore.return_value = {
+            "user": "alice",
+            "project": "foo",
+        }
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "restore",
+                    "session-001",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "Session restored successfully" in result.output
+        assert "session-001" in result.output
+        assert "Restored Context" in result.output
+
+        # Verify service was called correctly
+        mock_session_service.restore.assert_called_once_with("session-001")
+
+    def test_restore_json_output(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session restoration with JSON output."""
+        # Mock service response
+        context_data = {"user": "alice", "project": "foo"}
+        mock_session_service.restore.return_value = context_data
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "restore",
+                    "session-001",
+                    "--json",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output is valid JSON
+        import json
+        output = json.loads(result.output)
+        assert output["session_id"] == "session-001"
+        assert output["context"]["user"] == "alice"
+
+    def test_restore_empty_context(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session restoration with empty context."""
+        # Mock service response
+        mock_session_service.restore.return_value = {}
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "restore",
+                    "session-001",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "Session restored successfully" in result.output
+        assert "No context data in session" in result.output
+
+    def test_restore_not_found(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session restoration for non-existent session."""
+        # Mock service to raise not found error
+        mock_session_service.restore.side_effect = SessionNotFoundError(
+            "Session 'session-999' not found"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "restore",
+                    "session-999",
+                ],
+            )
+
+        # Verify exit code (1 = error)
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Session not found" in result.output
+        assert "session-999" in result.output
+
+    def test_restore_validation_error(
+        self, runner: CliRunner, mock_session_service: Mock
+    ) -> None:
+        """Test session restoration with validation error."""
+        # Mock service to raise validation error
+        mock_session_service.restore.side_effect = ValidationError(
+            "Session ID cannot be empty"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.session.get_session_service",
+            return_value=mock_session_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "session",
+                    "restore",
+                    "",
+                ],
+            )
+
+        # Verify exit code (2 = validation error)
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Validation error" in result.output

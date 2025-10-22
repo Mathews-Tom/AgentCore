@@ -1,35 +1,36 @@
-"""Session management commands for AgentCore CLI."""
+"""Session management commands.
+
+This module provides CLI commands for session lifecycle management:
+- create: Create a new session
+- list: List sessions with optional state filter
+- info: Get detailed session information
+- delete: Delete a session
+- restore: Restore a session from backup
+
+All commands use the service layer for business logic and abstract
+JSON-RPC protocol details.
+"""
 
 from __future__ import annotations
 
-import json
-import sys
-from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+import json
 
-from agentcore_cli.client import AgentCoreClient
-from agentcore_cli.config import Config
-from agentcore_cli.exceptions import (
-    AgentCoreError,
-    AuthenticationError,
-    ConnectionError as CliConnectionError,
-)
-from agentcore_cli.formatters import (
-    format_error,
-    format_json,
-    format_success,
-    format_table,
-    format_warning,
+from agentcore_cli.container import get_session_service
+from agentcore_cli.services.exceptions import (
+    ValidationError,
+    SessionNotFoundError,
+    OperationError,
+    ServiceError,
 )
 
 app = typer.Typer(
     name="session",
-    help="Save and resume long-running workflows",
+    help="Manage session lifecycle and state",
     no_args_is_help=True,
 )
 
@@ -37,575 +38,381 @@ console = Console()
 
 
 @app.command()
-def save(
-    name: Annotated[
-        str,
-        typer.Option("--name", "-n", help="Session name (required)"),
-    ],
-    description: Annotated[
-        str,
-        typer.Option("--description", "-d", help="Session description"),
-    ] = "",
-    tags: Annotated[
-        Optional[list[str]],
-        typer.Option("--tag", "-t", help="Session tags (can be specified multiple times)"),
-    ] = None,
-    metadata: Annotated[
-        Optional[str],
-        typer.Option("--metadata", "-m", help="JSON string of custom metadata"),
+def create(
+    name: Annotated[str, typer.Option("--name", "-n", help="Session name")],
+    context: Annotated[
+        str | None,
+        typer.Option(
+            "--context",
+            "-c",
+            help="Session context as JSON string (optional)",
+        ),
     ] = None,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """Save current workflow session.
+    """Create a new session.
 
-    Example:
-        agentcore session save --name "feature-dev" --description "Building auth"
+    This command creates a new session with the specified name and optional
+    context. Sessions maintain state across multiple operations.
 
-    With tags:
-        agentcore session save \\
-            --name "feature-dev" \\
-            --tag "auth" \\
-            --tag "backend"
+    Examples:
+        # Create a simple session
+        agentcore session create --name analysis-session
 
-    With metadata:
-        agentcore session save \\
-            --name "feature-dev" \\
-            --metadata '{"branch": "main", "sprint": "S1"}'
+        # Create with context
+        agentcore session create -n test-session -c '{"user": "alice"}'
+
+        # Get JSON output
+        agentcore session create -n my-session --json
     """
+    # Parse context if provided (do this before try block)
+    context_dict = None
+    if context:
+        try:
+            context_dict = json.loads(context)
+        except json.JSONDecodeError as e:
+            console.print(f"[red]Invalid JSON in context:[/red] {str(e)}")
+            raise typer.Exit(2)
+
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_session_service()
 
-        # Parse metadata if provided
-        metadata_dict = {}
-        if metadata:
-            try:
-                metadata_dict = json.loads(metadata)
-                if not isinstance(metadata_dict, dict):
-                    console.print(format_error("Metadata must be a JSON object"))
-                    sys.exit(2)
-            except json.JSONDecodeError as e:
-                console.print(format_error(f"Invalid JSON in metadata: {e}"))
-                sys.exit(2)
-
-        # Build session parameters
-        params: dict[str, object] = {
-            "name": name,
-            "description": description,
-            "tags": tags or [],
-            "metadata": metadata_dict,
-        }
-
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
+        # Call service method
+        session_id = service.create(
+            name=name,
+            context=context_dict,
         )
 
-        # Call API with progress indicator
-        if not json_output:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                progress.add_task(description="Saving session...", total=None)
-                result = client.call("session.save", params)
-        else:
-            result = client.call("session.save", params)
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(result))
+            result = {
+                "session_id": session_id,
+                "name": name,
+                "context": context_dict,
+            }
+            console.print(json.dumps(result, indent=2))
         else:
-            session_id = result.get("session_id", "N/A")
-            console.print(format_success(f"Session saved: {session_id}"))
-            console.print(f"  Name: {name}")
-            if description:
-                console.print(f"  Description: {description}")
-            if tags:
-                console.print(f"  Tags: {', '.join(tags)}")
-            console.print(f"\n  Resume with: agentcore session resume {session_id}")
+            console.print(f"[green]✓[/green] Session created successfully")
+            console.print(f"[bold]Session ID:[/bold] {session_id}")
+            console.print(f"[bold]Name:[/bold] {name}")
+            if context_dict:
+                console.print(f"[bold]Context:[/bold]")
+                console.print(json.dumps(context_dict, indent=2))
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        if e.details:
+            console.print(f"[dim]Details: {e.details}[/dim]")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
-def resume(
-    session_id: Annotated[
-        str,
-        typer.Argument(help="Session ID to resume"),
-    ],
-    json_output: Annotated[
-        bool,
-        typer.Option("--json", help="Output in JSON format"),
-    ] = False,
-) -> None:
-    """Resume a saved session.
-
-    Example:
-        agentcore session resume session-12345
-    """
-    try:
-        # Load configuration
-        config = Config.load()
-
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
-
-        # Call API with progress indicator
-        if not json_output:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task(description="Restoring session...", total=100)
-                result = client.call("session.resume", {"session_id": session_id})
-                progress.update(task, completed=100)
-        else:
-            result = client.call("session.resume", {"session_id": session_id})
-
-        # Output result
-        if json_output:
-            console.print(format_json(result))
-        else:
-            console.print(format_success(f"Session resumed: {session_id}"))
-            tasks_count = result.get("tasks_count", 0)
-            agents_count = result.get("agents_count", 0)
-            console.print(f"  Tasks restored: {tasks_count}")
-            console.print(f"  Agents restored: {agents_count}")
-
-            # Show session details if available
-            if "name" in result:
-                console.print(f"  Name: {result['name']}")
-            if "description" in result and result["description"]:
-                console.print(f"  Description: {result['description']}")
-
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(1)
-    except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
-        raise typer.Exit(1)
-
-
-@app.command("list")
-def list_sessions(
-    status_filter: Annotated[
-        Optional[str],
-        typer.Option("--status", "-s", help="Filter by status (active, paused, completed)"),
+def list(
+    state: Annotated[
+        str | None,
+        typer.Option(
+            "--state",
+            "-s",
+            help="Filter by state (active, inactive, archived)",
+        ),
     ] = None,
     limit: Annotated[
         int,
-        typer.Option("--limit", "-l", help="Maximum number of sessions to display"),
+        typer.Option(
+            "--limit",
+            "-l",
+            help="Maximum number of sessions to return",
+        ),
     ] = 100,
+    offset: Annotated[
+        int,
+        typer.Option(
+            "--offset",
+            "-o",
+            help="Number of sessions to skip",
+        ),
+    ] = 0,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """List sessions.
+    """List sessions with optional filtering.
 
-    Example:
+    Examples:
+        # List all sessions
         agentcore session list
 
-    Filter by status:
-        agentcore session list --status active
+        # Filter by state
+        agentcore session list --state active
 
-    JSON output:
+        # Limit results
+        agentcore session list --limit 10
+
+        # Pagination
+        agentcore session list --limit 10 --offset 20
+
+        # Get JSON output
         agentcore session list --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_session_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        sessions = service.list_sessions(state=state, limit=limit, offset=offset)
 
-        # Build parameters
-        params = {"limit": limit}
-        if status_filter:
-            params["status"] = status_filter
-
-        # Call API
-        result = client.call("session.list", params)
-
-        # Extract sessions list
-        sessions = result.get("sessions", [])
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(sessions))
+            console.print(json.dumps(sessions, indent=2))
         else:
             if not sessions:
-                console.print("[dim]No sessions found[/dim]")
+                console.print("[yellow]No sessions found[/yellow]")
                 return
 
-            # Display as table
-            columns = ["session_id", "name", "status", "tasks_count", "created_at"]
-            table_output = format_table(sessions, columns=columns, title="Sessions")
-            console.print(table_output)
+            # Create table
+            table = Table(title=f"Sessions ({len(sessions)})")
+            table.add_column("Session ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("State", style="yellow")
+            table.add_column("Created", style="blue")
 
-            # Show count
-            console.print(f"\n[dim]Total: {len(sessions)} session(s)[/dim]")
+            for session in sessions:
+                session_id = session.get("session_id", "N/A")
+                name = session.get("name", "N/A")
+                state_val = session.get("state", "N/A")
+                created = session.get("created_at", "N/A")
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+                # Truncate name if too long
+                if len(name) > 40:
+                    name = name[:37] + "..."
+
+                table.add_row(session_id, name, state_val, created)
+
+            console.print(table)
+
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
 def info(
-    session_id: Annotated[
-        str,
-        typer.Argument(help="Session ID to show details for"),
-    ],
+    session_id: Annotated[str, typer.Argument(help="Session identifier")],
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
-    """Get session details.
+    """Get detailed information about a session.
 
-    Example:
-        agentcore session info session-12345
+    Examples:
+        # Get session info
+        agentcore session info session-001
 
-    JSON output:
-        agentcore session info session-12345 --json
+        # Get JSON output
+        agentcore session info session-001 --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_session_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        session = service.get(session_id)
 
-        # Call API
-        result = client.call("session.info", {"session_id": session_id})
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(result))
+            console.print(json.dumps(session, indent=2))
         else:
-            _display_session_info(result)
+            console.print(f"[bold]Session Information[/bold]")
+            console.print(f"[bold]ID:[/bold] {session.get('session_id', 'N/A')}")
+            console.print(f"[bold]Name:[/bold] {session.get('name', 'N/A')}")
+            console.print(f"[bold]State:[/bold] {session.get('state', 'N/A')}")
+            console.print(f"[bold]Created:[/bold] {session.get('created_at', 'N/A')}")
+            console.print(f"[bold]Updated:[/bold] {session.get('updated_at', 'N/A')}")
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+            # Show context if present
+            context = session.get("context")
+            if context:
+                console.print(f"[bold]Context:[/bold]")
+                console.print(json.dumps(context, indent=2))
+
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except SessionNotFoundError as e:
+        console.print(f"[red]Session not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
 def delete(
-    session_id: Annotated[
-        str,
-        typer.Argument(help="Session ID to delete"),
-    ],
+    session_id: Annotated[str, typer.Argument(help="Session identifier")],
     force: Annotated[
         bool,
-        typer.Option("--force", "-f", help="Skip confirmation prompt"),
+        typer.Option(
+            "--force",
+            "-f",
+            help="Force deletion even if session is active",
+        ),
     ] = False,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output in JSON format"),
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
     ] = False,
 ) -> None:
     """Delete a session.
 
-    Example:
-        agentcore session delete session-12345
+    Examples:
+        # Delete a session
+        agentcore session delete session-001
 
-    Skip confirmation:
-        agentcore session delete session-12345 --force
+        # Force deletion
+        agentcore session delete session-001 --force
+
+        # Get JSON output
+        agentcore session delete session-001 --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_session_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        success = service.delete(session_id, force=force)
 
-        # Get session info for confirmation
-        if not force and not json_output:
-            try:
-                session_info = client.call("session.info", {"session_id": session_id})
-                session_name = session_info.get("name", session_id)
-                session_status = session_info.get("status", "unknown")
-
-                console.print(format_warning(
-                    f"Delete session '{session_name}' ({session_id})?\n"
-                    f"   Current status: {session_status}\n"
-                    "   This action cannot be undone."
-                ))
-
-                confirm = typer.confirm("Continue?", default=False)
-                if not confirm:
-                    console.print("[yellow]Operation cancelled[/yellow]")
-                    sys.exit(0)
-            except typer.Exit:
-                raise
-            except AgentCoreError:
-                # Session might not exist, proceed anyway
-                pass
-
-        # Call API
-        result = client.call("session.delete", {"session_id": session_id})
-
-        # Output result
+        # Format output
         if json_output:
-            console.print(format_json(result))
+            result = {"success": success, "session_id": session_id}
+            console.print(json.dumps(result, indent=2))
         else:
-            console.print(format_success(f"Session deleted: {session_id}"))
+            if success:
+                console.print(f"[green]✓[/green] Session deleted successfully")
+                console.print(f"[bold]Session ID:[/bold] {session_id}")
+            else:
+                console.print(f"[red]Failed to delete session {session_id}[/red]")
+                raise typer.Exit(1)
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except SessionNotFoundError as e:
+        console.print(f"[red]Session not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
 
 
 @app.command()
-def export(
-    session_id: Annotated[
-        str,
-        typer.Argument(help="Session ID to export"),
-    ],
-    output_file: Annotated[
-        str,
-        typer.Option("--output", "-o", help="Output file path (required)"),
-    ],
-    pretty: Annotated[
+def restore(
+    session_id: Annotated[str, typer.Argument(help="Session identifier")],
+    json_output: Annotated[
         bool,
-        typer.Option("--pretty", "-p", help="Pretty-print JSON output"),
-    ] = True,
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
+    ] = False,
 ) -> None:
-    """Export session for debugging.
+    """Restore a session from backup.
 
-    Example:
-        agentcore session export session-12345 --output session.json
+    This command restores a session's context from a previous backup,
+    allowing you to continue from a saved state.
 
-    Without pretty-printing:
-        agentcore session export session-12345 --output session.json --no-pretty
+    Examples:
+        # Restore a session
+        agentcore session restore session-001
+
+        # Get JSON output
+        agentcore session restore session-001 --json
     """
     try:
-        # Load configuration
-        config = Config.load()
+        # Get service from DI container
+        service = get_session_service()
 
-        # Create client
-        auth_token = config.auth.token if config.auth.type == "jwt" else None
-        client = AgentCoreClient(
-            api_url=config.api.url,
-            timeout=config.api.timeout,
-            retries=config.api.retries,
-            verify_ssl=config.api.verify_ssl,
-            auth_token=auth_token,
-        )
+        # Call service method
+        context = service.restore(session_id)
 
-        # Call API with progress indicator
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            progress.add_task(description="Exporting session...", total=None)
-            result = client.call("session.export", {"session_id": session_id})
-
-        # Save to file
-        output_path = Path(output_file)
-        with open(output_path, "w") as f:
-            if pretty:
-                json.dump(result, f, indent=2, sort_keys=True)
-            else:
-                json.dump(result, f)
-
-        console.print(format_success(f"Session exported to: {output_path.absolute()}"))
-
-        # Show file size
-        file_size = output_path.stat().st_size
-        if file_size < 1024:
-            size_str = f"{file_size} bytes"
-        elif file_size < 1024 * 1024:
-            size_str = f"{file_size / 1024:.1f} KB"
+        # Format output
+        if json_output:
+            result = {"session_id": session_id, "context": context}
+            console.print(json.dumps(result, indent=2))
         else:
-            size_str = f"{file_size / (1024 * 1024):.1f} MB"
-        console.print(f"  File size: {size_str}")
+            console.print(f"[green]✓[/green] Session restored successfully")
+            console.print(f"[bold]Session ID:[/bold] {session_id}")
 
-    except AuthenticationError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(4)
-    except CliConnectionError as e:
-        console.print(format_error(str(e)))
-        raise typer.Exit(3)
-    except AgentCoreError as e:
-        console.print(format_error(str(e)))
+            if context:
+                console.print(f"[bold]Restored Context:[/bold]")
+                console.print(json.dumps(context, indent=2))
+            else:
+                console.print("[yellow]No context data in session[/yellow]")
+
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except SessionNotFoundError as e:
+        console.print(f"[red]Session not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
         raise typer.Exit(1)
     except Exception as e:
-        console.print(format_error(f"Unexpected error: {e}"))
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
         raise typer.Exit(1)
-
-
-# Helper functions
-
-def _display_session_info(session_data: dict[str, object]) -> None:
-    """Display session info in detailed view.
-
-    Args:
-        session_data: Session data dictionary
-    """
-    console.print(f"[bold]Session ID:[/bold] {session_data.get('session_id', 'N/A')}")
-    console.print(f"[bold]Name:[/bold] {session_data.get('name', 'N/A')}")
-
-    # Status with color
-    status = str(session_data.get("status", "unknown"))
-    status_colored = _format_status_value(status)
-    console.print(f"[bold]Status:[/bold] {status_colored}")
-
-    # Description
-    description = session_data.get("description")
-    if description:
-        console.print(f"[bold]Description:[/bold] {description}")
-
-    # Tags
-    tags = session_data.get("tags", [])
-    if tags:
-        console.print(f"[bold]Tags:[/bold] {', '.join(tags)}")
-
-    # Counts
-    tasks_count = session_data.get("tasks_count", 0)
-    agents_count = session_data.get("agents_count", 0)
-    console.print(f"[bold]Tasks:[/bold] {tasks_count}")
-    console.print(f"[bold]Agents:[/bold] {agents_count}")
-
-    # Timestamps
-    created_at = session_data.get("created_at")
-    if created_at:
-        console.print(f"[bold]Created:[/bold] {created_at}")
-
-    updated_at = session_data.get("updated_at")
-    if updated_at:
-        console.print(f"[bold]Updated:[/bold] {updated_at}")
-
-    # Metadata
-    metadata = session_data.get("metadata")
-    if metadata and isinstance(metadata, dict) and metadata:
-        console.print("\n[bold]Metadata:[/bold]")
-        for key, value in metadata.items():
-            console.print(f"  {key}: {value}")
-
-    # Tasks summary
-    tasks = session_data.get("tasks", [])
-    if tasks:
-        console.print("\n[bold]Tasks:[/bold]")
-        task_table = Table(show_header=True)
-        task_table.add_column("Task ID", style="cyan")
-        task_table.add_column("Type")
-        task_table.add_column("Status")
-
-        for task in tasks[:10]:  # Show first 10 tasks
-            task_id = str(task.get("task_id", "N/A"))
-            task_type = str(task.get("type", "N/A"))
-            task_status = str(task.get("status", "unknown"))
-            task_table.add_row(task_id, task_type, _format_status_value(task_status))
-
-        console.print(task_table)
-
-        if len(tasks) > 10:
-            console.print(f"[dim]  ... and {len(tasks) - 10} more task(s)[/dim]")
-
-
-def _format_status_value(status: str) -> str:
-    """Format status with color.
-
-    Args:
-        status: Status string
-
-    Returns:
-        Formatted status with color markup
-    """
-    status_lower = status.lower()
-    if status_lower in ("completed", "success"):
-        return f"[green]{status}[/green]"
-    if status_lower in ("active", "running", "pending"):
-        return f"[yellow]{status}[/yellow]"
-    if status_lower in ("failed", "error"):
-        return f"[red]{status}[/red]"
-    if status_lower in ("paused", "cancelled"):
-        return f"[dim]{status}[/dim]"
-    return status

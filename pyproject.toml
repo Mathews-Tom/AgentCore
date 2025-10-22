@@ -164,5 +164,6 @@ dev = [
     "pytest-cov>=7.0.0",
     "respx>=0.22.0",
     "testcontainers[redis]>=4.13.1",
+    "types-requests>=2.32.4.20250913",
     "websockets>=15.0.1",
 ]

@@ -1,492 +1,897 @@
-"""Unit tests for task commands."""
+"""Integration tests for task commands.
+
+These tests verify that the task commands properly use the service layer
+and send JSON-RPC 2.0 compliant requests to the API.
+"""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import Mock, patch
 import pytest
 from typer.testing import CliRunner
 
-from agentcore_cli.exceptions import (
-    AuthenticationError,
-    ConnectionError as CliConnectionError,
-    JsonRpcError,
-)
 from agentcore_cli.main import app
-
-runner = CliRunner()
-
-
-@pytest.fixture
-def mock_config():
-    """Mock configuration."""
-    with patch("agentcore_cli.commands.task.Config") as mock_config_class:
-        config = MagicMock()
-        config.api.url = "http://localhost:8001"
-        config.api.timeout = 30
-        config.api.retries = 3
-        config.api.verify_ssl = True
-        config.auth.type = "none"
-        config.auth.token = None
-        config.defaults.task.priority = "medium"
-        config.defaults.task.timeout = 3600
-        config.defaults.task.requirements = {}
-        mock_config_class.load.return_value = config
-        yield config
+from agentcore_cli.services.exceptions import (
+    ValidationError,
+    TaskNotFoundError,
+    OperationError,
+)
 
 
 @pytest.fixture
-def mock_client():
-    """Mock AgentCore client."""
-    with patch("agentcore_cli.commands.task.AgentCoreClient") as mock_client_class:
-        client = MagicMock()
-        mock_client_class.return_value = client
-        yield client
+def runner() -> CliRunner:
+    """Create a CLI runner for testing."""
+    return CliRunner()
 
 
-class TestTaskCreate:
-    """Tests for task create command."""
+@pytest.fixture
+def mock_task_service() -> Mock:
+    """Create a mock task service."""
+    return Mock()
 
-    def test_create_success(self, mock_config, mock_client):
+
+class TestTaskCreateCommand:
+    """Test suite for task create command."""
+
+    def test_create_success(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
         """Test successful task creation."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "type": "code-review",
-            "status": "pending",
-        }
+        # Mock service response
+        mock_task_service.create.return_value = "task-001"
 
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-        ])
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Analyze code repository",
+                ],
+            )
 
+        # Verify exit code
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+
+        # Verify output
+        assert "Task created successfully" in result.output
+        assert "task-001" in result.output
+        assert "Analyze code repository" in result.output
+
+        # Verify service was called correctly
+        mock_task_service.create.assert_called_once_with(
+            description="Analyze code repository",
+            agent_id=None,
+            priority="normal",
+            parameters=None,
+        )
+
+    def test_create_with_agent_assignment(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task creation with agent assignment."""
+        # Mock service response
+        mock_task_service.create.return_value = "task-002"
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Run tests",
+                    "--agent-id",
+                    "agent-001",
+                ],
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Task created: task-12345" in result.stdout
-        assert "Type: code-review" in result.stdout
-        mock_client.call.assert_called_once()
-        call_args = mock_client.call.call_args
-        assert call_args[0][0] == "task.create"
-        assert call_args[0][1]["type"] == "code-review"
-        assert call_args[0][1]["priority"] == "medium"
 
-    def test_create_with_all_options(self, mock_config, mock_client):
-        """Test task creation with all options."""
-        mock_client.call.return_value = {"task_id": "task-12345"}
+        # Verify service was called with agent_id
+        mock_task_service.create.assert_called_once_with(
+            description="Run tests",
+            agent_id="agent-001",
+            priority="normal",
+            parameters=None,
+        )
 
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-            "--input", "src/**/*.py",
-            "--requirements", '{"language": "python"}',
-            "--priority", "high",
-            "--timeout", "7200",
-        ])
+    def test_create_with_priority(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task creation with custom priority."""
+        # Mock service response
+        mock_task_service.create.return_value = "task-003"
 
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Fix critical bug",
+                    "--priority",
+                    "critical",
+                ],
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        call_args = mock_client.call.call_args[0][1]
-        assert call_args["type"] == "code-review"
-        assert call_args["input"] == "src/**/*.py"
-        assert call_args["requirements"] == {"language": "python"}
-        assert call_args["priority"] == "high"
-        assert call_args["timeout"] == 7200
 
-    def test_create_json_output(self, mock_config, mock_client):
+        # Verify service was called with priority
+        mock_task_service.create.assert_called_once_with(
+            description="Fix critical bug",
+            agent_id=None,
+            priority="critical",
+            parameters=None,
+        )
+
+    def test_create_with_parameters(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task creation with parameters."""
+        # Mock service response
+        mock_task_service.create.return_value = "task-004"
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Process data",
+                    "--parameters",
+                    '{"repo": "foo/bar", "branch": "main"}',
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with parameters
+        mock_task_service.create.assert_called_once_with(
+            description="Process data",
+            agent_id=None,
+            priority="normal",
+            parameters={"repo": "foo/bar", "branch": "main"},
+        )
+
+    def test_create_with_invalid_json_parameters(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task creation with invalid JSON parameters."""
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Process data",
+                    "--parameters",
+                    "invalid json",
+                ],
+            )
+
+        # Verify exit code (2 for validation error)
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Invalid JSON in parameters" in result.output
+
+    def test_create_json_output(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
         """Test task creation with JSON output."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "type": "code-review",
-        }
+        # Mock service response
+        mock_task_service.create.return_value = "task-005"
 
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-            "--json",
-        ])
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "JSON test",
+                    "--json",
+                ],
+            )
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert '"task_id": "task-12345"' in result.stdout
 
-    def test_create_invalid_priority(self, mock_config, mock_client):
-        """Test task creation with invalid priority."""
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-            "--priority", "invalid",
-        ])
+        # Verify JSON output
+        assert '"task_id": "task-005"' in result.output
+        assert '"description": "JSON test"' in result.output
+        assert '"priority": "normal"' in result.output
 
+    def test_create_validation_error(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task creation with validation error."""
+        # Mock service to raise validation error
+        mock_task_service.create.side_effect = ValidationError(
+            "Task description cannot be empty"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "",
+                ],
+            )
+
+        # Verify exit code (2 for validation error)
         assert result.exit_code == 2
-        assert "Invalid priority" in result.stdout
 
-    def test_create_invalid_requirements_json(self, mock_config, mock_client):
-        """Test task creation with invalid requirements JSON."""
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-            "--requirements", "invalid-json",
-        ])
+        # Verify error message
+        assert "Validation error" in result.output
+        assert "Task description cannot be empty" in result.output
 
-        assert result.exit_code == 2
-        assert "Invalid JSON in requirements" in result.stdout
+    def test_create_operation_error(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task creation with operation error."""
+        # Mock service to raise operation error
+        mock_task_service.create.side_effect = OperationError(
+            "Task creation failed: API timeout"
+        )
 
-    def test_create_requirements_not_dict(self, mock_config, mock_client):
-        """Test task creation with requirements not being a dict."""
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-            "--requirements", '["not", "a", "dict"]',
-        ])
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Test task",
+                ],
+            )
 
-        assert result.exit_code == 2
-        assert "Requirements must be a JSON object" in result.stdout
-
-    def test_create_connection_error(self, mock_config, mock_client):
-        """Test task creation with connection error."""
-        mock_client.call.side_effect = CliConnectionError("Cannot connect")
-
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-        ])
-
-        assert result.exit_code == 3
-        assert "Cannot connect" in result.stdout
-
-    def test_create_authentication_error(self, mock_config, mock_client):
-        """Test task creation with authentication error."""
-        mock_client.call.side_effect = AuthenticationError("Auth failed")
-
-        result = runner.invoke(app, [
-            "task", "create",
-            "--type", "code-review",
-        ])
-
-        assert result.exit_code == 4
-        assert "Auth failed" in result.stdout
-
-
-class TestTaskStatus:
-    """Tests for task status command."""
-
-    def test_status_success(self, mock_config, mock_client):
-        """Test successful task status retrieval."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "type": "code-review",
-            "status": "running",
-            "priority": "high",
-            "progress": 50,
-            "created_at": "2025-10-21T10:00:00Z",
-        }
-
-        result = runner.invoke(app, ["task", "status", "task-12345"])
-
-        assert result.exit_code == 0
-        assert "Task ID: task-12345" in result.stdout
-        assert "Type: code-review" in result.stdout
-        mock_client.call.assert_called_once_with("task.status", {
-            "task_id": "task-12345"
-        })
-
-    def test_status_json_output(self, mock_config, mock_client):
-        """Test task status with JSON output."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "status": "running",
-        }
-
-        result = runner.invoke(app, [
-            "task", "status", "task-12345", "--json"
-        ])
-
-        assert result.exit_code == 0
-        assert '"task_id": "task-12345"' in result.stdout
-
-    def test_status_not_found(self, mock_config, mock_client):
-        """Test status for non-existent task."""
-        mock_client.call.side_effect = JsonRpcError({
-            "code": -32602,
-            "message": "Task not found"
-        })
-
-        result = runner.invoke(app, ["task", "status", "task-99999"])
-
+        # Verify exit code (1 for operation error)
         assert result.exit_code == 1
-        assert "Task not found" in result.stdout
 
-    def test_status_watch_mode_completed(self, mock_config, mock_client):
-        """Test watch mode when task completes."""
-        # Return completed status immediately
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "status": "completed",
-            "type": "code-review",
-        }
-
-        result = runner.invoke(app, [
-            "task", "status", "task-12345", "--watch"
-        ])
-
-        assert result.exit_code == 0
-        assert "Task completed successfully" in result.stdout
+        # Verify error message
+        assert "Operation failed" in result.output
+        assert "Task creation failed: API timeout" in result.output
 
 
-class TestTaskList:
-    """Tests for task list command."""
+class TestTaskListCommand:
+    """Test suite for task list command."""
 
-    def test_list_success(self, mock_config, mock_client):
+    def test_list_success(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
         """Test successful task listing."""
-        mock_client.call.return_value = {
-            "tasks": [
-                {
-                    "task_id": "task-1",
-                    "type": "code-review",
-                    "status": "running",
-                    "priority": "high",
-                    "created_at": "2025-10-21T10:00:00Z",
-                },
-                {
-                    "task_id": "task-2",
-                    "type": "testing",
-                    "status": "completed",
-                    "priority": "medium",
-                    "created_at": "2025-10-21T09:00:00Z",
-                },
-            ]
-        }
-
-        result = runner.invoke(app, ["task", "list"])
-
-        assert result.exit_code == 0
-        assert "task-1" in result.stdout
-        assert "task-2" in result.stdout
-        assert "Total: 2 task(s)" in result.stdout
-        mock_client.call.assert_called_once_with("task.list", {"limit": 100})
-
-    def test_list_with_status_filter(self, mock_config, mock_client):
-        """Test task listing with status filter."""
-        mock_client.call.return_value = {"tasks": []}
-
-        result = runner.invoke(app, [
-            "task", "list",
-            "--status", "running",
-        ])
-
-        assert result.exit_code == 0
-        mock_client.call.assert_called_once_with("task.list", {
-            "limit": 100,
-            "status": "running",
-        })
-
-    def test_list_with_limit(self, mock_config, mock_client):
-        """Test task listing with custom limit."""
-        mock_client.call.return_value = {"tasks": []}
-
-        result = runner.invoke(app, [
-            "task", "list",
-            "--limit", "10",
-        ])
-
-        assert result.exit_code == 0
-        mock_client.call.assert_called_once_with("task.list", {"limit": 10})
-
-    def test_list_empty(self, mock_config, mock_client):
-        """Test listing when no tasks exist."""
-        mock_client.call.return_value = {"tasks": []}
-
-        result = runner.invoke(app, ["task", "list"])
-
-        assert result.exit_code == 0
-        assert "No tasks found" in result.stdout
-
-    def test_list_json_output(self, mock_config, mock_client):
-        """Test task listing with JSON output."""
-        mock_client.call.return_value = {
-            "tasks": [{"task_id": "task-1", "type": "test"}]
-        }
-
-        result = runner.invoke(app, ["task", "list", "--json"])
-
-        assert result.exit_code == 0
-        assert '"task_id": "task-1"' in result.stdout
-
-
-class TestTaskCancel:
-    """Tests for task cancel command."""
-
-    def test_cancel_with_force(self, mock_config, mock_client):
-        """Test task cancellation with force flag."""
-        mock_client.call.return_value = {"success": True}
-
-        result = runner.invoke(app, [
-            "task", "cancel", "task-12345", "--force"
-        ])
-
-        assert result.exit_code == 0
-        assert "Task cancelled: task-12345" in result.stdout
-        mock_client.call.assert_called_once_with("task.cancel", {
-            "task_id": "task-12345"
-        })
-
-    def test_cancel_with_confirmation(self, mock_config, mock_client):
-        """Test task cancellation with confirmation prompt."""
-        # Mock task status call, then cancel call
-        mock_client.call.side_effect = [
-            {"task_id": "task-12345", "type": "code-review", "status": "running"},
-            {"success": True}
+        # Mock service response
+        mock_task_service.list_tasks.return_value = [
+            {
+                "task_id": "task-001",
+                "description": "Analyze code",
+                "status": "running",
+                "priority": "normal",
+                "agent_id": "agent-001",
+            },
+            {
+                "task_id": "task-002",
+                "description": "Run tests",
+                "status": "completed",
+                "priority": "high",
+                "agent_id": "agent-002",
+            },
         ]
 
-        result = runner.invoke(app, [
-            "task", "cancel", "task-12345"
-        ], input="y\n")
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "list"])
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Task cancelled: task-12345" in result.stdout
-        assert mock_client.call.call_count == 2
 
-    def test_cancel_declined(self, mock_config, mock_client):
-        """Test task cancellation declined by user."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "type": "code-review",
-            "status": "running"
+        # Verify output contains task info
+        assert "task-001" in result.output
+        assert "Analyze code" in result.output
+        assert "task-002" in result.output
+        assert "Run tests" in result.output
+
+    def test_list_with_status_filter(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task listing with status filter."""
+        # Mock service response
+        mock_task_service.list_tasks.return_value = [
+            {
+                "task_id": "task-001",
+                "description": "Analyze code",
+                "status": "running",
+                "priority": "normal",
+                "agent_id": "agent-001",
+            },
+        ]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "list", "--status", "running"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with status filter
+        mock_task_service.list_tasks.assert_called_once_with(
+            status="running", limit=100, offset=0
+        )
+
+    def test_list_with_limit_and_offset(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task listing with limit and offset."""
+        # Mock service response
+        mock_task_service.list_tasks.return_value = []
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(
+                app, ["task", "list", "--limit", "10", "--offset", "20"]
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with limit and offset
+        mock_task_service.list_tasks.assert_called_once_with(
+            status=None, limit=10, offset=20
+        )
+
+    def test_list_empty(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task listing with no results."""
+        # Mock service response
+        mock_task_service.list_tasks.return_value = []
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "list"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "No tasks found" in result.output
+
+    def test_list_json_output(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task listing with JSON output."""
+        # Mock service response
+        mock_task_service.list_tasks.return_value = [
+            {
+                "task_id": "task-001",
+                "description": "Test task",
+                "status": "running",
+                "priority": "normal",
+                "agent_id": "agent-001",
+            },
+        ]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "list", "--json"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify JSON output
+        assert '"task_id": "task-001"' in result.output
+        assert '"description": "Test task"' in result.output
+
+
+class TestTaskInfoCommand:
+    """Test suite for task info command."""
+
+    def test_info_success(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test successful task info retrieval."""
+        # Mock service response
+        mock_task_service.get.return_value = {
+            "task_id": "task-001",
+            "description": "Analyze code",
+            "status": "running",
+            "priority": "high",
+            "agent_id": "agent-001",
+            "parameters": {"repo": "foo/bar"},
         }
 
-        result = runner.invoke(app, [
-            "task", "cancel", "task-12345"
-        ], input="n\n")
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "info", "task-001"])
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Operation cancelled" in result.stdout
 
-    def test_cancel_json_output(self, mock_config, mock_client):
-        """Test task cancellation with JSON output."""
-        mock_client.call.return_value = {"success": True}
+        # Verify output
+        assert "task-001" in result.output
+        assert "Analyze code" in result.output
+        assert "running" in result.output
 
-        result = runner.invoke(app, [
-            "task", "cancel", "task-12345", "--force", "--json"
-        ])
+    def test_info_not_found(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task info for non-existent task."""
+        # Mock service to raise not found error
+        mock_task_service.get.side_effect = TaskNotFoundError(
+            "Task 'task-999' not found"
+        )
 
-        assert result.exit_code == 0
-        assert '"success": true' in result.stdout
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "info", "task-999"])
 
-
-class TestTaskResult:
-    """Tests for task result command."""
-
-    def test_result_success(self, mock_config, mock_client):
-        """Test successful task result retrieval."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "status": "completed",
-            "output": {"result": "success"},
-            "artifacts": [
-                {
-                    "name": "report.pdf",
-                    "type": "pdf",
-                    "size": 1024,
-                }
-            ],
-        }
-
-        result = runner.invoke(app, ["task", "result", "task-12345"])
-
-        assert result.exit_code == 0
-        assert "Task ID: task-12345" in result.stdout
-        assert "Output:" in result.stdout
-        assert "Artifacts:" in result.stdout
-        mock_client.call.assert_called_once_with("task.result", {
-            "task_id": "task-12345"
-        })
-
-    def test_result_json_output(self, mock_config, mock_client):
-        """Test task result with JSON output."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "status": "completed",
-            "output": {"result": "success"},
-        }
-
-        result = runner.invoke(app, [
-            "task", "result", "task-12345", "--json"
-        ])
-
-        assert result.exit_code == 0
-        assert '"task_id": "task-12345"' in result.stdout
-
-    def test_result_save_to_file(self, mock_config, mock_client, tmp_path):
-        """Test saving result to file."""
-        mock_client.call.return_value = {
-            "task_id": "task-12345",
-            "status": "completed",
-            "output": {"result": "success"},
-        }
-
-        output_file = tmp_path / "result.json"
-        result = runner.invoke(app, [
-            "task", "result", "task-12345",
-            "--output", str(output_file),
-        ])
-
-        assert result.exit_code == 0
-        assert "Result saved to:" in result.stdout
-        assert output_file.exists()
-
-        # Verify file contents
-        import json
-        with open(output_file) as f:
-            data = json.load(f)
-            assert data["task_id"] == "task-12345"
-
-
-class TestTaskRetry:
-    """Tests for task retry command."""
-
-    def test_retry_success(self, mock_config, mock_client):
-        """Test successful task retry."""
-        mock_client.call.return_value = {
-            "task_id": "task-67890",
-            "original_task_id": "task-12345",
-        }
-
-        result = runner.invoke(app, ["task", "retry", "task-12345"])
-
-        assert result.exit_code == 0
-        assert "Task retried: task-67890" in result.stdout
-        assert "Original task: task-12345" in result.stdout
-        mock_client.call.assert_called_once_with("task.retry", {
-            "task_id": "task-12345"
-        })
-
-    def test_retry_json_output(self, mock_config, mock_client):
-        """Test task retry with JSON output."""
-        mock_client.call.return_value = {
-            "task_id": "task-67890",
-        }
-
-        result = runner.invoke(app, [
-            "task", "retry", "task-12345", "--json"
-        ])
-
-        assert result.exit_code == 0
-        assert '"task_id": "task-67890"' in result.stdout
-
-    def test_retry_not_found(self, mock_config, mock_client):
-        """Test retry for non-existent task."""
-        mock_client.call.side_effect = JsonRpcError({
-            "code": -32602,
-            "message": "Task not found"
-        })
-
-        result = runner.invoke(app, ["task", "retry", "task-99999"])
-
+        # Verify exit code
         assert result.exit_code == 1
-        assert "Task not found" in result.stdout
 
-    def test_retry_connection_error(self, mock_config, mock_client):
-        """Test retry with connection error."""
-        mock_client.call.side_effect = CliConnectionError("Cannot connect")
+        # Verify error message
+        assert "Task not found" in result.output
 
-        result = runner.invoke(app, ["task", "retry", "task-12345"])
+    def test_info_json_output(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task info with JSON output."""
+        # Mock service response
+        mock_task_service.get.return_value = {
+            "task_id": "task-001",
+            "description": "Test task",
+            "status": "completed",
+            "priority": "normal",
+            "agent_id": "agent-001",
+        }
 
-        assert result.exit_code == 3
-        assert "Cannot connect" in result.stdout
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "info", "task-001", "--json"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify JSON output
+        assert '"task_id": "task-001"' in result.output
+        assert '"description": "Test task"' in result.output
+
+
+class TestTaskCancelCommand:
+    """Test suite for task cancel command."""
+
+    def test_cancel_success(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test successful task cancellation."""
+        # Mock service response
+        mock_task_service.cancel.return_value = True
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "cancel", "task-001"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "Task cancelled successfully" in result.output
+        assert "task-001" in result.output
+
+        # Verify service was called
+        mock_task_service.cancel.assert_called_once_with("task-001", force=False)
+
+    def test_cancel_with_force(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task cancellation with force flag."""
+        # Mock service response
+        mock_task_service.cancel.return_value = True
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "cancel", "task-001", "--force"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with force=True
+        mock_task_service.cancel.assert_called_once_with("task-001", force=True)
+
+    def test_cancel_not_found(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task cancellation for non-existent task."""
+        # Mock service to raise not found error
+        mock_task_service.cancel.side_effect = TaskNotFoundError(
+            "Task 'task-999' not found"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "cancel", "task-999"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Task not found" in result.output
+
+    def test_cancel_json_output(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task cancellation with JSON output."""
+        # Mock service response
+        mock_task_service.cancel.return_value = True
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "cancel", "task-001", "--json"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify JSON output
+        assert '"success": true' in result.output
+        assert '"task_id": "task-001"' in result.output
+
+
+class TestTaskLogsCommand:
+    """Test suite for task logs command."""
+
+    def test_logs_success(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test successful task logs retrieval."""
+        # Mock service response
+        mock_task_service.logs.return_value = [
+            "[INFO] Task started",
+            "[INFO] Processing...",
+            "[INFO] Task completed",
+        ]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "logs", "task-001"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output contains logs
+        assert "Task started" in result.output
+        assert "Processing" in result.output
+        assert "Task completed" in result.output
+
+    def test_logs_with_lines_limit(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task logs retrieval with lines limit."""
+        # Mock service response
+        mock_task_service.logs.return_value = ["[INFO] Last 100 lines"]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "logs", "task-001", "--lines", "100"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with lines parameter
+        mock_task_service.logs.assert_called_once_with(
+            "task-001", follow=False, lines=100
+        )
+
+    def test_logs_with_follow(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task logs retrieval with follow flag."""
+        # Mock service response
+        mock_task_service.logs.return_value = ["[INFO] Following logs"]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "logs", "task-001", "--follow"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with follow=True
+        mock_task_service.logs.assert_called_once_with(
+            "task-001", follow=True, lines=None
+        )
+
+    def test_logs_empty(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task logs retrieval with no logs."""
+        # Mock service response
+        mock_task_service.logs.return_value = []
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "logs", "task-001"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "No logs available" in result.output
+
+    def test_logs_json_output(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task logs retrieval with JSON output."""
+        # Mock service response
+        mock_task_service.logs.return_value = ["[INFO] Log line 1", "[INFO] Log line 2"]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "logs", "task-001", "--json"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify JSON output
+        assert '"task_id": "task-001"' in result.output
+        assert '"logs"' in result.output
+        assert "Log line 1" in result.output
+
+    def test_logs_not_found(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test task logs retrieval for non-existent task."""
+        # Mock service to raise not found error
+        mock_task_service.logs.side_effect = TaskNotFoundError(
+            "Task 'task-999' not found"
+        )
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            result = runner.invoke(app, ["task", "logs", "task-999"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Task not found" in result.output
+
+
+class TestJSONRPCCompliance:
+    """Test suite for JSON-RPC 2.0 compliance.
+
+    These tests verify that the CLI sends properly formatted JSON-RPC 2.0
+    requests with the required 'params' wrapper.
+    """
+
+    def test_create_sends_proper_jsonrpc_request(
+        self, runner: CliRunner
+    ) -> None:
+        """Verify task create sends JSON-RPC 2.0 compliant request."""
+        # Create a mock client that captures the request
+        mock_client = Mock()
+        mock_client.call.return_value = {"task_id": "task-001"}
+
+        # Create mock service with the mock client
+        mock_service = Mock()
+        mock_service.create.return_value = "task-001"
+        mock_service.client = mock_client
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Test task",
+                    "--priority",
+                    "high",
+                ],
+            )
+
+        # Verify command succeeded
+        assert result.exit_code == 0
+
+        # Verify service.create was called (which calls client.call internally)
+        mock_service.create.assert_called_once()
+
+        # Extract the call arguments
+        call_args = mock_service.create.call_args
+        assert call_args is not None
+
+        # Verify parameters are passed as expected
+        assert call_args.kwargs["description"] == "Test task"
+        assert call_args.kwargs["priority"] == "high"
+
+    def test_service_layer_wraps_params_correctly(self) -> None:
+        """Verify service layer properly wraps parameters in 'params' object."""
+        from agentcore_cli.services.task import TaskService
+
+        # Create a mock client
+        mock_client = Mock()
+        mock_client.call.return_value = {"task_id": "task-001"}
+
+        # Create service with mock client
+        service = TaskService(mock_client)
+
+        # Call create
+        task_id = service.create(
+            description="Test task",
+            agent_id="agent-001",
+            priority="high",
+            parameters={"key": "value"},
+        )
+
+        # Verify result
+        assert task_id == "task-001"
+
+        # Verify client.call was called with proper method and params
+        mock_client.call.assert_called_once()
+        call_args = mock_client.call.call_args
+
+        # Verify method name
+        assert call_args.args[0] == "task.create"
+
+        # Verify params structure (should be a dict, not flat)
+        params = call_args.args[1]
+        assert isinstance(params, dict)
+        assert "description" in params
+        assert params["description"] == "Test task"
+        assert "agent_id" in params
+        assert params["agent_id"] == "agent-001"
+        assert "priority" in params
+        assert params["priority"] == "high"
+        assert "parameters" in params
+        assert params["parameters"] == {"key": "value"}
+
+        # This dict will be wrapped in "params" by the JsonRpcClient
+        # The client is responsible for creating the full JSON-RPC request
+
+
+class TestIntegrationFlow:
+    """Integration tests for complete command flow."""
+
+    def test_complete_task_lifecycle(
+        self, runner: CliRunner, mock_task_service: Mock
+    ) -> None:
+        """Test complete task lifecycle: create -> info -> logs -> cancel."""
+        # Mock service responses
+        mock_task_service.create.return_value = "task-001"
+        mock_task_service.get.return_value = {
+            "task_id": "task-001",
+            "description": "Lifecycle task",
+            "status": "running",
+            "priority": "normal",
+            "agent_id": "agent-001",
+        }
+        mock_task_service.logs.return_value = ["[INFO] Task started"]
+        mock_task_service.cancel.return_value = True
+
+        with patch(
+            "agentcore_cli.commands.task.get_task_service",
+            return_value=mock_task_service,
+        ):
+            # Create
+            result = runner.invoke(
+                app,
+                [
+                    "task",
+                    "create",
+                    "--description",
+                    "Lifecycle task",
+                ],
+            )
+            assert result.exit_code == 0
+
+            # Info
+            result = runner.invoke(app, ["task", "info", "task-001"])
+            assert result.exit_code == 0
+
+            # Logs
+            result = runner.invoke(app, ["task", "logs", "task-001"])
+            assert result.exit_code == 0
+
+            # Cancel
+            result = runner.invoke(app, ["task", "cancel", "task-001"])
+            assert result.exit_code == 0

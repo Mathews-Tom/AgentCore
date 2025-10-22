@@ -1,550 +1,779 @@
-"""Unit tests for workflow commands."""
+"""Integration tests for workflow commands.
+
+These tests verify that the workflow commands properly use the service layer
+and send JSON-RPC 2.0 compliant requests to the API.
+"""
 
 from __future__ import annotations
 
-import json
+from unittest.mock import Mock, patch
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
 import pytest
-import yaml
 from typer.testing import CliRunner
+import tempfile
 
-from agentcore_cli.exceptions import AgentCoreError, AuthenticationError, ConnectionError
 from agentcore_cli.main import app
-
-runner = CliRunner()
-
-
-@pytest.fixture
-def mock_config():
-    """Mock configuration."""
-    with patch("agentcore_cli.commands.workflow.Config.load") as mock:
-        config = Mock()
-        config.api.url = "http://localhost:8001"
-        config.api.timeout = 30
-        config.api.retries = 3
-        config.api.verify_ssl = True
-        config.auth.type = "none"
-        config.auth.token = None
-        mock.return_value = config
-        yield mock
+from agentcore_cli.services.exceptions import (
+    ValidationError,
+    WorkflowNotFoundError,
+    OperationError,
+)
 
 
 @pytest.fixture
-def mock_client():
-    """Mock AgentCore client."""
-    with patch("agentcore_cli.commands.workflow.AgentCoreClient") as mock:
-        client_instance = Mock()
-        mock.return_value = client_instance
-        yield client_instance
+def runner() -> CliRunner:
+    """Create a CLI runner for testing."""
+    return CliRunner()
 
 
 @pytest.fixture
-def sample_workflow_yaml(tmp_path):
-    """Create a sample workflow YAML file."""
-    workflow_data = {
-        "name": "test-workflow",
-        "description": "Test workflow for unit testing",
-        "version": "1.0",
-        "tasks": [
-            {
-                "name": "task-1",
-                "type": "test-type",
-                "requirements": {"test": "requirement"},
-            },
-            {
-                "name": "task-2",
-                "type": "test-type",
-                "depends_on": ["task-1"],
-            },
-        ],
-        "max_retries": 3,
-        "timeout": 3600,
-    }
-
-    workflow_file = tmp_path / "workflow.yaml"
-    with open(workflow_file, "w") as f:
-        yaml.dump(workflow_data, f)
-
-    return workflow_file
+def mock_workflow_service() -> Mock:
+    """Create a mock workflow service."""
+    return Mock()
 
 
-class TestWorkflowCreate:
-    """Tests for workflow create command."""
-
-    def test_create_workflow_success(self, mock_config, mock_client, sample_workflow_yaml):
-        """Test successful workflow creation."""
-        # Setup mock response
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "name": "test-workflow",
-            "tasks_count": 2,
-        }
-
-        # Run command
-        result = runner.invoke(app, ["workflow", "create", "--file", str(sample_workflow_yaml)])
-
-        # Assert success
-        assert result.exit_code == 0
-        assert "Workflow created: workflow-12345" in result.stdout
-        assert "test-workflow" in result.stdout
-
-        # Verify API call
-        mock_client.call.assert_called_once()
-        call_args = mock_client.call.call_args
-        assert call_args[0][0] == "workflow.create"
-        params = call_args[0][1]
-        assert params["name"] == "test-workflow"
-        assert len(params["tasks"]) == 2
-
-    def test_create_workflow_with_json_output(self, mock_config, mock_client, sample_workflow_yaml):
-        """Test workflow creation with JSON output."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "name": "test-workflow",
-        }
-
-        result = runner.invoke(app, ["workflow", "create", "--file", str(sample_workflow_yaml), "--json"])
-
-        assert result.exit_code == 0
-        output = json.loads(result.stdout)
-        assert output["workflow_id"] == "workflow-12345"
-
-    def test_create_workflow_validate_only(self, mock_config, mock_client, sample_workflow_yaml):
-        """Test workflow validation without creation."""
-        result = runner.invoke(app, ["workflow", "create", "--file", str(sample_workflow_yaml), "--validate-only"])
-
-        assert result.exit_code == 0
-        assert "Workflow definition is valid" in result.stdout
-        # API should not be called
-        mock_client.call.assert_not_called()
-
-    def test_create_workflow_file_not_found(self, mock_config, mock_client):
-        """Test workflow creation with missing file."""
-        result = runner.invoke(app, ["workflow", "create", "--file", "nonexistent.yaml"])
-
-        assert result.exit_code == 2
-        assert "Workflow file not found" in result.stdout
-
-    def test_create_workflow_invalid_yaml(self, mock_config, mock_client, tmp_path):
-        """Test workflow creation with invalid YAML syntax."""
-        invalid_yaml = tmp_path / "invalid.yaml"
-        with open(invalid_yaml, "w") as f:
-            f.write("invalid: yaml: syntax: [")
-
-        result = runner.invoke(app, ["workflow", "create", "--file", str(invalid_yaml)])
-
-        assert result.exit_code == 2
-        assert "Invalid YAML syntax" in result.stdout
-
-    def test_create_workflow_validation_error(self, mock_config, mock_client, tmp_path):
-        """Test workflow creation with validation error."""
-        invalid_workflow = tmp_path / "invalid_workflow.yaml"
-        with open(invalid_workflow, "w") as f:
-            yaml.dump({"name": "test"}, f)  # Missing required 'tasks' field
-
-        result = runner.invoke(app, ["workflow", "create", "--file", str(invalid_workflow)])
-
-        assert result.exit_code == 2
-        assert "Workflow validation failed" in result.stdout
-
-    def test_create_workflow_api_error(self, mock_config, mock_client, sample_workflow_yaml):
-        """Test workflow creation with API error."""
-        mock_client.call.side_effect = AgentCoreError("API error")
-
-        result = runner.invoke(app, ["workflow", "create", "--file", str(sample_workflow_yaml)])
-
-        assert result.exit_code == 1
-        assert "API error" in result.stdout
-
-    def test_create_workflow_auth_error(self, mock_config, mock_client, sample_workflow_yaml):
-        """Test workflow creation with authentication error."""
-        mock_client.call.side_effect = AuthenticationError("Auth failed")
-
-        result = runner.invoke(app, ["workflow", "create", "--file", str(sample_workflow_yaml)])
-
-        assert result.exit_code == 4
-
-    def test_create_workflow_connection_error(self, mock_config, mock_client, sample_workflow_yaml):
-        """Test workflow creation with connection error."""
-        mock_client.call.side_effect = ConnectionError("Cannot connect")
-
-        result = runner.invoke(app, ["workflow", "create", "--file", str(sample_workflow_yaml)])
-
-        assert result.exit_code == 3
+@pytest.fixture
+def workflow_yaml() -> str:
+    """Sample workflow YAML content."""
+    return """
+name: test-workflow
+description: Test workflow
+steps:
+  - agent: analyzer
+    task: analyze
+  - agent: reporter
+    task: report
+"""
 
 
-class TestWorkflowExecute:
-    """Tests for workflow execute command."""
+class TestWorkflowRunCommand:
+    """Test suite for workflow run command."""
 
-    def test_execute_workflow_success(self, mock_config, mock_client):
+    def test_run_success(
+        self, runner: CliRunner, mock_workflow_service: Mock, workflow_yaml: str
+    ) -> None:
         """Test successful workflow execution."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "running",
-        }
+        # Create temporary workflow file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(workflow_yaml)
+            workflow_file = f.name
 
-        result = runner.invoke(app, ["workflow", "execute", "workflow-12345"])
+        try:
+            # Mock service response
+            mock_workflow_service.run.return_value = "workflow-001"
 
-        assert result.exit_code == 0
-        assert "Workflow execution started: workflow-12345" in result.stdout
+            # Patch the container to return mock service
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(app, ["workflow", "run", workflow_file])
 
-        # Verify API call
-        mock_client.call.assert_called_once()
-        call_args = mock_client.call.call_args
-        assert call_args[0][0] == "workflow.execute"
-        assert call_args[0][1]["workflow_id"] == "workflow-12345"
+            # Verify exit code
+            assert result.exit_code == 0, f"Command failed: {result.output}"
 
-    def test_execute_workflow_with_json_output(self, mock_config, mock_client):
-        """Test workflow execution with JSON output."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "running",
-        }
+            # Verify output
+            assert "Workflow started successfully" in result.output
+            assert "workflow-001" in result.output
+            assert "test-workflow" in result.output
 
-        result = runner.invoke(app, ["workflow", "execute", "workflow-12345", "--json"])
+            # Verify service was called correctly
+            mock_workflow_service.run.assert_called_once()
+            call_args = mock_workflow_service.run.call_args
+            assert call_args.kwargs["definition"]["name"] == "test-workflow"
+            assert call_args.kwargs["parameters"] is None
 
-        assert result.exit_code == 0
-        output = json.loads(result.stdout)
-        assert output["workflow_id"] == "workflow-12345"
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
 
-    def test_execute_workflow_watch_mode(self, mock_config, mock_client):
-        """Test workflow execution with watch mode."""
-        # Mock status responses - workflow completes after 2 checks
-        mock_client.call.side_effect = [
-            {"workflow_id": "workflow-12345", "status": "running"},  # execute call
-            {"workflow_id": "workflow-12345", "status": "running", "tasks_total": 2, "tasks_completed": 1},  # status 1
-            {"workflow_id": "workflow-12345", "status": "completed", "tasks_total": 2, "tasks_completed": 2},  # status 2
+    def test_run_with_parameters(
+        self, runner: CliRunner, mock_workflow_service: Mock, workflow_yaml: str
+    ) -> None:
+        """Test workflow execution with parameters."""
+        # Create temporary workflow file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(workflow_yaml)
+            workflow_file = f.name
+
+        try:
+            # Mock service response
+            mock_workflow_service.run.return_value = "workflow-002"
+
+            # Patch the container to return mock service
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "workflow",
+                        "run",
+                        workflow_file,
+                        "--parameters",
+                        '{"repo": "foo/bar", "branch": "main"}',
+                    ],
+                )
+
+            # Verify exit code
+            assert result.exit_code == 0
+
+            # Verify output
+            assert "Workflow started successfully" in result.output
+            assert "workflow-002" in result.output
+
+            # Verify service was called with parameters
+            call_args = mock_workflow_service.run.call_args
+            assert call_args.kwargs["parameters"]["repo"] == "foo/bar"
+            assert call_args.kwargs["parameters"]["branch"] == "main"
+
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
+
+    def test_run_json_output(
+        self, runner: CliRunner, mock_workflow_service: Mock, workflow_yaml: str
+    ) -> None:
+        """Test workflow run with JSON output."""
+        # Create temporary workflow file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(workflow_yaml)
+            workflow_file = f.name
+
+        try:
+            # Mock service response
+            mock_workflow_service.run.return_value = "workflow-003"
+
+            # Patch the container to return mock service
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(
+                    app, ["workflow", "run", workflow_file, "--json"]
+                )
+
+            # Verify exit code
+            assert result.exit_code == 0
+
+            # Verify JSON output
+            import json
+
+            output = json.loads(result.output)
+            assert output["workflow_id"] == "workflow-003"
+            assert output["definition"]["name"] == "test-workflow"
+
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
+
+    def test_run_file_not_found(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow run with non-existent file."""
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(
+                app, ["workflow", "run", "/nonexistent/workflow.yaml"]
+            )
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Workflow file not found" in result.output
+
+    def test_run_invalid_yaml(self, runner: CliRunner, mock_workflow_service: Mock) -> None:
+        """Test workflow run with invalid YAML."""
+        # Create temporary file with invalid YAML
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write("invalid: yaml: content: [")
+            workflow_file = f.name
+
+        try:
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(app, ["workflow", "run", workflow_file])
+
+            # Verify exit code
+            assert result.exit_code == 2
+
+            # Verify error message
+            assert "Invalid YAML" in result.output
+
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
+
+    def test_run_invalid_parameters(
+        self, runner: CliRunner, mock_workflow_service: Mock, workflow_yaml: str
+    ) -> None:
+        """Test workflow run with invalid parameters JSON."""
+        # Create temporary workflow file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(workflow_yaml)
+            workflow_file = f.name
+
+        try:
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "workflow",
+                        "run",
+                        workflow_file,
+                        "--parameters",
+                        "invalid json",
+                    ],
+                )
+
+            # Verify exit code
+            assert result.exit_code == 2
+
+            # Verify error message
+            assert "Invalid JSON in parameters" in result.output
+
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
+
+    def test_run_validation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock, workflow_yaml: str
+    ) -> None:
+        """Test workflow run with validation error."""
+        # Create temporary workflow file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(workflow_yaml)
+            workflow_file = f.name
+
+        try:
+            # Mock service to raise validation error
+            mock_workflow_service.run.side_effect = ValidationError(
+                "Workflow definition must have a 'name' field"
+            )
+
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(app, ["workflow", "run", workflow_file])
+
+            # Verify exit code
+            assert result.exit_code == 2
+
+            # Verify error message
+            assert "Validation error" in result.output
+
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
+
+    def test_run_operation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock, workflow_yaml: str
+    ) -> None:
+        """Test workflow run with operation error."""
+        # Create temporary workflow file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(workflow_yaml)
+            workflow_file = f.name
+
+        try:
+            # Mock service to raise operation error
+            mock_workflow_service.run.side_effect = OperationError(
+                "Workflow execution failed"
+            )
+
+            with patch(
+                "agentcore_cli.commands.workflow.get_workflow_service",
+                return_value=mock_workflow_service,
+            ):
+                result = runner.invoke(app, ["workflow", "run", workflow_file])
+
+            # Verify exit code
+            assert result.exit_code == 1
+
+            # Verify error message
+            assert "Operation failed" in result.output
+
+        finally:
+            # Cleanup
+            Path(workflow_file).unlink()
+
+
+class TestWorkflowListCommand:
+    """Test suite for workflow list command."""
+
+    def test_list_success(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test successful workflow listing."""
+        # Mock service response
+        mock_workflow_service.list_workflows.return_value = [
+            {
+                "workflow_id": "workflow-001",
+                "name": "test-workflow-1",
+                "status": "running",
+                "created_at": "2025-10-22T10:00:00Z",
+            },
+            {
+                "workflow_id": "workflow-002",
+                "name": "test-workflow-2",
+                "status": "completed",
+                "created_at": "2025-10-22T09:00:00Z",
+            },
         ]
 
-        with patch("agentcore_cli.commands.workflow.time.sleep"):  # Speed up test
-            result = runner.invoke(app, ["workflow", "execute", "workflow-12345", "--watch"])
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "list"])
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Workflow execution started" in result.stdout
-        assert "Workflow completed successfully" in result.stdout
 
-    def test_execute_workflow_api_error(self, mock_config, mock_client):
-        """Test workflow execution with API error."""
-        mock_client.call.side_effect = AgentCoreError("Workflow not found")
+        # Verify output
+        assert "workflow-001" in result.output
+        assert "workflow-002" in result.output
+        assert "test-workflow-1" in result.output
+        assert "test-workflow-2" in result.output
 
-        result = runner.invoke(app, ["workflow", "execute", "workflow-12345"])
+        # Verify service was called correctly
+        mock_workflow_service.list_workflows.assert_called_once_with(
+            status=None, limit=100, offset=0
+        )
 
-        assert result.exit_code == 1
+    def test_list_with_status_filter(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow listing with status filter."""
+        # Mock service response
+        mock_workflow_service.list_workflows.return_value = [
+            {
+                "workflow_id": "workflow-001",
+                "name": "running-workflow",
+                "status": "running",
+                "created_at": "2025-10-22T10:00:00Z",
+            },
+        ]
 
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "list", "--status", "running"])
 
-class TestWorkflowStatus:
-    """Tests for workflow status command."""
-
-    def test_status_workflow_success(self, mock_config, mock_client):
-        """Test successful workflow status retrieval."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "name": "test-workflow",
-            "status": "running",
-            "tasks_total": 3,
-            "tasks_completed": 1,
-            "tasks_running": 1,
-            "tasks_pending": 1,
-            "tasks_failed": 0,
-        }
-
-        result = runner.invoke(app, ["workflow", "status", "workflow-12345"])
-
+        # Verify exit code
         assert result.exit_code == 0
-        assert "workflow-12345" in result.stdout
-        assert "test-workflow" in result.stdout
-        assert "running" in result.stdout
 
-    def test_status_workflow_with_json_output(self, mock_config, mock_client):
-        """Test workflow status with JSON output."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "running",
-        }
+        # Verify service was called with filter
+        mock_workflow_service.list_workflows.assert_called_once_with(
+            status="running", limit=100, offset=0
+        )
 
-        result = runner.invoke(app, ["workflow", "status", "workflow-12345", "--json"])
+    def test_list_with_limit_and_offset(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow listing with pagination."""
+        # Mock service response
+        mock_workflow_service.list_workflows.return_value = []
 
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(
+                app, ["workflow", "list", "--limit", "10", "--offset", "20"]
+            )
+
+        # Verify exit code
         assert result.exit_code == 0
-        output = json.loads(result.stdout)
-        assert output["workflow_id"] == "workflow-12345"
 
+        # Verify service was called with pagination
+        mock_workflow_service.list_workflows.assert_called_once_with(
+            status=None, limit=10, offset=20
+        )
 
-class TestWorkflowList:
-    """Tests for workflow list command."""
+    def test_list_json_output(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow list with JSON output."""
+        # Mock service response
+        workflows = [
+            {
+                "workflow_id": "workflow-001",
+                "name": "test-workflow",
+                "status": "running",
+                "created_at": "2025-10-22T10:00:00Z",
+            },
+        ]
+        mock_workflow_service.list_workflows.return_value = workflows
 
-    def test_list_workflows_success(self, mock_config, mock_client):
-        """Test successful workflow listing."""
-        mock_client.call.return_value = {
-            "workflows": [
-                {
-                    "workflow_id": "workflow-1",
-                    "name": "workflow-1",
-                    "status": "running",
-                    "tasks_total": 3,
-                    "tasks_completed": 1,
-                },
-                {
-                    "workflow_id": "workflow-2",
-                    "name": "workflow-2",
-                    "status": "completed",
-                    "tasks_total": 2,
-                    "tasks_completed": 2,
-                },
-            ]
-        }
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "list", "--json"])
 
-        result = runner.invoke(app, ["workflow", "list"])
-
+        # Verify exit code
         assert result.exit_code == 0
-        assert "workflow-1" in result.stdout
-        assert "workflow-2" in result.stdout
-        assert "Total: 2 workflow(s)" in result.stdout
 
-    def test_list_workflows_empty(self, mock_config, mock_client):
-        """Test listing workflows when none exist."""
-        mock_client.call.return_value = {"workflows": []}
+        # Verify JSON output
+        import json
 
-        result = runner.invoke(app, ["workflow", "list"])
-
-        assert result.exit_code == 0
-        assert "No workflows found" in result.stdout
-
-    def test_list_workflows_with_filter(self, mock_config, mock_client):
-        """Test listing workflows with status filter."""
-        mock_client.call.return_value = {
-            "workflows": [
-                {
-                    "workflow_id": "workflow-1",
-                    "name": "workflow-1",
-                    "status": "running",
-                    "tasks_total": 3,
-                    "tasks_completed": 1,
-                },
-            ]
-        }
-
-        result = runner.invoke(app, ["workflow", "list", "--status", "running"])
-
-        assert result.exit_code == 0
-        # Verify filter was passed to API
-        call_args = mock_client.call.call_args
-        assert call_args[0][1]["status"] == "running"
-
-    def test_list_workflows_with_json_output(self, mock_config, mock_client):
-        """Test listing workflows with JSON output."""
-        mock_client.call.return_value = {
-            "workflows": [
-                {"workflow_id": "workflow-1", "name": "test"},
-            ]
-        }
-
-        result = runner.invoke(app, ["workflow", "list", "--json"])
-
-        assert result.exit_code == 0
-        output = json.loads(result.stdout)
+        output = json.loads(result.output)
         assert len(output) == 1
-        assert output[0]["workflow_id"] == "workflow-1"
+        assert output[0]["workflow_id"] == "workflow-001"
 
+    def test_list_empty(self, runner: CliRunner, mock_workflow_service: Mock) -> None:
+        """Test workflow list with no workflows."""
+        # Mock service response
+        mock_workflow_service.list_workflows.return_value = []
 
-class TestWorkflowVisualize:
-    """Tests for workflow visualize command."""
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "list"])
 
-    def test_visualize_workflow_success(self, mock_config, mock_client):
-        """Test successful workflow visualization."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "name": "test-workflow",
-            "status": "running",
-            "tasks": [
-                {"name": "task-1", "type": "test", "status": "completed", "depends_on": []},
-                {"name": "task-2", "type": "test", "status": "running", "depends_on": ["task-1"]},
-            ],
-        }
-
-        result = runner.invoke(app, ["workflow", "visualize", "workflow-12345"])
-
+        # Verify exit code
         assert result.exit_code == 0
-        assert "test-workflow" in result.stdout
-        assert "task-1" in result.stdout
-        assert "task-2" in result.stdout
 
-    def test_visualize_workflow_save_to_file(self, mock_config, mock_client, tmp_path):
-        """Test saving workflow visualization to file."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "name": "test-workflow",
-            "status": "running",
-            "tasks": [
-                {"name": "task-1", "type": "test", "status": "completed", "depends_on": []},
-            ],
-        }
+        # Verify output
+        assert "No workflows found" in result.output
 
-        output_file = tmp_path / "graph.txt"
-        result = runner.invoke(app, ["workflow", "visualize", "workflow-12345", "--output", str(output_file)])
+    def test_list_validation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow list with validation error."""
+        # Mock service to raise validation error
+        mock_workflow_service.list_workflows.side_effect = ValidationError(
+            "Limit must be positive"
+        )
 
-        assert result.exit_code == 0
-        assert output_file.exists()
-        assert "Workflow graph saved to" in result.stdout
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "list"])
 
-    def test_visualize_workflow_with_json_output(self, mock_config, mock_client):
-        """Test workflow visualization with JSON output."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "running",
-            "tasks": [],
-        }
+        # Verify exit code
+        assert result.exit_code == 2
 
-        result = runner.invoke(app, ["workflow", "visualize", "workflow-12345", "--json"])
+        # Verify error message
+        assert "Validation error" in result.output
 
-        assert result.exit_code == 0
-        output = json.loads(result.stdout)
-        assert output["workflow_id"] == "workflow-12345"
+    def test_list_operation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow list with operation error."""
+        # Mock service to raise operation error
+        mock_workflow_service.list_workflows.side_effect = OperationError(
+            "Workflow listing failed"
+        )
 
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "list"])
 
-class TestWorkflowPause:
-    """Tests for workflow pause command."""
-
-    def test_pause_workflow_success(self, mock_config, mock_client):
-        """Test successful workflow pause."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "paused",
-        }
-
-        result = runner.invoke(app, ["workflow", "pause", "workflow-12345"])
-
-        assert result.exit_code == 0
-        assert "Workflow paused: workflow-12345" in result.stdout
-        assert "Resume with:" in result.stdout
-
-        # Verify API call
-        mock_client.call.assert_called_once()
-        call_args = mock_client.call.call_args
-        assert call_args[0][0] == "workflow.pause"
-        assert call_args[0][1]["workflow_id"] == "workflow-12345"
-
-    def test_pause_workflow_with_json_output(self, mock_config, mock_client):
-        """Test workflow pause with JSON output."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "paused",
-        }
-
-        result = runner.invoke(app, ["workflow", "pause", "workflow-12345", "--json"])
-
-        assert result.exit_code == 0
-        output = json.loads(result.stdout)
-        assert output["status"] == "paused"
-
-    def test_pause_workflow_api_error(self, mock_config, mock_client):
-        """Test workflow pause with API error."""
-        mock_client.call.side_effect = AgentCoreError("Cannot pause completed workflow")
-
-        result = runner.invoke(app, ["workflow", "pause", "workflow-12345"])
-
+        # Verify exit code
         assert result.exit_code == 1
 
+        # Verify error message
+        assert "Operation failed" in result.output
 
-class TestWorkflowResume:
-    """Tests for workflow resume command."""
 
-    def test_resume_workflow_success(self, mock_config, mock_client):
-        """Test successful workflow resume."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
+class TestWorkflowInfoCommand:
+    """Test suite for workflow info command."""
+
+    def test_info_success(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test successful workflow info retrieval."""
+        # Mock service response
+        mock_workflow_service.get.return_value = {
+            "workflow_id": "workflow-001",
+            "name": "test-workflow",
             "status": "running",
+            "created_at": "2025-10-22T10:00:00Z",
+            "updated_at": "2025-10-22T10:05:00Z",
+            "definition": {"name": "test-workflow", "steps": []},
+            "parameters": {"repo": "foo/bar"},
         }
 
-        result = runner.invoke(app, ["workflow", "resume", "workflow-12345"])
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "info", "workflow-001"])
 
+        # Verify exit code
         assert result.exit_code == 0
-        assert "Workflow resumed: workflow-12345" in result.stdout
-        assert "Check status:" in result.stdout
 
-        # Verify API call
-        mock_client.call.assert_called_once()
-        call_args = mock_client.call.call_args
-        assert call_args[0][0] == "workflow.resume"
-        assert call_args[0][1]["workflow_id"] == "workflow-12345"
+        # Verify output
+        assert "Workflow Information" in result.output
+        assert "workflow-001" in result.output
+        assert "test-workflow" in result.output
+        assert "running" in result.output
 
-    def test_resume_workflow_with_json_output(self, mock_config, mock_client):
-        """Test workflow resume with JSON output."""
-        mock_client.call.return_value = {
-            "workflow_id": "workflow-12345",
-            "status": "running",
-        }
+        # Verify service was called correctly
+        mock_workflow_service.get.assert_called_once_with("workflow-001")
 
-        result = runner.invoke(app, ["workflow", "resume", "workflow-12345", "--json"])
-
-        assert result.exit_code == 0
-        output = json.loads(result.stdout)
-        assert output["status"] == "running"
-
-    def test_resume_workflow_api_error(self, mock_config, mock_client):
-        """Test workflow resume with API error."""
-        mock_client.call.side_effect = AgentCoreError("Workflow not in paused state")
-
-        result = runner.invoke(app, ["workflow", "resume", "workflow-12345"])
-
-        assert result.exit_code == 1
-
-
-class TestWorkflowHelpers:
-    """Tests for workflow helper functions."""
-
-    def test_format_workflow_status(self):
-        """Test workflow status formatting."""
-        from agentcore_cli.commands.workflow import _format_workflow_status
-
-        assert "green" in _format_workflow_status("completed")
-        assert "yellow" in _format_workflow_status("running")
-        assert "blue" in _format_workflow_status("pending")
-        assert "red" in _format_workflow_status("failed")
-        assert "dim" in _format_workflow_status("paused")
-
-    def test_format_task_status(self):
-        """Test task status formatting."""
-        from agentcore_cli.commands.workflow import _format_task_status
-
-        assert "green" in _format_task_status("completed")
-        assert "yellow" in _format_task_status("running")
-        assert "blue" in _format_task_status("pending")
-        assert "red" in _format_task_status("failed")
-        assert "dim" in _format_task_status("skipped")
-
-    def test_create_progress_bar(self):
-        """Test progress bar creation."""
-        from agentcore_cli.commands.workflow import _create_progress_bar
-
-        bar_0 = _create_progress_bar(0)
-        assert "0.0%" in bar_0
-        assert "░" in bar_0
-
-        bar_50 = _create_progress_bar(50)
-        assert "50.0%" in bar_50
-        assert "█" in bar_50
-        assert "░" in bar_50
-
-        bar_100 = _create_progress_bar(100)
-        assert "100.0%" in bar_100
-        assert "█" in bar_100
-
-    def test_create_workflow_graph(self):
-        """Test workflow graph creation."""
-        from agentcore_cli.commands.workflow import _create_workflow_graph
-
+    def test_info_json_output(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow info with JSON output."""
+        # Mock service response
         workflow_data = {
+            "workflow_id": "workflow-001",
             "name": "test-workflow",
             "status": "running",
-            "tasks": [
-                {"name": "task-1", "type": "test", "status": "completed", "depends_on": []},
-                {"name": "task-2", "type": "test", "status": "running", "depends_on": ["task-1"]},
-            ],
+            "created_at": "2025-10-22T10:00:00Z",
+            "updated_at": "2025-10-22T10:05:00Z",
         }
+        mock_workflow_service.get.return_value = workflow_data
 
-        tree = _create_workflow_graph(workflow_data)
-        assert tree is not None
-        # Tree should have nodes for tasks
-        assert len(tree.children) > 0
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "info", "workflow-001", "--json"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify JSON output
+        import json
+
+        output = json.loads(result.output)
+        assert output["workflow_id"] == "workflow-001"
+        assert output["name"] == "test-workflow"
+
+    def test_info_not_found(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow info with non-existent workflow."""
+        # Mock service to raise not found error
+        mock_workflow_service.get.side_effect = WorkflowNotFoundError(
+            "Workflow 'workflow-999' not found"
+        )
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "info", "workflow-999"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Workflow not found" in result.output
+
+    def test_info_validation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow info with validation error."""
+        # Mock service to raise validation error
+        mock_workflow_service.get.side_effect = ValidationError(
+            "Workflow ID cannot be empty"
+        )
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "info", ""])
+
+        # Verify exit code
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Validation error" in result.output
+
+    def test_info_operation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow info with operation error."""
+        # Mock service to raise operation error
+        mock_workflow_service.get.side_effect = OperationError(
+            "Workflow retrieval failed"
+        )
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "info", "workflow-001"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Operation failed" in result.output
+
+
+class TestWorkflowStopCommand:
+    """Test suite for workflow stop command."""
+
+    def test_stop_success(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test successful workflow stop."""
+        # Mock service response
+        mock_workflow_service.stop.return_value = True
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "stop", "workflow-001"])
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify output
+        assert "Workflow stopped successfully" in result.output
+        assert "workflow-001" in result.output
+
+        # Verify service was called correctly
+        mock_workflow_service.stop.assert_called_once_with("workflow-001", force=False)
+
+    def test_stop_with_force(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow stop with force option."""
+        # Mock service response
+        mock_workflow_service.stop.return_value = True
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(
+                app, ["workflow", "stop", "workflow-001", "--force"]
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify service was called with force=True
+        mock_workflow_service.stop.assert_called_once_with("workflow-001", force=True)
+
+    def test_stop_json_output(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow stop with JSON output."""
+        # Mock service response
+        mock_workflow_service.stop.return_value = True
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(
+                app, ["workflow", "stop", "workflow-001", "--json"]
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0
+
+        # Verify JSON output
+        import json
+
+        output = json.loads(result.output)
+        assert output["success"] is True
+        assert output["workflow_id"] == "workflow-001"
+
+    def test_stop_not_found(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow stop with non-existent workflow."""
+        # Mock service to raise not found error
+        mock_workflow_service.stop.side_effect = WorkflowNotFoundError(
+            "Workflow 'workflow-999' not found"
+        )
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "stop", "workflow-999"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Workflow not found" in result.output
+
+    def test_stop_validation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow stop with validation error."""
+        # Mock service to raise validation error
+        mock_workflow_service.stop.side_effect = ValidationError(
+            "Workflow ID cannot be empty"
+        )
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "stop", ""])
+
+        # Verify exit code
+        assert result.exit_code == 2
+
+        # Verify error message
+        assert "Validation error" in result.output
+
+    def test_stop_operation_error(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow stop with operation error."""
+        # Mock service to raise operation error
+        mock_workflow_service.stop.side_effect = OperationError(
+            "Workflow stopping failed"
+        )
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "stop", "workflow-001"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Operation failed" in result.output
+
+    def test_stop_failure(
+        self, runner: CliRunner, mock_workflow_service: Mock
+    ) -> None:
+        """Test workflow stop when service returns False."""
+        # Mock service response
+        mock_workflow_service.stop.return_value = False
+
+        with patch(
+            "agentcore_cli.commands.workflow.get_workflow_service",
+            return_value=mock_workflow_service,
+        ):
+            result = runner.invoke(app, ["workflow", "stop", "workflow-001"])
+
+        # Verify exit code
+        assert result.exit_code == 1
+
+        # Verify error message
+        assert "Failed to stop workflow" in result.output

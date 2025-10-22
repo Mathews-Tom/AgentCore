@@ -78,7 +78,7 @@ def sample_config():
 
 @pytest.fixture
 def sample_training_data():
-    """Create sample training data (minimum 100 samples required)."""
+    """Create sample training data (minimum 100 required)."""
     return [
         TrainingQuery(
             query=f"Test query {i}",

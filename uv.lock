@@ -79,6 +79,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "respx" },
     { name = "testcontainers", extra = ["redis"] },
+    { name = "types-requests" },
     { name = "websockets" },
 ]
 
@@ -147,6 +148,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "respx", specifier = ">=0.22.0" },
     { name = "testcontainers", extras = ["redis"], specifier = ">=4.13.1" },
+    { name = "types-requests", specifier = ">=2.32.4.20250913" },
     { name = "websockets", specifier = ">=15.0.1" },
 ]
 
