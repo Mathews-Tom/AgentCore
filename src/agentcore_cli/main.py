@@ -9,7 +9,7 @@ import typer
 from rich.console import Console
 
 from agentcore_cli import __version__
-from agentcore_cli.commands import agent, task
+from agentcore_cli.commands import agent, task, session
 
 app = typer.Typer(
     name="agentcore",
@@ -21,6 +21,7 @@ app = typer.Typer(
 # Register command groups
 app.add_typer(agent.app, name="agent")
 app.add_typer(task.app, name="task")
+app.add_typer(session.app, name="session")
 
 console = Console()
 
