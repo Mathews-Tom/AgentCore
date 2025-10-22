@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from agentcore_cli import __version__
+from agentcore_cli.commands import agent
 
 app = typer.Typer(
     name="agentcore",
@@ -16,6 +17,9 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+# Register command groups
+app.add_typer(agent.app, name="agent")
 
 console = Console()
 
