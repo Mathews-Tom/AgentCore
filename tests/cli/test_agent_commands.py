@@ -69,6 +69,7 @@ class TestAgentRegisterCommand:
         mock_agent_service.register.assert_called_once_with(
             name="test-agent",
             capabilities=["python", "analysis"],
+            endpoint_url=None,
             cost_per_request=0.01,
         )
 
@@ -105,6 +106,7 @@ class TestAgentRegisterCommand:
         mock_agent_service.register.assert_called_once_with(
             name="expensive-agent",
             capabilities=["python"],
+            endpoint_url=None,
             cost_per_request=0.05,
         )
 
@@ -241,6 +243,45 @@ class TestAgentRegisterCommand:
         mock_agent_service.register.assert_called_once_with(
             name="multi-cap-agent",
             capabilities=["python", "analysis", "testing", "execution"],
+            endpoint_url=None,
+            cost_per_request=0.01,
+        )
+
+    def test_register_whitespace_handling(
+        self, runner: CliRunner, mock_agent_service: Mock
+    ) -> None:
+        """Test that whitespace in capabilities is handled correctly.
+
+        Migrated from test_agent_integration.py - edge case testing.
+        """
+        # Mock service response
+        mock_agent_service.register.return_value = "agent-005"
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.agent.get_agent_service",
+            return_value=mock_agent_service,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "agent",
+                    "register",
+                    "--name",
+                    "whitespace-test-agent",
+                    "--capabilities",
+                    " python , testing , analysis ",
+                ],
+            )
+
+        # Verify exit code
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+
+        # Verify service was called with trimmed capabilities
+        mock_agent_service.register.assert_called_once_with(
+            name="whitespace-test-agent",
+            capabilities=["python", "testing", "analysis"],
+            endpoint_url=None,
             cost_per_request=0.01,
         )
 
@@ -333,6 +374,35 @@ class TestAgentListCommand:
         # Verify output
         assert "No agents found" in result.output
 
+    def test_list_with_limit(
+        self, runner: CliRunner, mock_agent_service: Mock
+    ) -> None:
+        """Test agent listing with pagination limit.
+
+        Migrated from test_agent_integration.py - pagination testing.
+        """
+        # Mock service response with multiple agents
+        mock_agent_service.list_agents.return_value = [
+            {"agent_id": "agent-001", "name": "agent1", "status": "active", "capabilities": []},
+            {"agent_id": "agent-002", "name": "agent2", "status": "active", "capabilities": []},
+        ]
+
+        # Patch the container to return mock service
+        with patch(
+            "agentcore_cli.commands.agent.get_agent_service",
+            return_value=mock_agent_service,
+        ):
+            result = runner.invoke(app, ["agent", "list", "--limit", "2"])
+
+        # Verify exit code
+        assert result.exit_code == 0, f"Command failed: {result.output}"
+
+        # Verify service was called with limit parameter
+        mock_agent_service.list_agents.assert_called_once_with(
+            status=None,
+            limit=2,
+        )
+
 
 class TestAgentInfoCommand:
     """Test suite for agent info command."""
@@ -403,10 +473,10 @@ class TestAgentRemoveCommand:
             "agentcore_cli.commands.agent.get_agent_service",
             return_value=mock_agent_service,
         ):
-            result = runner.invoke(app, ["agent", "remove", "agent-001"])
+            result = runner.invoke(app, ["agent", "remove", "agent-001", "--yes"])
 
         # Verify exit code
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"Command failed: {result.output}"
 
         # Verify output
         assert "Agent removed successfully" in result.output
@@ -427,10 +497,10 @@ class TestAgentRemoveCommand:
             "agentcore_cli.commands.agent.get_agent_service",
             return_value=mock_agent_service,
         ):
-            result = runner.invoke(app, ["agent", "remove", "agent-001", "--force"])
+            result = runner.invoke(app, ["agent", "remove", "agent-001", "--force", "--yes"])
 
         # Verify exit code
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"Command failed: {result.output}"
 
         # Verify service was called with force=True
         mock_agent_service.remove.assert_called_once_with("agent-001", force=True)
@@ -574,15 +644,21 @@ class TestJSONRPCCompliance:
         # Verify method name
         assert call_args.args[0] == "agent.register"
 
-        # Verify params structure (should be a dict, not flat)
+        # Verify params structure (A2A-compliant with agent_card)
         params = call_args.args[1]
         assert isinstance(params, dict)
-        assert "name" in params
-        assert params["name"] == "test-agent"
-        assert "capabilities" in params
-        assert params["capabilities"] == ["python", "analysis"]
-        assert "cost_per_request" in params
-        assert params["cost_per_request"] == 0.01
+        assert "agent_card" in params
+        assert "override_existing" in params
+
+        # Verify agent_card structure
+        agent_card = params["agent_card"]
+        assert agent_card["agent_name"] == "test-agent"
+        assert agent_card["agent_version"] == "1.0.0"
+        assert agent_card["status"] == "active"
+        assert len(agent_card["capabilities"]) == 2
+        assert agent_card["capabilities"][0]["name"] == "python"
+        assert agent_card["capabilities"][0]["cost_per_request"] == 0.01
+        assert agent_card["capabilities"][1]["name"] == "analysis"
 
         # This dict will be wrapped in "params" by the JsonRpcClient
         # The client is responsible for creating the full JSON-RPC request
@@ -629,5 +705,5 @@ class TestIntegrationFlow:
             assert result.exit_code == 0
 
             # Remove
-            result = runner.invoke(app, ["agent", "remove", "agent-001"])
-            assert result.exit_code == 0
+            result = runner.invoke(app, ["agent", "remove", "agent-001", "--yes"])
+            assert result.exit_code == 0, f"Command failed: {result.output}"

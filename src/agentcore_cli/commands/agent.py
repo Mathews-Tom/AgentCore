@@ -48,6 +48,14 @@ def register(
             help="Comma-separated list of agent capabilities (e.g., 'python,analysis')",
         ),
     ],
+    endpoint_url: Annotated[
+        str | None,
+        typer.Option(
+            "--endpoint-url",
+            "-e",
+            help="Agent endpoint URL (e.g., 'http://localhost:5000'). If not provided, uses a default placeholder.",
+        ),
+    ] = None,
     cost_per_request: Annotated[
         float,
         typer.Option(
@@ -74,6 +82,9 @@ def register(
         # Register a simple agent
         agentcore agent register --name analyzer --capabilities python,analysis
 
+        # Register with endpoint URL
+        agentcore agent register -n executor -c python,execution -e http://localhost:5000
+
         # Register with custom cost
         agentcore agent register -n executor -c python,execution -r 0.05
 
@@ -91,12 +102,14 @@ def register(
         agent_id = service.register(
             name=name,
             capabilities=cap_list,
+            endpoint_url=endpoint_url,
             cost_per_request=cost_per_request,
         )
 
         # Format output
         if json_output:
             result = {
+                "id": agent_id,  # For backward compatibility with tests
                 "agent_id": agent_id,
                 "name": name,
                 "capabilities": cap_list,
@@ -285,6 +298,14 @@ def remove(
             help="Force removal even if agent is active",
         ),
     ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes",
+            "-y",
+            help="Skip confirmation prompt",
+        ),
+    ] = False,
     json_output: Annotated[
         bool,
         typer.Option(
@@ -303,10 +324,20 @@ def remove(
         # Force removal
         agentcore agent remove agent-001 --force
 
+        # Skip confirmation
+        agentcore agent remove agent-001 --yes
+
         # Get JSON output
         agentcore agent remove agent-001 --json
     """
     try:
+        # Confirm removal unless --yes is provided
+        if not yes and not json_output:
+            confirm = typer.confirm(f"Are you sure you want to remove agent '{agent_id}'?")
+            if not confirm:
+                console.print("[yellow]Operation cancelled[/yellow]")
+                raise typer.Exit(0)
+
         # Get service from DI container
         service = get_agent_service()
 

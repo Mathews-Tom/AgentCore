@@ -38,14 +38,19 @@ class TestAgentServiceRegister:
 
         # Assert
         assert agent_id == "agent-001"
-        mock_client.call.assert_called_once_with(
-            "agent.register",
-            {
-                "name": "test-agent",
-                "capabilities": ["python", "analysis"],
-                "cost_per_request": 0.01,
-            },
-        )
+        # Verify A2A-compliant agent_card structure is sent
+        call_args = mock_client.call.call_args
+        assert call_args[0][0] == "agent.register"
+        params = call_args[0][1]
+        assert "agent_card" in params
+        assert params["agent_card"]["agent_name"] == "test-agent"
+        assert params["agent_card"]["agent_version"] == "1.0.0"
+        assert params["agent_card"]["status"] == "active"
+        assert len(params["agent_card"]["capabilities"]) == 2
+        assert params["agent_card"]["capabilities"][0]["name"] == "python"
+        assert params["agent_card"]["capabilities"][0]["cost_per_request"] == 0.01
+        assert params["agent_card"]["capabilities"][1]["name"] == "analysis"
+        assert params["override_existing"] == False
 
     def test_register_with_requirements(self) -> None:
         """Test registration with optional requirements."""
@@ -64,15 +69,12 @@ class TestAgentServiceRegister:
 
         # Assert
         assert agent_id == "agent-002"
-        mock_client.call.assert_called_once_with(
-            "agent.register",
-            {
-                "name": "test-agent",
-                "capabilities": ["python"],
-                "cost_per_request": 0.05,
-                "requirements": {"memory": "4GB"},
-            },
-        )
+        # Verify A2A-compliant agent_card structure with requirements
+        call_args = mock_client.call.call_args
+        params = call_args[0][1]
+        assert params["agent_card"]["agent_name"] == "test-agent"
+        assert params["agent_card"]["capabilities"][0]["cost_per_request"] == 0.05
+        assert params["agent_card"]["requirements"] == {"memory": "4GB"}
 
     def test_register_strips_whitespace(self) -> None:
         """Test that agent name is stripped of whitespace."""
@@ -86,7 +88,7 @@ class TestAgentServiceRegister:
 
         # Assert
         call_args = mock_client.call.call_args[0]
-        assert call_args[1]["name"] == "test-agent"
+        assert call_args[1]["agent_card"]["agent_name"] == "test-agent"
 
     def test_register_empty_name_raises_validation_error(self) -> None:
         """Test that empty name raises ValidationError."""
@@ -342,7 +344,7 @@ class TestAgentServiceRemove:
         # Assert
         assert success is True
         mock_client.call.assert_called_once_with(
-            "agent.remove",
+            "agent.unregister",
             {"agent_id": "agent-001", "force": False},
         )
 
@@ -411,8 +413,8 @@ class TestAgentServiceSearch:
         # Assert
         assert len(agents) == 1
         mock_client.call.assert_called_once_with(
-            "agent.search",
-            {"capability": "python", "limit": 100},
+            "agent.discover",
+            {"capabilities": ["python"], "limit": 100},
         )
 
     def test_search_with_limit(self) -> None:
@@ -441,7 +443,7 @@ class TestAgentServiceSearch:
 
         # Assert
         call_args = mock_client.call.call_args[0]
-        assert call_args[1]["capability"] == "python"
+        assert call_args[1]["capabilities"] == ["python"]
 
     def test_search_empty_capability_raises_validation_error(self) -> None:
         """Test that empty capability raises ValidationError."""
