@@ -258,7 +258,10 @@ class TestAgentLifecycle:
         info_result = run_cli_json("agent", "info", agent_id)
 
         assert info_result.get("agent_name") == agent_name
-        assert "url" in info_result
+        # A2A protocol returns endpoints array, not flat url field
+        assert "endpoints" in info_result
+        assert len(info_result["endpoints"]) > 0
+        assert "url" in info_result["endpoints"][0]
 
     def test_agent_search_by_capability(
         self,

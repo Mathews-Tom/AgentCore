@@ -288,9 +288,9 @@ class AgentService:
             "force": force,
         }
 
-        # Call JSON-RPC method
+        # Call JSON-RPC method (A2A protocol uses agent.unregister)
         try:
-            result = self.client.call("agent.remove", params)
+            result = self.client.call("agent.unregister", params)
         except Exception as e:
             error_msg = str(e).lower()
             if "not found" in error_msg:
@@ -333,19 +333,20 @@ class AgentService:
         if limit <= 0:
             raise ValidationError("Limit must be positive")
 
-        # Prepare parameters
+        # Prepare parameters for agent.discover (A2A protocol method)
         params: dict[str, Any] = {
-            "capability": capability.strip(),
+            "capabilities": [capability.strip()],  # discover expects array
             "limit": limit,
         }
 
         # Call JSON-RPC method
         try:
-            result = self.client.call("agent.search", params)
+            result = self.client.call("agent.discover", params)
         except Exception as e:
             raise OperationError(f"Agent search failed: {str(e)}")
 
-        # Extract agents
+        # Extract agents from discover response
+        # agent.discover returns: {agents: [...], total_count: N, has_more: bool}
         agents = result.get("agents", [])
         if not isinstance(agents, list):
             raise OperationError("API returned invalid agents list")

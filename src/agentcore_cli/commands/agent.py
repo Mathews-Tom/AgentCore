@@ -109,6 +109,7 @@ def register(
         # Format output
         if json_output:
             result = {
+                "id": agent_id,  # For backward compatibility with tests
                 "agent_id": agent_id,
                 "name": name,
                 "capabilities": cap_list,
@@ -297,6 +298,14 @@ def remove(
             help="Force removal even if agent is active",
         ),
     ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes",
+            "-y",
+            help="Skip confirmation prompt",
+        ),
+    ] = False,
     json_output: Annotated[
         bool,
         typer.Option(
@@ -315,10 +324,20 @@ def remove(
         # Force removal
         agentcore agent remove agent-001 --force
 
+        # Skip confirmation
+        agentcore agent remove agent-001 --yes
+
         # Get JSON output
         agentcore agent remove agent-001 --json
     """
     try:
+        # Confirm removal unless --yes is provided
+        if not yes and not json_output:
+            confirm = typer.confirm(f"Are you sure you want to remove agent '{agent_id}'?")
+            if not confirm:
+                console.print("[yellow]Operation cancelled[/yellow]")
+                raise typer.Exit(0)
+
         # Get service from DI container
         service = get_agent_service()
 
