@@ -203,7 +203,6 @@ class TestAgentLifecycle:
     The CLI sends parameters that don't match the A2A protocol's agent.register method.
     """
 
-    @pytest.mark.xfail(reason="CLI agent registration incompatible with API (missing agent_card)")
     def test_agent_register_and_list(
         self,
         api_health_check: None,
@@ -234,10 +233,9 @@ class TestAgentLifecycle:
         else:
             pytest.fail(f"Unexpected agents response format: {agents_result}")
 
-        assert any(a.get("name") == agent_name for a in agents), \
+        assert any(a.get("agent_name") == agent_name for a in agents), \
             f"Agent {agent_name} not found in list"
 
-    @pytest.mark.xfail(reason="CLI agent registration incompatible with API (missing agent_card)")
     def test_agent_info(
         self,
         api_health_check: None,
@@ -259,10 +257,9 @@ class TestAgentLifecycle:
         # Get agent info
         info_result = run_cli_json("agent", "info", agent_id)
 
-        assert info_result.get("name") == agent_name
+        assert info_result.get("agent_name") == agent_name
         assert "url" in info_result
 
-    @pytest.mark.xfail(reason="CLI agent registration incompatible with API (missing agent_card)")
     def test_agent_search_by_capability(
         self,
         api_health_check: None,
@@ -295,9 +292,8 @@ class TestAgentLifecycle:
             agents = []
 
         assert len(agents) >= 1, f"No agents found with capability {capability}"
-        assert any(a.get("name") == agent_name for a in agents)
+        assert any(a.get("agent_name") == agent_name for a in agents)
 
-    @pytest.mark.xfail(reason="CLI agent registration incompatible with API (missing agent_card)")
     def test_agent_remove(
         self,
         api_health_check: None,
@@ -328,7 +324,7 @@ class TestAgentLifecycle:
         else:
             agents = []
 
-        assert not any(a.get("name") == agent_name for a in agents), \
+        assert not any(a.get("agent_name") == agent_name for a in agents), \
             f"Agent {agent_name} still exists after removal"
 
 
@@ -339,7 +335,6 @@ class TestTaskLifecycle:
     which is currently incompatible between CLI and API.
     """
 
-    @pytest.mark.xfail(reason="Depends on agent registration which is broken")
     def test_task_create_and_status(
         self,
         api_health_check: None,
@@ -373,7 +368,6 @@ class TestTaskLifecycle:
 
         assert "status" in status_result or "state" in status_result
 
-    @pytest.mark.xfail(reason="Depends on agent registration which is broken")
     def test_task_list(
         self,
         api_health_check: None,
@@ -414,7 +408,6 @@ class TestTaskLifecycle:
         task_ids = [t.get("id") or t.get("task_id") for t in tasks]
         assert task_id in task_ids, f"Task {task_id} not found in list"
 
-    @pytest.mark.xfail(reason="Depends on agent registration which is broken")
     def test_task_cancel(
         self,
         api_health_check: None,
@@ -683,7 +676,6 @@ auth:
 class TestOutputFormats:
     """Test different output formats (JSON, table, tree)."""
 
-    @pytest.mark.xfail(reason="Depends on agent registration which is broken")
     def test_json_output_format(
         self,
         api_health_check: None,
@@ -707,7 +699,6 @@ class TestOutputFormats:
         assert isinstance(result, dict)
         assert agent_id is not None
 
-    @pytest.mark.xfail(reason="Depends on agent registration which is broken")
     def test_table_output_format(
         self,
         api_health_check: None,

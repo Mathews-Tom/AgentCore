@@ -55,6 +55,7 @@ class AgentService:
         self,
         name: str,
         capabilities: list[str],
+        endpoint_url: str | None = None,
         cost_per_request: float = 0.01,
         requirements: dict[str, Any] | None = None,
     ) -> str:
@@ -63,6 +64,7 @@ class AgentService:
         Args:
             name: Agent name (must be unique)
             capabilities: List of agent capabilities (at least one required)
+            endpoint_url: Agent endpoint URL (if None, uses a placeholder)
             cost_per_request: Cost per request in dollars (default: 0.01)
             requirements: Optional agent requirements (e.g., hardware, dependencies)
 
@@ -77,6 +79,7 @@ class AgentService:
             >>> agent_id = service.register(
             ...     "analyzer",
             ...     ["python", "analysis"],
+            ...     endpoint_url="http://localhost:5000",
             ...     cost_per_request=0.02,
             ...     requirements={"memory": "4GB"}
             ... )
@@ -93,15 +96,54 @@ class AgentService:
         if cost_per_request < 0:
             raise ValidationError("Cost per request cannot be negative")
 
-        # Prepare parameters
-        params: dict[str, Any] = {
-            "name": name.strip(),
-            "capabilities": capabilities,
-            "cost_per_request": cost_per_request,
+        # Construct AgentCard according to A2A protocol v0.2
+        # Build capability objects
+        capability_objects = [
+            {
+                "name": cap,
+                "version": "1.0.0",
+                "cost_per_request": cost_per_request,
+            }
+            for cap in capabilities
+        ]
+
+        # Build endpoint (required by A2A protocol)
+        # If no endpoint URL provided, use a placeholder that points to localhost
+        endpoint_url_str = endpoint_url or "http://localhost:8000"
+        endpoint = {
+            "url": endpoint_url_str,
+            "type": "https" if endpoint_url_str.startswith("https") else "http",
+            "protocols": ["jsonrpc-2.0"],
+            "health_check_path": "/health",
         }
 
+        # Build authentication (required by A2A protocol)
+        # For CLI registration, we'll use a simple "none" auth type
+        authentication = {
+            "type": "none",
+            "required": False,
+            "config": {},
+        }
+
+        # Construct full agent_card
+        agent_card = {
+            "agent_name": name.strip(),
+            "agent_version": "1.0.0",
+            "status": "active",
+            "endpoints": [endpoint],
+            "capabilities": capability_objects,
+            "authentication": authentication,
+        }
+
+        # Add optional requirements if provided
         if requirements:
-            params["requirements"] = requirements
+            agent_card["requirements"] = requirements
+
+        # Prepare parameters with agent_card wrapper (as API expects)
+        params: dict[str, Any] = {
+            "agent_card": agent_card,
+            "override_existing": False,
+        }
 
         # Call JSON-RPC method
         try:
