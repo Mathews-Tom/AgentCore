@@ -1,0 +1,1 @@
+"""Resilience pattern integration tests."""
