@@ -526,3 +526,53 @@ class TestDependencyWiring:
         # Services should use the mock client
         assert agent_service.client is mock_client
         assert task_service.client is mock_client
+
+
+class TestOverrideTypeValidation:
+    """Tests for type validation of overrides."""
+
+    def teardown_method(self) -> None:
+        """Reset container after each test."""
+        reset_container()
+
+    def test_config_override_requires_config_instance(self) -> None:
+        """Test that config override must be Config instance."""
+        set_override("config", "not-a-config")
+        with pytest.raises(TypeError, match="Override for 'config' must be a Config instance"):
+            get_config()
+
+    def test_transport_override_requires_transport_instance(self) -> None:
+        """Test that transport override must be HttpTransport instance."""
+        set_override("transport", "not-a-transport")
+        with pytest.raises(TypeError, match="Override for 'transport' must be an HttpTransport instance"):
+            get_transport()
+
+    def test_client_override_requires_client_instance(self) -> None:
+        """Test that client override must be JsonRpcClient instance."""
+        set_override("client", "not-a-client")
+        with pytest.raises(TypeError, match="Override for 'client' must be a JsonRpcClient instance"):
+            get_jsonrpc_client()
+
+    def test_agent_service_override_requires_service_instance(self) -> None:
+        """Test that agent service override must be AgentService instance."""
+        set_override("agent_service", "not-a-service")
+        with pytest.raises(TypeError, match="Override for 'agent_service' must be an AgentService instance"):
+            get_agent_service()
+
+    def test_task_service_override_requires_service_instance(self) -> None:
+        """Test that task service override must be TaskService instance."""
+        set_override("task_service", "not-a-service")
+        with pytest.raises(TypeError, match="Override for 'task_service' must be a TaskService instance"):
+            get_task_service()
+
+    def test_session_service_override_requires_service_instance(self) -> None:
+        """Test that session service override must be SessionService instance."""
+        set_override("session_service", "not-a-service")
+        with pytest.raises(TypeError, match="Override for 'session_service' must be a SessionService instance"):
+            get_session_service()
+
+    def test_workflow_service_override_requires_service_instance(self) -> None:
+        """Test that workflow service override must be WorkflowService instance."""
+        set_override("workflow_service", "not-a-service")
+        with pytest.raises(TypeError, match="Override for 'workflow_service' must be a WorkflowService instance"):
+            get_workflow_service()
