@@ -1,383 +1,696 @@
-# Tasks: ACE (Agentic Context Engineering) Integration - Phase 1
+# Tasks: ACE Integration (COMPASS-Enhanced Meta-Thinker)
 
-**From:** `spec.md` + `plan.md`
-**Timeline:** 8 weeks, 4 sprints
-**Team:** 2-3 developers (1 senior, 1-2 mid-level)
-**Created:** 2025-10-12
+**From:** `spec.md` v2.0 + `plan.md` v2.0 (COMPASS-Enhanced)
+**Timeline:** 8 weeks, 4 sprints (2-week sprints)
+**Team:** 1 senior backend engineer (full-time)
+**Created:** 2025-10-23
+
+---
 
 ## Summary
 
-- Total tasks: 15
-- Estimated effort: 71 story points
-- Critical path duration: 6 weeks (excluding launch validation)
-- Current status: Planning complete, ready for implementation
-- Key achievements expected:
-  - Self-supervised context evolution for agents
-  - +5-7% performance improvement on long-running agents
-  - <$100/month operational cost for 100 agents
-  - Production-ready ACE Phase 1 system
+- **Total tasks:** 32 story tasks (ACE-002 through ACE-033)
+- **Estimated effort:** 175 story points (~8 weeks)
+- **Critical path duration:** 8 weeks (sequential phases with MEM dependency)
+- **Key risks:**
+  1. MEM dependency timing (Phase 4 requires MEM Phase 5, Week 8)
+  2. Intervention decision accuracy (85%+ precision target)
+  3. Real-time performance overhead (<5% target)
+
+**COMPASS Targets:**
+- +20% long-horizon accuracy improvement
+- 90%+ critical error recall
+- 85%+ intervention precision
+- <200ms ACE-MEM coordination latency
+- <5% system overhead
+
+---
 
 ## Phase Breakdown
 
-### Phase 1: Foundation (Sprint 1-2, 31 story points)
+### Phase 1: Foundation + Original ACE Core (Sprint 1, Weeks 1-2, 45 SP)
 
-**Goal:** Establish database schema, data models, and core services
-**Deliverable:** Working ContextManager with delta generation and curation
+**Goal:** Establish database schema, models, and context playbook management
+**Deliverable:** Working ACE foundation with playbook evolution capability
 
-#### Tasks
+#### Week 1: Database + Models (18 SP)
 
-**[ACE-001] Database Schema & Migrations**
+**ACE-002: Create COMPASS-Enhanced Database Migration**
 
-- **Description:** Design and implement PostgreSQL schema with 4 new tables (context_playbooks, context_deltas, execution_traces, evolution_status), create indexes for performance, write Alembic migrations with up/down paths
+- **Description:** Implement Alembic migration for 6 ACE tables including TimescaleDB hypertable for performance metrics
 - **Acceptance:**
-  - [x] All 4 tables created with proper constraints and foreign keys
-  - [x] Indexes created for performance (agent_id, recorded_at, applied status)
-  - [x] Alembic migration runs successfully (up and down)
-  - [x] Migration tests validate schema correctness
-  - [x] Seed data script for development/testing
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** Backend Engineer (Senior)
-- **Dependencies:** None
-- **Priority:** P0 (Blocker)
-- **Deliverables:**
-  - `alembic/versions/xxxx_add_ace_tables.py`
-  - `scripts/seed_ace_data.py`
-  - Migration test suite
-
-**[ACE-002] Pydantic Data Models**
-
-- **Description:** Implement Pydantic models for ContextPlaybook, ContextSection, ContextDelta, ExecutionTrace, EvolutionStatus with full validation rules and JSON serialization
-- **Acceptance:**
-  - [x] All data models with type hints and validation
-  - [x] JSON serialization/deserialization working
-  - [x] Validation rules enforce constraints (confidence 0-1, max lengths, etc.)
-  - [x] Unit tests for all models (100% coverage)
-- **Effort:** 3 story points (2-3 days)
+  - [ ] TimescaleDB extension added to PostgreSQL
+  - [ ] All 6 tables created (context_playbooks, playbook_deltas, delta_approvals, performance_metrics, intervention_history, capability_evaluations)
+  - [ ] TimescaleDB hypertable configured for performance_metrics (time-series optimized)
+  - [ ] Composite indexes on (agent_id, task_id, stage) for metrics queries
+  - [ ] GIN index on playbook_deltas.delta_content (JSONB)
+  - [ ] Migration reversible (downgrade tested)
+- **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** None (can run in parallel with ACE-001)
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - `src/agentcore/ace/models/playbook.py`
-  - `src/agentcore/ace/models/delta.py`
-  - `src/agentcore/ace/models/trace.py`
-  - `tests/ace/unit/test_models.py`
+- **Dependencies:** ACE-001 (epic)
+- **Priority:** P0 (Blocker for all phases)
+- **Files:**
+  - `alembic/versions/XXX_add_ace_tables.py`
+  - `docker-compose.dev.yml` (add TimescaleDB extension)
 
-**[ACE-003] ContextManager Service - Core CRUD**
+**ACE-003: Implement COMPASS Pydantic Models**
 
-- **Description:** Implement ContextManager service with database repository layer, playbook CRUD operations, context compilation, and basic error handling
+- **Description:** Create Pydantic models for StageMetrics, TriggerSignal, InterventionDecision, ContextPlaybook with COMPASS enhancements
 - **Acceptance:**
-  - [x] create_playbook() initializes new playbooks
-  - [x] get_playbook() retrieves by agent_id with caching
-  - [x] get_execution_context() compiles playbook to formatted string
-  - [x] delete_playbook() cleans up on agent termination
-  - [x] Repository pattern isolates database access
-  - [x] Unit tests with mocked database (95% coverage)
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** Backend Engineer (Senior)
-- **Dependencies:** ACE-001, ACE-002
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - `src/agentcore/ace/services/context_manager.py`
-  - `src/agentcore/ace/repositories/playbook_repository.py`
-  - `tests/ace/unit/test_context_manager.py`
-
-**[ACE-004] DeltaGenerator Service**
-
-- **Description:** Implement LLM-based delta generation with Portkey integration, prompt template design, response parsing, confidence scoring, and error handling
-- **Acceptance:**
-  - [x] generate_deltas() produces 1-3 structured deltas from traces
-  - [x] LLM prompt template optimized for delta quality
-  - [x] Response parsing handles various LLM output formats
-  - [x] Confidence scores calculated based on evidence strength
-  - [x] LLM failures handled gracefully (retry with exponential backoff)
-  - [x] Unit tests with mocked LLM responses (90% coverage)
-- **Effort:** 8 story points (5-8 days)
-- **Owner:** Backend Engineer (Senior)
-- **Dependencies:** ACE-002, ACE-003
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - `src/agentcore/ace/services/delta_generator.py`
-  - `src/agentcore/ace/prompts/delta_generation.py`
-  - `tests/ace/unit/test_delta_generator.py`
-  - `tests/ace/fixtures/mock_llm_responses.py`
-
-**[ACE-005] SimpleCurator Service**
-
-- **Description:** Implement confidence-based delta curation with filtering, application logic (add/update/remove), section pruning, transaction management, and version control
-- **Acceptance:**
-  - [x] apply_deltas() filters by confidence threshold (default 0.7)
-  - [x] Add operation creates new sections
-  - [x] Update operation modifies existing sections
-  - [x] Remove operation soft-deletes sections
-  - [x] Pruning removes low-confidence sections when limit reached
-  - [x] All operations atomic (transaction rollback on failure)
-  - [x] Playbook version increments correctly
-  - [x] Unit tests for all delta types (95% coverage)
-- **Effort:** 5 story points (3-5 days)
+  - [ ] StageMetrics model with stage enum validation (planning, execution, reflection, verification)
+  - [ ] TriggerSignal model with trigger_type enum (degradation, error_accumulation, staleness, capability_mismatch)
+  - [ ] InterventionDecision model with intervention_type enum (replan, reflect, context_refresh, capability_switch)
+  - [ ] ContextPlaybook model with self-evolving structure
+  - [ ] All models support JSON serialization
+  - [ ] Modern typing (use `list[]`, `dict[]`, `|` unions)
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** ACE-002, ACE-003
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - `src/agentcore/ace/services/simple_curator.py`
-  - `tests/ace/unit/test_simple_curator.py`
+- **Dependencies:** ACE-002
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/models.py`
 
-**[ACE-009] Unit Test Suite - Phase 1**
+**ACE-004: Implement SQLAlchemy ORM Models**
 
-- **Description:** Comprehensive unit tests for all Phase 1 components with mocked dependencies, covering happy paths, edge cases, and error scenarios
+- **Description:** Create SQLAlchemy models matching database schema with async support and TimescaleDB support
 - **Acceptance:**
-  - [x] Overall test coverage ≥90% for ACE components
-  - [x] ContextManager tests: 95% coverage
-  - [x] DeltaGenerator tests: 90% coverage (with mocked LLM)
-  - [x] SimpleCurator tests: 95% coverage
-  - [x] Data model tests: 100% coverage
-  - [x] All tests pass in CI pipeline
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** Backend Engineer + QA
-- **Dependencies:** ACE-001 through ACE-005
-- **Priority:** P1 (High)
-- **Deliverables:**
-  - `tests/ace/unit/` (complete suite)
-  - CI pipeline integration
+  - [ ] ContextPlaybookModel with JSONB for sections
+  - [ ] PlaybookDeltaModel with foreign key to playbooks
+  - [ ] PerformanceMetricsModel as TimescaleDB hypertable
+  - [ ] InterventionHistoryModel with JSONB for trigger details
+  - [ ] All models use AsyncSession
+  - [ ] Relationships configured (playbook → deltas, intervention → metrics)
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-003
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/database/models.py`
+
+#### Week 2: Playbook Management + Delta Generation (27 SP)
+
+**ACE-005: Implement Repository Layer**
+
+- **Description:** Create async repositories for Playbook, Delta, Metrics, Intervention with COMPASS query patterns
+- **Acceptance:**
+  - [ ] PlaybookRepository with get_by_agent_id()
+  - [ ] DeltaRepository with get_pending_deltas()
+  - [ ] MetricsRepository with time-series queries (last_hour, last_day)
+  - [ ] InterventionRepository with get_history()
+  - [ ] All methods use async/await
+  - [ ] Unit tests for each repository (90%+ coverage)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-004
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/database/repositories.py`
+  - `tests/ace/unit/test_repositories.py`
+
+**ACE-006: Implement Playbook Manager**
+
+- **Description:** Create PlaybookManager for context playbook CRUD operations and version management
+- **Acceptance:**
+  - [ ] create_playbook(agent_id, initial_sections) creates new playbook
+  - [ ] get_playbook(agent_id) retrieves current version
+  - [ ] apply_deltas(playbook_id, deltas) updates playbook with version increment
+  - [ ] Optimistic locking for version conflicts
+  - [ ] Playbook versioning tracked
+  - [ ] Unit tests for playbook lifecycle (95%+ coverage)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-005
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/context/playbook.py`
+  - `tests/ace/unit/test_playbook_manager.py`
+
+**ACE-007: Implement Delta Generator**
+
+- **Description:** Create DeltaGenerator using gpt-4o-mini to generate improvement suggestions from execution traces
+- **Acceptance:**
+  - [ ] generate_deltas(execution_trace) returns list of PlaybookDelta
+  - [ ] Uses gpt-4o-mini (cost-effective for suggestions)
+  - [ ] LLM prompts extract learnings from traces
+  - [ ] Confidence scores computed per delta
+  - [ ] Delta generation latency <5s (p95)
+  - [ ] Integration tests with mocked Portkey
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-006
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/context/delta_generator.py`
+  - `tests/ace/integration/test_delta_generation.py`
+
+**ACE-008: Implement Simple Curator**
+
+- **Description:** Create SimpleCurator with confidence-threshold filtering for delta approval
+- **Acceptance:**
+  - [ ] filter_deltas(deltas, threshold=0.8) returns approved deltas
+  - [ ] Confidence threshold configurable
+  - [ ] Approval/rejection logic based on confidence score
+  - [ ] Rejected deltas logged with rationale
+  - [ ] Unit tests for curation logic
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-007
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/ace/context/curator.py`
+  - `tests/ace/unit/test_curator.py`
 
 ---
 
-### Phase 2: Integration (Sprint 3, 16 story points)
+### Phase 2: Performance Monitoring (COMPASS ACE-1) (Sprint 2, Week 3, 30 SP)
 
-**Goal:** Integrate ACE with existing AgentCore components
-**Deliverable:** End-to-end evolution workflow functional
+**Goal:** Implement stage-aware performance tracking and baseline computation
+**Deliverable:** Real-time performance monitoring with degradation detection
 
-#### Tasks
+**ACE-009: Implement PerformanceMonitor Core**
 
-**[ACE-006] Agent Lifecycle Manager Integration**
-
-- **Description:** Integrate ContextManager into AgentLifecycleManager with hooks for playbook initialization, context injection, evolution triggering, and cleanup
+- **Description:** Create PerformanceMonitor service for stage-aware metrics tracking
 - **Acceptance:**
-  - [x] create_agent() initializes playbook (adds <100ms latency)
-  - [x] get_execution_context() provides compiled context for agent execution
-  - [x] _monitor_agent() triggers evolution every N executions (configurable)
-  - [x] terminate_agent() cleans up playbook
-  - [x] Feature flag (ace.enabled) controls integration
-  - [x] Backward compatibility maintained (no breaking changes)
-  - [x] Integration tests validate workflow
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** Backend Engineer (Senior)
-- **Dependencies:** ACE-003 (ContextManager)
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - Updated `src/agentcore/agent_runtime/services/agent_lifecycle.py`
-  - `tests/ace/integration/test_lifecycle_integration.py`
-
-**[ACE-007] Task Manager Integration**
-
-- **Description:** Integrate execution trace capture into TaskManager with async recording, retention policy, and minimal performance overhead
-- **Acceptance:**
-  - [x] complete_task() captures ExecutionTrace (adds <10ms overhead)
-  - [x] Trace recording is asynchronous (non-blocking)
-  - [x] Traces linked to task_id and agent_id
-  - [x] Retention policy enforced (30 days default, configurable)
-  - [x] Trace capture failures logged but don't fail tasks
-  - [x] Integration tests validate trace capture
-- **Effort:** 3 story points (2-3 days)
+  - [ ] update_metrics(agent_id, task_id, stage, metrics) records metrics
+  - [ ] Metrics stored in TimescaleDB hypertable
+  - [ ] Stage-specific metrics tracked (planning, execution, reflection, verification)
+  - [ ] Metrics update latency <50ms (p95)
+  - [ ] Metrics batching (buffer 100 updates or 1 second)
+  - [ ] Unit tests for monitoring logic (95%+ coverage)
+- **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** ACE-001 (database), ACE-002 (models)
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - Updated `src/agentcore/a2a_protocol/services/task_manager.py`
-  - `tests/ace/integration/test_task_manager_integration.py`
+- **Dependencies:** ACE-008
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/monitors/performance_monitor.py`
+  - `tests/ace/unit/test_performance_monitor.py`
 
-**[ACE-008] Evolution Worker**
+**ACE-010: Implement Baseline Tracker**
 
-- **Description:** Implement background async worker with queue management, evolution cycle logic (fetch traces → generate deltas → curate → update), error handling, retry logic, and cost tracking
+- **Description:** Add baseline computation and drift detection for performance metrics
 - **Acceptance:**
-  - [x] Worker consumes evolution queue (asyncio.Queue)
-  - [x] Evolution cycle completes in <30s per agent
-  - [x] Worker processes 100+ agents per hour
-  - [x] Error handling with exponential backoff retry
-  - [x] Budget enforcement (stop if monthly cap reached)
-  - [x] Worker can be paused/resumed gracefully
-  - [x] Queue persists across worker restarts
-  - [x] Integration tests with end-to-end workflow
-- **Effort:** 8 story points (5-8 days)
-- **Owner:** Backend Engineer (Senior)
-- **Dependencies:** ACE-003, ACE-004, ACE-005
-- **Priority:** P0 (Critical)
-- **Deliverables:**
-  - `src/agentcore/ace/workers/evolution_worker.py`
-  - `src/agentcore/ace/services/evolution_queue.py`
-  - `tests/ace/integration/test_evolution_worker.py`
-
----
-
-### Phase 3: Hardening (Sprint 4, 16 story points)
-
-**Goal:** Production readiness with configuration, monitoring, testing, and documentation
-**Deliverable:** Production-ready ACE system with observability
-
-#### Tasks
-
-**[ACE-010] Configuration Management**
-
-- **Description:** Implement ACE configuration system with feature flags, thresholds, budget controls, and hot-reloading support
-- **Acceptance:**
-  - [x] ACE section added to config.toml
-  - [x] Feature flags: global ace.enabled, per-agent opt-in
-  - [x] All thresholds configurable (confidence, max sections, frequency)
-  - [x] Budget controls: monthly cap, 75% alert, hard stop
-  - [x] Environment variable overrides supported
-  - [x] Configuration validation on startup
-  - [x] Hot-reload support (config changes without restart)
-- **Effort:** 3 story points (2-3 days)
+  - [ ] compute_baseline(agent_id, stage) from first 10 executions
+  - [ ] Rolling baseline updated every 50 executions
+  - [ ] Baseline comparison for degradation detection
+  - [ ] Baseline drift detection with statistical significance
+  - [ ] Baseline reset mechanism for major agent updates
+  - [ ] Unit tests for baseline algorithms
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** ACE-003 (ContextManager needs config)
-- **Priority:** P1 (High)
-- **Deliverables:**
-  - `src/agentcore/ace/config.py`
-  - Updated `config.toml` with ACE section
-  - `tests/ace/unit/test_config.py`
+- **Dependencies:** ACE-009
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/monitors/baseline_tracker.py`
+  - `tests/ace/unit/test_baseline_tracker.py`
 
-**[ACE-011] Monitoring & Observability**
+**ACE-011: Implement Error Accumulator**
 
-- **Description:** Implement Prometheus metrics export, Grafana dashboards, structured logging, and alerting rules for ACE operations
+- **Description:** Add error accumulation tracking and pattern detection
 - **Acceptance:**
-  - [x] Prometheus metrics: evolution success/failure rates, delta quality, token costs, latency
-  - [x] Grafana dashboards: ACE Overview, Agent Performance, System Performance, Cost Analysis
-  - [x] Structured logging for all ACE operations (evolution cycles, delta generation, errors)
-  - [x] Alert rules: budget threshold (75%), error rate (>10%), worker downtime
-  - [x] Metrics accessible via /metrics endpoint
-  - [x] Cost tracking per agent and total
-- **Effort:** 5 story points (3-5 days)
+  - [ ] track_error(agent_id, task_id, stage, error) records errors
+  - [ ] Error count per stage computed
+  - [ ] Error severity distribution tracked
+  - [ ] Compounding error detection (related errors in sequence)
+  - [ ] Integration with MEM error pattern detection (future)
+  - [ ] Unit tests for accumulation logic
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-010
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/monitors/error_accumulator.py`
+  - `tests/ace/unit/test_error_accumulator.py`
+
+**ACE-012: Implement Metrics API (JSON-RPC Handlers)**
+
+- **Description:** Register JSON-RPC methods for ACE performance monitoring
+- **Acceptance:**
+  - [ ] ace.track_performance(metrics) records metrics
+  - [ ] ace.get_baseline(agent_id, stage) retrieves baseline
+  - [ ] ace.get_metrics_summary(agent_id, task_id) returns summary
+  - [ ] A2A context (agent_id, task_id) handled correctly
+  - [ ] JSON-RPC error handling for invalid params
+  - [ ] Integration tests for API
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-011
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/jsonrpc.py`
+  - `tests/ace/integration/test_metrics_jsonrpc.py`
+
+**ACE-013: Integrate Metrics Dashboard**
+
+- **Description:** Add Prometheus metrics and Grafana dashboard integration
+- **Acceptance:**
+  - [ ] Prometheus metrics exposed (latency, error rate, throughput)
+  - [ ] Grafana dashboard configured for ACE metrics
+  - [ ] Metrics retention: 90 days (TimescaleDB compression)
+  - [ ] Dashboard shows stage-specific performance
+  - [ ] Alert rules configured (degradation thresholds)
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer + DevOps
-- **Dependencies:** ACE-008 (worker generates metrics)
-- **Priority:** P1 (High)
-- **Deliverables:**
-  - `src/agentcore/ace/monitoring.py`
-  - `dashboards/grafana/ace-*.json`
-  - `alerts/prometheus/ace-rules.yml`
+- **Dependencies:** ACE-012
+- **Priority:** P1
+- **Files:**
+  - `prometheus/ace_metrics.yml`
+  - `grafana/ace_dashboard.json`
 
-**[ACE-012] Performance Testing Suite**
+**ACE-014: Integration Tests for Performance Monitoring**
 
-- **Description:** Implement load tests, latency benchmarks, throughput validation, and resource utilization tests to validate SLOs
+- **Description:** Comprehensive integration tests for monitoring workflows
 - **Acceptance:**
-  - [x] Playbook retrieval latency test (<50ms p95)
-  - [x] Delta generation throughput test (<5s p95)
-  - [x] Evolution worker scalability test (100+ agents/hour)
-  - [x] Database query performance validation
-  - [x] Memory usage under load (<100MB per 100 agents)
-  - [x] Cost simulation test (validate <$100/month for 100 agents)
-  - [x] Performance tests run in CI pipeline
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** QA Engineer + Backend Engineer
-- **Dependencies:** ACE-006, ACE-007, ACE-008 (need full integration)
-- **Priority:** P1 (High)
-- **Deliverables:**
-  - `tests/ace/performance/test_playbook_latency.py`
-  - `tests/ace/performance/test_evolution_throughput.py`
-  - `tests/ace/performance/test_resource_usage.py`
-  - Performance benchmarks report
-
-**[ACE-013] Documentation Suite**
-
-- **Description:** Create comprehensive documentation: API reference, deployment guide, user guide, troubleshooting guide, and architecture diagrams
-- **Acceptance:**
-  - [x] API documentation: All ContextManager methods with examples
-  - [x] Deployment guide: Migration runbook, rollback procedures, monitoring setup
-  - [x] User guide: How to enable ACE, interpret metrics, tune thresholds
-  - [x] Troubleshooting guide: Common issues and resolutions
-  - [x] Architecture diagrams: System design, data flow, integration points
-  - [x] Code examples for common use cases
-- **Effort:** 3 story points (2-3 days)
-- **Owner:** Backend Engineer (Senior) + Technical Writer
-- **Dependencies:** ACE-001 through ACE-012 (need complete system)
-- **Priority:** P1 (High)
-- **Deliverables:**
-  - `docs/ace-api.md`
-  - `docs/ace-deployment.md`
-  - `docs/ace-user-guide.md`
-  - `docs/ace-troubleshooting.md`
+  - [ ] End-to-end metrics recording tested
+  - [ ] Baseline computation validated
+  - [ ] Error accumulation workflows tested
+  - [ ] API integration tested
+  - [ ] Performance tests validate <50ms latency
+- **Effort:** 2 story points (1 day)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-013
+- **Priority:** P0
+- **Files:**
+  - `tests/ace/integration/test_monitoring_workflows.py`
 
 ---
 
-### Phase 4: Launch & Validation (Week 7-8, 8 story points)
+### Phase 3: Strategic Intervention Engine (COMPASS ACE-2) (Sprint 2, Week 4, 35 SP)
 
-**Goal:** Deploy to production with validation and monitoring
-**Deliverable:** ACE Phase 1 live in production with validated metrics
+**Goal:** Implement trigger detection and intervention orchestration
+**Deliverable:** Strategic intervention engine with 4 trigger types
 
-#### Tasks
+**ACE-015: Implement InterventionEngine Core**
 
-**[ACE-014] Staging Deployment & A/B Testing**
-
-- **Description:** Deploy ACE to staging environment, set up A/B testing framework, run validation tests with control and test groups, collect performance data
+- **Description:** Create InterventionEngine for intervention orchestration
 - **Acceptance:**
-  - [x] Database migrations applied to staging
-  - [x] ACE enabled for 10 test agents (A/B test group)
-  - [x] Control group: 10 agents without ACE
-  - [x] Both groups run for 100+ executions
-  - [x] Performance metrics collected and analyzed
-  - [x] Cost tracking validates <$100/month projection
-  - [x] No critical issues found in 48-hour soak test
-  - [x] Validation report documents results
-- **Effort:** 5 story points (3-5 days)
-- **Owner:** DevOps + Backend Engineer
-- **Dependencies:** ACE-013 (deployment guide), all previous tasks complete
-- **Priority:** P0 (Blocker for production)
-- **Deliverables:**
-  - Staging deployment checklist completed
-  - A/B testing results report
-  - Performance validation data
-  - Cost analysis report
+  - [ ] process_trigger(trigger_signal) orchestrates intervention
+  - [ ] Intervention queue management (priority-based)
+  - [ ] Intervention execution tracking
+  - [ ] Intervention failure handling
+  - [ ] Intervention history persisted
+  - [ ] Unit tests for engine logic (95%+ coverage)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-014
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/intervention/engine.py`
+  - `tests/ace/unit/test_intervention_engine.py`
 
-**[ACE-015] Production Launch**
+**ACE-016: Implement Trigger Detection**
 
-- **Description:** Gradual production rollout with canary deployment (5%), incremental expansion (10%, 25%, 100%), continuous monitoring, and post-launch validation
+- **Description:** Add trigger detection for 4 signal types (degradation, error_accumulation, staleness, capability_mismatch)
 - **Acceptance:**
-  - [x] Canary deployment: 5% of agents for 48 hours
-  - [x] No production incidents during canary
-  - [x] Metrics show expected performance improvements (+5-7%)
-  - [x] Gradual rollout: 10% (Day 2), 25% (Day 3), 100% (Day 4)
-  - [x] Cost tracking confirms <$100/month for 100 agents
-  - [x] Post-launch monitoring: 1 week observation period
-  - [x] Launch retrospective completed
-  - [x] Success metrics validated
-- **Effort:** 3 story points (3-5 days)
-- **Owner:** DevOps + Backend Engineer (Senior)
-- **Dependencies:** ACE-014 (staging validation passed)
-- **Priority:** P0 (Blocker for completion)
-- **Deliverables:**
-  - Production deployment report
-  - Launch metrics dashboard
-  - Post-launch summary
-  - Lessons learned document
+  - [ ] detect_degradation(metrics, baseline) returns TriggerSignal
+  - [ ] detect_error_accumulation(errors) detects compounding errors
+  - [ ] detect_staleness(context_age, retrieval_quality) detects stale context
+  - [ ] detect_capability_mismatch(task_requirements, agent_capabilities)
+  - [ ] Trigger detection latency <50ms
+  - [ ] False positive rate <15%
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-015
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/intervention/triggers.py`
+  - `tests/ace/unit/test_trigger_detection.py`
+
+**ACE-017: Implement Intervention Decision Making**
+
+- **Description:** Add decision logic using gpt-4.1 for intervention type selection
+- **Acceptance:**
+  - [ ] decide_intervention(trigger, strategic_context) returns InterventionDecision
+  - [ ] Uses gpt-4.1 for strategic decisions (accuracy-critical)
+  - [ ] Decision includes rationale and expected impact
+  - [ ] Decision latency <200ms (p95)
+  - [ ] Decision accuracy 85%+ (validated against ground truth)
+  - [ ] Integration tests with mocked Portkey
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-016
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/intervention/decision.py`
+  - `tests/ace/integration/test_intervention_decision.py`
+
+**ACE-018: Implement Intervention Executor**
+
+- **Description:** Create executor for sending intervention commands to Agent Runtime
+- **Acceptance:**
+  - [ ] execute_intervention(agent_id, task_id, intervention_type, context)
+  - [ ] Agent Runtime integration (intervention commands)
+  - [ ] Intervention execution non-blocking
+  - [ ] Intervention failures handled gracefully
+  - [ ] Intervention effectiveness measured
+  - [ ] Integration tests with mocked runtime
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-017
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/intervention/executor.py`
+  - `tests/ace/integration/test_intervention_executor.py`
+
+**ACE-019: Integrate with Agent Runtime**
+
+- **Description:** Add Agent Runtime interface for intervention command support
+- **Acceptance:**
+  - [ ] Agent Runtime accepts replan, reflect, context_refresh, capability_switch commands
+  - [ ] Intervention state tracked in runtime
+  - [ ] Intervention outcomes reported back to ACE
+  - [ ] Runtime integration tested
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-018
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/integration/runtime_interface.py`
+  - `tests/ace/integration/test_runtime_integration.py`
+
+**ACE-020: Integration Tests for Intervention Workflows**
+
+- **Description:** End-to-end tests for intervention workflows
+- **Acceptance:**
+  - [ ] Full intervention workflow tested (trigger → decision → execution)
+  - [ ] All 4 trigger types tested
+  - [ ] All 4 intervention types tested
+  - [ ] Intervention precision validated (85%+ target)
+  - [ ] Performance validated (<200ms latency)
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-019
+- **Priority:** P0
+- **Files:**
+  - `tests/ace/integration/test_intervention_workflows.py`
+
+---
+
+### Phase 4: ACE-MEM Integration Layer (COMPASS ACE-3) (Sprint 3, Week 5, 25 SP)
+
+**Goal:** Coordinate with MEM for strategic context queries
+**Deliverable:** ACE-MEM coordination with intervention outcome tracking
+
+**ACE-021: Implement MEM Integration Layer**
+
+- **Description:** Create ACEMemoryInterface for strategic context queries to MEM
+- **Acceptance:**
+  - [ ] get_strategic_context(query_type, agent_id, task_id, context) queries MEM
+  - [ ] Query types: strategic_decision, error_analysis, capability_evaluation, context_refresh
+  - [ ] Strategic context includes: stage summaries, critical facts, error patterns, successful patterns
+  - [ ] Context health score computed (0-1)
+  - [ ] Query latency <150ms (p95)
+  - [ ] Unit tests for interface (90%+ coverage)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-020, MEM Phase 5 (Week 8) - use mock until then
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/ace/integration/mem_interface.py`
+  - `tests/ace/unit/test_mem_interface.py`
+
+**ACE-022: Implement Strategic Context Queries**
+
+- **Description:** Add query logic for 4 strategic context types
+- **Acceptance:**
+  - [ ] query_for_strategic_decision(trigger) gets decision context
+  - [ ] query_for_error_analysis(errors) gets error patterns
+  - [ ] query_for_capability_evaluation(task) gets performance data
+  - [ ] query_for_context_refresh(task_id) gets latest compressed context
+  - [ ] Query results include relevance scores
+  - [ ] Query failures degrade gracefully
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-021
+- **Priority:** P0
+- **Files:**
+  - Enhanced `src/agentcore/ace/integration/mem_interface.py`
+  - `tests/ace/integration/test_strategic_queries.py`
+
+**ACE-023: Implement Intervention Outcome Tracking**
+
+- **Description:** Track intervention effectiveness for learning
+- **Acceptance:**
+  - [ ] record_intervention_outcome(intervention_id, success, delta)
+  - [ ] Before-intervention metrics captured
+  - [ ] After-intervention metrics captured
+  - [ ] Delta computation (improvement or degradation quantified)
+  - [ ] Learning updates intervention thresholds
+  - [ ] Integration with MEM for outcome storage
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-022
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/ace/integration/outcome_tracker.py`
+  - `tests/ace/unit/test_outcome_tracker.py`
+
+**ACE-024: Cross-Component Integration Tests**
+
+- **Description:** Comprehensive tests for ACE-MEM-Runtime coordination
+- **Acceptance:**
+  - [ ] Full workflow tested: trigger → MEM query → decision → execution → outcome
+  - [ ] MEM query integration validated
+  - [ ] Outcome tracking validated
+  - [ ] Coordination latency <200ms validated
+  - [ ] Error handling tested (MEM unavailable, timeout)
+- **Effort:** 4 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-023
+- **Priority:** P0
+- **Files:**
+  - `tests/ace/integration/test_cross_component.py`
+
+---
+
+### Phase 5: Capability Evaluation (COMPASS ACE-4) (Sprint 3, Week 6, 20 SP)
+
+**Goal:** Assess task-capability fitness and recommend changes
+**Deliverable:** Dynamic capability evaluation and recommendation engine
+
+**ACE-025: Implement CapabilityEvaluator**
+
+- **Description:** Create CapabilityEvaluator service for task-capability fitness scoring
+- **Acceptance:**
+  - [ ] evaluate_fitness(agent_id, task_requirements) returns fitness score
+  - [ ] Task-capability matching algorithm
+  - [ ] Fitness score computation (0-1 scale)
+  - [ ] Capability gap identification
+  - [ ] Fitness evaluation latency <100ms
+  - [ ] Unit tests for evaluator (95%+ coverage)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-024
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/ace/capability/evaluator.py`
+  - `tests/ace/unit/test_capability_evaluator.py`
+
+**ACE-026: Implement Fitness Scoring**
+
+- **Description:** Add multi-factor fitness scoring algorithm
+- **Acceptance:**
+  - [ ] Capability coverage score (task requirements met)
+  - [ ] Performance history score (success rate on similar tasks)
+  - [ ] Resource efficiency score (time/cost per task)
+  - [ ] Combined fitness score with weighted factors
+  - [ ] Fitness trends tracked over time
+  - [ ] Unit tests for scoring algorithms
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-025
+- **Priority:** P1
+- **Files:**
+  - Enhanced `src/agentcore/ace/capability/evaluator.py`
+  - `tests/ace/unit/test_fitness_scoring.py`
+
+**ACE-027: Implement Recommendation Engine**
+
+- **Description:** Create recommendation engine for capability changes
+- **Acceptance:**
+  - [ ] recommend_capability_changes(agent_id, fitness_score, gaps)
+  - [ ] Recommendations include: add capabilities, remove capabilities, adjust parameters
+  - [ ] Recommendation confidence scores
+  - [ ] Recommendation rationale with evidence
+  - [ ] JSON-RPC API for capability evaluation
+  - [ ] Integration tests for recommendations
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-026
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/ace/capability/recommender.py`
+  - Enhanced `src/agentcore/ace/jsonrpc.py`
+  - `tests/ace/integration/test_capability_recommendations.py`
+
+**ACE-028: Tests for Capability Evaluation**
+
+- **Description:** Comprehensive tests for capability evaluation workflows
+- **Acceptance:**
+  - [ ] Fitness scoring validated
+  - [ ] Recommendation accuracy tested
+  - [ ] API integration tested
+  - [ ] Edge cases covered (no capabilities, perfect fit, etc.)
+- **Effort:** 2 story points (1 day)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-027
+- **Priority:** P1
+- **Files:**
+  - `tests/ace/integration/test_capability_workflows.py`
+
+---
+
+### Phase 6: Production Readiness (Sprint 4, Weeks 7-8, 20 SP)
+
+**Goal:** Optimize, validate, and prepare for production deployment
+**Deliverable:** Production-ready ACE system with COMPASS validation
+
+**ACE-029: Performance Tuning**
+
+- **Description:** Optimize ACE system for production performance targets
+- **Acceptance:**
+  - [ ] Metrics batching optimized (100 updates or 1 second)
+  - [ ] Redis caching for playbooks (10min TTL), baselines (1hr TTL)
+  - [ ] TimescaleDB compression configured (90-day retention)
+  - [ ] Connection pooling tuned (min 10, max 50)
+  - [ ] System overhead <5% validated
+  - [ ] Performance benchmarks documented
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-028
+- **Priority:** P1
+- **Files:**
+  - Database tuning scripts
+  - `tests/ace/load/test_performance_tuning.py`
+
+**ACE-030: COMPASS Validation Tests**
+
+- **Description:** Validate against COMPASS benchmarks (accuracy, recall, precision, cost)
+- **Acceptance:**
+  - [ ] Long-horizon accuracy: +20% improvement on GAIA-style tasks
+  - [ ] Critical error recall: 90%+ on test dataset
+  - [ ] Intervention precision: 85%+ correct intervention rate
+  - [ ] Cost reduction: Within $150/month budget (100 agents)
+  - [ ] All COMPASS targets met or documented deviations
+  - [ ] Validation report with statistical analysis
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-029
+- **Priority:** P0
+- **Files:**
+  - `tests/ace/validation/test_compass_benchmarks.py`
+  - `docs/ace-compass-validation-report.md`
+
+**ACE-031: Load Testing**
+
+- **Description:** Load test ACE with 100 concurrent agents and 1000 tasks
+- **Acceptance:**
+  - [ ] 100 concurrent agents without errors
+  - [ ] 1000 tasks processed successfully
+  - [ ] Intervention latency <200ms (p95)
+  - [ ] System overhead <5%
+  - [ ] No resource exhaustion (memory, CPU, connections)
+  - [ ] Load test report generated
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-030
+- **Priority:** P1
+- **Files:**
+  - `tests/ace/load/test_ace_load.py`
+  - `docs/ace-load-test-report.md`
+
+**ACE-032: Set Up Monitoring and Alerting**
+
+- **Description:** Configure production monitoring and alerting
+- **Acceptance:**
+  - [ ] Prometheus metrics: latency, precision, recall, overhead, MEM query latency
+  - [ ] Grafana dashboards: ACE system health, intervention analytics, COMPASS metrics
+  - [ ] Alerting rules: precision <80%, overhead >7%, MEM failures >5%, recall <85%
+  - [ ] Metric retention: 90 days (TimescaleDB)
+  - [ ] Alert routing to on-call engineer
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer + DevOps
+- **Dependencies:** ACE-031
+- **Priority:** P1
+- **Files:**
+  - Enhanced `prometheus/ace_metrics.yml`
+  - Enhanced `grafana/ace_dashboard.json`
+
+**ACE-033: Write Operational Documentation**
+
+- **Description:** Create runbook and API documentation for operations and developers
+- **Acceptance:**
+  - [ ] Runbook: deployment, troubleshooting, common issues
+  - [ ] API docs: JSON-RPC methods, examples, error codes
+  - [ ] Architecture diagram: ACE-MEM-Runtime interactions
+  - [ ] Configuration guide: all settings explained
+  - [ ] COMPASS validation results included
+  - [ ] Production readiness checklist completed
+- **Effort:** 4 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** ACE-032
+- **Priority:** P0
+- **Files:**
+  - `docs/ace-system-runbook.md`
+  - `docs/ace-api.md`
+  - `docs/ace-architecture.md`
 
 ---
 
 ## Critical Path
 
 ```plaintext
-ACE-001 → ACE-002 → ACE-003 → ACE-004 → ACE-008 → ACE-010 → ACE-014 → ACE-015
-  (5d)      (3d)      (5d)      (8d)      (8d)      (3d)      (5d)      (3d)
-                            [40 days = 8 weeks total]
+Foundation (Week 1-2):
+ACE-002 → ACE-003 → ACE-004 → ACE-005 → ACE-006 → ACE-007 → ACE-008
+  (3d)     (2d)       (2d)       (3d)       (3d)       (3d)       (1d)
+                                   [17 days]
+
+Performance Monitoring (Week 3):
+ACE-009 → ACE-010 → ACE-011 → ACE-012 → ACE-013 → ACE-014
+  (3d)      (2d)      (2d)       (2d)       (2d)       (1d)
+                              [12 days]
+
+Strategic Intervention (Week 4):
+ACE-015 → ACE-016 → ACE-017 → ACE-018 → ACE-019 → ACE-020
+  (3d)      (3d)      (3d)       (2d)       (1d)       (1d)
+                              [13 days]
+
+ACE-MEM Integration (Week 5, depends on MEM Week 8):
+ACE-021 → ACE-022 → ACE-023 → ACE-024
+  (3d)      (3d)      (2d)       (1d)
+              [9 days]
+
+Capability Evaluation (Week 6):
+ACE-025 → ACE-026 → ACE-027 → ACE-028
+  (3d)      (2d)      (2d)       (1d)
+              [8 days]
+
+Production Readiness (Week 7-8):
+ACE-029 → ACE-030 → ACE-031 → ACE-032 → ACE-033
+  (2d)      (2d)      (1d)       (1d)       (1d)
+                    [7 days]
+
+Total Critical Path: ~66 days (~8 weeks with some parallel work)
 ```
 
 **Bottlenecks:**
 
-- **ACE-004 (DeltaGenerator)**: Highest complexity task (8 SP), LLM integration risk
-- **ACE-008 (Evolution Worker)**: Complex async coordination (8 SP), critical path
-- **ACE-014 (Staging Deployment)**: Validation gate before production
+- **ACE-021 (MEM Integration)**: Blocks on MEM Phase 5 (Week 8) - use mock interface until then
+- **ACE-017 (Intervention Decision)**: Complex LLM integration (8 SP, highest risk)
+- **ACE-030 (COMPASS Validation)**: External benchmark dependency (5 SP)
 
 **Parallel Tracks:**
 
-- **Foundation Parallel**: ACE-002 (Models) can start immediately, parallel to ACE-001 (Database)
-- **Services Parallel**: ACE-004 (DeltaGenerator) and ACE-005 (Curator) can be developed in parallel after ACE-003
-- **Integration Parallel**: ACE-006 (Lifecycle) and ACE-007 (TaskManager) can be integrated in parallel
-- **Hardening Parallel**: ACE-011 (Monitoring), ACE-012 (Performance), ACE-013 (Documentation) can all run in parallel
+- **Testing**: Unit tests can be written concurrently with implementation
+- **Documentation**: API docs can be written as features complete (ACE-033)
+- **Monitoring**: Metrics setup happens alongside optimization (ACE-032)
 
 ---
 
 ## Quick Wins (Week 1-2)
 
-1. **[ACE-002] Pydantic Models** - Low complexity, demonstrates data structure design (3 SP)
-2. **[ACE-001] Database Schema** - Foundational, unblocks all subsequent work (5 SP)
-3. **[ACE-003] ContextManager** - Core service scaffold shows architectural pattern (5 SP)
+1. **ACE-002 (Database Migration)** - Unblocks all development
+2. **ACE-003/004 (Models)** - Enables parallel repository work
+3. **ACE-005 (Repositories)** - Core data access ready early
 
 ---
 
@@ -385,11 +698,10 @@ ACE-001 → ACE-002 → ACE-003 → ACE-004 → ACE-008 → ACE-010 → ACE-014 
 
 | Task | Risk | Mitigation | Contingency |
 |------|------|------------|-------------|
-| ACE-004 | LLM prompt quality insufficient | Early spike/prototype, iterative refinement, test with multiple LLM responses | Use GPT-4 instead of gpt-4o-mini if quality issues |
-| ACE-008 | Worker coordination complexity | Comprehensive error handling, retry logic, extensive testing | Simplify to synchronous processing if async proves unstable |
-| ACE-006 | Breaking existing agent lifecycle | Feature flags, backward compatibility tests, gradual rollout | Rollback capability, can disable ACE without code changes |
-| ACE-014 | Staging validation fails | Extended soak test period, increase test agent count | Iterate on fixes, delay production launch if needed |
-| Budget | Token costs exceed projections | Cost monitoring, budget caps, alert at 75%, use cheaper model | Reduce evolution frequency, optimize prompt length |
+| ACE-021 | MEM dependency timing | Mock MEM interface for dev (Weeks 5-7), real integration Week 8 | Defer ACE Phase 4 to Week 9 if MEM delayed |
+| ACE-017 | Intervention decision accuracy | A/B testing, threshold tuning, ground truth validation | Lower precision target to 80%, increase human review |
+| ACE-009 | Performance overhead | Async processing, metrics batching, caching | Reduce monitoring frequency, sample 50% of actions |
+| ACE-030 | COMPASS validation fails | Iterative tuning, benchmark dataset preparation | Document partial achievement (e.g., +15% instead of +20%) |
 
 ---
 
@@ -397,146 +709,79 @@ ACE-001 → ACE-002 → ACE-003 → ACE-004 → ACE-008 → ACE-010 → ACE-014 
 
 ### Automated Testing Tasks
 
-- **[ACE-009] Unit Test Framework** (5 SP) - Sprint 2
-  - Comprehensive unit tests for all components
-  - 90%+ coverage target
-  - Mocked dependencies (LLM, database)
-
-- **[ACE-012] Performance Testing** (5 SP) - Sprint 4
-  - Load tests for latency and throughput
-  - Resource utilization validation
-  - SLO compliance verification
-
-- **Integration Tests** (Included in ACE-006, ACE-007, ACE-008)
-  - End-to-end evolution workflow
-  - Agent lifecycle integration
-  - Task manager integration
+- **ACE-005, ACE-006, ACE-009, etc.** - Unit tests embedded in each story (target 95% coverage)
+- **ACE-014, ACE-020, ACE-024** - Integration tests for component interactions
+- **ACE-029, ACE-031** - Load tests for performance validation
+- **ACE-030** - COMPASS validation tests (benchmark suite)
 
 ### Quality Gates
 
-- **Unit Tests**: 90%+ coverage, all tests passing
-- **Integration Tests**: E2E workflow validated
-- **Performance Tests**: All SLOs met (<50ms retrieval, <5s generation, 100+ agents/hour)
-- **Cost Tests**: <$100/month for 100 agents validated
-- **Security Review**: Data isolation, cost controls, error handling verified
-- **Documentation**: Complete and reviewed
+- **90%+ test coverage** for all ACE components
+- **All critical paths have integration tests** (intervention workflows, ACE-MEM coordination)
+- **Performance tests validate SLOs** (<200ms intervention latency, <5% overhead)
+- **COMPASS benchmarks met** (+20% accuracy, 90%+ recall, 85%+ precision)
 
 ---
 
 ## Team Allocation
 
-**Senior Backend Engineer (1 FTE)**
+**Backend Engineer (1 FTE):**
 
-- Critical path tasks: ACE-001, ACE-003, ACE-004, ACE-006, ACE-008
-- Architecture decisions and code reviews
-- Production deployment oversight
+- Database and models (Week 1)
+- Playbook management and delta generation (Week 2)
+- Performance monitoring (Week 3)
+- Strategic intervention engine (Week 4)
+- ACE-MEM integration (Week 5, with mock until Week 8)
+- Capability evaluation (Week 6)
+- Production readiness (Weeks 7-8)
 
-**Mid-Level Backend Engineer (1-2 FTE)**
+**DevOps Support (0.2 FTE):**
 
-- Supporting tasks: ACE-002, ACE-005, ACE-007, ACE-010
-- Integration testing
-- Documentation
-
-**QA Engineer (0.5 FTE)**
-
-- Test automation: ACE-009, ACE-012
-- A/B testing setup and analysis
-- Quality validation
-
-**DevOps Engineer (0.5 FTE)**
-
-- Infrastructure: ACE-001 (database), ACE-011 (monitoring)
-- Deployment: ACE-014, ACE-015
-- CI/CD pipeline
+- TimescaleDB setup (Week 1)
+- Prometheus/Grafana configuration (Weeks 3, 8)
+- Production deployment (Week 8)
 
 ---
 
 ## Sprint Planning
 
-**2-week sprints, 20-25 SP velocity per engineer**
+**2-week sprints, 44 SP velocity (1 engineer)**
 
 | Sprint | Focus | Story Points | Key Deliverables |
 |--------|-------|--------------|------------------|
-| **Sprint 1** | Foundation | 31 SP | Database schema, data models, ContextManager, DeltaGenerator, Curator |
-| **Sprint 2** | Integration | 16 SP | Agent lifecycle hooks, Task manager integration, Evolution worker |
-| **Sprint 3** | Hardening | 16 SP | Configuration, monitoring, performance testing, documentation |
-| **Sprint 4** | Launch | 8 SP | Staging deployment, A/B testing, production rollout |
+| Sprint 1 (Week 1-2) | Foundation + Playbook Evolution | 45 SP | Database, models, playbook manager, delta generator |
+| Sprint 2 (Week 3-4) | Monitoring + Intervention Engine | 65 SP | Performance monitoring, trigger detection, intervention execution |
+| Sprint 3 (Week 5-6) | ACE-MEM Integration + Capability | 45 SP | MEM interface, outcome tracking, capability evaluation |
+| Sprint 4 (Week 7-8) | Production Readiness | 20 SP | Tuning, COMPASS validation, monitoring, documentation |
 
-**Total**: 71 story points across 4 sprints (8 weeks)
-
-**Team Velocity Assumptions:**
-- Senior engineer: 13 SP per sprint
-- Mid-level engineer: 8-10 SP per sprint
-- With 2-3 engineers: 20-25 SP per sprint achievable
-
----
-
-## Task Import Format
-
-CSV export for project management tools:
-
-```csv
-ID,Title,Description,Estimate,Priority,Assignee,Dependencies,Sprint
-ACE-001,Database Schema & Migrations,Design PostgreSQL schema with 4 tables...,5,P0,Senior Backend,,1
-ACE-002,Pydantic Data Models,Implement data models with validation...,3,P0,Mid Backend,,1
-ACE-003,ContextManager Service,Core CRUD operations and context compilation...,5,P0,Senior Backend,ACE-001;ACE-002,1
-ACE-004,DeltaGenerator Service,LLM-based delta generation with Portkey...,8,P0,Senior Backend,ACE-002;ACE-003,1-2
-ACE-005,SimpleCurator Service,Confidence-based delta curation...,5,P0,Mid Backend,ACE-002;ACE-003,1-2
-ACE-006,Agent Lifecycle Integration,Integrate with AgentLifecycleManager...,5,P0,Senior Backend,ACE-003,2
-ACE-007,Task Manager Integration,Execution trace capture in TaskManager...,3,P0,Mid Backend,ACE-001;ACE-002,2
-ACE-008,Evolution Worker,Background async worker with queue...,8,P0,Senior Backend,ACE-003;ACE-004;ACE-005,2
-ACE-009,Unit Test Suite - Phase 1,Comprehensive unit tests (90%+ coverage)...,5,P1,Mid Backend + QA,ACE-001-005,2
-ACE-010,Configuration Management,Feature flags, thresholds, budget controls...,3,P1,Mid Backend,ACE-003,3
-ACE-011,Monitoring & Observability,Prometheus metrics, Grafana dashboards, alerts...,5,P1,Mid Backend + DevOps,ACE-008,3
-ACE-012,Performance Testing Suite,Load tests, latency benchmarks, SLO validation...,5,P1,QA + Backend,ACE-006;ACE-007;ACE-008,3
-ACE-013,Documentation Suite,API docs, deployment guide, user guide...,3,P1,Senior Backend,ACE-001-012,3
-ACE-014,Staging Deployment & A/B,Deploy to staging, A/B testing, validation...,5,P0,DevOps + Backend,ACE-001-013,4
-ACE-015,Production Launch,Canary, gradual rollout, monitoring...,3,P0,DevOps + Senior Backend,ACE-014,4
-```
+**Total: 175 SP over 8 weeks**
 
 ---
 
 ## Appendix
 
-**Estimation Method:** Planning Poker with Fibonacci scale
-**Story Point Scale:** Fibonacci (1,2,3,5,8,13,21)
-- 1 SP: Trivial change (< 4 hours)
-- 2 SP: Simple change (4-8 hours)
-- 3 SP: Straightforward feature (1-2 days)
-- 5 SP: Moderate complexity (3-5 days)
-- 8 SP: Complex feature (5-8 days)
-- 13 SP: Very complex (>1 week, should be broken down)
+**Estimation Method:** Fibonacci story points based on complexity and effort
+**Story Point Scale:** 1 (trivial), 2 (simple), 3 (moderate), 5 (complex), 8 (very complex), 13 (epic-size)
 
 **Definition of Done:**
 
-- Code reviewed and approved (2+ reviewers)
-- Unit tests written and passing (90%+ coverage for new code)
-- Integration tests written for cross-component features
-- Documentation updated (API docs, README, user guide)
+- Code implemented and reviewed
+- Unit tests written (90%+ coverage for task)
+- Integration tests passing
+- Documentation updated (inline + API docs)
+- Deployed to staging environment
 - Performance validated (if applicable)
-- Security review completed (data isolation, cost controls)
-- Deployed to staging and validated
-- No P0/P1 bugs outstanding
+- COMPASS targets met (if applicable)
 
-**Buffer Strategy:**
+**COMPASS Validation Commitment:**
 
-- 20% buffer included in estimates for unknowns
-- Sprint 4 has lighter load (8 SP) to absorb any overruns
-- Critical path has 2 weeks buffer in 8-week timeline
+All tasks contributing to COMPASS targets (ACE-009 through ACE-030) will be validated against benchmarks:
+- Long-horizon accuracy measured on GAIA-style evaluation dataset
+- Critical error recall validated on annotated error test set
+- Intervention precision validated via expert review and A/B testing
+- Cost tracked via Portkey token usage monitoring
 
-**Assumptions:**
+---
 
-- PostgreSQL database already exists and is accessible
-- Portkey LLM gateway already configured
-- Development environment set up (uv, pytest, etc.)
-- No major architectural changes to existing components needed
-- Team has experience with async Python, Pydantic, PostgreSQL
-
-**Success Criteria:**
-
-All Phase 1 tasks completed AND:
-- Performance improvement: +5-7% on long-running agents
-- System overhead: <5%
-- Cost: <$100/month for 100 agents
-- Zero production incidents
-- Positive user feedback from 3+ customers
+**Document Status:** ✅ Ready for Ticket Generation
+**Next Steps:** Generate story tickets (ACE-002 through ACE-033) in `.sage/tickets/`

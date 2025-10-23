@@ -1,1477 +1,859 @@
-# Evolving Memory System - Task Breakdown
+# Tasks: Memory System (COMPASS-Enhanced Context Manager)
 
-**Component:** memory-system
-**Epic:** MEM-001
-**Total Effort:** 60 Story Points (6 weeks)
-**Team Size:** 2-3 Engineers
-**Start Date:** TBD
-**Target Completion:** Week 6
+**From:** `spec.md` v2.0 + `plan.md` v2.0 (COMPASS-Enhanced)
+**Timeline:** 10 weeks, 5 sprints (2-week sprints)
+**Team:** 1 senior backend engineer (full-time)
+**Created:** 2025-10-23
+
+---
 
 ## Summary
 
-This document provides a detailed task breakdown for implementing the Evolving Memory System as specified in [spec.md](./spec.md) and [plan.md](./plan.md). The implementation is divided into 4 phases over 6 weeks, with clear dependencies and acceptance criteria for each task.
+- **Total tasks:** 35 story tasks (MEM-002 through MEM-036)
+- **Estimated effort:** 165 story points (~10 weeks)
+- **Critical path duration:** 10 weeks (sequential phases)
+- **Key risks:**
+  1. PGVector performance at scale (mitigation: early load testing)
+  2. Compression quality validation (mitigation: COMPASS benchmarks)
+  3. ACE integration timing (mitigation: mock interface first)
 
-**Key Metrics:**
+**COMPASS Targets:**
+- 60-80% context efficiency
+- 20% performance improvement on long-horizon tasks
+- 70-80% cost reduction via test-time scaling
+- 95%+ compression information retention
 
-- **Total Tasks:** 25 stories
-- **Total Effort:** 60 story points
-- **Critical Path:** Phase 1 → Phase 2 → Phase 3 → Phase 4 (sequential dependencies)
-- **Risk Level:** LOW (proven technology stack, clear requirements)
+---
 
-**Phase Distribution:**
+## Phase Breakdown
 
-- Phase 1 (Foundation): 20 SP, 8 stories, Weeks 1-2
-- Phase 2 (JSON-RPC Integration): 10 SP, 7 stories, Week 3
-- Phase 3 (Agent Integration): 10 SP, 6 stories, Week 4
-- Phase 4 (Advanced Features): 20 SP, 4 stories, Weeks 5-6
+### Phase 1: Foundation + Hierarchical Organization (Sprint 1-2, 58 SP)
 
-## Phase 1: Core Memory System (Weeks 1-2, 20 SP)
+**Goal:** Establish COMPASS-enhanced database schema, models, and hierarchical stage management
+**Deliverable:** Working stage-aware memory storage with 3-level hierarchy
 
-### MEM-002: Database Schema and Migrations
+#### Week 1: Core Infrastructure (26 SP)
 
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** None
-**Owner:** Backend Engineer
+**MEM-002: Create COMPASS-Enhanced Database Migration**
 
-**Description:**
-Create PostgreSQL database schema with PGVector extension support for storing memory records with vector embeddings.
+- **Description:** Implement Alembic migration for stage_memories, task_contexts, error_records, compression_metrics tables with PGVector extension
+- **Acceptance:**
+  - [ ] PGVector extension added to PostgreSQL
+  - [ ] All 5 COMPASS tables created (memories, stage_memories, task_contexts, error_records, compression_metrics)
+  - [ ] Composite indexes created for stage + agent + task queries
+  - [ ] IVFFlat vector indexes configured for embedding similarity
+  - [ ] Migration reversible (downgrade tested)
+  - [ ] Seed data loads successfully
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-001 (epic)
+- **Priority:** P0 (Blocker for all phases)
+- **Files:**
+  - `alembic/versions/XXX_add_compass_memory_tables.py`
+  - `docker-compose.dev.yml` (add PGVector to PostgreSQL)
 
-**Acceptance Criteria:**
+**MEM-003: Implement COMPASS Pydantic Models**
 
-- [ ] Alembic migration creates `memories` table with all required columns
-- [ ] PGVector extension installed and configured
-- [ ] IVFFlat index created on embedding column (lists=100)
-- [ ] Agent isolation enforced via agent_id column with index
-- [ ] Foreign key constraints to tasks table (task_id)
-- [ ] Default values set for relevance_score (1.0), access_count (0)
-- [ ] Migration reversible (downgrade script works)
-- [ ] Database initialization documented in README
+- **Description:** Create Pydantic models for MemoryRecord, StageMemory, TaskContext, ErrorRecord, CompressionConfig with COMPASS enhancements
+- **Acceptance:**
+  - [ ] StageMemory model with stage_type enum validation
+  - [ ] TaskContext model with performance_metrics dict
+  - [ ] ErrorRecord model with severity scoring (0-1)
+  - [ ] CompressionConfig model with test-time scaling parameters
+  - [ ] All models support JSON serialization
+  - [ ] Modern typing (use `list[]`, `dict[]`, `|` unions)
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-002
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/models.py`
 
-**Technical Details:**
+**MEM-004: Implement SQLAlchemy ORM Models**
 
-```sql
-CREATE TABLE memories (
-    memory_id UUID PRIMARY KEY,
-    agent_id UUID NOT NULL,
-    memory_type VARCHAR(50) NOT NULL,
-    content TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    embedding VECTOR(1536),
-    timestamp TIMESTAMP NOT NULL,
-    interaction_id UUID,
-    task_id UUID,
-    entities TEXT[],
-    facts TEXT[],
-    keywords TEXT[],
-    related_memory_ids UUID[],
-    parent_memory_id UUID,
-    relevance_score FLOAT DEFAULT 1.0,
-    access_count INT DEFAULT 0,
-    last_accessed TIMESTAMP,
-    actions TEXT[],
-    outcome TEXT,
-    success BOOLEAN,
-    metadata JSONB,
-    FOREIGN KEY (task_id) REFERENCES tasks(task_id)
-);
+- **Description:** Create SQLAlchemy models matching database schema with async support and COMPASS columns
+- **Acceptance:**
+  - [ ] StageMemoryModel with JSONB for raw_memory_refs
+  - [ ] TaskContextModel with foreign key to stage_memories
+  - [ ] ErrorModel with error_type constraint validation
+  - [ ] CompressionMetricsModel for cost tracking
+  - [ ] All models use AsyncSession
+  - [ ] Relationships configured (task → stages → memories)
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-003
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/database/models.py`
 
-CREATE INDEX idx_memories_agent_id ON memories(agent_id);
-CREATE INDEX idx_memories_type ON memories(memory_type);
-CREATE INDEX idx_memories_timestamp ON memories(timestamp DESC);
-CREATE INDEX idx_memories_embedding ON memories USING ivfflat (embedding vector_cosine_ops);
+**MEM-005: Implement Repository Layer**
+
+- **Description:** Create async repositories for Memory, StageMemory, TaskContext, Error with COMPASS query patterns
+- **Acceptance:**
+  - [ ] MemoryRepository with stage_id filtering
+  - [ ] StageMemoryRepository with get_by_task_and_stage()
+  - [ ] TaskContextRepository with current_stage tracking
+  - [ ] ErrorRepository with pattern detection queries
+  - [ ] All methods use async/await
+  - [ ] Unit tests for each repository (90%+ coverage)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-004
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/database/repositories.py`
+  - `tests/memory/unit/test_repositories.py`
+
+#### Week 2: Stage Management (MEM-1) (18 SP)
+
+**MEM-006: Implement StageManager Core**
+
+- **Description:** Create StageManager class for stage lifecycle (create, add, complete) with stage type validation
+- **Acceptance:**
+  - [ ] create_stage(task_id, stage_type) validates stage enum
+  - [ ] add_to_stage(stage_id, memory_id) links memory to stage
+  - [ ] complete_stage(stage_id) triggers compression preparation
+  - [ ] Stage transitions tracked in TaskContext.current_stage_id
+  - [ ] Stage type enum: planning, execution, reflection, verification
+  - [ ] Unit tests for stage lifecycle (95%+ coverage)
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-005
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/stage_manager.py`
+  - `tests/memory/unit/test_stage_operations.py`
+
+**MEM-007: Implement Stage Detection Logic**
+
+- **Description:** Add automatic stage transition detection based on agent actions and time heuristics
+- **Acceptance:**
+  - [ ] Action pattern analysis (tool usage classification)
+  - [ ] Time-based default stage duration (configurable)
+  - [ ] Explicit stage markers from agent honored
+  - [ ] Stage transitions logged with rationale
+  - [ ] Integration with agent action stream
+  - [ ] Integration tests for stage detection
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-006
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/stage_detector.py`
+  - `tests/memory/integration/test_stage_detection.py`
+
+**MEM-008: Integrate StageManager with MemoryManager**
+
+- **Description:** Update MemoryManager to be stage-aware and orchestrate stage operations
+- **Acceptance:**
+  - [ ] add_interaction() assigns memories to current stage
+  - [ ] get_stage_context() retrieves stage-filtered memories
+  - [ ] complete_stage() delegates to StageManager
+  - [ ] Stage transitions trigger appropriate hooks
+  - [ ] Backwards compatible with non-stage-aware agents
+  - [ ] Integration tests for stage-aware workflows
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-007
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/manager.py`
+  - `tests/memory/integration/test_stage_manager.py`
+
+#### Week 3: Basic Retrieval + EmbeddingService Integration (14 SP)
+
+**MEM-009: Implement Basic Stage-Aware Retrieval**
+
+- **Description:** Create retrieval service with stage filtering and embedding similarity
+- **Acceptance:**
+  - [ ] retrieve_stage_aware(query, current_stage, k) returns top-k memories
+  - [ ] Stage filtering applied before similarity search
+  - [ ] PGVector cosine similarity used for ranking
+  - [ ] Query embeddings generated via EmbeddingService
+  - [ ] Retrieval latency <100ms (p95) for 10K memories
+  - [ ] Unit tests for retrieval logic
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-008
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/retrieval.py`
+  - `tests/memory/unit/test_basic_retrieval.py`
+
+**MEM-010: Integrate with Existing EmbeddingService**
+
+- **Description:** Connect memory storage to existing embedding_service.py for vector generation
+- **Acceptance:**
+  - [ ] Memory creation triggers embedding generation
+  - [ ] Embeddings stored in memories.embedding column
+  - [ ] Batch embedding generation for multiple memories
+  - [ ] Embedding failures handled gracefully (retry logic)
+  - [ ] Embedding cost tracked per agent
+  - [ ] Integration tests with mocked OpenAI API
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-009
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/embedding_integration.py`
+  - `tests/memory/integration/test_embedding_service.py`
+
+**MEM-011: Implement JSON-RPC Handlers for Phase 1**
+
+- **Description:** Register JSON-RPC methods for memory.add, memory.retrieve, memory.get_stage_context
+- **Acceptance:**
+  - [ ] memory.add(interaction) creates memory with embedding
+  - [ ] memory.retrieve(query, k) returns relevant memories
+  - [ ] memory.get_stage_context(task_id, stage) returns stage summary
+  - [ ] memory.complete_stage(task_id, stage_id) triggers completion
+  - [ ] A2A context (agent_id, task_id) handled correctly
+  - [ ] JSON-RPC error handling for invalid params
+- **Effort:** 4 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-010
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/jsonrpc_handlers.py`
+  - `tests/memory/integration/test_jsonrpc.py`
+
+---
+
+### Phase 2: Test-Time Scaling Compression (Sprint 2-3, 32 SP)
+
+**Goal:** Implement COMPASS-validated compression with gpt-4o-mini (70-80% cost reduction)
+**Deliverable:** Stage and task compression with quality validation
+
+#### Week 4: Compression Infrastructure (MEM-2) (18 SP)
+
+**MEM-012: Implement ContextCompressor Core**
+
+- **Description:** Create ContextCompressor with gpt-4o-mini integration for stage compression (10:1 target)
+- **Acceptance:**
+  - [ ] compress_stage(stage_memories, stage_type) returns StageMemory
+  - [ ] Uses gpt-4o-mini (NOT gpt-4.1) for compression
+  - [ ] Target 10:1 compression ratio (9-11x acceptable)
+  - [ ] Compression prompt preserves critical information
+  - [ ] Stage insights extracted (key learnings)
+  - [ ] Unit tests for compression logic
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-011
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/compression.py`
+  - `tests/memory/unit/test_compression.py`
+
+**MEM-013: Integrate tiktoken for Token Counting**
+
+- **Description:** Add token counting for compression ratio validation and cost tracking
+- **Acceptance:**
+  - [ ] count_tokens(text) uses tiktoken
+  - [ ] Token counts recorded in CompressionMetrics
+  - [ ] Compression ratio computed: original_tokens / compressed_tokens
+  - [ ] Target ratio validation (warn if <8x or >12x)
+  - [ ] Cost estimation per compression operation
+  - [ ] Unit tests for token counting
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-012
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/token_counter.py`
+  - `tests/memory/unit/test_token_counter.py`
+
+**MEM-014: Implement Compression Quality Validation**
+
+- **Description:** Add information retention scoring to validate 95%+ quality target
+- **Acceptance:**
+  - [ ] validate_compression_quality(original, compressed) returns score
+  - [ ] Fact extraction and preservation checking
+  - [ ] Score >0.95 required (COMPASS target)
+  - [ ] Quality metrics logged to compression_metrics table
+  - [ ] Alert on quality degradation (<0.90)
+  - [ ] Unit tests for validation algorithms
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-013
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/quality_validator.py`
+  - `tests/memory/unit/test_quality_validation.py`
+
+**MEM-015: Implement Cost Tracking**
+
+- **Description:** Track compression costs per agent and enforce budget limits
+- **Acceptance:**
+  - [ ] Cost computed: tokens * model_price_per_1M
+  - [ ] Cost recorded in compression_metrics.cost_usd
+  - [ ] Monthly budget tracking per agent
+  - [ ] Alert at 75% budget threshold
+  - [ ] Hard cap prevents budget overrun
+  - [ ] Cost reports exportable for analysis
+- **Effort:** 2 story points (1 day)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-014
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/cost_tracker.py`
+  - `tests/memory/unit/test_cost_tracker.py`
+
+#### Week 5: Task-Level Compression + Optimization (14 SP)
+
+**MEM-016: Implement Task-Level Compression**
+
+- **Description:** Add compress_task() for progressive task summarization (5:1 target from stage summaries)
+- **Acceptance:**
+  - [ ] compress_task(stage_summaries, task_goal) returns TaskContext
+  - [ ] Uses gpt-4o-mini for task compression
+  - [ ] Target 5:1 compression ratio (4-6x acceptable)
+  - [ ] Task progress summary includes all completed stages
+  - [ ] Critical constraints preserved
+  - [ ] Integration tests for task compression
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-015
+- **Priority:** P0
+- **Files:**
+  - Enhanced `src/agentcore/memory/compression.py`
+  - `tests/memory/integration/test_task_compression.py`
+
+**MEM-017: Add Compression Caching in Redis**
+
+- **Description:** Cache compressed summaries in Redis (24h TTL) to reduce repeated compressions
+- **Acceptance:**
+  - [ ] Stage summaries cached by stage_id
+  - [ ] Task summaries cached by task_id
+  - [ ] Cache TTL configurable (default 24h)
+  - [ ] Cache invalidation on stage/task updates
+  - [ ] Cache hit rate tracked (target >60%)
+  - [ ] Integration tests with Redis
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-016
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/compression_cache.py`
+  - `tests/memory/integration/test_compression_cache.py`
+
+**MEM-018: Optimize Compression Prompts**
+
+- **Description:** Refine prompts for gpt-4o-mini to improve compression quality and consistency
+- **Acceptance:**
+  - [ ] Stage-specific prompts (planning vs execution vs reflection)
+  - [ ] Prompt includes compression ratio target
+  - [ ] Prompt emphasizes critical information preservation
+  - [ ] JSON output format for structured data
+  - [ ] A/B testing shows >95% quality retention
+  - [ ] Prompt templates versioned
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-017
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/prompts.py`
+  - `tests/memory/integration/test_prompt_quality.py`
+
+**MEM-019: Performance Benchmarking**
+
+- **Description:** Benchmark compression latency, cost, and quality across 1000 compressions
+- **Acceptance:**
+  - [ ] Latency: <5s (p95) for stage compression
+  - [ ] Cost: <$0.01 per stage compression (gpt-4o-mini pricing)
+  - [ ] Quality: >95% information retention (COMPASS target)
+  - [ ] Compression ratio: 9-11x for stages, 4-6x for tasks
+  - [ ] Load tests with 100 concurrent compressions
+  - [ ] Performance report generated
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-018
+- **Priority:** P1
+- **Files:**
+  - `tests/memory/load/test_compression_performance.py`
+  - `docs/memory-compression-performance-report.md`
+
+---
+
+### Phase 3: Error Tracking (Sprint 3, 14 SP)
+
+**Goal:** Implement error memory and pattern detection (MEM-3)
+**Deliverable:** Error tracking preventing compounding mistakes
+
+#### Week 6: Error Memory + Pattern Detection (14 SP)
+
+**MEM-020: Implement ErrorTracker Core**
+
+- **Description:** Create ErrorTracker for recording errors with full context and severity
+- **Acceptance:**
+  - [ ] record_error(error_record) stores error with context
+  - [ ] Error severity computed (0-1 scale)
+  - [ ] Error linked to task_id and stage_id
+  - [ ] Recovery actions recorded
+  - [ ] get_error_history(task_id) retrieves recent errors
+  - [ ] Unit tests for error recording
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-019
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/error_tracker.py`
+  - `tests/memory/unit/test_error_tracker.py`
+
+**MEM-021: Implement Error Pattern Detection**
+
+- **Description:** Add pattern detection to identify recurring error types (2+ occurrences)
+- **Acceptance:**
+  - [ ] detect_patterns(task_id, lookback_stages) groups errors
+  - [ ] Common context extraction from error descriptions
+  - [ ] Pattern severity: avg(error_severity) * occurrences
+  - [ ] Recommendations generated for pattern mitigation
+  - [ ] Compounding error detection (related errors in sequence)
+  - [ ] Unit tests for pattern detection algorithms
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-020
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/pattern_detector.py`
+  - `tests/memory/unit/test_pattern_detector.py`
+
+**MEM-022: Integrate Error Tracking with MemoryManager**
+
+- **Description:** Connect error tracking to memory retrieval for error-aware context
+- **Acceptance:**
+  - [ ] Errors trigger memory tagging (is_critical flag)
+  - [ ] Error-related memories boosted in retrieval (30% boost)
+  - [ ] Error patterns surfaced in get_stage_context()
+  - [ ] Error recovery context provided to agents
+  - [ ] Integration tests for error workflows
+- **Effort:** 4 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-021
+- **Priority:** P0
+- **Files:**
+  - Enhanced `src/agentcore/memory/manager.py`
+  - `tests/memory/integration/test_error_workflows.py`
+
+---
+
+### Phase 4: Enhanced Retrieval (Sprint 4, 24 SP)
+
+**Goal:** Implement multi-factor importance scoring (MEM-4)
+**Deliverable:** Stage-aware retrieval with criticality boosting
+
+#### Week 7: Multi-Factor Scoring + Stage Awareness (24 SP)
+
+**MEM-023: Implement Enhanced Importance Scoring**
+
+- **Description:** Add 5-factor importance scoring (embedding, recency, frequency, stage, criticality)
+- **Acceptance:**
+  - [ ] Embedding similarity (40% weight)
+  - [ ] Recency (20% weight, exponential decay 24h half-life)
+  - [ ] Frequency (15% weight, access count normalized)
+  - [ ] Stage relevance (15% weight, boost current stage)
+  - [ ] Criticality boost (10% weight, is_critical flag)
+  - [ ] Unit tests for each factor
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-022
+- **Priority:** P0
+- **Files:**
+  - Enhanced `src/agentcore/memory/retrieval.py`
+  - `tests/memory/unit/test_enhanced_scoring.py`
+
+**MEM-024: Implement Stage Relevance Calculation**
+
+- **Description:** Add stage_relevance_map to memories for cross-stage importance
+- **Acceptance:**
+  - [ ] Stage relevance computed per memory
+  - [ ] Memories tagged with relevant stages (JSONB map)
+  - [ ] Current stage memories boosted (1.5x multiplier)
+  - [ ] Cross-stage references preserved
+  - [ ] Stage transitions update relevance scores
+  - [ ] Unit tests for relevance calculation
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-023
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/stage_relevance.py`
+  - `tests/memory/unit/test_stage_relevance.py`
+
+**MEM-025: Implement Criticality Boosting**
+
+- **Description:** Add is_critical flag and criticality_reason for important memories
+- **Acceptance:**
+  - [ ] Critical memories flagged during storage
+  - [ ] Criticality boost: 1.5x importance score
+  - [ ] Error-related memories auto-flagged as critical
+  - [ ] Agent-specified critical constraints preserved
+  - [ ] Critical memory ratio tracked (target <10%)
+  - [ ] Integration tests for criticality
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-024
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/criticality.py`
+  - `tests/memory/integration/test_criticality.py`
+
+**MEM-026: Implement Stage-Specific Context Formatting**
+
+- **Description:** Format retrieved context based on current reasoning stage
+- **Acceptance:**
+  - [ ] Planning stage: goals, constraints, strategies
+  - [ ] Execution stage: actions, tools, immediate context
+  - [ ] Reflection stage: outcomes, learnings, insights
+  - [ ] Verification stage: results, validations, comparisons
+  - [ ] Format includes stage headers and structure
+  - [ ] Unit tests for formatting logic
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-025
+- **Priority:** P1
+- **Files:**
+  - `src/agentcore/memory/context_formatter.py`
+  - `tests/memory/unit/test_context_formatting.py`
+
+**MEM-027: A/B Testing vs Baseline Retrieval**
+
+- **Description:** Compare enhanced retrieval (5-factor) against baseline (embedding-only)
+- **Acceptance:**
+  - [ ] Test dataset: 1000 queries with ground truth
+  - [ ] Metrics: precision@5, recall@10, NDCG@10
+  - [ ] Enhanced retrieval shows >10% improvement
+  - [ ] Latency overhead <20ms per query
+  - [ ] A/B test report with statistical significance
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-026
+- **Priority:** P1
+- **Files:**
+  - `tests/memory/integration/test_enhanced_retrieval.py`
+  - `docs/memory-retrieval-comparison-report.md`
+
+---
+
+### Phase 5: ACE Integration Layer (Sprint 4, 16 SP)
+
+**Goal:** Implement Meta-Thinker interface for ACE coordination
+**Deliverable:** Strategic context queries and intervention tracking
+
+#### Week 8: Meta-Thinker Interface (MEM-5) (16 SP)
+
+**MEM-028: Implement ACE Integration Methods**
+
+- **Description:** Create ACEMemoryInterface for strategic context queries
+- **Acceptance:**
+  - [ ] get_strategic_context(query) returns StrategicContext
+  - [ ] Query types: strategic_decision, error_analysis, capability_evaluation, context_refresh
+  - [ ] Strategic context includes: stage summaries, critical facts, error patterns, successful patterns
+  - [ ] Context health score computed (0-1)
+  - [ ] Query latency <150ms (p95)
+  - [ ] Unit tests for ACE methods
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-027
+- **Priority:** P0
+- **Files:**
+  - `src/agentcore/memory/ace_integration.py`
+  - `tests/memory/unit/test_ace_integration.py`
+
+**MEM-029: Implement Intervention Outcome Tracking**
+
+- **Description:** Track ACE intervention effectiveness in memory system
+- **Acceptance:**
+  - [ ] record_intervention_outcome(intervention_id, success, delta)
+  - [ ] Intervention outcomes linked to memories
+  - [ ] Pre/post metrics tracked for effectiveness
+  - [ ] Learning updates stage relevance weights
+  - [ ] Intervention history queryable
+  - [ ] Integration tests with mocked ACE
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-028
+- **Priority:** P1
+- **Files:**
+  - Enhanced `src/agentcore/memory/ace_integration.py`
+  - `tests/memory/integration/test_ace_interventions.py`
+
+**MEM-030: Add JSON-RPC Handlers for ACE Methods**
+
+- **Description:** Register JSON-RPC methods for ACE-MEM coordination
+- **Acceptance:**
+  - [ ] memory.get_strategic_context(query) exposed
+  - [ ] memory.record_intervention_outcome(intervention) exposed
+  - [ ] memory.get_context_health(task_id) exposed
+  - [ ] memory.request_context_refresh(task_id) exposed
+  - [ ] A2A context handled correctly
+  - [ ] Integration tests for JSON-RPC ACE methods
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-029
+- **Priority:** P0
+- **Files:**
+  - Enhanced `src/agentcore/memory/jsonrpc_handlers.py`
+  - `tests/memory/integration/test_ace_jsonrpc.py`
+
+---
+
+### Phase 6: Optimization + COMPASS Validation (Sprint 5, 21 SP)
+
+**Goal:** Production-ready system with COMPASS validation
+**Deliverable:** Validated, monitored, documented memory system
+
+#### Week 9: Production Optimization (12 SP)
+
+**MEM-031: Tune PGVector Indexes**
+
+- **Description:** Optimize IVFFlat indexes for retrieval performance at 1M scale
+- **Acceptance:**
+  - [ ] IVFFlat list count tuned (target sqrt(N) lists)
+  - [ ] Index build time <10 minutes for 1M vectors
+  - [ ] Query latency <100ms (p95) at 1M scale
+  - [ ] Index size <30% of vector data size
+  - [ ] EXPLAIN ANALYZE validates index usage
+  - [ ] Performance report with benchmarks
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-030
+- **Priority:** P1
+- **Files:**
+  - Database index tuning scripts
+  - `tests/memory/load/test_1m_scale.py`
+
+**MEM-032: Optimize Database Queries**
+
+- **Description:** Identify and optimize slow queries using EXPLAIN ANALYZE
+- **Acceptance:**
+  - [ ] All critical path queries <50ms
+  - [ ] No table scans on large tables
+  - [ ] Composite indexes for common filters
+  - [ ] Connection pooling configured (min 10, max 50)
+  - [ ] Query plan cache enabled
+  - [ ] Slow query log analyzed
+- **Effort:** 3 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-031
+- **Priority:** P1
+- **Files:**
+  - Database configuration updates
+  - `docs/memory-query-optimization.md`
+
+**MEM-033: Stress Test Compression Service**
+
+- **Description:** Load test compression with 100 concurrent requests
+- **Acceptance:**
+  - [ ] 100 concurrent compressions without errors
+  - [ ] Queue processing time <10s per batch
+  - [ ] Memory usage <500MB under load
+  - [ ] CPU usage <80% under load
+  - [ ] Rate limiting prevents gpt-4o-mini quota exhaustion
+  - [ ] Load test report generated
+- **Effort:** 4 story points (1-2 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-032
+- **Priority:** P1
+- **Files:**
+  - `tests/memory/load/test_compression_stress.py`
+  - `docs/memory-load-test-report.md`
+
+#### Week 10: COMPASS Validation + Documentation (9 SP)
+
+**MEM-034: COMPASS Validation Testing**
+
+- **Description:** Validate against COMPASS benchmarks (context efficiency, accuracy, cost)
+- **Acceptance:**
+  - [ ] Context efficiency: 60-80% reduction achieved
+  - [ ] Long-horizon accuracy: +20% improvement on GAIA-style tasks
+  - [ ] Cost reduction: 70-80% via test-time scaling validated
+  - [ ] Compression quality: 95%+ information retention
+  - [ ] All COMPASS targets met or exceeded
+  - [ ] Validation report with statistical analysis
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-033
+- **Priority:** P0
+- **Files:**
+  - `tests/memory/validation/test_compass_benchmarks.py`
+  - `docs/memory-compass-validation-report.md`
+
+**MEM-035: Set Up Monitoring and Alerting**
+
+- **Description:** Configure Prometheus metrics and Grafana dashboards
+- **Acceptance:**
+  - [ ] Metrics: retrieval latency, compression cost, memory count, error rate
+  - [ ] Grafana dashboard for memory system health
+  - [ ] Alerts: high latency, budget exhaustion, quality degradation
+  - [ ] Metric retention: 30 days
+  - [ ] Alert routing to on-call engineer
+- **Effort:** 2 story points (1 day)
+- **Owner:** Backend Engineer + DevOps
+- **Dependencies:** MEM-034
+- **Priority:** P1
+- **Files:**
+  - `prometheus/memory_metrics.yml`
+  - `grafana/memory_dashboard.json`
+
+**MEM-036: Write Operational Documentation**
+
+- **Description:** Create runbook and API documentation for operations and developers
+- **Acceptance:**
+  - [ ] Runbook: deployment, troubleshooting, common issues
+  - [ ] API docs: JSON-RPC methods, examples, error codes
+  - [ ] Architecture diagram: component interactions
+  - [ ] Configuration guide: all settings explained
+  - [ ] COMPASS validation results included
+  - [ ] Production readiness checklist completed
+- **Effort:** 2 story points (1 day)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-035
+- **Priority:** P0
+- **Files:**
+  - `docs/memory-system-runbook.md`
+  - `docs/memory-system-api.md`
+  - `docs/memory-architecture.md`
+
+---
+
+## Critical Path
+
+```plaintext
+Foundation (Week 1-3):
+MEM-002 → MEM-003 → MEM-004 → MEM-005 → MEM-006 → MEM-007 → MEM-008 → MEM-009 → MEM-010 → MEM-011
+  (3d)     (2d)       (2d)       (3d)       (2d)       (2d)       (3d)       (2d)       (2d)       (1d)
+                                        [22 days]
+
+Compression (Week 4-5):
+MEM-012 → MEM-013 → MEM-014 → MEM-015 → MEM-016 → MEM-017 → MEM-018 → MEM-019
+  (3d)      (1d)      (2d)       (1d)      (2d)       (1d)       (1d)       (1d)
+                                        [12 days]
+
+Error + Retrieval (Week 6-7):
+MEM-020 → MEM-021 → MEM-022 → MEM-023 → MEM-024 → MEM-025 → MEM-026 → MEM-027
+  (2d)      (2d)      (1d)       (3d)       (2d)       (1d)       (1d)       (2d)
+                                        [14 days]
+
+ACE + Production (Week 8-10):
+MEM-028 → MEM-029 → MEM-030 → MEM-031 → MEM-032 → MEM-033 → MEM-034 → MEM-035 → MEM-036
+  (3d)      (2d)      (1d)       (2d)       (1d)       (1d)       (2d)       (1d)       (1d)
+                                        [14 days]
+
+Total Critical Path: 62 days (~10 weeks)
 ```
 
-**Files:**
+**Bottlenecks:**
 
-- `alembic/versions/XXXX_add_memory_tables.py`
-- `docs/database/schema.md` (update)
+- **MEM-008 (StageManager Integration)**: Complex orchestration (8 SP, highest risk)
+- **MEM-023 (Enhanced Scoring)**: Multiple algorithms (8 SP, complexity risk)
+- **MEM-034 (COMPASS Validation)**: External benchmark dependency (5 SP)
 
----
+**Parallel Tracks:**
 
-### MEM-003: Pydantic Models for Memory System
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** None
-**Owner:** Backend Engineer
-
-**Description:**
-Define Pydantic models for memory records, interactions, and memory operations following AgentCore validation patterns.
-
-**Acceptance Criteria:**
-
-- [ ] `MemoryRecord` model with all fields from spec
-- [ ] `Interaction` model for encoding inputs
-- [ ] `MemoryQuery` model for retrieval requests
-- [ ] `MemoryStats` model for analytics
-- [ ] Field validation (timestamp formats, UUID validation, enum constraints)
-- [ ] JSON schema export working
-- [ ] Example instances in docstrings
-- [ ] 100% test coverage for model validation
-
-**Technical Details:**
-
-```python
-class MemoryType(str, Enum):
-    WORKING = "working"
-    EPISODIC = "episodic"
-    SEMANTIC = "semantic"
-    PROCEDURAL = "procedural"
-
-class MemoryRecord(BaseModel):
-    memory_id: str
-    agent_id: str
-    memory_type: MemoryType
-    content: str
-    summary: str
-    embedding: list[float]
-    timestamp: datetime
-    interaction_id: str | None = None
-    task_id: str | None = None
-    entities: list[str] = []
-    facts: list[str] = []
-    keywords: list[str] = []
-    related_memory_ids: list[str] = []
-    parent_memory_id: str | None = None
-    relevance_score: float = Field(default=1.0, ge=0.0, le=1.0)
-    access_count: int = Field(default=0, ge=0)
-    last_accessed: datetime | None = None
-    actions: list[str] = []
-    outcome: str | None = None
-    success: bool | None = None
-    metadata: dict[str, Any] = {}
-```
-
-**Files:**
-
-- `src/agentcore/memory/models.py`
-- `tests/unit/memory/test_models.py`
+- **Testing**: Unit tests can be written concurrently with implementation
+- **Documentation**: API docs can be written as features complete
+- **Monitoring**: Metrics setup can happen alongside Week 9 optimization
 
 ---
 
-### MEM-004: SQLAlchemy ORM Models
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** MEM-002
-**Owner:** Backend Engineer
-
-**Description:**
-Create SQLAlchemy async ORM models for memory storage with PGVector column types.
-
-**Acceptance Criteria:**
-
-- [ ] `MemoryModel` class with all database columns
-- [ ] PGVector column type correctly configured
-- [ ] Relationships to TaskRecord and AgentRecord (if applicable)
-- [ ] to_dict() method for serialization
-- [ ] from_pydantic() class method for conversion
-- [ ] Indexes defined in model metadata
-- [ ] Compatible with async SQLAlchemy sessions
-- [ ] Unit tests for model operations (create, read, update)
-
-**Technical Details:**
-
-```python
-from pgvector.sqlalchemy import Vector
-
-class MemoryModel(Base):
-    __tablename__ = "memories"
-
-    memory_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    agent_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    memory_type = Column(String(50), nullable=False, index=True)
-    embedding = Column(Vector(1536))
-    # ... other columns
-```
-
-**Files:**
-
-- `src/agentcore/memory/database/models.py`
-- `tests/unit/memory/test_database_models.py`
-
----
-
-### MEM-005: Memory Repository with Vector Search
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 5 SP
-**Dependencies:** MEM-003, MEM-004
-**Owner:** Backend Engineer
-
-**Description:**
-Implement MemoryRepository for CRUD operations and vector similarity search using PGVector.
-
-**Acceptance Criteria:**
-
-- [ ] CRUD methods: create(), get_by_id(), update(), delete()
-- [ ] vector_search() method with cosine similarity
-- [ ] search_by_metadata() for filtering by agent_id, task_id, memory_type
-- [ ] hybrid_search() combining vector similarity + metadata filters
-- [ ] Batch operations: create_many(), get_many()
-- [ ] Agent isolation enforced (all queries filtered by agent_id)
-- [ ] Proper error handling (NotFoundError, DatabaseError)
-- [ ] 90%+ test coverage with integration tests using testcontainers
-
-**Technical Details:**
-
-```python
-class MemoryRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def vector_search(
-        self,
-        agent_id: str,
-        embedding: list[float],
-        memory_types: list[str] | None = None,
-        k: int = 5,
-        threshold: float = 0.7
-    ) -> list[MemoryModel]:
-        """Search using PGVector cosine distance."""
-        query = select(MemoryModel).where(
-            MemoryModel.agent_id == agent_id
-        )
-        if memory_types:
-            query = query.where(MemoryModel.memory_type.in_(memory_types))
-
-        query = query.order_by(
-            MemoryModel.embedding.cosine_distance(embedding)
-        ).limit(k)
-
-        result = await self.session.execute(query)
-        return result.scalars().all()
-```
-
-**Files:**
-
-- `src/agentcore/memory/database/repositories.py`
-- `tests/integration/memory/test_repository.py`
-
----
-
-### MEM-006: Encoding Service
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 3 SP
-**Dependencies:** MEM-003
-**Owner:** Backend Engineer
-
-**Description:**
-Implement EncodingService for converting interactions into memory records with summarization and entity extraction.
-
-**Acceptance Criteria:**
-
-- [ ] encode_episodic() creates episodic memory from interaction
-- [ ] encode_semantic() extracts semantic facts from content
-- [ ] encode_procedural() creates action-outcome pairs
-- [ ] Uses existing embedding_service.py for vector generation
-- [ ] LLM-based summarization (configurable model)
-- [ ] Entity extraction using NER or LLM
-- [ ] Keyword extraction (TF-IDF or LLM)
-- [ ] Graceful degradation if embedding service fails
-- [ ] 85%+ test coverage with mocked LLM calls
-
-**Technical Details:**
-
-```python
-class EncodingService:
-    def __init__(
-        self,
-        embedding_service: EmbeddingService,
-        llm_client: AsyncOpenAI
-    ):
-        self.embedding_service = embedding_service
-        self.llm = llm_client
-
-    async def encode_episodic(
-        self,
-        interaction: Interaction
-    ) -> MemoryRecord:
-        summary = await self._summarize(interaction.content)
-        embedding = await self.embedding_service.embed(summary)
-        entities = await self._extract_entities(interaction.content)
-        facts = await self._extract_facts(interaction.content)
-
-        return MemoryRecord(
-            memory_id=str(uuid.uuid4()),
-            memory_type=MemoryType.EPISODIC,
-            content=interaction.content,
-            summary=summary,
-            embedding=embedding,
-            timestamp=interaction.timestamp,
-            entities=entities,
-            facts=facts,
-            # ... other fields
-        )
-```
-
-**Files:**
-
-- `src/agentcore/memory/encoding.py`
-- `tests/unit/memory/test_encoding.py`
-
----
-
-### MEM-007: Retrieval Service with Hybrid Search
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 3 SP
-**Dependencies:** MEM-005
-**Owner:** Backend Engineer
-
-**Description:**
-Implement RetrievalService with hybrid search combining vector similarity, temporal recency, and access frequency.
-
-**Acceptance Criteria:**
-
-- [ ] retrieve() method with configurable scoring weights
-- [ ] Vector similarity using repository.vector_search()
-- [ ] Temporal recency scoring (exponential decay, 24h half-life)
-- [ ] Access frequency scoring (normalized access_count)
-- [ ] Combined importance score calculation
-- [ ] Top-k selection with score threshold
-- [ ] Access tracking (increment access_count, update last_accessed)
-- [ ] Configurable weights via Settings
-- [ ] 90%+ test coverage with synthetic test data
-
-**Technical Details:**
-
-```python
-class RetrievalService:
-    def __init__(
-        self,
-        repository: MemoryRepository,
-        relevance_weight: float = 0.4,
-        recency_weight: float = 0.3,
-        frequency_weight: float = 0.3
-    ):
-        self.repository = repository
-        self.relevance_weight = relevance_weight
-        self.recency_weight = recency_weight
-        self.frequency_weight = frequency_weight
-
-    async def retrieve(
-        self,
-        agent_id: str,
-        query_embedding: list[float],
-        memory_types: list[str],
-        k: int = 5
-    ) -> list[MemoryRecord]:
-        # Get candidates from vector search
-        candidates = await self.repository.vector_search(
-            agent_id=agent_id,
-            embedding=query_embedding,
-            memory_types=memory_types,
-            k=k * 2  # Over-fetch for reranking
-        )
-
-        # Calculate importance scores
-        scored = [
-            (memory, self._calculate_importance(memory))
-            for memory in candidates
-        ]
-
-        # Sort by importance and take top-k
-        scored.sort(key=lambda x: x[1], reverse=True)
-        top_memories = [m for m, _ in scored[:k]]
-
-        # Update access tracking
-        await self._update_access_tracking(top_memories)
-
-        return top_memories
-```
-
-**Files:**
-
-- `src/agentcore/memory/retrieval.py`
-- `tests/unit/memory/test_retrieval.py`
-
----
-
-### MEM-008: Memory Manager Orchestration
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 5 SP
-**Dependencies:** MEM-006, MEM-007
-**Owner:** Backend Engineer
-
-**Description:**
-Implement MemoryManager as central orchestrator coordinating encoding, storage, and retrieval operations.
-
-**Acceptance Criteria:**
-
-- [ ] add_interaction() orchestrates encode → store → prune workflow
-- [ ] get_relevant_context() retrieves and formats memories for LLM
-- [ ] update_memory() allows corrections to existing memories
-- [ ] prune_memories() removes low-value memories when capacity exceeded
-- [ ] Agent isolation enforced across all operations
-- [ ] Transaction management for multi-step operations
-- [ ] Error handling with rollback on failures
-- [ ] Metrics instrumentation (latency, memory count, cache hit rate)
-- [ ] 85%+ test coverage with integration tests
-
-**Technical Details:**
-
-```python
-class MemoryManager:
-    def __init__(
-        self,
-        repository: MemoryRepository,
-        encoding_service: EncodingService,
-        retrieval_service: RetrievalService,
-        capacity_limits: dict[str, int]
-    ):
-        self.repository = repository
-        self.encoding = encoding_service
-        self.retrieval = retrieval_service
-        self.capacity_limits = capacity_limits
-
-    async def add_interaction(
-        self,
-        agent_id: str,
-        interaction: Interaction
-    ) -> str:
-        # Encode
-        episodic = await self.encoding.encode_episodic(interaction)
-        episodic.agent_id = agent_id
-
-        # Store
-        memory_id = await self.repository.create(episodic)
-
-        # Check capacity and prune if needed
-        await self._check_and_prune(agent_id, MemoryType.EPISODIC)
-
-        return memory_id
-
-    async def get_relevant_context(
-        self,
-        agent_id: str,
-        query: str,
-        task_id: str | None = None,
-        max_tokens: int = 2000
-    ) -> str:
-        # Generate query embedding
-        embedding = await self.encoding.embedding_service.embed(query)
-
-        # Retrieve memories
-        memories = await self.retrieval.retrieve(
-            agent_id=agent_id,
-            query_embedding=embedding,
-            memory_types=[MemoryType.EPISODIC, MemoryType.SEMANTIC],
-            k=10
-        )
-
-        # Format and truncate
-        context = self._format_context(memories, max_tokens)
-        return context
-```
-
-**Files:**
-
-- `src/agentcore/memory/manager.py`
-- `tests/integration/memory/test_manager.py`
-
----
-
-### MEM-009: Compression Service
-
-**Priority:** P1
-**Type:** Story
-**Effort:** 3 SP
-**Dependencies:** MEM-008
-**Owner:** Backend Engineer
-
-**Description:**
-Implement CompressionService for token counting and LLM-based summarization to maintain bounded context.
-
-**Acceptance Criteria:**
-
-- [ ] count_tokens() using tiktoken for accurate token counting
-- [ ] truncate_to_tokens() truncates text to target token count
-- [ ] compress_memories() summarizes memory sequence with LLM
-- [ ] hierarchical_summarization() for large memory sets
-- [ ] Configurable target compression ratio (default 50%)
-- [ ] Preserves key entities and facts during compression
-- [ ] Fallback to simple truncation if LLM fails
-- [ ] 80%+ test coverage with token count assertions
-
-**Technical Details:**
-
-```python
-import tiktoken
-
-class CompressionService:
-    def __init__(self, llm_client: AsyncOpenAI, model: str = "gpt-4"):
-        self.llm = llm_client
-        self.model = model
-        self.tokenizer = tiktoken.encoding_for_model(model)
-
-    def count_tokens(self, text: str) -> int:
-        return len(self.tokenizer.encode(text))
-
-    async def compress_memories(
-        self,
-        memories: list[MemoryRecord],
-        target_tokens: int
-    ) -> str:
-        if not memories:
-            return ""
-
-        current_text = "\n".join(m.summary for m in memories)
-        current_tokens = self.count_tokens(current_text)
-
-        if current_tokens <= target_tokens:
-            return current_text
-
-        # LLM compression
-        prompt = f"""Compress the following memories to ~{target_tokens} tokens:
-
-{current_text}
-
-Focus on key facts and patterns. Preserve entity names."""
-
-        compressed = await self.llm.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=target_tokens
-        )
-
-        return compressed.choices[0].message.content
-```
-
-**Files:**
-
-- `src/agentcore/memory/compression.py`
-- `tests/unit/memory/test_compression.py`
-
----
-
-## Phase 2: JSON-RPC Integration (Week 3, 10 SP)
-
-### MEM-010: JSON-RPC Method Registration
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 1 SP
-**Dependencies:** MEM-008
-**Owner:** Backend Engineer
-
-**Description:**
-Create memory_jsonrpc.py module and register all memory.* JSON-RPC methods with jsonrpc_processor.
-
-**Acceptance Criteria:**
-
-- [ ] memory_jsonrpc.py follows task_jsonrpc.py pattern
-- [ ] All 7 methods registered: memory.store, memory.retrieve, memory.get_context, memory.update, memory.prune, memory.stats, memory.search
-- [ ] Import in main.py for auto-registration
-- [ ] Method names follow namespace.action convention
-- [ ] Docstrings with parameter and return value descriptions
-- [ ] Methods show up in rpc.methods response
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py`
-- `src/agentcore/a2a_protocol/main.py` (update imports)
-
----
-
-### MEM-011: memory.store Handler
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** MEM-010
-**Owner:** Backend Engineer
-
-**Description:**
-Implement memory.store JSON-RPC method for storing new interaction memories.
-
-**Acceptance Criteria:**
-
-- [ ] Accepts Interaction object in params
-- [ ] Extracts agent_id from a2a_context.source_agent
-- [ ] Calls memory_manager.add_interaction()
-- [ ] Returns memory_id on success
-- [ ] Error handling: INVALID_PARAMS, INTERNAL_ERROR
-- [ ] Input validation with Pydantic
-- [ ] Integration test with full request/response cycle
-- [ ] API documented in docs/api/memory.md
-
-**Technical Details:**
-
-```python
-@register_jsonrpc_method("memory.store")
-async def handle_memory_store(request: JsonRpcRequest) -> dict[str, Any]:
-    """Store a new memory from an interaction."""
-    if not request.a2a_context or not request.a2a_context.source_agent:
-        raise JsonRpcError(
-            code=JsonRpcErrorCode.INVALID_PARAMS,
-            message="source_agent required in a2a_context"
-        )
-
-    interaction = Interaction(**request.params["interaction"])
-    agent_id = request.a2a_context.source_agent
-
-    memory_id = await memory_manager.add_interaction(agent_id, interaction)
-
-    return {"memory_id": memory_id}
-```
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py` (update)
-- `tests/integration/memory/test_memory_jsonrpc.py`
-- `docs/api/memory.md`
-
----
-
-### MEM-012: memory.retrieve Handler
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** MEM-010
-**Owner:** Backend Engineer
-
-**Description:**
-Implement memory.retrieve JSON-RPC method for searching memories by semantic similarity.
-
-**Acceptance Criteria:**
-
-- [ ] Accepts query, memory_types, k in params
-- [ ] Extracts agent_id from a2a_context
-- [ ] Calls memory_manager.retrieval.retrieve()
-- [ ] Returns list of MemoryRecord summaries with scores
-- [ ] Default k=5, memory_types=["episodic", "semantic"]
-- [ ] Error handling for missing agent context
-- [ ] Integration test with sample memories
-- [ ] Performance test: <100ms for 10K memories
-
-**Technical Details:**
-
-```python
-@register_jsonrpc_method("memory.retrieve")
-async def handle_memory_retrieve(request: JsonRpcRequest) -> dict[str, Any]:
-    """Retrieve relevant memories by semantic search."""
-    agent_id = request.a2a_context.source_agent
-    query = request.params["query"]
-    memory_types = request.params.get("memory_types", ["episodic", "semantic"])
-    k = request.params.get("k", 5)
-
-    # Generate embedding
-    embedding = await memory_manager.encoding.embedding_service.embed(query)
-
-    # Retrieve
-    memories = await memory_manager.retrieval.retrieve(
-        agent_id=agent_id,
-        query_embedding=embedding,
-        memory_types=memory_types,
-        k=k
-    )
-
-    return {
-        "memories": [
-            {
-                "memory_id": m.memory_id,
-                "summary": m.summary,
-                "timestamp": m.timestamp.isoformat(),
-                "relevance_score": m.relevance_score,
-                "memory_type": m.memory_type
-            }
-            for m in memories
-        ]
-    }
-```
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py` (update)
-- `tests/integration/memory/test_memory_jsonrpc.py` (update)
-
----
-
-### MEM-013: memory.get_context Handler
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** MEM-010
-**Owner:** Backend Engineer
-
-**Description:**
-Implement memory.get_context JSON-RPC method for retrieving formatted context suitable for LLM prompts.
-
-**Acceptance Criteria:**
-
-- [ ] Accepts query, task_id, max_tokens in params
-- [ ] Calls memory_manager.get_relevant_context()
-- [ ] Returns formatted markdown string
-- [ ] Default max_tokens=2000
-- [ ] Context includes sections: Current Task, Relevant Interactions, Relevant Knowledge
-- [ ] Token counting accurate (within 5% of actual)
-- [ ] Integration test validates format and token limit
-- [ ] End-to-end test with real LLM call
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py` (update)
-- `tests/integration/memory/test_memory_jsonrpc.py` (update)
-
----
-
-### MEM-014: memory.update Handler
-
-**Priority:** P1
-**Type:** Story
-**Effort:** 1 SP
-**Dependencies:** MEM-010
-**Owner:** Backend Engineer
-
-**Description:**
-Implement memory.update JSON-RPC method for correcting or enhancing existing memories.
-
-**Acceptance Criteria:**
-
-- [ ] Accepts memory_id and updates dict in params
-- [ ] Validates agent ownership before update
-- [ ] Supports updating: summary, facts, entities, relevance_score
-- [ ] Regenerates embedding if summary changed
-- [ ] Returns success status
-- [ ] Error handling: NOT_FOUND, PERMISSION_DENIED
-- [ ] Integration test with update scenarios
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py` (update)
-- `tests/integration/memory/test_memory_jsonrpc.py` (update)
-
----
-
-### MEM-015: memory.prune Handler
-
-**Priority:** P1
-**Type:** Story
-**Effort:** 1 SP
-**Dependencies:** MEM-010
-**Owner:** Backend Engineer
-
-**Description:**
-Implement memory.prune JSON-RPC method for manual memory pruning by agents.
-
-**Acceptance Criteria:**
-
-- [ ] Accepts memory_type, strategy, count in params
-- [ ] Strategies: "least_relevant", "oldest_first", "least_accessed"
-- [ ] Calls memory_manager.prune_memories()
-- [ ] Returns count of pruned memories
-- [ ] Respects agent isolation (only prune own memories)
-- [ ] Integration test validates correct memories pruned
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py` (update)
-- `tests/integration/memory/test_memory_jsonrpc.py` (update)
-
----
-
-### MEM-016: memory.stats Handler
-
-**Priority:** P2
-**Type:** Story
-**Effort:** 1 SP
-**Dependencies:** MEM-010
-**Owner:** Backend Engineer
-
-**Description:**
-Implement memory.stats JSON-RPC method for retrieving memory usage statistics.
-
-**Acceptance Criteria:**
-
-- [ ] Returns stats per memory_type: count, total_tokens, avg_relevance
-- [ ] Includes overall stats: total_memories, storage_bytes
-- [ ] Retrieval performance metrics: avg_latency, cache_hit_rate
-- [ ] Agent-specific stats only (respects isolation)
-- [ ] Integration test validates accuracy
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/services/memory_jsonrpc.py` (update)
-- `tests/integration/memory/test_memory_jsonrpc.py` (update)
-
----
-
-## Phase 3: Agent Integration & Caching (Week 4, 10 SP)
-
-### MEM-017: Redis Cache for Working Memory
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 3 SP
-**Dependencies:** MEM-008
-**Owner:** Backend Engineer
-
-**Description:**
-Implement Redis-based caching layer for working memory with TTL-based expiration.
-
-**Acceptance Criteria:**
-
-- [ ] MemoryCacheService using existing Redis connection
-- [ ] set_working_memory() stores task-scoped context
-- [ ] get_working_memory() retrieves cached context
-- [ ] Default TTL: 1 hour (configurable)
-- [ ] clear_working_memory() for task completion
-- [ ] Key format: "memory:working:{agent_id}:{task_id}"
-- [ ] JSON serialization of MemoryRecord
-- [ ] 90%+ test coverage with redis-mock
-- [ ] Integration test with real Redis (testcontainers)
-
-**Technical Details:**
-
-```python
-class MemoryCacheService:
-    def __init__(self, redis_client: Redis):
-        self.redis = redis_client
-        self.ttl = 3600  # 1 hour
-
-    async def set_working_memory(
-        self,
-        agent_id: str,
-        task_id: str,
-        memories: list[MemoryRecord]
-    ) -> None:
-        key = f"memory:working:{agent_id}:{task_id}"
-        value = json.dumps([m.model_dump() for m in memories])
-        await self.redis.setex(key, self.ttl, value)
-
-    async def get_working_memory(
-        self,
-        agent_id: str,
-        task_id: str
-    ) -> list[MemoryRecord]:
-        key = f"memory:working:{agent_id}:{task_id}"
-        value = await self.redis.get(key)
-        if not value:
-            return []
-        data = json.loads(value)
-        return [MemoryRecord(**d) for d in data]
-```
-
-**Files:**
-
-- `src/agentcore/memory/cache.py`
-- `tests/unit/memory/test_cache.py`
-- `tests/integration/memory/test_cache_integration.py`
-
----
-
-### MEM-018: Embedding Cache Layer
-
-**Priority:** P1
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** MEM-017
-**Owner:** Backend Engineer
-
-**Description:**
-Add Redis caching for embeddings to reduce API calls to embedding service.
-
-**Acceptance Criteria:**
-
-- [ ] Cache key: SHA-256 hash of input text
-- [ ] TTL: 24 hours (configurable)
-- [ ] Cache hit rate metric instrumented
-- [ ] Falls back to embedding service on cache miss
-- [ ] Atomic cache-aside pattern (check → fetch → store)
-- [ ] Integration test validates cache behavior
-- [ ] Performance test: 95%+ cache hit rate on repeated queries
-
-**Files:**
-
-- `src/agentcore/memory/encoding.py` (update)
-- `tests/integration/memory/test_embedding_cache.py`
-
----
-
-### MEM-019: MemoryEnabledAgent Base Class
-
-**Priority:** P1
-**Type:** Story
-**Effort:** 3 SP
-**Dependencies:** MEM-017
-**Owner:** Backend Engineer
-
-**Description:**
-Create MemoryEnabledAgent base class that agents can extend to gain memory capabilities.
-
-**Acceptance Criteria:**
-
-- [ ] Mixin class with memory_manager dependency
-- [ ] _store_interaction() helper method
-- [ ] _retrieve_context() helper method
-- [ ] _format_prompt_with_context() helper
-- [ ] Working memory automatically managed per task
-- [ ] Example agent implementation in documentation
-- [ ] Integration test with sample agent workflow
-- [ ] Backward compatible with existing Agent interface
-
-**Technical Details:**
-
-```python
-class MemoryEnabledAgent:
-    """Mixin for agents with memory capabilities."""
-
-    def __init__(self, memory_manager: MemoryManager, **kwargs):
-        self.memory = memory_manager
-        super().__init__(**kwargs)
-
-    async def _store_interaction(
-        self,
-        query: str,
-        response: str,
-        task_id: str | None = None,
-        success: bool = True
-    ) -> None:
-        interaction = Interaction(
-            id=str(uuid.uuid4()),
-            task_id=task_id,
-            query=query,
-            response=response,
-            timestamp=datetime.now(UTC),
-            success=success
-        )
-        await self.memory.add_interaction(self.agent_id, interaction)
-
-    async def _retrieve_context(
-        self,
-        query: str,
-        task_id: str | None = None,
-        max_tokens: int = 2000
-    ) -> str:
-        return await self.memory.get_relevant_context(
-            agent_id=self.agent_id,
-            query=query,
-            task_id=task_id,
-            max_tokens=max_tokens
-        )
-```
-
-**Files:**
-
-- `src/agentcore/memory/agent_mixin.py`
-- `examples/memory_enabled_agent.py`
-- `tests/integration/memory/test_agent_mixin.py`
-
----
-
-### MEM-020: Configuration Management
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 1 SP
-**Dependencies:** None
-**Owner:** Backend Engineer
-
-**Description:**
-Add memory system configuration to Settings with environment variable support.
-
-**Acceptance Criteria:**
-
-- [ ] MemorySettings class in config.py
-- [ ] Environment variables: MEMORY_CAPACITY_*, MEMORY_CACHE_TTL, MEMORY_RETRIEVAL_*
-- [ ] Default values for all settings
-- [ ] Validation: positive integers, float ranges 0-1
-- [ ] Documentation in .env.example
-- [ ] Settings loaded in memory module **init**.py
-- [ ] Integration test validates config loading
-
-**Technical Details:**
-
-```python
-class MemorySettings(BaseSettings):
-    # Capacity limits per memory type
-    memory_capacity_working: int = Field(default=10, ge=1)
-    memory_capacity_episodic: int = Field(default=50, ge=10)
-    memory_capacity_semantic: int = Field(default=1000, ge=100)
-    memory_capacity_procedural: int = Field(default=500, ge=50)
-
-    # Cache settings
-    memory_cache_ttl_seconds: int = Field(default=3600, ge=60)
-    memory_embedding_cache_ttl_seconds: int = Field(default=86400, ge=3600)
-
-    # Retrieval settings
-    memory_retrieval_k: int = Field(default=5, ge=1, le=50)
-    memory_retrieval_relevance_weight: float = Field(default=0.4, ge=0.0, le=1.0)
-    memory_retrieval_recency_weight: float = Field(default=0.3, ge=0.0, le=1.0)
-    memory_retrieval_frequency_weight: float = Field(default=0.3, ge=0.0, le=1.0)
-
-    # Compression settings
-    memory_compression_target_ratio: float = Field(default=0.5, ge=0.1, le=0.9)
-```
-
-**Files:**
-
-- `src/agentcore/a2a_protocol/config.py` (update)
-- `.env.example` (update)
-- `docs/configuration.md` (update)
-
----
-
-### MEM-021: Memory Module Initialization
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 1 SP
-**Dependencies:** MEM-008, MEM-017, MEM-020
-**Owner:** Backend Engineer
-
-**Description:**
-Set up memory module initialization with dependency injection and global instance management.
-
-**Acceptance Criteria:**
-
-- [ ] init_memory() function creates MemoryManager singleton
-- [ ] Dependency injection for database session, Redis, embedding service
-- [ ] Called from main.py startup event
-- [ ] close_memory() for cleanup on shutdown
-- [ ] Thread-safe initialization (use asyncio.Lock)
-- [ ] Health check endpoint includes memory system status
-- [ ] Integration test validates initialization
-
-**Files:**
-
-- `src/agentcore/memory/__init__.py`
-- `src/agentcore/a2a_protocol/main.py` (update)
-- `tests/integration/memory/test_initialization.py`
-
----
-
-### MEM-022: End-to-End Agent Workflow Test
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 2 SP
-**Dependencies:** MEM-019, MEM-021
-**Owner:** QA Engineer / Backend Engineer
-
-**Description:**
-Create comprehensive integration test demonstrating full agent workflow with memory.
-
-**Acceptance Criteria:**
-
-- [ ] Test scenario: Multi-turn conversation with context accumulation
-- [ ] Agent stores interactions after each turn
-- [ ] Agent retrieves context before responding
-- [ ] Working memory cached in Redis
-- [ ] Episodic and semantic memories persisted in PostgreSQL
-- [ ] Validates context efficiency (token reduction)
-- [ ] Validates retrieval relevance (manual inspection)
-- [ ] Performance assertions: <100ms retrieval, <500ms end-to-end
-
-**Test Scenario:**
-
-```python
-async def test_multi_turn_workflow():
-    # Turn 1: Initial query
-    response1 = await agent.process_query(
-        "What is the capital of France?",
-        task_id="task-123"
-    )
-    # Validate response1, check memory stored
-
-    # Turn 2: Related query (should use context)
-    response2 = await agent.process_query(
-        "What is its population?",
-        task_id="task-123"
-    )
-    # Validate response2 uses context from Turn 1
-
-    # Turn 3: Unrelated query
-    response3 = await agent.process_query(
-        "What is the capital of Spain?",
-        task_id="task-123"
-    )
-    # Validate correct memories retrieved
-```
-
-**Files:**
-
-- `tests/e2e/memory/test_agent_workflow.py`
-
----
-
-## Phase 4: Advanced Features & Production Readiness (Weeks 5-6, 20 SP)
-
-### MEM-023: Memory Pruning and Archival
-
-**Priority:** P1
-**Type:** Story
-**Effort:** 5 SP
-**Dependencies:** MEM-008
-**Owner:** Backend Engineer
-
-**Description:**
-Implement automatic memory pruning with configurable strategies and optional S3 archival.
-
-**Acceptance Criteria:**
-
-- [ ] Automatic pruning when capacity exceeded (background task)
-- [ ] Pruning strategies: least_relevant, oldest_first, least_accessed
-- [ ] archive_memory() exports to S3 before deletion (optional)
-- [ ] restore_memory() imports from S3 (optional)
-- [ ] Scheduled pruning job (hourly via APScheduler)
-- [ ] Metrics: pruned_count, archived_count, storage_bytes_saved
-- [ ] Configuration: pruning_enabled, archival_enabled, s3_bucket
-- [ ] Integration test with mock S3 (moto)
-- [ ] Load test: prune 10K memories in <5 seconds
-
-**Technical Details:**
-
-```python
-class PruningService:
-    def __init__(
-        self,
-        repository: MemoryRepository,
-        capacity_limits: dict[str, int],
-        archival_service: ArchivalService | None = None
-    ):
-        self.repository = repository
-        self.capacity_limits = capacity_limits
-        self.archival = archival_service
-
-    async def prune_if_needed(
-        self,
-        agent_id: str,
-        memory_type: str,
-        strategy: str = "least_relevant"
-    ) -> int:
-        current_count = await self.repository.count(agent_id, memory_type)
-        capacity = self.capacity_limits[memory_type]
-
-        if current_count <= capacity:
-            return 0
-
-        to_prune = current_count - capacity
-        memories = await self._select_for_pruning(
-            agent_id, memory_type, strategy, to_prune
-        )
-
-        # Archive if enabled
-        if self.archival:
-            await self.archival.archive_many(memories)
-
-        # Delete
-        await self.repository.delete_many([m.memory_id for m in memories])
-
-        return len(memories)
-```
-
-**Files:**
-
-- `src/agentcore/memory/pruning.py`
-- `src/agentcore/memory/archival.py`
-- `tests/unit/memory/test_pruning.py`
-- `tests/integration/memory/test_archival.py`
-
----
-
-### MEM-024: Performance Optimization and Monitoring
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 8 SP
-**Dependencies:** MEM-021, MEM-023
-**Owner:** Backend Engineer + DevOps
-
-**Description:**
-Optimize memory system performance and add comprehensive monitoring with Prometheus metrics.
-
-**Acceptance Criteria:**
-
-- [ ] PGVector IVFFlat index tuned (benchmark lists parameter)
-- [ ] Database connection pooling optimized
-- [ ] Query performance analysis (EXPLAIN ANALYZE)
-- [ ] Read replica support for retrieval queries
-- [ ] Prometheus metrics exported: memory_retrieval_latency_seconds, memory_cache_hit_rate, memory_storage_bytes
-- [ ] Grafana dashboard with key metrics
-- [ ] Load test: 100 RPS with <100ms p95 latency
-- [ ] Scalability test: 1M memories per agent without degradation
-- [ ] Performance regression tests in CI
-
-**Metrics to Track:**
-
-- Retrieval latency (p50, p95, p99)
-- Cache hit rates (working memory, embeddings)
-- Memory counts per type per agent
-- Storage size (bytes)
-- Pruning/archival rates
-- API error rates
-
-**Load Test Scenarios:**
-
-1. High read: 90% retrieval, 10% store (100 RPS)
-2. High write: 50% retrieval, 50% store (50 RPS)
-3. Burst: 500 RPS for 30 seconds
-4. Scale: 1000 agents × 1000 memories each
-
-**Files:**
-
-- `src/agentcore/memory/metrics.py`
-- `load_tests/memory_load_test.py`
-- `k8s/grafana/dashboards/memory.json`
-- `docs/performance/memory_benchmarks.md`
-
----
-
-### MEM-025: Documentation and Examples
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 3 SP
-**Dependencies:** MEM-022, MEM-024
-**Owner:** Technical Writer / Backend Engineer
-
-**Description:**
-Create comprehensive documentation and example implementations for memory system.
-
-**Acceptance Criteria:**
-
-- [ ] API reference: All JSON-RPC methods documented
-- [ ] Architecture guide: Component diagram, data flow, design decisions
-- [ ] Integration guide: Step-by-step agent integration
-- [ ] Configuration guide: All settings explained with examples
-- [ ] Performance guide: Optimization tips, capacity planning
-- [ ] Example implementations: 3 agent types (conversational, task-oriented, learning)
-- [ ] Troubleshooting guide: Common issues and solutions
-- [ ] Migration guide: Adding memory to existing agents
-- [ ] All code examples tested and working
-
-**Documentation Structure:**
-
-```
-docs/memory/
-├── README.md                    # Overview and quick start
-├── architecture.md              # System design and patterns
-├── api/
-│   ├── jsonrpc_methods.md      # All memory.* methods
-│   └── python_api.md           # MemoryManager, services
-├── guides/
-│   ├── integration.md          # Agent integration guide
-│   ├── configuration.md        # Settings and tuning
-│   └── performance.md          # Optimization guide
-├── examples/
-│   ├── conversational_agent.py
-│   ├── task_agent.py
-│   └── learning_agent.py
-└── troubleshooting.md
-```
-
-**Files:**
-
-- `docs/memory/*` (new directory)
-- `examples/memory/*` (new directory)
-- `README.md` (update with memory system section)
-
----
-
-### MEM-026: Production Deployment and Migration
-
-**Priority:** P0
-**Type:** Story
-**Effort:** 5 SP
-**Dependencies:** MEM-024, MEM-025
-**Owner:** DevOps + Backend Engineer
-
-**Description:**
-Prepare production deployment artifacts and create migration plan for existing agents.
-
-**Acceptance Criteria:**
-
-- [ ] Kubernetes manifests for memory system components
-- [ ] PGVector extension installation automation (Helm chart)
-- [ ] Database migration scripts tested on staging
-- [ ] Redis cluster configuration for production scale
-- [ ] Rollback plan documented and tested
-- [ ] Feature flag for gradual rollout (memory_enabled)
-- [ ] Migration script for existing agent data (if applicable)
-- [ ] Runbook for common operational tasks
-- [ ] Staging deployment validated (1 week soak test)
-- [ ] Production deployment checklist
-
-**Deployment Checklist:**
-
-- [ ] PGVector extension installed on PostgreSQL
-- [ ] Database migrations applied (memories table)
-- [ ] Redis cluster healthy with memory capacity
-- [ ] Memory service deployed and health checks passing
-- [ ] Monitoring dashboards configured
-- [ ] Alerts configured (high latency, low cache hit rate, storage capacity)
-- [ ] Feature flag enabled for pilot agents
-- [ ] Smoke tests passing in production
-- [ ] Rollback plan validated
-- [ ] On-call team briefed
-
-**Files:**
-
-- `k8s/memory/` (new directory with manifests)
-- `helm/agentcore/templates/memory/` (Helm chart updates)
-- `scripts/migrate_to_memory_system.py`
-- `docs/deployment/memory_system_deployment.md`
-- `docs/operations/memory_runbook.md`
-
----
-
-## Critical Path Analysis
-
-**Sequential Dependencies:**
-
-1. **Phase 1 Foundation** (Weeks 1-2): All Phase 2-4 tasks depend on Phase 1 completion
-   - Critical: MEM-002 → MEM-004 → MEM-005 → MEM-007 → MEM-008
-   - Parallel: MEM-003, MEM-006 can start immediately
-   - Parallel: MEM-009 can start after MEM-008
-
-2. **Phase 2 JSON-RPC** (Week 3): All handlers depend on MEM-010 registration
-   - MEM-010 must complete first
-   - MEM-011 through MEM-016 can be done in parallel after MEM-010
-
-3. **Phase 3 Integration** (Week 4): Depends on Phase 1 + Phase 2
-   - MEM-017 (cache) can start after MEM-008
-   - MEM-018 depends on MEM-017
-   - MEM-019 (agent mixin) depends on MEM-017
-   - MEM-020 (config) independent, can start anytime
-   - MEM-021 (init) depends on MEM-008, MEM-017, MEM-020
-   - MEM-022 (E2E test) depends on MEM-019, MEM-021
-
-4. **Phase 4 Advanced** (Weeks 5-6): Depends on Phase 3 completion
-   - MEM-023 (pruning) depends on MEM-008
-   - MEM-024 (optimization) depends on MEM-021, MEM-023
-   - MEM-025 (docs) depends on MEM-022, MEM-024
-   - MEM-026 (deployment) depends on MEM-024, MEM-025
-
-**Parallelization Opportunities:**
-
-- Phase 1: MEM-003 + MEM-006 parallel to MEM-002 → MEM-004 sequence
-- Phase 2: MEM-011 through MEM-016 all parallel after MEM-010
-- Phase 3: MEM-017 + MEM-020 can start in parallel
-- Phase 4: MEM-023 + MEM-025 can partially overlap with MEM-024
-
-**Critical Path Duration:** 6 weeks (assumes 2-3 engineers with good parallelization)
-
----
-
-## Team Allocation
-
-**Week 1-2 (Phase 1):**
-
-- Engineer 1: MEM-002, MEM-004, MEM-005 (database layer)
-- Engineer 2: MEM-003, MEM-006, MEM-007 (models + services)
-- Engineer 3: MEM-008, MEM-009 (manager + compression)
-
-**Week 3 (Phase 2):**
-
-- Engineer 1: MEM-010, MEM-011, MEM-012 (registration + core handlers)
-- Engineer 2: MEM-013, MEM-014, MEM-015 (secondary handlers)
-- Engineer 3: MEM-016 (stats) + integration test support
-
-**Week 4 (Phase 3):**
-
-- Engineer 1: MEM-017, MEM-018 (caching)
-- Engineer 2: MEM-019, MEM-021 (agent integration)
-- Engineer 3: MEM-020, MEM-022 (config + E2E tests)
-
-**Week 5-6 (Phase 4):**
-
-- Engineer 1: MEM-023 (pruning/archival)
-- Engineer 2: MEM-024 (performance optimization)
-- Engineer 3: MEM-025, MEM-026 (docs + deployment)
-- DevOps: MEM-026 (deployment automation)
+## Quick Wins (Week 1-2)
+
+1. **MEM-002 (Database Migration)** - Unblocks all development
+2. **MEM-003/004 (Models)** - Enables parallel repository work
+3. **MEM-005 (Repositories)** - Core data access ready early
 
 ---
 
 ## Risk Mitigation
 
-**Technical Risks:**
-
-1. **PGVector Performance** (MEM-024)
-   - Mitigation: Benchmark early, tune IVFFlat parameters, have read replica fallback
-   - Contingency: Switch to external vector DB (Qdrant) if needed (3-day spike)
-
-2. **Memory Coherence** (MEM-007)
-   - Mitigation: Implement synthetic contradiction tests
-   - Contingency: Add conflict resolution logic with user feedback loop
-
-3. **Embedding API Rate Limits** (MEM-006)
-   - Mitigation: Aggressive caching (MEM-018), rate limiting, circuit breaker
-   - Contingency: Fall back to local SentenceTransformers model
-
-**Process Risks:**
-
-1. **Scope Creep**
-   - Mitigation: Strict adherence to acceptance criteria, P0/P1/P2 prioritization
-   - Phase 4 features (MEM-023 archival, advanced monitoring) are nice-to-have
-
-2. **Integration Delays**
-   - Mitigation: Early integration tests (MEM-022), weekly sync with agent teams
-   - Buffer: 1 week of slack before hard deadline
+| Task | Risk | Mitigation | Contingency |
+|------|------|------------|-------------|
+| MEM-008 | Stage detection complexity | Early integration testing, mock data | Simplify to manual stage markers initially |
+| MEM-012 | gpt-4o-mini quality issues | COMPASS benchmarks validate approach | Fall back to gpt-4.1 with budget increase |
+| MEM-023 | Enhanced scoring performance | Profile and optimize early | Use simpler 3-factor scoring (embed, recency, stage) |
+| MEM-031 | PGVector scaling issues | Load test at 100K before 1M | Consider external vector DB (Pinecone, Weaviate) |
+| MEM-034 | COMPASS validation fails | Iterative tuning with benchmark feedback | Document deviations, target 80% of goals |
 
 ---
 
-## Success Criteria
+## Testing Strategy
 
-**Functional Completeness:**
+### Automated Testing Tasks
 
-- [ ] All 25 story tickets completed and accepted
-- [ ] All acceptance criteria met (100%)
-- [ ] 90%+ test coverage maintained
-- [ ] Zero P0/P1 bugs in production
+- **MEM-005, MEM-006, MEM-009, etc.** - Unit tests embedded in each story (target 95% coverage)
+- **MEM-008, MEM-010, MEM-022** - Integration tests for component interactions
+- **MEM-019, MEM-033** - Load tests for performance validation
+- **MEM-034** - COMPASS validation tests (benchmark suite)
 
-**Performance Targets:**
+### Quality Gates
 
-- [ ] 80%+ reduction in context tokens (long sessions)
-- [ ] 90%+ retrieval precision (manual evaluation on 100 test cases)
-- [ ] <100ms p95 retrieval latency
-- [ ] 1M+ memories per agent supported without degradation
-
-**Production Readiness:**
-
-- [ ] Deployed to staging for 1 week soak test
-- [ ] Load tests passing at 2x expected traffic
-- [ ] Monitoring dashboards operational
-- [ ] Runbooks and documentation complete
-- [ ] On-call team trained
-
-**Adoption:**
-
-- [ ] 3+ example agent implementations
-- [ ] 5+ pilot agents using memory system in production
-- [ ] Positive feedback from agent developers
+- **90%+ test coverage** for all memory components
+- **All critical paths have integration tests** (stage workflows, compression, retrieval)
+- **Performance tests validate SLOs** (<100ms retrieval, 10:1 compression ratio)
+- **COMPASS benchmarks met** (60-80% context reduction, +20% accuracy, 70-80% cost reduction)
 
 ---
 
-## Appendix: Story Point Reference
+## Team Allocation
 
-**Story Point Scale (Fibonacci):**
+**Backend Engineer (1 FTE):**
 
-- **1 SP**: 1-2 hours, simple config/registration
-- **2 SP**: 2-4 hours, straightforward implementation (models, basic handlers)
-- **3 SP**: 1 day, moderate complexity (repository, service integration)
-- **5 SP**: 1-2 days, complex logic (orchestration, hybrid algorithms)
-- **8 SP**: 2-3 days, significant integration (performance tuning, monitoring)
-- **13 SP**: 3-5 days, high complexity/uncertainty (load testing, optimization)
-- **21 SP**: 1+ weeks, should be broken down further
+- Database and models (Week 1)
+- Stage management (Week 2)
+- Retrieval and embedding (Week 3)
+- Compression infrastructure (Week 4-5)
+- Error tracking (Week 6)
+- Enhanced retrieval (Week 7)
+- ACE integration (Week 8)
+- Optimization and validation (Week 9-10)
 
-**Estimation Factors:**
+**DevOps Support (0.2 FTE):**
 
-- Technical complexity
-- Integration points
-- Testing requirements
-- Documentation needs
-- Uncertainty/unknowns
+- PGVector setup (Week 1)
+- Redis configuration (Week 5)
+- Monitoring setup (Week 10)
+
+---
+
+## Sprint Planning
+
+**2-week sprints, 32-35 SP velocity (1 engineer)**
+
+| Sprint | Focus | Story Points | Key Deliverables |
+|--------|-------|--------------|------------------|
+| Sprint 1 (Week 1-2) | Foundation + Stage Mgmt | 32 SP | Database, models, StageManager |
+| Sprint 2 (Week 3-4) | Retrieval + Compression Start | 32 SP | Basic retrieval, compression core |
+| Sprint 3 (Week 5-6) | Compression + Error Tracking | 33 SP | Task compression, error patterns |
+| Sprint 4 (Week 7-8) | Enhanced Retrieval + ACE | 35 SP | Multi-factor scoring, ACE interface |
+| Sprint 5 (Week 9-10) | Optimization + Validation | 33 SP | Performance tuning, COMPASS validation |
+
+**Total: 165 SP over 10 weeks**
+
+---
+
+## Appendix
+
+**Estimation Method:** Fibonacci story points based on complexity and effort
+**Story Point Scale:** 1 (trivial), 2 (simple), 3 (moderate), 5 (complex), 8 (very complex), 13 (epic-size)
+
+**Definition of Done:**
+
+- Code implemented and reviewed
+- Unit tests written (90%+ coverage for task)
+- Integration tests passing
+- Documentation updated (inline + API docs)
+- Deployed to staging environment
+- Performance validated (if applicable)
+- COMPASS targets met (if applicable)
+
+**COMPASS Validation Commitment:**
+
+All tasks contributing to COMPASS targets (MEM-012 through MEM-034) will be validated against benchmarks:
+- Context efficiency measured on 50-turn conversations
+- Cost reduction validated via actual gpt-4o-mini vs gpt-4.1 comparison
+- Compression quality validated via fact retention tests
+- Long-horizon accuracy validated on GAIA-style evaluation dataset
+
+---
+
+**Document Status:** ✅ Ready for Ticket Generation
+**Next Steps:** Generate story tickets (MEM-002 through MEM-036) in `.sage/tickets/`
