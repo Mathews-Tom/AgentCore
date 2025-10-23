@@ -13,6 +13,7 @@ from typing import Any
 
 import structlog
 
+from agentcore.integration.portkey.cost_models import OptimizationContext
 from agentcore.integration.portkey.exceptions import (
     PortkeyConfigurationError,
     PortkeyProviderError,
@@ -544,6 +545,80 @@ class ProviderRegistry:
             )
             raise
 
+    def select_cost_optimized_provider(
+        self,
+        criteria: ProviderSelectionCriteria,
+        optimization_context: OptimizationContext,
+    ) -> ProviderSelectionResult:
+        """Select provider with cost optimization.
+
+        Uses the cost optimizer for intelligent provider selection that
+        balances cost, performance, and quality requirements.
+
+        Args:
+            criteria: Provider selection criteria
+            optimization_context: Cost optimization context
+
+        Returns:
+            Provider selection result with cost-optimized selection
+
+        Raises:
+            PortkeyProviderError: If no suitable provider found
+        """
+        # Import here to avoid circular dependency
+        from agentcore.integration.portkey.cost_optimizer import CostOptimizer
+        from agentcore.integration.portkey.cost_tracker import get_cost_tracker
+
+        # Create optimizer instance
+        optimizer = CostOptimizer(
+            registry=self,
+            cost_tracker=get_cost_tracker(),
+        )
+
+        # Select optimal provider
+        selected_provider = optimizer.select_optimal_provider(criteria, optimization_context)
+
+        # Get fallback providers
+        all_candidates = [
+            p
+            for p in self.list_providers(enabled_only=True)
+            if p.provider_id != selected_provider.provider_id
+        ]
+
+        # Rank fallbacks by cost optimization score
+        comparisons = optimizer._compare_providers(  # type: ignore[attr-defined]
+            all_candidates[:10],  # Limit to top 10 for performance
+            optimization_context,
+        )
+
+        fallback_providers = [
+            self.get_provider(c.provider_id)
+            for c in comparisons[:3]
+            if self.get_provider(c.provider_id) is not None
+        ]
+
+        # Estimate cost
+        estimated_cost = optimizer.estimate_request_cost(
+            selected_provider,
+            optimization_context.estimated_input_tokens,
+            optimization_context.estimated_output_tokens,
+        )
+
+        # Get expected latency
+        expected_latency_ms = (
+            selected_provider.health.average_latency_ms
+            if selected_provider.health
+            else None
+        )
+
+        return ProviderSelectionResult(
+            provider=selected_provider,
+            fallback_providers=fallback_providers,
+            selection_reason=f"Cost-optimized selection: {optimization_context.optimization_strategy}",
+            estimated_cost=estimated_cost,
+            expected_latency_ms=expected_latency_ms,
+        )
+
     def get_stats(self) -> dict[str, Any]:
         """Get registry statistics.
 
@@ -569,12 +644,23 @@ class ProviderRegistry:
         for cb in self._circuit_breakers.values():
             cb_states[cb.state] = cb_states.get(cb.state, 0) + 1
 
+        # Get cost statistics if available
+        cost_stats: dict[str, Any] = {}
+        try:
+            from agentcore.integration.portkey.cost_tracker import get_cost_tracker
+
+            cost_tracker = get_cost_tracker()
+            cost_stats = cost_tracker.get_stats()
+        except Exception:
+            pass
+
         return {
             "total_providers": len(providers),
             "enabled_providers": len(enabled_providers),
             "healthy_providers": len(healthy_providers),
             "capability_counts": capability_counts,
             "circuit_breaker_states": cb_states,
+            "cost_tracking": cost_stats,
         }
 
 

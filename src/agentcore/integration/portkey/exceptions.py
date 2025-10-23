@@ -145,3 +145,23 @@ class PortkeyValidationError(PortkeyError):
         self.field = field
         field_info = f" (field: {field})" if field else ""
         super().__init__(f"Validation error{field_info}: {message}", status_code=400)
+
+
+class PortkeyBudgetExceededError(PortkeyError):
+    """Exception raised when budget limits are exceeded.
+
+    This exception is raised when:
+    - Hard budget limit is exceeded for a tenant
+    - Projected spend would exceed budget limit
+    - Budget enforcement prevents request execution
+    """
+
+    def __init__(self, message: str, tenant_id: str | None = None) -> None:
+        """Initialize the budget exceeded error.
+
+        Args:
+            message: Description of the budget limit violation
+            tenant_id: Optional tenant identifier
+        """
+        self.tenant_id = tenant_id
+        super().__init__(f"Budget exceeded: {message}", status_code=402)

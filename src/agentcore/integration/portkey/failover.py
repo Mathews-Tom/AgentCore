@@ -12,6 +12,7 @@ from typing import Any
 import structlog
 
 from agentcore.integration.portkey.client import PortkeyClient
+from agentcore.integration.portkey.cost_tracker import CostTracker
 from agentcore.integration.portkey.exceptions import (
     PortkeyError,
     PortkeyProviderError,
@@ -41,6 +42,7 @@ class FailoverManager:
         client: PortkeyClient,
         registry: ProviderRegistry,
         health_monitor: ProviderHealthMonitor,
+        cost_tracker: CostTracker | None = None,
         max_failover_attempts: int = 3,
     ) -> None:
         """Initialize the failover manager.
@@ -49,16 +51,19 @@ class FailoverManager:
             client: Portkey client for executing requests
             registry: Provider registry for selection
             health_monitor: Health monitor for tracking provider status
+            cost_tracker: Optional cost tracker for recording request costs
             max_failover_attempts: Maximum number of failover attempts
         """
         self.client = client
         self.registry = registry
         self.health_monitor = health_monitor
+        self.cost_tracker = cost_tracker
         self.max_failover_attempts = max_failover_attempts
 
         logger.info(
             "failover_manager_initialized",
             max_failover_attempts=max_failover_attempts,
+            cost_tracking_enabled=cost_tracker is not None,
         )
 
     async def execute_with_failover(
@@ -165,11 +170,44 @@ class FailoverManager:
                 # Update response with provider info
                 response.provider = provider_id
 
+                # Record cost if tracker is available
+                if self.cost_tracker and response.usage and provider.pricing:
+                    input_tokens = response.usage.get("prompt_tokens", 0)
+                    output_tokens = response.usage.get("completion_tokens", 0)
+
+                    cost_metrics = self.cost_tracker.calculate_request_cost(
+                        provider_id=provider_id,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        input_token_price=provider.pricing.input_token_price,
+                        output_token_price=provider.pricing.output_token_price,
+                        model=response.model,
+                        latency_ms=latency_ms,
+                        request_id=response.id,
+                        tenant_id=request.context.get("tenant_id"),
+                        workflow_id=request.context.get("workflow_id"),
+                        agent_id=request.context.get("agent_id"),
+                    )
+
+                    # Update response with cost
+                    response.cost = cost_metrics.total_cost
+
+                    try:
+                        self.cost_tracker.record_cost(cost_metrics)
+                    except Exception as cost_error:
+                        # Log but don't fail the request if cost tracking fails
+                        logger.warning(
+                            "cost_tracking_failed",
+                            provider_id=provider_id,
+                            error=str(cost_error),
+                        )
+
                 logger.info(
                     "provider_request_success",
                     provider_id=provider_id,
                     attempt=attempt,
                     latency_ms=latency_ms,
+                    cost=response.cost,
                 )
 
                 return response
@@ -378,6 +416,36 @@ class FailoverManager:
             )
 
             response.provider = provider_id
+
+            # Record cost if tracker is available
+            if self.cost_tracker and response.usage and provider.pricing:
+                input_tokens = response.usage.get("prompt_tokens", 0)
+                output_tokens = response.usage.get("completion_tokens", 0)
+
+                cost_metrics = self.cost_tracker.calculate_request_cost(
+                    provider_id=provider_id,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    input_token_price=provider.pricing.input_token_price,
+                    output_token_price=provider.pricing.output_token_price,
+                    model=response.model,
+                    latency_ms=latency_ms,
+                    request_id=response.id,
+                    tenant_id=request.context.get("tenant_id"),
+                    workflow_id=request.context.get("workflow_id"),
+                    agent_id=request.context.get("agent_id"),
+                )
+
+                response.cost = cost_metrics.total_cost
+
+                try:
+                    self.cost_tracker.record_cost(cost_metrics)
+                except Exception as cost_error:
+                    logger.warning(
+                        "cost_tracking_failed",
+                        provider_id=provider_id,
+                        error=str(cost_error),
+                    )
 
             return response
 
