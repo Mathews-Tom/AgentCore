@@ -7,6 +7,7 @@ Gateway and managing LLM requests across multiple providers.
 from __future__ import annotations
 
 import time
+import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -22,6 +23,7 @@ from agentcore.integration.portkey.exceptions import (
     PortkeyTimeoutError,
     PortkeyValidationError,
 )
+from agentcore.integration.portkey.metrics_collector import get_metrics_collector
 from agentcore.integration.portkey.models import LLMRequest, LLMResponse
 
 logger = structlog.get_logger(__name__)
@@ -71,11 +73,15 @@ class PortkeyClient:
         # Track client state
         self._closed = False
 
+        # Initialize metrics collector
+        self._metrics_collector = get_metrics_collector()
+
         logger.info(
             "portkey_client_initialized",
             base_url=self.config.base_url,
             timeout=self.config.timeout,
             caching_enabled=self.config.enable_caching,
+            metrics_enabled=self.config.enable_metrics,
         )
 
     async def complete(
@@ -114,6 +120,9 @@ class PortkeyClient:
                 context=request.context,
             )
 
+        # Generate request ID
+        request_id = str(uuid.uuid4())
+
         try:
             # Prepare request parameters
             params = self._prepare_request_params(request, kwargs)
@@ -130,10 +139,21 @@ class PortkeyClient:
                 latency_ms=latency_ms,
             )
 
+            # Collect metrics if enabled
+            if self.config.enable_metrics:
+                await self._collect_success_metrics(
+                    request_id=request_id,
+                    request=request,
+                    response=llm_response,
+                    start_time=start_time,
+                    params=params,
+                )
+
             # Log success
             if self.config.enable_logging:
                 logger.info(
                     "portkey_request_success",
+                    request_id=request_id,
                     model=llm_response.model,
                     latency_ms=latency_ms,
                     tokens=llm_response.usage,
@@ -146,9 +166,19 @@ class PortkeyClient:
             # Calculate error latency
             error_latency_ms = int((time.time() - start_time) * 1000)
 
+            # Collect error metrics if enabled
+            if self.config.enable_metrics:
+                await self._collect_error_metrics(
+                    request_id=request_id,
+                    request=request,
+                    error=exc,
+                    start_time=start_time,
+                )
+
             # Log error
             logger.error(
                 "portkey_request_failed",
+                request_id=request_id,
                 model=request.model,
                 latency_ms=error_latency_ms,
                 error=str(exc),
@@ -349,3 +379,107 @@ class PortkeyClient:
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit async context manager."""
         await self.close()
+
+    async def _collect_success_metrics(
+        self,
+        request_id: str,
+        request: LLMRequest,
+        response: LLMResponse,
+        start_time: float,
+        params: dict[str, Any],
+    ) -> None:
+        """Collect metrics for successful request.
+
+        Args:
+            request_id: Request identifier
+            request: Original request
+            response: Response received
+            start_time: Request start time
+            params: Request parameters
+        """
+        # Build request data
+        request_data = {
+            "model": request.model,
+            "messages": request.messages,
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "stream": request.stream,
+        }
+
+        # Build response data
+        response_data = {
+            "id": response.id,
+            "model": response.model,
+            "choices": response.choices,
+            "usage": response.usage,
+        }
+
+        # Build context
+        context = {
+            "request_id": request_id,
+            "trace_id": request.context.get("trace_id"),
+            "tenant_id": request.context.get("tenant_id"),
+            "workflow_id": request.context.get("workflow_id"),
+            "agent_id": request.context.get("agent_id"),
+            "session_id": request.context.get("session_id"),
+            "cost_data": {
+                "total_cost": response.cost or 0.0,
+                "input_cost": 0.0,  # Would be calculated by cost tracker
+                "output_cost": 0.0,
+            },
+            "cache_hit": False,  # Would be set by cache service
+        }
+
+        # Collect metrics
+        await self._metrics_collector.collect_from_response(
+            request=request_data,
+            response=response_data,
+            start_time=start_time,
+            provider_id=response.provider or "unknown",
+            provider_name=response.provider or "Unknown",
+            context=context,
+        )
+
+    async def _collect_error_metrics(
+        self,
+        request_id: str,
+        request: LLMRequest,
+        error: Exception,
+        start_time: float,
+    ) -> None:
+        """Collect metrics for failed request.
+
+        Args:
+            request_id: Request identifier
+            request: Original request
+            error: Exception that occurred
+            start_time: Request start time
+        """
+        # Build request data
+        request_data = {
+            "model": request.model,
+            "messages": request.messages,
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "stream": request.stream,
+        }
+
+        # Build context
+        context = {
+            "request_id": request_id,
+            "trace_id": request.context.get("trace_id"),
+            "tenant_id": request.context.get("tenant_id"),
+            "workflow_id": request.context.get("workflow_id"),
+            "agent_id": request.context.get("agent_id"),
+            "session_id": request.context.get("session_id"),
+        }
+
+        # Collect metrics
+        await self._metrics_collector.collect_from_error(
+            request=request_data,
+            error=error,
+            start_time=start_time,
+            provider_id="unknown",
+            provider_name="Unknown",
+            context=context,
+        )
