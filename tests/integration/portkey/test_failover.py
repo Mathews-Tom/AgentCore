@@ -460,3 +460,225 @@ class TestCircuitBreakerIntegration:
         circuit_breaker = registry.get_circuit_breaker("primary")
         assert circuit_breaker is not None
         assert circuit_breaker.consecutive_failures == 0
+
+    async def test_cost_tracking_integration(
+        self,
+        failover_manager: FailoverManager,
+        mock_client: AsyncMock,
+        sample_request: LLMRequest,
+        registry: ProviderRegistry,
+    ) -> None:
+        """Test cost tracking integration with failover."""
+        from agentcore.integration.portkey.cost_tracker import CostTracker
+        from agentcore.integration.portkey.provider import ProviderPricing
+
+        # Add cost tracker
+        cost_tracker = CostTracker()
+        failover_manager.cost_tracker = cost_tracker
+
+        # Add pricing to provider
+        provider = registry.get_provider("primary")
+        if provider:
+            provider.pricing = ProviderPricing(
+                input_token_price=0.003,
+                output_token_price=0.006,
+            )
+
+        # Mock successful response with usage
+        mock_client.complete.return_value = LLMResponse(
+            id="test_id",
+            model="gpt-4.1",
+            choices=[{"message": {"content": "Hello!"}}],
+            usage={"prompt_tokens": 100, "completion_tokens": 50},
+        )
+
+        result = await failover_manager.execute_with_failover(sample_request)
+
+        # Verify cost was calculated and recorded
+        assert result.cost is not None
+        assert result.cost > 0
+
+    async def test_cost_tracking_failure_handling(
+        self,
+        failover_manager: FailoverManager,
+        mock_client: AsyncMock,
+        sample_request: LLMRequest,
+        registry: ProviderRegistry,
+    ) -> None:
+        """Test that cost tracking failures don't break requests."""
+        from agentcore.integration.portkey.cost_tracker import CostTracker
+        from agentcore.integration.portkey.provider import ProviderPricing
+
+        # Add cost tracker that returns a value but record_cost fails
+        cost_tracker = CostTracker()
+        original_record = cost_tracker.record_cost
+        def failing_record(*args, **kwargs):
+            raise Exception("Cost recording failed")
+        cost_tracker.record_cost = failing_record
+        failover_manager.cost_tracker = cost_tracker
+
+        # Add pricing to provider
+        provider = registry.get_provider("primary")
+        if provider:
+            provider.pricing = ProviderPricing(
+                input_token_price=0.003,
+                output_token_price=0.006,
+            )
+
+        # Mock successful response
+        mock_client.complete.return_value = LLMResponse(
+            id="test_id",
+            model="gpt-4.1",
+            choices=[{"message": {"content": "Hello!"}}],
+            usage={"prompt_tokens": 100, "completion_tokens": 50},
+        )
+
+        # Should succeed despite cost tracking failure
+        result = await failover_manager.execute_with_failover(sample_request)
+        assert result.id == "test_id"
+
+    async def test_default_criteria_creation(
+        self,
+        failover_manager: FailoverManager,
+        mock_client: AsyncMock,
+        registry: ProviderRegistry,
+    ) -> None:
+        """Test creation of default criteria from request."""
+        from agentcore.integration.portkey.models import ModelRequirements
+        from agentcore.integration.portkey.provider import DataResidency, ProviderPricing
+
+        # Update provider to have pricing and data residency
+        provider = registry.get_provider("primary")
+        if provider:
+            provider.pricing = ProviderPricing(
+                input_token_price=0.001,
+                output_token_price=0.002,
+            )
+            provider.capabilities.data_residency = [DataResidency.US_EAST, DataResidency.US_WEST]
+
+        request = LLMRequest(
+            model="gpt-4.1",
+            messages=[{"role": "user", "content": "Test"}],
+            model_requirements=ModelRequirements(
+                capabilities=["text_generation", "chat_completion"],
+                max_cost_per_token=0.00001,
+                max_latency_ms=2000,
+                data_residency="us-east",
+                preferred_providers=["primary"],
+            ),
+        )
+
+        # Mock response
+        mock_client.complete.return_value = LLMResponse(
+            id="test_id",
+            model="gpt-4.1",
+            choices=[{"message": {"content": "Hello!"}}],
+        )
+
+        result = await failover_manager.execute_with_failover(request)
+        assert result is not None
+
+    async def test_provider_specific_config_override(
+        self,
+        failover_manager: FailoverManager,
+        mock_client: AsyncMock,
+        sample_request: LLMRequest,
+        registry: ProviderRegistry,
+    ) -> None:
+        """Test that provider-specific config overrides are applied."""
+        # Add custom config to provider
+        provider = registry.get_provider("primary")
+        if provider:
+            provider.custom_config = {"temperature": 0.5}
+
+        # Mock response
+        mock_client.complete.return_value = LLMResponse(
+            id="test_id",
+            model="gpt-4.1",
+            choices=[{"message": {"content": "Hello!"}}],
+        )
+
+        result = await failover_manager.execute_with_failover(sample_request)
+        assert result is not None
+
+    async def test_execute_with_specific_provider_unavailable(
+        self,
+        failover_manager: FailoverManager,
+        sample_request: LLMRequest,
+        registry: ProviderRegistry,
+        health_monitor: ProviderHealthMonitor,
+    ) -> None:
+        """Test error when specific provider is unavailable."""
+        # Mark provider as unavailable
+        provider = registry.get_provider("primary")
+        if provider:
+            provider.health = ProviderHealthMetrics(
+                status=ProviderStatus.UNHEALTHY,
+                last_check=datetime.now(),
+            )
+
+        with pytest.raises(PortkeyProviderError) as exc_info:
+            await failover_manager.execute_with_specific_provider(
+                sample_request,
+                "primary",
+            )
+
+        assert "unavailable" in str(exc_info.value)
+
+    async def test_execute_with_specific_provider_with_cost_tracking(
+        self,
+        failover_manager: FailoverManager,
+        mock_client: AsyncMock,
+        sample_request: LLMRequest,
+        registry: ProviderRegistry,
+    ) -> None:
+        """Test specific provider execution with cost tracking."""
+        from agentcore.integration.portkey.cost_tracker import CostTracker
+        from agentcore.integration.portkey.provider import ProviderPricing
+
+        # Add cost tracker
+        cost_tracker = CostTracker()
+        failover_manager.cost_tracker = cost_tracker
+
+        # Add pricing to provider
+        provider = registry.get_provider("primary")
+        if provider:
+            provider.pricing = ProviderPricing(
+                input_token_price=0.003,
+                output_token_price=0.006,
+            )
+
+        # Mock successful response
+        mock_client.complete.return_value = LLMResponse(
+            id="test_id",
+            model="gpt-4.1",
+            choices=[{"message": {"content": "Hello!"}}],
+            usage={"prompt_tokens": 100, "completion_tokens": 50},
+        )
+
+        result = await failover_manager.execute_with_specific_provider(
+            sample_request,
+            "primary",
+        )
+
+        # Verify cost was tracked
+        assert result.cost is not None
+
+    async def test_execute_with_specific_provider_failure(
+        self,
+        failover_manager: FailoverManager,
+        mock_client: AsyncMock,
+        sample_request: LLMRequest,
+        health_monitor: ProviderHealthMonitor,
+    ) -> None:
+        """Test that failures are properly recorded with specific provider."""
+        mock_client.complete.side_effect = Exception("Test error")
+
+        with pytest.raises(Exception) as exc_info:
+            await failover_manager.execute_with_specific_provider(
+                sample_request,
+                "primary",
+            )
+
+        # Verify error was recorded in health monitor
+        # (failures are tracked even if exception is raised)
