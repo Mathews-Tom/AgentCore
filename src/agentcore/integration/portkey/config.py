@@ -117,6 +117,64 @@ class PortkeyConfig(BaseSettings):
         description="Header name for trace ID propagation",
     )
 
+    # Performance Monitoring (INT-005)
+    enable_metrics: bool = Field(
+        default=True,
+        description="Enable performance metrics collection",
+    )
+
+    metrics_collection_interval: int = Field(
+        default=60,
+        description="Metrics aggregation interval in seconds",
+        ge=1,
+        le=3600,
+    )
+
+    enable_sla_monitoring: bool = Field(
+        default=True,
+        description="Enable SLA monitoring and alerts",
+    )
+
+    sla_availability_target: float = Field(
+        default=99.9,
+        description="Target availability percentage for SLA",
+        ge=0.0,
+        le=100.0,
+    )
+
+    sla_response_time_target_ms: int = Field(
+        default=2000,
+        description="Target response time in milliseconds for SLA",
+        ge=100,
+        le=10000,
+    )
+
+    sla_success_rate_target: float = Field(
+        default=99.5,
+        description="Target success rate percentage for SLA",
+        ge=0.0,
+        le=100.0,
+    )
+
+    enable_prometheus_export: bool = Field(
+        default=True,
+        description="Enable Prometheus metrics export",
+    )
+
+    prometheus_export_port: int = Field(
+        default=9090,
+        description="Port for Prometheus metrics export",
+        ge=1024,
+        le=65535,
+    )
+
+    alert_debounce_seconds: int = Field(
+        default=300,
+        description="Seconds between duplicate performance alerts",
+        ge=60,
+        le=3600,
+    )
+
     # Metadata
     metadata: dict[str, Any] = Field(
         default_factory=dict,
