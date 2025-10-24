@@ -1,0 +1,192 @@
+name: Integration Layer Load Testing
+
+on:
+  push:
+    branches: [main, develop, 'feature/int-*']
+    paths:
+      - 'src/agentcore/integration/**'
+      - 'tests/load/integration_**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/agentcore/integration/**'
+      - 'tests/load/integration_**'
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '1000'
+      duration:
+        description: 'Test duration (e.g., 2m, 5m)'
+        required: false
+        default: '2m'
+
+jobs:
+  load-test:
+    name: Run Load Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: agentcore
+          POSTGRES_PASSWORD: agentcore
+          POSTGRES_DB: agentcore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://agentcore:agentcore@localhost:5432/agentcore_test
+
+      - name: Start AgentCore server
+        run: |
+          uv run uvicorn agentcore.a2a_protocol.main:app \
+            --host 0.0.0.0 \
+            --port 8001 \
+            &
+          sleep 10
+        env:
+          DATABASE_URL: postgresql://agentcore:agentcore@localhost:5432/agentcore_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8001/health > /dev/null; then
+              echo "Server is ready"
+              exit 0
+            fi
+            echo "Waiting for server..."
+            sleep 2
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: Run load tests
+        run: |
+          chmod +x tests/load/validate_performance.sh
+          USERS=${{ github.event.inputs.users || '500' }} \
+          RUN_TIME=${{ github.event.inputs.duration || '2m' }} \
+          ./tests/load/validate_performance.sh
+        env:
+          HOST: http://localhost:8001
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: test-results/
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const resultsDir = fs.readdirSync('test-results/')[0];
+            const outputLog = fs.readFileSync(`test-results/${resultsDir}/output.log`, 'utf8');
+
+            // Extract summary from log
+            const summary = outputLog.split('PERFORMANCE TARGETS')[1] || 'See artifacts for details';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: `## Load Test Results\n\n${summary}\n\n[View full report](${context.payload.pull_request.html_url}/checks)`
+            });
+
+  performance-benchmarks:
+    name: Run Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run performance benchmarks
+        run: |
+          uv run pytest tests/load/integration_performance_benchmarks.py \
+            -v \
+            -m benchmark \
+            -s \
+            --benchmark-json=benchmark-results.json
+        continue-on-error: true
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results.json
+          retention-days: 30
+
+      - name: Comment PR with benchmark results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('benchmark-results.json')) {
+              const results = JSON.parse(fs.readFileSync('benchmark-results.json', 'utf8'));
+              const summary = `## Performance Benchmark Results\n\nCompleted ${results.benchmarks.length} benchmarks\n\n[View full results](${context.payload.pull_request.html_url}/checks)`;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                body: summary
+              });
+            }
