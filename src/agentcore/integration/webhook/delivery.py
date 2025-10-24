@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -197,7 +197,7 @@ class DeliveryService:
                         attempt,
                     )
 
-                    next_retry_at = datetime.utcnow() + timedelta(seconds=retry_delay)
+                    next_retry_at = datetime.now(UTC) + timedelta(seconds=retry_delay)
 
                     await self._update_delivery(
                         delivery,
@@ -273,7 +273,7 @@ class DeliveryService:
         Returns:
             Delivery result
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             # Acquire semaphore for rate limiting
@@ -291,7 +291,7 @@ class DeliveryService:
                 )
 
                 # Calculate latency
-                latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+                latency_ms = (datetime.now(UTC) - start_time).total_seconds() * 1000
 
                 # Check response status
                 if 200 <= response.status_code < 300:
@@ -301,7 +301,7 @@ class DeliveryService:
                         DeliveryStatus.DELIVERED,
                         status_code=response.status_code,
                         response_body=response.text[:1000],  # Truncate
-                        delivered_at=datetime.utcnow(),
+                        delivered_at=datetime.now(UTC),
                     )
 
                     logger.debug(
@@ -441,7 +441,7 @@ class DeliveryService:
         """
         async with self._lock:
             delivery.status = status
-            delivery.updated_at = datetime.utcnow()
+            delivery.updated_at = datetime.now(UTC)
 
             if status_code is not None:
                 delivery.status_code = status_code

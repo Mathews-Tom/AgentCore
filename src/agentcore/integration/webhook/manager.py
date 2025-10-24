@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -217,7 +217,7 @@ class WebhookManager:
             if metadata is not None:
                 webhook.metadata = metadata
 
-            webhook.updated_at = datetime.utcnow()
+            webhook.updated_at = datetime.now(UTC)
             self._webhooks[webhook_id] = webhook
 
         return webhook
@@ -294,10 +294,10 @@ class WebhookManager:
 
             if success:
                 stats["successful_deliveries"] += 1
-                stats["last_delivery_at"] = datetime.utcnow()
+                stats["last_delivery_at"] = datetime.now(UTC)
             else:
                 stats["failed_deliveries"] += 1
-                stats["last_failure_at"] = datetime.utcnow()
+                stats["last_failure_at"] = datetime.now(UTC)
 
             # Update average latency
             if latency_ms is not None:

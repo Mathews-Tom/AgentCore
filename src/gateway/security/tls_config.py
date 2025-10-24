@@ -187,7 +187,7 @@ def validate_certificate(cert_path: str | Path) -> dict[str, any]:
         FileNotFoundError: If certificate not found
         ssl.SSLError: On certificate validation errors
     """
-    import datetime
+    from datetime import UTC, datetime
 
     from cryptography import x509
     from cryptography.hazmat.backends import default_backend
@@ -208,7 +208,7 @@ def validate_certificate(cert_path: str | Path) -> dict[str, any]:
     issuer = cert.issuer
     not_before = cert.not_valid_before_utc
     not_after = cert.not_valid_after_utc
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.now(UTC)
 
     # Check validity
     is_valid = not_before <= now <= not_after
