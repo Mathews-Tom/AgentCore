@@ -58,6 +58,65 @@ class CostTracker:
             alert_debounce_seconds=alert_debounce_seconds,
         )
 
+    def track_request(
+        self,
+        provider: str,
+        model: str,
+        cost: float,
+        tokens: int,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        latency_ms: int | None = None,
+        request_id: str | None = None,
+        tenant_id: str | None = None,
+        workflow_id: str | None = None,
+        agent_id: str | None = None,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        """Track a request with simplified parameters (backward compatibility).
+
+        Args:
+            provider: Provider identifier
+            model: Model used
+            cost: Total cost in USD
+            tokens: Total tokens (input + output)
+            input_tokens: Optional input tokens (defaults to tokens/2)
+            output_tokens: Optional output tokens (defaults to tokens/2)
+            latency_ms: Request latency in milliseconds
+            request_id: Unique request identifier
+            tenant_id: Tenant identifier
+            workflow_id: Workflow identifier
+            agent_id: Agent identifier
+            tags: Custom tags
+        """
+        # If input/output tokens not provided, split total evenly
+        if input_tokens is None and output_tokens is None:
+            input_tokens = tokens // 2
+            output_tokens = tokens - input_tokens
+        elif input_tokens is None:
+            input_tokens = tokens - (output_tokens or 0)
+        elif output_tokens is None:
+            output_tokens = tokens - input_tokens
+
+        metrics = CostMetrics(
+            total_cost=cost,
+            input_cost=cost / 2,  # Simple split assumption
+            output_cost=cost / 2,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            provider_id=provider,
+            model=model,
+            timestamp=datetime.now(),
+            latency_ms=latency_ms,
+            request_id=request_id,
+            tenant_id=tenant_id,
+            workflow_id=workflow_id,
+            agent_id=agent_id,
+            tags=tags or {},
+        )
+
+        self.record_cost(metrics)
+
     def record_cost(self, metrics: CostMetrics) -> None:
         """Record cost metrics for a request.
 
@@ -430,8 +489,13 @@ class CostTracker:
         last_24h = [m for m in self._cost_history if m.timestamp >= now - timedelta(days=1)]
         last_7d = [m for m in self._cost_history if m.timestamp >= now - timedelta(days=7)]
 
+        total_records = len(self._cost_history)
+        total_cost = sum(m.total_cost for m in self._cost_history)
+
         return {
-            "total_records": len(self._cost_history),
+            "total_records": total_records,
+            "total_requests": total_records,  # Alias for backward compatibility
+            "total_cost": total_cost,
             "active_budgets": len(self._budgets),
             "total_alerts": len(self._alerts),
             "unacknowledged_alerts": len([a for a in self._alerts if not a.acknowledged]),

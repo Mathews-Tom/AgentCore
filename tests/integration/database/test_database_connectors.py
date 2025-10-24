@@ -81,20 +81,21 @@ class MockPostgreSQLConnector(PostgreSQLConnector):
         # Simple query parsing for mock
         query_lower = query.lower()
 
-        if "select * from users" in query_lower:
+        # Check for WHERE clause first (before checking for simple SELECT)
+        if "where" in query_lower and params:
+            # Simple WHERE clause simulation
+            table = "users" if "users" in query_lower else "orders"
+            rows = list(self._mock_data[table])  # Create copy to avoid modifying original
+            # Filter by params (simple equality check)
+            for key, value in params.items():
+                rows = [r for r in rows if r.get(key) == value]
+            columns = list(rows[0].keys()) if rows else []
+        elif "select * from users" in query_lower:
             rows = self._mock_data["users"]
             columns = ["id", "name", "email"]
         elif "select * from orders" in query_lower:
             rows = self._mock_data["orders"]
             columns = ["id", "user_id", "total"]
-        elif "where" in query_lower and params:
-            # Simple WHERE clause simulation
-            table = "users" if "users" in query_lower else "orders"
-            rows = self._mock_data[table]
-            # Filter by params (simple equality check)
-            for key, value in params.items():
-                rows = [r for r in rows if r.get(key) == value]
-            columns = list(rows[0].keys()) if rows else []
         else:
             rows = []
             columns = []

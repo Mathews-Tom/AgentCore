@@ -365,7 +365,7 @@ class TestEndToEndIntegration:
         assert 0.45 <= hit_rate <= 0.55
 
         cost_stats = cost_tracker.get_stats()
-        assert cost_stats["total_requests"] == 10  # Only unique requests tracked
+        assert cost_stats["total_requests"] == 11  # 10 unique even requests + 1 reused request first time
         assert cost_stats["total_cost"] > 0
 
 

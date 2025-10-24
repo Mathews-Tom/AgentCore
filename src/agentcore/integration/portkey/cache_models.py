@@ -329,6 +329,24 @@ class CacheStats(BaseModel):
         """Record a cache error."""
         self.errors += 1
 
+    @property
+    def hits(self) -> int:
+        """Alias for cache_hits (backward compatibility).
+
+        Returns:
+            Number of cache hits
+        """
+        return self.cache_hits
+
+    @property
+    def misses(self) -> int:
+        """Alias for cache_misses (backward compatibility).
+
+        Returns:
+            Number of cache misses
+        """
+        return self.cache_misses
+
 
 class CacheConfig(BaseModel):
     """Configuration for cache behavior.
@@ -361,7 +379,7 @@ class CacheConfig(BaseModel):
     l1_ttl_seconds: int = Field(
         default=3600,
         description="L1 cache TTL in seconds (1 hour default)",
-        ge=60,
+        ge=1,
     )
     l1_eviction_policy: EvictionPolicy = Field(
         default=EvictionPolicy.LRU,

@@ -427,12 +427,14 @@ class CacheService:
         start_time = time.time()
 
         # Generate cache key
+        # Note: provider is intentionally set to None for lookup to enable
+        # cache hits regardless of which provider served the request
         cache_key_obj = CacheKey.from_request(
             model=request.model,
             messages=request.messages,
             temperature=request.temperature,
             max_tokens=request.max_tokens,
-            provider=request.context.get("selected_provider"),
+            provider=None,  # Provider-agnostic caching
         )
 
         # Use appropriate hash based on cache mode
@@ -517,12 +519,14 @@ class CacheService:
             return
 
         # Generate cache key
+        # Note: provider is intentionally set to None to enable
+        # cache hits regardless of which provider served the request
         cache_key_obj = CacheKey.from_request(
             model=request.model,
             messages=request.messages,
             temperature=request.temperature,
             max_tokens=request.max_tokens,
-            provider=response.provider,
+            provider=None,  # Provider-agnostic caching
         )
 
         # Use appropriate hash based on cache mode
