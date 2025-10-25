@@ -18,6 +18,7 @@
   3. ACE integration timing (mitigation: mock interface first)
 
 **COMPASS Targets:**
+
 - 60-80% context efficiency
 - 20% performance improvement on long-horizon tasks
 - 70-80% cost reduction via test-time scaling
@@ -848,6 +849,7 @@ Total Critical Path: 62 days (~10 weeks)
 **COMPASS Validation Commitment:**
 
 All tasks contributing to COMPASS targets (MEM-012 through MEM-034) will be validated against benchmarks:
+
 - Context efficiency measured on 50-turn conversations
 - Cost reduction validated via actual gpt-4o-mini vs gpt-4.1 comparison
 - Compression quality validated via fact retention tests
