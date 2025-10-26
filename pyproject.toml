@@ -75,6 +75,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.42b0",
     "opentelemetry-exporter-otlp>=1.21.0",
     "openai>=2.6.1",
+    "anthropic>=0.40.0",
 ]
 
 [project.urls]
