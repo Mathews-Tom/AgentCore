@@ -25,6 +25,7 @@ from agentcore.a2a_protocol.models.llm import (
     LLMUsage,
     ProviderError,
     ProviderTimeoutError,
+    RateLimitError as CustomRateLimitError,
 )
 from agentcore.a2a_protocol.services.llm_client_gemini import LLMClientGemini
 
@@ -307,7 +308,7 @@ class TestLLMClientGeminiComplete:
         with patch("agentcore.a2a_protocol.services.llm_client_gemini.genai.GenerativeModel", return_value=mock_model):
             with patch("agentcore.a2a_protocol.services.llm_client_gemini.genai.GenerationConfig"):
                 with patch("asyncio.sleep", new_callable=AsyncMock):
-                    with pytest.raises(ProviderError) as exc_info:
+                    with pytest.raises(CustomRateLimitError) as exc_info:
                         await llm_client.complete(sample_request)
 
         assert exc_info.value.provider == "gemini"

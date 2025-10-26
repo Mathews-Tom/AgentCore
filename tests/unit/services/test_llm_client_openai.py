@@ -31,6 +31,7 @@ from agentcore.a2a_protocol.models.llm import (
     LLMUsage,
     ProviderError,
     ProviderTimeoutError,
+    RateLimitError as CustomRateLimitError,
 )
 from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
 
@@ -272,7 +273,7 @@ class TestLLMClientOpenAIComplete:
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
-            with pytest.raises(ProviderError) as exc_info:
+            with pytest.raises(CustomRateLimitError) as exc_info:
                 await llm_client.complete(sample_request)
 
         assert exc_info.value.provider == "openai"
@@ -316,7 +317,7 @@ class TestLLMClientOpenAIComplete:
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-            with pytest.raises(ProviderError):
+            with pytest.raises(CustomRateLimitError):
                 await llm_client.complete(sample_request)
 
             # Verify exponential backoff: 1s, 2s (only 2 sleeps for 3 attempts)
