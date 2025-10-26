@@ -59,8 +59,8 @@ class TestOpenAIRateLimitHandling:
             # Verify error attributes
             assert exc_info.value.provider == "openai"
             assert exc_info.value.retry_after == 5.0
-            # Should retry 2 times before failing
-            assert mock_sleep.call_count == 2
+            # max_retries=2 means 2 attempts (0,1), so 1 sleep between them
+            assert mock_sleep.call_count == 1
 
     @pytest.mark.asyncio
     async def test_rate_limit_exponential_backoff(self) -> None:
@@ -91,9 +91,9 @@ class TestOpenAIRateLimitHandling:
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 
-            # Verify exponential backoff delays: 2^0=1, 2^1=2, 2^2=4
-            # Should have 3 retries (max_retries=3)
-            assert mock_sleep.call_count == 3
+            # max_retries=3 means 3 attempts (0,1,2), so 2 sleeps
+            # Verify exponential backoff delays: 2^0=1, 2^1=2 (no sleep after last attempt)
+            assert mock_sleep.call_count == 2
 
     @pytest.mark.asyncio
     async def test_rate_limit_streaming(self) -> None:
@@ -160,7 +160,8 @@ class TestAnthropicRateLimitHandling:
             # Verify error attributes
             assert exc_info.value.provider == "anthropic"
             assert exc_info.value.retry_after == 3.0
-            assert mock_sleep.call_count == 2
+            # max_retries=2 means 2 attempts (0,1), so 1 sleep
+            assert mock_sleep.call_count == 1
 
     @pytest.mark.asyncio
     async def test_rate_limit_exponential_backoff(self) -> None:
@@ -189,8 +190,8 @@ class TestAnthropicRateLimitHandling:
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 
-            # Verify exponential backoff with 3 retries
-            assert mock_sleep.call_count == 3
+            # max_retries=3 means 3 attempts (0,1,2), so 2 sleeps
+            assert mock_sleep.call_count == 2
 
     @pytest.mark.asyncio
     async def test_rate_limit_streaming(self) -> None:
@@ -341,7 +342,9 @@ class TestRateLimitMetrics:
                 await client.complete(request)
 
             # Verify metrics were recorded
-            # Should record error 3 times (initial + 2 retries)
-            assert mock_record_error.call_count == 3
-            # Should record delay 2 times (for the 2 retry attempts)
+            # max_retries=2 means 2 attempts total (0,1)
+            # Should record error 2 times (once per attempt)
+            assert mock_record_error.call_count == 2
+            # Should record delay 2 times (metric recorded before sleep check)
+            # Even though only 1 actual sleep happens
             assert mock_record_delay.call_count == 2

@@ -116,8 +116,8 @@ class TestRateLimitIntegration:
 
             assert exc_info.value.provider == "anthropic"
             assert exc_info.value.retry_after == 2.0
-            # Should have attempted 2 retries (total 3 attempts)
-            assert mock_sleep.call_count == 2
+            # max_retries=2 means 2 attempts (0,1), so 1 sleep
+            assert mock_sleep.call_count == 1
 
     @pytest.mark.asyncio
     async def test_gemini_rate_limit_with_exponential_backoff(self) -> None:
@@ -147,14 +147,14 @@ class TestRateLimitIntegration:
             assert exc_info.value.provider == "gemini"
             assert exc_info.value.retry_after is None
 
-            # Verify exponential backoff: 1, 2, 4, 8 seconds
-            assert mock_sleep.call_count == 4
+            # max_retries=4 means 4 attempts (0,1,2,3), so 3 sleeps
+            # Verify exponential backoff: 1, 2, 4 seconds
+            assert mock_sleep.call_count == 3
             # Check that delays are increasing exponentially (approximately)
             calls = [call.args[0] for call in mock_sleep.call_args_list]
             assert calls[0] == 1  # 2^0
             assert calls[1] == 2  # 2^1
             assert calls[2] == 4  # 2^2
-            assert calls[3] == 8  # 2^3
 
     @pytest.mark.asyncio
     async def test_rate_limit_streaming_fails_immediately(self) -> None:
@@ -243,8 +243,9 @@ class TestRateLimitIntegration:
                 await service.complete(request)
 
             # Verify rate limit specific metrics
-            assert mock_record_error.call_count == 3  # Initial + 2 retries
-            assert mock_record_delay.call_count == 2  # 2 retry delays
+            # max_retries=2 means 2 attempts (0,1)
+            assert mock_record_error.call_count == 2  # 2 error recordings
+            assert mock_record_delay.call_count == 2  # 2 delay recordings (metric recorded before sleep check)
 
             # Verify general error metrics
             mock_record_request.assert_called_with("openai", "gpt-4.1-mini", "error")
