@@ -37,8 +37,11 @@ class TestOpenAIRateLimitHandling:
         # Mock response with Retry-After header
         mock_response = Mock()
         mock_response.headers = {"Retry-After": "5"}
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch("agentcore.a2a_protocol.services.llm_client_openai.AsyncOpenAI") as mock_openai,
@@ -69,8 +72,13 @@ class TestOpenAIRateLimitHandling:
         )
 
         # Mock rate limit error without Retry-After header
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = None
+        mock_response = Mock()
+        mock_response.headers = {}
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch.object(
@@ -100,8 +108,11 @@ class TestOpenAIRateLimitHandling:
         # Mock rate limit error with Retry-After
         mock_response = Mock()
         mock_response.headers = {"Retry-After": "10"}
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with patch.object(
             client.client.chat.completions, "create", side_effect=rate_limit_error
@@ -131,8 +142,11 @@ class TestAnthropicRateLimitHandling:
         # Mock response with retry-after header
         mock_response = Mock()
         mock_response.headers = {"retry-after": "3"}
-        rate_limit_error = AnthropicRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = AnthropicRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch.object(
@@ -158,8 +172,13 @@ class TestAnthropicRateLimitHandling:
         )
 
         # Mock rate limit error without retry-after header
-        rate_limit_error = AnthropicRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = None
+        mock_response = Mock()
+        mock_response.headers = {}
+        rate_limit_error = AnthropicRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch.object(
@@ -186,8 +205,11 @@ class TestAnthropicRateLimitHandling:
         # Mock rate limit error
         mock_response = Mock()
         mock_response.headers = {"retry-after": "7"}
-        rate_limit_error = AnthropicRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = AnthropicRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with patch.object(
             client.client.messages, "create", side_effect=rate_limit_error
@@ -229,8 +251,9 @@ class TestGeminiRateLimitHandling:
             # Verify error attributes
             assert exc_info.value.provider == "gemini"
             assert exc_info.value.retry_after is None  # Gemini doesn't provide retry-after
-            # Verify exponential backoff with 3 retries
-            assert mock_sleep.call_count == 3
+            # Verify exponential backoff: max_retries=3 means 3 attempts (0,1,2)
+            # So there are 2 sleeps (between attempts 0-1 and 1-2)
+            assert mock_sleep.call_count == 2
 
     @pytest.mark.asyncio
     async def test_rate_limit_exponential_backoff_capped(self) -> None:
@@ -253,10 +276,10 @@ class TestGeminiRateLimitHandling:
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 
-            # Should have 6 retries
-            assert mock_sleep.call_count == 6
+            # max_retries=6 means 6 attempts (0,1,2,3,4,5), so 5 sleeps
+            assert mock_sleep.call_count == 5
             # Last delays should be capped at 32s (LLM_MAX_RETRY_DELAY)
-            # Delays: 1, 2, 4, 8, 16, 32 (capped)
+            # Delays: 1, 2, 4, 8, 16 (32 would be next but no sleep after last attempt)
 
     @pytest.mark.asyncio
     async def test_rate_limit_streaming(self) -> None:
@@ -294,8 +317,13 @@ class TestRateLimitMetrics:
             messages=[{"role": "user", "content": "test"}],
         )
 
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = None
+        mock_response = Mock()
+        mock_response.headers = {}
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch.object(

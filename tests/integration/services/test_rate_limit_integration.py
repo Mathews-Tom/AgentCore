@@ -44,8 +44,11 @@ class TestRateLimitIntegration:
         # Mock rate limit error followed by success
         mock_response = Mock()
         mock_response.headers = {"Retry-After": "1"}
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         call_count = 0
 
@@ -91,8 +94,11 @@ class TestRateLimitIntegration:
         # Mock persistent rate limit error
         mock_response = Mock()
         mock_response.headers = {"retry-after": "2"}
-        rate_limit_error = AnthropicRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = AnthropicRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch(
@@ -165,8 +171,11 @@ class TestRateLimitIntegration:
 
         mock_response = Mock()
         mock_response.headers = {"Retry-After": "5"}
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = mock_response
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch(
@@ -200,8 +209,13 @@ class TestRateLimitIntegration:
             trace_id="integration-test-005",
         )
 
-        rate_limit_error = OpenAIRateLimitError("Rate limit exceeded")
-        rate_limit_error.response = None
+        mock_response = Mock()
+        mock_response.headers = {}
+        rate_limit_error = OpenAIRateLimitError(
+            "Rate limit exceeded",
+            response=mock_response,
+            body={"error": {"message": "Rate limit exceeded"}},
+        )
 
         with (
             patch(
