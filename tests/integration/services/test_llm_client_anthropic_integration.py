@@ -153,7 +153,7 @@ class TestLLMClientAnthropicIntegrationComplete:
             messages=[
                 {"role": "user", "content": "Generate a random number between 1 and 10."}
             ],
-            temperature=1.5,
+            temperature=1.0,  # Anthropic max temperature is 1.0
             max_tokens=50,
         )
 

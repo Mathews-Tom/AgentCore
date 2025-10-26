@@ -223,16 +223,16 @@ class TestRateLimitIntegration:
             ) as mock_openai_class,
             patch("asyncio.sleep", new_callable=AsyncMock),
             patch(
-                "agentcore.a2a_protocol.metrics.llm_metrics.record_rate_limit_error"
+                "agentcore.a2a_protocol.services.llm_client_openai.record_rate_limit_error"
             ) as mock_record_error,
             patch(
-                "agentcore.a2a_protocol.metrics.llm_metrics.record_rate_limit_retry_delay"
+                "agentcore.a2a_protocol.services.llm_client_openai.record_rate_limit_retry_delay"
             ) as mock_record_delay,
             patch(
-                "agentcore.a2a_protocol.metrics.llm_metrics.record_llm_request"
+                "agentcore.a2a_protocol.services.llm_service.record_llm_request"
             ) as mock_record_request,
             patch(
-                "agentcore.a2a_protocol.metrics.llm_metrics.record_llm_error"
+                "agentcore.a2a_protocol.services.llm_service.record_llm_error"
             ) as mock_record_llm_error,
         ):
             mock_client = Mock()
