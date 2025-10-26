@@ -186,10 +186,26 @@ class ProviderRegistry:
         Raises:
             RuntimeError: When API key is not configured for the provider
         """
+        import logging
+        import time
+
+        logger = logging.getLogger(__name__)
+
         # Map provider to API key and client class
         if provider == Provider.OPENAI:
             api_key = settings.OPENAI_API_KEY
             if api_key is None:
+                logger.error(
+                    "AUDIT: Model governance violation - missing API key",
+                    extra={
+                        "audit_event": "governance_violation",
+                        "violation_type": "missing_api_key",
+                        "timestamp": time.time(),
+                        "provider": provider.value,
+                        "reason": "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+                        "severity": "critical",
+                    },
+                )
                 raise RuntimeError(
                     "OpenAI API key not configured. Set OPENAI_API_KEY environment variable."
                 )
@@ -200,6 +216,17 @@ class ProviderRegistry:
         if provider == Provider.ANTHROPIC:
             api_key = settings.ANTHROPIC_API_KEY
             if api_key is None:
+                logger.error(
+                    "AUDIT: Model governance violation - missing API key",
+                    extra={
+                        "audit_event": "governance_violation",
+                        "violation_type": "missing_api_key",
+                        "timestamp": time.time(),
+                        "provider": provider.value,
+                        "reason": "Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable.",
+                        "severity": "critical",
+                    },
+                )
                 raise RuntimeError(
                     "Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable."
                 )
@@ -210,6 +237,17 @@ class ProviderRegistry:
         if provider == Provider.GEMINI:
             api_key = settings.GOOGLE_API_KEY
             if api_key is None:
+                logger.error(
+                    "AUDIT: Model governance violation - missing API key",
+                    extra={
+                        "audit_event": "governance_violation",
+                        "violation_type": "missing_api_key",
+                        "timestamp": time.time(),
+                        "provider": provider.value,
+                        "reason": "Google API key not configured. Set GOOGLE_API_KEY environment variable.",
+                        "severity": "critical",
+                    },
+                )
                 raise RuntimeError(
                     "Google API key not configured. Set GOOGLE_API_KEY environment variable."
                 )
@@ -331,13 +369,20 @@ class LLMService:
         # Step 1: Model governance check
         # This MUST happen before provider selection to enforce ALLOWED_MODELS policy
         if request.model not in settings.ALLOWED_MODELS:
+            # Structured audit log entry for governance violation
             self.logger.warning(
-                "Model governance violation - model not allowed",
+                "AUDIT: Model governance violation - disallowed model",
                 extra={
-                    "model": request.model,
-                    "allowed_models": settings.ALLOWED_MODELS,
+                    "audit_event": "governance_violation",
+                    "violation_type": "disallowed_model",
+                    "timestamp": time.time(),
                     "trace_id": request.trace_id,
                     "source_agent": request.source_agent,
+                    "session_id": request.session_id,
+                    "attempted_model": request.model,
+                    "allowed_models": settings.ALLOWED_MODELS,
+                    "reason": f"Model '{request.model}' is not in ALLOWED_MODELS configuration",
+                    "severity": "high",
                 },
             )
             # Record governance violation for monitoring
@@ -478,13 +523,21 @@ class LLMService:
 
         # Step 1: Model governance check (same as complete)
         if request.model not in settings.ALLOWED_MODELS:
+            # Structured audit log entry for governance violation
             self.logger.warning(
-                "Model governance violation - model not allowed (streaming)",
+                "AUDIT: Model governance violation - disallowed model (streaming)",
                 extra={
-                    "model": request.model,
-                    "allowed_models": settings.ALLOWED_MODELS,
+                    "audit_event": "governance_violation",
+                    "violation_type": "disallowed_model",
+                    "timestamp": time.time(),
                     "trace_id": request.trace_id,
                     "source_agent": request.source_agent,
+                    "session_id": request.session_id,
+                    "attempted_model": request.model,
+                    "allowed_models": settings.ALLOWED_MODELS,
+                    "reason": f"Model '{request.model}' is not in ALLOWED_MODELS configuration",
+                    "severity": "high",
+                    "request_type": "streaming",
                 },
             )
             # Record governance violation for monitoring
