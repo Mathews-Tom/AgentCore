@@ -47,6 +47,14 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from agentcore.a2a_protocol.config import settings
+from agentcore.a2a_protocol.metrics.llm_metrics import (
+    record_governance_violation,
+    record_llm_duration,
+    record_llm_error,
+    record_llm_request,
+    record_llm_tokens,
+    track_active_requests,
+)
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
     LLMResponse,
@@ -332,6 +340,8 @@ class LLMService:
                     "source_agent": request.source_agent,
                 },
             )
+            # Record governance violation for monitoring
+            record_governance_violation(request.model, request.source_agent)
             raise ModelNotAllowedError(request.model, settings.ALLOWED_MODELS)
 
         # Step 2: Provider selection via registry
@@ -348,11 +358,30 @@ class LLMService:
             )
             raise
 
-        # Step 3: Execute request with timing
+        # Step 3: Execute request with timing and metrics tracking
         start_time = time.time()
+        provider_name = MODEL_PROVIDER_MAP[request.model].value
+
         try:
-            response = await provider.complete(request)
-            elapsed_ms = int((time.time() - start_time) * 1000)
+            with track_active_requests(provider_name):
+                response = await provider.complete(request)
+
+            # Calculate duration in seconds for metrics
+            duration_seconds = time.time() - start_time
+            elapsed_ms = int(duration_seconds * 1000)
+
+            # Record metrics for successful request
+            record_llm_request(provider_name, request.model, "success")
+            record_llm_duration(provider_name, request.model, duration_seconds)
+            record_llm_tokens(
+                provider_name, request.model, "prompt", response.usage.prompt_tokens
+            )
+            record_llm_tokens(
+                provider_name,
+                request.model,
+                "completion",
+                response.usage.completion_tokens,
+            )
 
             # Step 4: Structured logging with all context
             self.logger.info(
@@ -373,7 +402,14 @@ class LLMService:
             return response
 
         except (ProviderError, ProviderTimeoutError) as e:
-            elapsed_ms = int((time.time() - start_time) * 1000)
+            duration_seconds = time.time() - start_time
+            elapsed_ms = int(duration_seconds * 1000)
+
+            # Record error metrics
+            error_type = type(e).__name__
+            record_llm_request(provider_name, request.model, "error")
+            record_llm_error(provider_name, request.model, error_type)
+
             self.logger.error(
                 "LLM completion failed",
                 extra={
@@ -381,7 +417,7 @@ class LLMService:
                     "source_agent": request.source_agent,
                     "model": request.model,
                     "provider": provider.__class__.__name__,
-                    "error_type": type(e).__name__,
+                    "error_type": error_type,
                     "error_message": str(e),
                     "latency_ms": elapsed_ms,
                 },
@@ -451,6 +487,8 @@ class LLMService:
                     "source_agent": request.source_agent,
                 },
             )
+            # Record governance violation for monitoring
+            record_governance_violation(request.model, request.source_agent)
             raise ModelNotAllowedError(request.model, settings.ALLOWED_MODELS)
 
         # Step 2: Provider selection via registry
@@ -469,6 +507,8 @@ class LLMService:
 
         # Log streaming request start
         start_time = time.time()
+        provider_name = MODEL_PROVIDER_MAP[request.model].value
+
         self.logger.info(
             "LLM streaming started",
             extra={
@@ -480,18 +520,27 @@ class LLMService:
             },
         )
 
-        # Step 3: Execute streaming request and yield tokens
+        # Step 3: Execute streaming request and yield tokens with metrics tracking
         try:
             token_count = 0
-            # Note: provider.stream() is an async generator, not a coroutine
-            # The abstract base class signature doesn't match the implementation
-            # (this is a known pattern for async generators in Python)
-            async for token in provider.stream(request):  # type: ignore[attr-defined]
-                token_count += 1
-                yield token
+            with track_active_requests(provider_name):
+                # Note: provider.stream() is an async generator, not a coroutine
+                # The abstract base class signature doesn't match the implementation
+                # (this is a known pattern for async generators in Python)
+                async for token in provider.stream(request):  # type: ignore[attr-defined]
+                    token_count += 1
+                    yield token
+
+            # Calculate duration in seconds for metrics
+            duration_seconds = time.time() - start_time
+            elapsed_ms = int(duration_seconds * 1000)
+
+            # Record metrics for successful streaming request
+            # Note: Token counts are not available for streaming, so we only record request metrics
+            record_llm_request(provider_name, request.model, "success")
+            record_llm_duration(provider_name, request.model, duration_seconds)
 
             # Log streaming completion
-            elapsed_ms = int((time.time() - start_time) * 1000)
             self.logger.info(
                 "LLM streaming completed",
                 extra={
@@ -505,7 +554,14 @@ class LLMService:
             )
 
         except (ProviderError, ProviderTimeoutError) as e:
-            elapsed_ms = int((time.time() - start_time) * 1000)
+            duration_seconds = time.time() - start_time
+            elapsed_ms = int(duration_seconds * 1000)
+
+            # Record error metrics
+            error_type = type(e).__name__
+            record_llm_request(provider_name, request.model, "error")
+            record_llm_error(provider_name, request.model, error_type)
+
             self.logger.error(
                 "LLM streaming failed",
                 extra={
@@ -513,7 +569,7 @@ class LLMService:
                     "source_agent": request.source_agent,
                     "model": request.model,
                     "provider": provider.__class__.__name__,
-                    "error_type": type(e).__name__,
+                    "error_type": error_type,
                     "error_message": str(e),
                     "latency_ms": elapsed_ms,
                 },

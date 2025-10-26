@@ -1,0 +1,401 @@
+{
+  "dashboard": {
+    "title": "LLM Operations Dashboard",
+    "tags": ["llm", "agentcore", "observability"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "LLM Request Rate (by Provider)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_requests_total[5m])) by (provider)",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true
+        }
+      },
+      {
+        "id": 2,
+        "title": "LLM Success Rate (by Provider)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_requests_total{status=\"success\"}[5m])) by (provider) / sum(rate(llm_requests_total[5m])) by (provider) * 100",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Success Rate", "min": 0, "max": 100},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "min": true
+        }
+      },
+      {
+        "id": 3,
+        "title": "LLM Request Latency (p50, p95, p99)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(llm_requests_duration_seconds_bucket[5m])) by (provider, le))",
+            "legendFormat": "p50 - {{provider}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(llm_requests_duration_seconds_bucket[5m])) by (provider, le))",
+            "legendFormat": "p95 - {{provider}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(llm_requests_duration_seconds_bucket[5m])) by (provider, le))",
+            "legendFormat": "p99 - {{provider}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Latency"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 0,
+        "linewidth": 2,
+        "pointradius": 3,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active LLM Requests",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(llm_active_requests) by (provider)",
+            "legendFormat": "{{provider}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Active Requests"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true
+        }
+      },
+      {
+        "id": 5,
+        "title": "Token Usage Rate (by Type)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_tokens_total{token_type=\"prompt\"}[5m])) by (provider)",
+            "legendFormat": "Prompt - {{provider}}",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(llm_tokens_total{token_type=\"completion\"}[5m])) by (provider)",
+            "legendFormat": "Completion - {{provider}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Tokens/sec"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "total": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "Total Token Usage (Last 24h)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(increase(llm_tokens_total{token_type=\"prompt\"}[24h]))",
+            "legendFormat": "Prompt Tokens",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(increase(llm_tokens_total{token_type=\"completion\"}[24h]))",
+            "legendFormat": "Completion Tokens",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(increase(llm_tokens_total[24h]))",
+            "legendFormat": "Total Tokens",
+            "refId": "C"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 1000000, "color": "yellow"},
+                {"value": 10000000, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Error Rate by Type",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_errors_total[5m])) by (error_type, provider)",
+            "legendFormat": "{{error_type}} - {{provider}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Errors/sec"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true
+        }
+      },
+      {
+        "id": 8,
+        "title": "Governance Violations",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_governance_violations_total[5m])) by (model, source_agent)",
+            "legendFormat": "{{model}} - {{source_agent}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Violations/sec"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "total": true,
+          "max": true
+        },
+        "alert": {
+          "name": "LLM Governance Violations",
+          "message": "Detected unauthorized model access attempts",
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "frequency": "1m",
+          "handler": 1
+        }
+      },
+      {
+        "id": 9,
+        "title": "Request Rate by Model",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "sum(rate(llm_requests_total[5m])) by (model)",
+            "legendFormat": "{{model}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ],
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true,
+          "alignAsTable": true,
+          "rightSide": true
+        }
+      },
+      {
+        "id": 10,
+        "title": "Top 10 Models by Token Usage (Last 1h)",
+        "type": "bargauge",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "targets": [
+          {
+            "expr": "topk(10, sum(increase(llm_tokens_total[1h])) by (model))",
+            "legendFormat": "{{model}}",
+            "refId": "A",
+            "instant": true
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 100000, "color": "yellow"},
+                {"value": 500000, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "provider",
+          "type": "query",
+          "label": "Provider",
+          "query": "label_values(llm_requests_total, provider)",
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "model",
+          "type": "query",
+          "label": "Model",
+          "query": "label_values(llm_requests_total{provider=~\"$provider\"}, model)",
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h"],
+      "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "changes(llm_governance_violations_total[5m]) > 0",
+          "iconColor": "red",
+          "name": "Governance Violations",
+          "tagKeys": "model,source_agent",
+          "titleFormat": "Governance Violation"
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}
