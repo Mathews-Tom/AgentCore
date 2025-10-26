@@ -61,12 +61,18 @@ from openai import (
     RateLimitError,
 )
 
+from agentcore.a2a_protocol.config import settings
+from agentcore.a2a_protocol.metrics.llm_metrics import (
+    record_rate_limit_error,
+    record_rate_limit_retry_delay,
+)
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
     LLMResponse,
     LLMUsage,
     ProviderError,
     ProviderTimeoutError,
+    RateLimitError as CustomRateLimitError,
 )
 from agentcore.a2a_protocol.services.llm_client_base import LLMClient
 
@@ -94,9 +100,12 @@ class LLMClientOpenAI(LLMClient):
             timeout: Request timeout in seconds (default 60.0)
             max_retries: Maximum number of retry attempts on transient errors (default 3)
         """
+        import logging
+
         self.client = AsyncOpenAI(api_key=api_key, timeout=timeout)
         self.timeout = timeout
         self.max_retries = max_retries
+        self.logger = logging.getLogger(__name__)
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
         """Execute non-streaming completion request with retry logic.
@@ -159,12 +168,65 @@ class LLMClientOpenAI(LLMClient):
                 # Terminal errors - no retry
                 raise ProviderError("openai", e) from e
 
-            except (RateLimitError, APIConnectionError, APIError) as e:
+            except RateLimitError as e:
+                # Rate limit error - extract Retry-After header if available
+                retry_after = None
+                if hasattr(e, "response") and e.response is not None:
+                    retry_after_header = e.response.headers.get("Retry-After")
+                    if retry_after_header:
+                        try:
+                            retry_after = float(retry_after_header)
+                        except ValueError:
+                            pass
+
+                # Record rate limit metrics
+                record_rate_limit_error("openai", request.model)
+
+                # Calculate backoff delay (respect Retry-After or use exponential backoff)
+                if retry_after is not None:
+                    backoff = min(retry_after, settings.LLM_MAX_RETRY_DELAY)
+                else:
+                    backoff = min(
+                        settings.LLM_RETRY_EXPONENTIAL_BASE**attempt,
+                        settings.LLM_MAX_RETRY_DELAY,
+                    )
+
+                # Log rate limit event
+                self.logger.warning(
+                    "Rate limit exceeded, retrying",
+                    extra={
+                        "provider": "openai",
+                        "model": request.model,
+                        "attempt": attempt + 1,
+                        "max_retries": self.max_retries,
+                        "backoff_seconds": backoff,
+                        "retry_after": retry_after,
+                        "trace_id": request.trace_id,
+                    },
+                )
+
+                # Record retry delay metric
+                record_rate_limit_retry_delay("openai", request.model, backoff)
+
+                # Check if we should retry
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(backoff)
+                    continue
+
+                # Max retries exceeded - raise custom rate limit error
+                raise CustomRateLimitError(
+                    "openai", retry_after, str(e)
+                ) from e
+
+            except (APIConnectionError, APIError) as e:
                 # Transient errors - retry with exponential backoff
                 last_exception = e
                 if attempt < self.max_retries - 1:
                     # Exponential backoff: 1s, 2s, 4s
-                    backoff = 2**attempt
+                    backoff = min(
+                        settings.LLM_RETRY_EXPONENTIAL_BASE**attempt,
+                        settings.LLM_MAX_RETRY_DELAY,
+                    )
                     await asyncio.sleep(backoff)
                     continue
                 # Max retries exceeded
@@ -231,7 +293,35 @@ class LLMClientOpenAI(LLMClient):
         except (AuthenticationError, BadRequestError) as e:
             raise ProviderError("openai", e) from e
 
-        except (RateLimitError, APIConnectionError, APIError) as e:
+        except RateLimitError as e:
+            # Rate limit error during streaming - extract Retry-After header
+            retry_after = None
+            if hasattr(e, "response") and e.response is not None:
+                retry_after_header = e.response.headers.get("Retry-After")
+                if retry_after_header:
+                    try:
+                        retry_after = float(retry_after_header)
+                    except ValueError:
+                        pass
+
+            # Record rate limit metrics
+            record_rate_limit_error("openai", request.model)
+
+            # Log rate limit event
+            self.logger.warning(
+                "Rate limit exceeded during streaming",
+                extra={
+                    "provider": "openai",
+                    "model": request.model,
+                    "retry_after": retry_after,
+                    "trace_id": request.trace_id,
+                },
+            )
+
+            # Raise custom rate limit error (no retry in streaming)
+            raise CustomRateLimitError("openai", retry_after, str(e)) from e
+
+        except (APIConnectionError, APIError) as e:
             raise ProviderError("openai", e) from e
 
     def _normalize_response(

@@ -62,6 +62,7 @@ from agentcore.a2a_protocol.models.llm import (
     Provider,
     ProviderError,
     ProviderTimeoutError,
+    RateLimitError,
 )
 from agentcore.a2a_protocol.services.llm_client_anthropic import LLMClientAnthropic
 from agentcore.a2a_protocol.services.llm_client_base import LLMClient
@@ -446,6 +447,29 @@ class LLMService:
 
             return response
 
+        except RateLimitError as e:
+            duration_seconds = time.time() - start_time
+            elapsed_ms = int(duration_seconds * 1000)
+
+            # Record error metrics
+            record_llm_request(provider_name, request.model, "error")
+            record_llm_error(provider_name, request.model, "RateLimitError")
+
+            self.logger.error(
+                "LLM completion rate limited",
+                extra={
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                    "model": request.model,
+                    "provider": provider.__class__.__name__,
+                    "error_type": "RateLimitError",
+                    "error_message": str(e),
+                    "latency_ms": elapsed_ms,
+                    "retry_after": e.retry_after,
+                },
+            )
+            raise
+
         except (ProviderError, ProviderTimeoutError) as e:
             duration_seconds = time.time() - start_time
             elapsed_ms = int(duration_seconds * 1000)
@@ -605,6 +629,29 @@ class LLMService:
                     "token_chunks": token_count,
                 },
             )
+
+        except RateLimitError as e:
+            duration_seconds = time.time() - start_time
+            elapsed_ms = int(duration_seconds * 1000)
+
+            # Record error metrics
+            record_llm_request(provider_name, request.model, "error")
+            record_llm_error(provider_name, request.model, "RateLimitError")
+
+            self.logger.error(
+                "LLM streaming rate limited",
+                extra={
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                    "model": request.model,
+                    "provider": provider.__class__.__name__,
+                    "error_type": "RateLimitError",
+                    "error_message": str(e),
+                    "latency_ms": elapsed_ms,
+                    "retry_after": e.retry_after,
+                },
+            )
+            raise
 
         except (ProviderError, ProviderTimeoutError) as e:
             duration_seconds = time.time() - start_time

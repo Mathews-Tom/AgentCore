@@ -93,6 +93,33 @@ class ProviderTimeoutError(Exception):
         )
 
 
+class RateLimitError(Exception):
+    """Raised when provider rate limit is exceeded.
+
+    Indicates that the provider has returned a rate limit error (429 or equivalent).
+    This exception carries retry-after information when available from the provider.
+
+    Attributes:
+        provider: The provider that rate limited the request
+        retry_after: Number of seconds to wait before retrying (None if not provided)
+        message: Optional message from the provider
+    """
+
+    def __init__(
+        self, provider: str, retry_after: float | None = None, message: str | None = None
+    ) -> None:
+        self.provider = provider
+        self.retry_after = retry_after
+        self.message = message
+
+        msg = f"Provider '{provider}' rate limit exceeded"
+        if retry_after is not None:
+            msg += f", retry after {retry_after}s"
+        if message:
+            msg += f": {message}"
+        super().__init__(msg)
+
+
 class LLMRequest(BaseModel):
     """Unified LLM request model for all providers.
 

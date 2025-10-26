@@ -96,6 +96,8 @@ _llm_tokens_total: Counter | None = None
 _llm_errors_total: Counter | None = None
 _llm_active_requests: Gauge | None = None
 _llm_governance_violations_total: Counter | None = None
+_llm_rate_limit_errors_total: Counter | None = None
+_llm_rate_limit_retry_delay_seconds: Histogram | None = None
 
 
 def _get_llm_requests_total() -> Counter:
@@ -215,6 +217,51 @@ def _get_llm_governance_violations_total() -> Counter:
     return _llm_governance_violations_total
 
 
+def _get_llm_rate_limit_errors_total() -> Counter:
+    """Get or create LLM rate limit errors counter.
+
+    Labels:
+        provider: LLM provider (openai, anthropic, gemini)
+        model: Model identifier
+    """
+    global _llm_rate_limit_errors_total
+    if _llm_rate_limit_errors_total is None:
+        _llm_rate_limit_errors_total = _get_or_create_counter(
+            "llm_rate_limit_errors_total",
+            "Total number of rate limit errors by provider and model",
+            ["provider", "model"],
+        )
+    return _llm_rate_limit_errors_total
+
+
+def _get_llm_rate_limit_retry_delay_seconds() -> Histogram:
+    """Get or create LLM rate limit retry delay histogram.
+
+    Labels:
+        provider: LLM provider (openai, anthropic, gemini)
+        model: Model identifier
+
+    Buckets optimized for exponential backoff (1s to 32s):
+    - 0.5s: Sub-second delays
+    - 1.0s: First retry
+    - 2.0s: Second retry
+    - 4.0s: Third retry
+    - 8.0s: Fourth retry
+    - 16.0s: Fifth retry
+    - 32.0s: Max delay
+    - 60.0s: Extended delays
+    """
+    global _llm_rate_limit_retry_delay_seconds
+    if _llm_rate_limit_retry_delay_seconds is None:
+        _llm_rate_limit_retry_delay_seconds = _get_or_create_histogram(
+            "llm_rate_limit_retry_delay_seconds",
+            "Histogram of rate limit retry delays in seconds by provider and model",
+            labelnames=["provider", "model"],
+            buckets=[0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 60.0],
+        )
+    return _llm_rate_limit_retry_delay_seconds
+
+
 # Public API - Recording functions for metrics
 
 
@@ -280,6 +327,29 @@ def record_governance_violation(model: str, source_agent: str | None = None) -> 
     _get_llm_governance_violations_total().labels(model=model, source_agent=agent).inc()
 
 
+def record_rate_limit_error(provider: str, model: str) -> None:
+    """Record a rate limit error.
+
+    Args:
+        provider: LLM provider (openai, anthropic, gemini)
+        model: Model identifier
+    """
+    _get_llm_rate_limit_errors_total().labels(provider=provider, model=model).inc()
+
+
+def record_rate_limit_retry_delay(provider: str, model: str, delay_seconds: float) -> None:
+    """Record a rate limit retry delay.
+
+    Args:
+        provider: LLM provider (openai, anthropic, gemini)
+        model: Model identifier
+        delay_seconds: Retry delay in seconds
+    """
+    _get_llm_rate_limit_retry_delay_seconds().labels(
+        provider=provider, model=model
+    ).observe(delay_seconds)
+
+
 @contextmanager
 def track_active_requests(provider: str) -> Iterator[None]:
     """Context manager to track active requests.
@@ -317,4 +387,8 @@ def __getattr__(name: str) -> Counter | Histogram | Gauge:
         return _get_llm_active_requests()
     elif name == "llm_governance_violations_total":
         return _get_llm_governance_violations_total()
+    elif name == "llm_rate_limit_errors_total":
+        return _get_llm_rate_limit_errors_total()
+    elif name == "llm_rate_limit_retry_delay_seconds":
+        return _get_llm_rate_limit_retry_delay_seconds()
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

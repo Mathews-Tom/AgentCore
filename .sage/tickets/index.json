@@ -6704,7 +6704,7 @@
       "id": "LLM-CLIENT-019",
       "title": "Rate Limit Handling",
       "component": "llm-client-service",
-      "state": "UNPROCESSED",
+      "state": "IN_PROGRESS",
       "priority": "P0",
       "type": "Story",
       "effort": 3,
@@ -6715,7 +6715,13 @@
         "LLM-CLIENT-009"
       ],
       "created": "2025-10-24T22:47:19.602397+00:00",
-      "updated": "2025-10-24T22:47:19.602397+00:00"
+      "updated": "2025-10-26T17:37:42Z",
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-10-26T17:37:42Z"
+        }
+      ]
     },
     {
       "id": "LLM-CLIENT-020",

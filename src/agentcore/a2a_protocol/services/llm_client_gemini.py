@@ -61,12 +61,18 @@ from collections.abc import AsyncIterator
 import google.generativeai as genai  # type: ignore[import-untyped,unused-ignore]
 from google.api_core import exceptions as google_exceptions
 
+from agentcore.a2a_protocol.config import settings
+from agentcore.a2a_protocol.metrics.llm_metrics import (
+    record_rate_limit_error,
+    record_rate_limit_retry_delay,
+)
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
     LLMResponse,
     LLMUsage,
     ProviderError,
     ProviderTimeoutError,
+    RateLimitError as CustomRateLimitError,
 )
 from agentcore.a2a_protocol.services.llm_client_base import LLMClient
 
@@ -95,11 +101,14 @@ class LLMClientGemini(LLMClient):
             timeout: Request timeout in seconds (default 60.0)
             max_retries: Maximum number of retry attempts on transient errors (default 3)
         """
+        import logging
+
         # Configure the SDK with API key
         genai.configure(api_key=api_key)  # type: ignore[attr-defined]
         self.api_key = api_key
         self.timeout = timeout
         self.max_retries = max_retries
+        self.logger = logging.getLogger(__name__)
 
     def _convert_messages(
         self, messages: list[dict[str, str]]
@@ -228,8 +237,42 @@ class LLMClientGemini(LLMClient):
                 # Authentication error - terminal error, no retry
                 raise ProviderError("gemini", e) from e
 
+            except google_exceptions.ResourceExhausted as e:
+                # Rate limit error (Gemini's equivalent of 429)
+                # Record rate limit metrics
+                record_rate_limit_error("gemini", request.model)
+
+                # Calculate backoff delay (exponential backoff, no Retry-After header in Gemini)
+                backoff = min(
+                    settings.LLM_RETRY_EXPONENTIAL_BASE**attempt,
+                    settings.LLM_MAX_RETRY_DELAY,
+                )
+
+                # Log rate limit event
+                self.logger.warning(
+                    "Rate limit exceeded (RESOURCE_EXHAUSTED), retrying",
+                    extra={
+                        "provider": "gemini",
+                        "model": request.model,
+                        "attempt": attempt + 1,
+                        "max_retries": self.max_retries,
+                        "backoff_seconds": backoff,
+                        "trace_id": request.trace_id,
+                    },
+                )
+
+                # Record retry delay metric
+                record_rate_limit_retry_delay("gemini", request.model, backoff)
+
+                # Check if we should retry
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(backoff)
+                    continue
+
+                # Max retries exceeded - raise custom rate limit error
+                raise CustomRateLimitError("gemini", None, str(e)) from e
+
             except (
-                google_exceptions.ResourceExhausted,
                 google_exceptions.ServiceUnavailable,
                 google_exceptions.DeadlineExceeded,
             ) as e:
@@ -237,7 +280,10 @@ class LLMClientGemini(LLMClient):
                 last_exception = e
                 if attempt < self.max_retries - 1:
                     # Exponential backoff: 1s, 2s, 4s
-                    backoff = 2**attempt
+                    backoff = min(
+                        settings.LLM_RETRY_EXPONENTIAL_BASE**attempt,
+                        settings.LLM_MAX_RETRY_DELAY,
+                    )
                     await asyncio.sleep(backoff)
                     continue
                 # Max retries exceeded
@@ -326,8 +372,25 @@ class LLMClientGemini(LLMClient):
         except google_exceptions.Unauthenticated as e:
             raise ProviderError("gemini", e) from e
 
+        except google_exceptions.ResourceExhausted as e:
+            # Rate limit error during streaming
+            # Record rate limit metrics
+            record_rate_limit_error("gemini", request.model)
+
+            # Log rate limit event
+            self.logger.warning(
+                "Rate limit exceeded (RESOURCE_EXHAUSTED) during streaming",
+                extra={
+                    "provider": "gemini",
+                    "model": request.model,
+                    "trace_id": request.trace_id,
+                },
+            )
+
+            # Raise custom rate limit error (no retry in streaming)
+            raise CustomRateLimitError("gemini", None, str(e)) from e
+
         except (
-            google_exceptions.ResourceExhausted,
             google_exceptions.ServiceUnavailable,
             google_exceptions.DeadlineExceeded,
         ) as e:

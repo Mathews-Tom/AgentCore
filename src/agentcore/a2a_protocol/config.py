@@ -152,6 +152,14 @@ class Settings(BaseSettings):
         gt=1,
         description="Exponential backoff base for retry delays (must be >1)",
     )
+    LLM_MAX_RETRY_DELAY: float = Field(
+        default=32.0,
+        gt=0,
+        description="Maximum retry delay in seconds for rate limit backoff (must be >0)",
+    )
+    LLM_RATE_LIMIT_QUEUE_SIZE: int = Field(
+        default=100, ge=0, description="Maximum queue size for rate-limited requests (>=0)"
+    )
 
     model_config = {
         "env_file": ".env",
