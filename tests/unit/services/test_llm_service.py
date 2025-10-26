@@ -101,7 +101,7 @@ class TestProviderRegistry:
         """Test provider selection for Gemini models."""
         # Setup
         mock_settings.ALLOWED_MODELS = ["gemini-1.5-flash"]
-        mock_settings.GOOGLE_API_KEY = "google-test-key"
+        mock_settings.GEMINI_API_KEY = "google-test-key"
         mock_gemini_instance = MagicMock(spec=LLMClientGemini)
         mock_gemini_class.return_value = mock_gemini_instance
 
@@ -233,7 +233,7 @@ class TestProviderRegistry:
         """Test error when Google API key is not configured."""
         # Setup
         mock_settings.ALLOWED_MODELS = ["gemini-1.5-flash"]
-        mock_settings.GOOGLE_API_KEY = None
+        mock_settings.GEMINI_API_KEY = None
 
         registry = ProviderRegistry()
 
@@ -242,7 +242,7 @@ class TestProviderRegistry:
             registry.get_provider_for_model("gemini-1.5-flash")
 
         assert "Google API key not configured" in str(exc_info.value)
-        assert "GOOGLE_API_KEY" in str(exc_info.value)
+        assert "GEMINI_API_KEY" in str(exc_info.value)
 
     @patch("agentcore.a2a_protocol.services.llm_service.settings")
     def test_list_available_models_all_allowed(self, mock_settings: MagicMock) -> None:
@@ -320,7 +320,7 @@ class TestProviderRegistry:
         ]
         mock_settings.OPENAI_API_KEY = "sk-test-openai"
         mock_settings.ANTHROPIC_API_KEY = "sk-ant-test-anthropic"
-        mock_settings.GOOGLE_API_KEY = "google-test-key"
+        mock_settings.GEMINI_API_KEY = "google-test-key"
 
         mock_openai_instance = MagicMock(spec=LLMClientOpenAI)
         mock_anthropic_instance = MagicMock(spec=LLMClientAnthropic)

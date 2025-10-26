@@ -15,7 +15,7 @@ class TestLLMConfig:
         # Clear API keys from environment to test defaults
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
         # Create settings without loading from .env file
@@ -30,7 +30,7 @@ class TestLLMConfig:
         assert settings.LLM_DEFAULT_MODEL == "gpt-4.1-mini"
         assert settings.OPENAI_API_KEY is None
         assert settings.ANTHROPIC_API_KEY is None
-        assert settings.GOOGLE_API_KEY is None
+        assert settings.GEMINI_API_KEY is None
         assert settings.LLM_REQUEST_TIMEOUT == 60.0
         assert settings.LLM_MAX_RETRIES == 3
         assert settings.LLM_RETRY_EXPONENTIAL_BASE == 2.0
@@ -40,7 +40,7 @@ class TestLLMConfig:
         monkeypatch.setenv("LLM_DEFAULT_MODEL", "gpt-5-mini")
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key-123")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key-456")
-        monkeypatch.setenv("GOOGLE_API_KEY", "AIza-test-key-789")
+        monkeypatch.setenv("GEMINI_API_KEY", "AIza-test-key-789")
         monkeypatch.setenv("LLM_REQUEST_TIMEOUT", "120.0")
         monkeypatch.setenv("LLM_MAX_RETRIES", "5")
         monkeypatch.setenv("LLM_RETRY_EXPONENTIAL_BASE", "3.0")
@@ -50,7 +50,7 @@ class TestLLMConfig:
         assert settings.LLM_DEFAULT_MODEL == "gpt-5-mini"
         assert settings.OPENAI_API_KEY == "sk-test-key-123"
         assert settings.ANTHROPIC_API_KEY == "sk-ant-test-key-456"
-        assert settings.GOOGLE_API_KEY == "AIza-test-key-789"
+        assert settings.GEMINI_API_KEY == "AIza-test-key-789"
         assert settings.LLM_REQUEST_TIMEOUT == 120.0
         assert settings.LLM_MAX_RETRIES == 5
         assert settings.LLM_RETRY_EXPONENTIAL_BASE == 3.0
@@ -117,7 +117,7 @@ class TestLLMConfig:
         # Clear any existing API keys from environment
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
         # Create settings without loading from .env file
@@ -125,7 +125,7 @@ class TestLLMConfig:
 
         assert settings.OPENAI_API_KEY is None
         assert settings.ANTHROPIC_API_KEY is None
-        assert settings.GOOGLE_API_KEY is None
+        assert settings.GEMINI_API_KEY is None
 
     def test_allowed_models_contains_valid_models(self) -> None:
         """Test ALLOWED_MODELS contains expected model identifiers."""
@@ -167,7 +167,7 @@ class TestLLMConfig:
             "LLM_DEFAULT_MODEL",
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "GOOGLE_API_KEY",
+            "GEMINI_API_KEY",
             "LLM_REQUEST_TIMEOUT",
             "LLM_MAX_RETRIES",
             "LLM_RETRY_EXPONENTIAL_BASE",
