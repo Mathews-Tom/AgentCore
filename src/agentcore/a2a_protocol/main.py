@@ -25,6 +25,7 @@ from agentcore.a2a_protocol.services import (
     agent_jsonrpc,
     event_jsonrpc,
     health_jsonrpc,
+    llm_jsonrpc,
     routing_jsonrpc,
     security_jsonrpc,
     session_jsonrpc,
