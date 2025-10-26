@@ -176,7 +176,7 @@ class LLMClientOpenAI(LLMClient):
                     if retry_after_header:
                         try:
                             retry_after = float(retry_after_header)
-                        except ValueError:
+                        except (ValueError, TypeError):
                             pass
 
                 # Record rate limit metrics
