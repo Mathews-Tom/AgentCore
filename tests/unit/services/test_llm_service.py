@@ -241,7 +241,7 @@ class TestProviderRegistry:
         with pytest.raises(RuntimeError) as exc_info:
             registry.get_provider_for_model("gemini-1.5-flash")
 
-        assert "Google API key not configured" in str(exc_info.value)
+        assert "Gemini API key not configured" in str(exc_info.value)
         assert "GEMINI_API_KEY" in str(exc_info.value)
 
     @patch("agentcore.a2a_protocol.services.llm_service.settings")
