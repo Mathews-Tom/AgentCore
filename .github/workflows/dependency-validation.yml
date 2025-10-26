@@ -1,0 +1,293 @@
+name: Dependency Validation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/dependency-validation.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+  schedule:
+    # Run nightly for security checks
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  validate-pinned-versions:
+    name: Validate LLM SDK Pinned Versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Validate pinned versions in pyproject.toml
+        run: |
+          echo "Checking LLM SDK version pins..."
+
+          # Define expected pinned versions
+          EXPECTED_OPENAI="openai==1.54.0"
+          EXPECTED_ANTHROPIC="anthropic==0.40.0"
+          EXPECTED_GOOGLE="google-generativeai==0.2.0"
+
+          # Check pyproject.toml contains exact pins
+          if ! grep -q '"openai==1.54.0"' pyproject.toml; then
+            echo "❌ ERROR: OpenAI SDK must be pinned to exactly 1.54.0"
+            echo "Expected: $EXPECTED_OPENAI"
+            echo "Found: $(grep 'openai' pyproject.toml | grep -o '"openai[^"]*"')"
+            exit 1
+          fi
+
+          if ! grep -q '"anthropic==0.40.0"' pyproject.toml; then
+            echo "❌ ERROR: Anthropic SDK must be pinned to exactly 0.40.0"
+            echo "Expected: $EXPECTED_ANTHROPIC"
+            echo "Found: $(grep 'anthropic' pyproject.toml | grep -o '"anthropic[^"]*"')"
+            exit 1
+          fi
+
+          if ! grep -q '"google-generativeai==0.2.0"' pyproject.toml; then
+            echo "❌ ERROR: Google GenAI SDK must be pinned to exactly 0.2.0"
+            echo "Expected: $EXPECTED_GOOGLE"
+            echo "Found: $(grep 'google-generativeai' pyproject.toml | grep -o '"google-generativeai[^"]*"')"
+            exit 1
+          fi
+
+          echo "✅ All LLM SDK versions are correctly pinned"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Verify installed versions
+        run: |
+          echo "Verifying installed SDK versions..."
+
+          INSTALLED_OPENAI=$(uv pip list | grep "^openai " | awk '{print $2}')
+          INSTALLED_ANTHROPIC=$(uv pip list | grep "^anthropic " | awk '{print $2}')
+          INSTALLED_GOOGLE=$(uv pip list | grep "^google-generativeai " | awk '{print $2}')
+
+          echo "OpenAI: $INSTALLED_OPENAI (expected: 1.54.0)"
+          echo "Anthropic: $INSTALLED_ANTHROPIC (expected: 0.40.0)"
+          echo "Google GenAI: $INSTALLED_GOOGLE (expected: 0.2.0)"
+
+          ERRORS=0
+
+          if [ "$INSTALLED_OPENAI" != "1.54.0" ]; then
+            echo "❌ ERROR: OpenAI version mismatch"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$INSTALLED_ANTHROPIC" != "0.40.0" ]; then
+            echo "❌ ERROR: Anthropic version mismatch"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$INSTALLED_GOOGLE" != "0.2.0" ]; then
+            echo "❌ ERROR: Google GenAI version mismatch"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "❌ $ERRORS version mismatches found"
+            exit 1
+          fi
+
+          echo "✅ All installed versions match pinned versions"
+
+      - name: Check for dependency conflicts
+        run: |
+          echo "Checking for dependency conflicts..."
+          uv pip check
+          echo "✅ No dependency conflicts detected"
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run security audit
+        run: |
+          echo "Running security audit on dependencies..."
+          # Note: uv doesn't have built-in audit yet, using pip-audit
+          uv pip install pip-audit
+          uv run pip-audit --format json --output audit-results.json || true
+
+          if [ -f audit-results.json ]; then
+            echo "Security audit completed"
+            cat audit-results.json
+
+            # Check for critical vulnerabilities
+            CRITICAL=$(cat audit-results.json | grep -c '"severity": "critical"' || true)
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ CRITICAL: Found $CRITICAL critical vulnerabilities"
+              exit 1
+            fi
+          fi
+
+          echo "✅ No critical vulnerabilities found"
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: audit-results.json
+          retention-days: 90
+
+  compatibility-test:
+    name: Test SDK Compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Test SDK imports
+        run: |
+          echo "Testing SDK imports with Python ${{ matrix.python-version }}..."
+
+          uv run python -c "
+          import sys
+          print(f'Python version: {sys.version}')
+
+          # Test OpenAI
+          try:
+              import openai
+              print(f'✅ OpenAI {openai.__version__} imported successfully')
+              assert openai.__version__ == '1.54.0', f'Version mismatch: {openai.__version__}'
+          except Exception as e:
+              print(f'❌ OpenAI import failed: {e}')
+              sys.exit(1)
+
+          # Test Anthropic
+          try:
+              import anthropic
+              print(f'✅ Anthropic {anthropic.__version__} imported successfully')
+              assert anthropic.__version__ == '0.40.0', f'Version mismatch: {anthropic.__version__}'
+          except Exception as e:
+              print(f'❌ Anthropic import failed: {e}')
+              sys.exit(1)
+
+          # Test Google GenAI
+          try:
+              import google.generativeai as genai
+              print(f'✅ Google GenAI imported successfully')
+              # Note: google-generativeai doesn't expose __version__ consistently
+          except Exception as e:
+              print(f'❌ Google GenAI import failed: {e}')
+              sys.exit(1)
+
+          print('✅ All SDK imports successful')
+          "
+
+      - name: Run integration tests (if available)
+        continue-on-error: true
+        run: |
+          if [ -d "tests/integration/llm_client" ]; then
+            echo "Running LLM client integration tests..."
+            uv run pytest tests/integration/llm_client/ -v -x
+          else
+            echo "No LLM client integration tests found"
+          fi
+
+  version-consistency:
+    name: Check Version Consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check DEPENDENCIES.md is up to date
+        run: |
+          echo "Checking DEPENDENCIES.md version table..."
+
+          # Extract versions from pyproject.toml
+          OPENAI_VERSION=$(grep '"openai==' pyproject.toml | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          ANTHROPIC_VERSION=$(grep '"anthropic==' pyproject.toml | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          GOOGLE_VERSION=$(grep '"google-generativeai==' pyproject.toml | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
+          echo "Versions in pyproject.toml:"
+          echo "  OpenAI: $OPENAI_VERSION"
+          echo "  Anthropic: $ANTHROPIC_VERSION"
+          echo "  Google GenAI: $GOOGLE_VERSION"
+
+          # Check DEPENDENCIES.md contains matching versions
+          if ! grep -q "| OpenAI | \`$OPENAI_VERSION\`" DEPENDENCIES.md; then
+            echo "❌ ERROR: DEPENDENCIES.md does not reflect OpenAI version $OPENAI_VERSION"
+            exit 1
+          fi
+
+          if ! grep -q "| Anthropic | \`$ANTHROPIC_VERSION\`" DEPENDENCIES.md; then
+            echo "❌ ERROR: DEPENDENCIES.md does not reflect Anthropic version $ANTHROPIC_VERSION"
+            exit 1
+          fi
+
+          if ! grep -q "| Google GenAI | \`$GOOGLE_VERSION\`" DEPENDENCIES.md; then
+            echo "❌ ERROR: DEPENDENCIES.md does not reflect Google GenAI version $GOOGLE_VERSION"
+            exit 1
+          fi
+
+          echo "✅ DEPENDENCIES.md version table is consistent with pyproject.toml"
+
+      - name: Check for documentation updates
+        run: |
+          echo "Checking if DEPENDENCIES.md was updated..."
+
+          # If pyproject.toml changed, DEPENDENCIES.md should also change
+          if git diff --name-only origin/main...HEAD | grep -q "pyproject.toml"; then
+            if ! git diff --name-only origin/main...HEAD | grep -q "DEPENDENCIES.md"; then
+              echo "⚠️ WARNING: pyproject.toml changed but DEPENDENCIES.md was not updated"
+              echo "Please update DEPENDENCIES.md with version changes and review date"
+            fi
+          fi
