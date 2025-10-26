@@ -201,7 +201,7 @@ class TestLLMClientAnthropicComplete:
         assert call_kwargs["model"] == "claude-3-5-haiku-20241022"
         assert call_kwargs["temperature"] == 0.7
         assert call_kwargs["max_tokens"] == 100
-        assert call_kwargs["system"] is None  # No system message in this request
+        assert "system" not in call_kwargs  # No system message in this request (param omitted)
         assert call_kwargs["extra_headers"]["X-Trace-ID"] == "trace-123"
         assert call_kwargs["extra_headers"]["X-Source-Agent"] == "agent-1"
         assert call_kwargs["extra_headers"]["X-Session-ID"] == "session-456"
@@ -220,9 +220,9 @@ class TestLLMClientAnthropicComplete:
 
         assert isinstance(response, LLMResponse)
 
-        # Verify system message was extracted
+        # Verify system message was extracted and formatted as list
         call_kwargs = llm_client.client.messages.create.call_args[1]
-        assert call_kwargs["system"] == "You are a helpful assistant"
+        assert call_kwargs["system"] == [{"type": "text", "text": "You are a helpful assistant"}]
         # Verify messages don't contain system role
         messages = call_kwargs["messages"]
         assert all(msg["role"] != "system" for msg in messages)
@@ -244,7 +244,7 @@ class TestLLMClientAnthropicComplete:
 
         assert response.trace_id is None
         call_kwargs = llm_client.client.messages.create.call_args[1]
-        assert call_kwargs["extra_headers"] is None
+        assert "extra_headers" not in call_kwargs  # No A2A context (param omitted)
 
     @pytest.mark.asyncio
     async def test_complete_without_max_tokens(
@@ -493,9 +493,9 @@ class TestLLMClientAnthropicStream:
         async for token in llm_client.stream(sample_request_with_system):
             tokens.append(token)
 
-        # Verify system message was extracted
+        # Verify system message was extracted and formatted as list
         call_kwargs = llm_client.client.messages.create.call_args[1]
-        assert call_kwargs["system"] == "You are a helpful assistant"
+        assert call_kwargs["system"] == [{"type": "text", "text": "You are a helpful assistant"}]
 
     @pytest.mark.asyncio
     async def test_stream_with_non_delta_events(

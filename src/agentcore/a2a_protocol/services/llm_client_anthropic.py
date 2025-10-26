@@ -196,15 +196,23 @@ class LLMClientAnthropic(LLMClient):
         # Retry loop with exponential backoff
         for attempt in range(self.max_retries):
             try:
+                # Build API call parameters
+                api_params: dict[str, any] = {
+                    "model": request.model,
+                    "messages": anthropic_messages,
+                    "temperature": request.temperature,
+                    "max_tokens": request.max_tokens or 4096,
+                }
+
+                # Only include system if there's content (Anthropic doesn't accept system=None)
+                if system_content:
+                    api_params["system"] = [{"type": "text", "text": system_content}]
+
+                if extra_headers:
+                    api_params["extra_headers"] = extra_headers
+
                 # Call Anthropic API with proper parameters
-                response = await self.client.messages.create(
-                    model=request.model,
-                    messages=anthropic_messages,  # type: ignore[arg-type]
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens or 4096,  # Anthropic requires max_tokens
-                    system=system_content if system_content else None,  # type: ignore[arg-type]
-                    extra_headers=extra_headers if extra_headers else None,
-                )
+                response = await self.client.messages.create(**api_params)  # type: ignore[arg-type]
 
                 # Calculate latency and normalize response
                 latency_ms = int((time.perf_counter() - start_time) * 1000)
@@ -327,16 +335,24 @@ class LLMClientAnthropic(LLMClient):
             extra_headers["X-Session-ID"] = request.session_id
 
         try:
+            # Build API call parameters
+            api_params: dict[str, any] = {
+                "model": request.model,
+                "messages": anthropic_messages,
+                "temperature": request.temperature,
+                "max_tokens": request.max_tokens or 4096,
+                "stream": True,
+            }
+
+            # Only include system if there's content (Anthropic doesn't accept system=None)
+            if system_content:
+                api_params["system"] = [{"type": "text", "text": system_content}]
+
+            if extra_headers:
+                api_params["extra_headers"] = extra_headers
+
             # Call Anthropic API with streaming enabled
-            stream_response = await self.client.messages.create(
-                model=request.model,
-                messages=anthropic_messages,  # type: ignore[arg-type]
-                temperature=request.temperature,
-                max_tokens=request.max_tokens or 4096,  # Anthropic requires max_tokens
-                stream=True,
-                system=system_content if system_content else None,  # type: ignore[arg-type]
-                extra_headers=extra_headers if extra_headers else None,
-            )
+            stream_response = await self.client.messages.create(**api_params)  # type: ignore[arg-type]
 
             # Yield tokens as they arrive
             async for event in stream_response:  # type: ignore[union-attr]
