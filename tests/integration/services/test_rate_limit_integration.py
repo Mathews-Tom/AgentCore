@@ -14,7 +14,24 @@ from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
     RateLimitError as CustomRateLimitError,
 )
-from agentcore.a2a_protocol.services.llm_service import LLMService
+from agentcore.a2a_protocol.services.llm_service import LLMService, ProviderRegistry
+
+
+@pytest.fixture(autouse=True)
+def clear_provider_cache() -> None:
+    """Clear ProviderRegistry instance cache before each test.
+
+    ProviderRegistry uses a class-level _instances dict to cache provider
+    instances. This causes test isolation issues where providers created in
+    one test (with specific max_retries) are reused in subsequent tests.
+
+    This fixture ensures each test gets fresh provider instances.
+    """
+    # Clear the class-level cache before each test
+    ProviderRegistry._instances.clear()
+    yield
+    # Clear again after test to prevent contamination
+    ProviderRegistry._instances.clear()
 
 
 class TestRateLimitIntegration:

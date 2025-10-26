@@ -48,6 +48,23 @@ API_KEY_PATTERNS = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def clear_provider_cache() -> None:
+    """Clear ProviderRegistry instance cache before each test.
+
+    ProviderRegistry uses a class-level _instances dict to cache provider
+    instances. This causes test isolation issues where providers created in
+    one test are reused in subsequent tests.
+
+    This fixture ensures each test gets fresh provider instances.
+    """
+    # Clear the class-level cache before each test
+    ProviderRegistry._instances.clear()
+    yield
+    # Clear again after test to prevent contamination
+    ProviderRegistry._instances.clear()
+
+
 class TestAPIKeyProtection:
     """Test suite for API key protection in logs and error messages."""
 
