@@ -28,6 +28,18 @@ from agentcore.a2a_protocol.services.llm_service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def clear_provider_cache() -> None:
+    """Clear ProviderRegistry instance cache before each test.
+
+    ProviderRegistry uses a class-level _instances dict to cache provider
+    instances. This ensures each test gets fresh provider instances.
+    """
+    ProviderRegistry._instances.clear()
+    yield
+    ProviderRegistry._instances.clear()
+
+
 class TestProviderRegistry:
     """Test suite for ProviderRegistry class."""
 

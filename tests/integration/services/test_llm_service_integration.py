@@ -22,6 +22,14 @@ from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
 from agentcore.a2a_protocol.services.llm_service import LLMService, ProviderRegistry
 
 
+@pytest.fixture(autouse=True)
+def clear_provider_cache() -> None:
+    """Clear ProviderRegistry instance cache before each test."""
+    ProviderRegistry._instances.clear()
+    yield
+    ProviderRegistry._instances.clear()
+
+
 class TestProviderRegistryIntegration:
     """Integration tests for ProviderRegistry with real provider instances."""
 
