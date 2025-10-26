@@ -1,0 +1,135 @@
+name: LLM Performance Benchmarks
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      skip_load_tests:
+        description: 'Skip expensive load tests'
+        required: false
+        default: 'false'
+      include_profiling:
+        description: 'Include resource profiling'
+        required: false
+        default: 'true'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run microbenchmarks (no API calls)
+        run: |
+          uv run python scripts/benchmark_llm.py \
+            --skip-load \
+            --skip-sdk-comparison \
+            --output docs/benchmarks/microbenchmark-results.json
+
+      - name: Run SDK comparison benchmarks
+        if: github.event.inputs.skip_load_tests != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          uv run python scripts/benchmark_llm.py \
+            --skip-load \
+            ${{ github.event.inputs.include_profiling == 'true' && '--profile' || '' }} \
+            --output docs/benchmarks/sdk-comparison-results.json
+
+      - name: Run load tests
+        if: github.event.inputs.skip_load_tests != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          uv run python scripts/benchmark_llm.py \
+            ${{ github.event.inputs.include_profiling == 'true' && '--profile' || '' }} \
+            --output docs/benchmarks/full-benchmark-results.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: docs/benchmarks/*.json
+          retention-days: 90
+
+      - name: Validate SLOs
+        if: github.event.inputs.skip_load_tests != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          # Exit code 1 if any SLO failed
+          uv run python scripts/benchmark_llm.py \
+            --output docs/benchmarks/slo-validation.json
+
+      - name: Comment on PR (if triggered by PR)
+        if: github.event_name == 'pull_request' && github.event.inputs.skip_load_tests != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('docs/benchmarks/full-benchmark-results.json', 'utf8'));
+
+            const validation = results.validation;
+            const passed = Object.values(validation).filter(v => v === true).length;
+            const total = Object.keys(validation).length;
+
+            const comment = `## 📊 LLM Performance Benchmark Results
+
+            **SLO Validation:** ${passed}/${total} checks passed
+
+            ${Object.entries(validation).map(([name, pass]) =>
+              `${pass ? '✅' : '❌'} ${name}`
+            ).join('\n')}
+
+            See workflow artifacts for detailed results.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Create benchmark report issue (on failure)
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔴 Weekly LLM Benchmark SLO Failure',
+              body: `The weekly LLM performance benchmarks have failed one or more SLOs.
+
+              **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+              Please review the benchmark results and investigate performance regressions.
+
+              cc @agentcore/performance-team`,
+              labels: ['performance', 'benchmark', 'slo-failure']
+            });
