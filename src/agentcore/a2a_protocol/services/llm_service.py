@@ -236,7 +236,7 @@ class ProviderRegistry:
             )
 
         if provider == Provider.GEMINI:
-            api_key = settings.GOOGLE_API_KEY
+            api_key = settings.GEMINI_API_KEY
             if api_key is None:
                 logger.error(
                     "AUDIT: Model governance violation - missing API key",
@@ -245,12 +245,12 @@ class ProviderRegistry:
                         "violation_type": "missing_api_key",
                         "timestamp": time.time(),
                         "provider": provider.value,
-                        "reason": "Google API key not configured. Set GOOGLE_API_KEY environment variable.",
+                        "reason": "Gemini API key not configured. Set GEMINI_API_KEY environment variable.",
                         "severity": "critical",
                     },
                 )
                 raise RuntimeError(
-                    "Google API key not configured. Set GOOGLE_API_KEY environment variable."
+                    "Gemini API key not configured. Set GEMINI_API_KEY environment variable."
                 )
             return LLMClientGemini(
                 api_key=api_key, timeout=self.timeout, max_retries=self.max_retries

@@ -21,13 +21,34 @@ from agentcore.a2a_protocol.metrics.llm_metrics import (
 
 @pytest.fixture(autouse=True)
 def setup_metrics() -> None:
-    """Initialize metrics before each test.
+    """Initialize and cleanup metrics for each test.
 
-    This ensures metrics are created once and reused across tests.
+    This ensures metrics are created fresh for each test and cleaned up after.
     The autouse=True makes this run before every test automatically.
     """
     # Import to trigger lazy initialization
     from agentcore.a2a_protocol.metrics import llm_metrics  # noqa: F401
+
+    # Unregister metrics from REGISTRY if they exist in cache
+    for metric_name, metric in list(llm_metrics._metrics_cache.items()):
+        try:
+            REGISTRY.unregister(metric)
+        except (KeyError, ValueError):
+            # Metric not in registry or already unregistered
+            pass
+
+    # Clear the metrics cache
+    llm_metrics._metrics_cache.clear()
+
+    # Reset lazy-initialized metric globals
+    llm_metrics._llm_requests_total = None
+    llm_metrics._llm_requests_duration_seconds = None
+    llm_metrics._llm_tokens_total = None
+    llm_metrics._llm_errors_total = None
+    llm_metrics._llm_active_requests = None
+    llm_metrics._llm_governance_violations_total = None
+    llm_metrics._llm_rate_limit_errors_total = None
+    llm_metrics._llm_rate_limit_retry_delay_seconds = None
 
 
 def get_metric_value(metric_name: str, labels: dict[str, str] | None = None) -> float:

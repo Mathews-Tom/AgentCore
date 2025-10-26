@@ -137,8 +137,8 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str | None = Field(
         default=None, description="Anthropic API key for Claude models"
     )
-    GOOGLE_API_KEY: str | None = Field(
-        default=None, description="Google API key for Gemini models"
+    GEMINI_API_KEY: str | None = Field(
+        default=None, description="Google Gemini API key"
     )
 
     LLM_REQUEST_TIMEOUT: float = Field(
