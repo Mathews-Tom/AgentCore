@@ -387,3 +387,286 @@ class TestModelProviderMap:
         """Test total number of models in mapping."""
         # 4 OpenAI + 3 Anthropic + 3 Gemini = 10 total
         assert len(MODEL_PROVIDER_MAP) == 10
+
+
+class TestLLMService:
+    """Test suite for LLMService facade class."""
+
+    def setup_method(self) -> None:
+        """Clear singleton instances before each test."""
+        ProviderRegistry._instances = {}
+
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    def test_initialization_defaults(self, mock_settings: MagicMock) -> None:
+        """Test LLMService initialization with default values."""
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+
+        assert service.timeout == 60.0
+        assert service.max_retries == 3
+        assert service.registry is not None
+
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    def test_initialization_custom_values(self, mock_settings: MagicMock) -> None:
+        """Test LLMService initialization with custom timeout and retries."""
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        service = LLMService(timeout=30.0, max_retries=5)
+
+        assert service.timeout == 30.0
+        assert service.max_retries == 5
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_complete_model_governance_rejection(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """Test that complete() rejects models not in ALLOWED_MODELS."""
+        from agentcore.a2a_protocol.models.llm import LLMRequest
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+        request = LLMRequest(
+            model="gpt-5",  # Not in ALLOWED_MODELS
+            messages=[{"role": "user", "content": "test"}],
+            trace_id="trace-123",
+        )
+
+        with pytest.raises(ModelNotAllowedError) as exc_info:
+            await service.complete(request)
+
+        assert exc_info.value.model == "gpt-5"
+        assert exc_info.value.allowed == ["gpt-4.1-mini"]
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_complete_success(self, mock_settings: MagicMock) -> None:
+        """Test successful completion with provider."""
+        from agentcore.a2a_protocol.models.llm import (
+            LLMRequest,
+            LLMResponse,
+            LLMUsage,
+        )
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        # Setup
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.OPENAI_API_KEY = "sk-test-key"
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        mock_response = LLMResponse(
+            content="Test response",
+            usage=LLMUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30),
+            latency_ms=100,
+            provider="openai",
+            model="gpt-4.1-mini",
+            trace_id="trace-123",
+        )
+
+        service = LLMService()
+
+        # Mock the provider's complete method
+        with patch.object(
+            service.registry.get_provider_for_model("gpt-4.1-mini"),
+            "complete",
+            return_value=mock_response,
+        ) as mock_complete:
+            request = LLMRequest(
+                model="gpt-4.1-mini",
+                messages=[{"role": "user", "content": "Hello"}],
+                trace_id="trace-123",
+                source_agent="agent-001",
+            )
+
+            response = await service.complete(request)
+
+            # Verify
+            assert response == mock_response
+            mock_complete.assert_called_once_with(request)
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_complete_provider_error(self, mock_settings: MagicMock) -> None:
+        """Test error handling when provider raises ProviderError."""
+        from agentcore.a2a_protocol.models.llm import LLMRequest, ProviderError
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        # Setup
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.OPENAI_API_KEY = "sk-test-key"
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+        provider = service.registry.get_provider_for_model("gpt-4.1-mini")
+
+        # Mock provider to raise error
+        original_error = Exception("API Error")
+        with patch.object(
+            provider, "complete", side_effect=ProviderError("openai", original_error)
+        ):
+            request = LLMRequest(
+                model="gpt-4.1-mini",
+                messages=[{"role": "user", "content": "test"}],
+            )
+
+            with pytest.raises(ProviderError) as exc_info:
+                await service.complete(request)
+
+            assert exc_info.value.provider == "openai"
+            assert exc_info.value.original_error == original_error
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_complete_provider_timeout(self, mock_settings: MagicMock) -> None:
+        """Test error handling when provider raises ProviderTimeoutError."""
+        from agentcore.a2a_protocol.models.llm import (
+            LLMRequest,
+            ProviderTimeoutError,
+        )
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        # Setup
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.OPENAI_API_KEY = "sk-test-key"
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+        provider = service.registry.get_provider_for_model("gpt-4.1-mini")
+
+        # Mock provider to raise timeout
+        with patch.object(
+            provider,
+            "complete",
+            side_effect=ProviderTimeoutError("openai", 60.0),
+        ):
+            request = LLMRequest(
+                model="gpt-4.1-mini",
+                messages=[{"role": "user", "content": "test"}],
+            )
+
+            with pytest.raises(ProviderTimeoutError) as exc_info:
+                await service.complete(request)
+
+            assert exc_info.value.provider == "openai"
+            assert exc_info.value.timeout_seconds == 60.0
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_stream_model_governance_rejection(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """Test that stream() rejects models not in ALLOWED_MODELS."""
+        from agentcore.a2a_protocol.models.llm import LLMRequest
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+        request = LLMRequest(
+            model="claude-3-opus",  # Not in ALLOWED_MODELS
+            messages=[{"role": "user", "content": "test"}],
+            stream=True,
+        )
+
+        with pytest.raises(ModelNotAllowedError) as exc_info:
+            async for _ in service.stream(request):
+                pass
+
+        assert exc_info.value.model == "claude-3-opus"
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_stream_success(self, mock_settings: MagicMock) -> None:
+        """Test successful streaming with provider."""
+        from agentcore.a2a_protocol.models.llm import LLMRequest
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        # Setup
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.OPENAI_API_KEY = "sk-test-key"
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+        provider = service.registry.get_provider_for_model("gpt-4.1-mini")
+
+        # Create async generator for mock
+        async def mock_stream_generator(request: LLMRequest) -> object:
+            for token in ["Hello", " ", "World"]:
+                yield token
+
+        # Mock the provider's stream method
+        with patch.object(provider, "stream", side_effect=mock_stream_generator):
+            request = LLMRequest(
+                model="gpt-4.1-mini",
+                messages=[{"role": "user", "content": "test"}],
+                stream=True,
+                trace_id="trace-xyz",
+            )
+
+            tokens = []
+            async for token in service.stream(request):
+                tokens.append(token)
+
+            # Verify
+            assert tokens == ["Hello", " ", "World"]
+
+    @pytest.mark.asyncio
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    async def test_stream_provider_error(self, mock_settings: MagicMock) -> None:
+        """Test error handling when provider stream raises ProviderError."""
+        from agentcore.a2a_protocol.models.llm import LLMRequest, ProviderError
+        from agentcore.a2a_protocol.services.llm_service import LLMService
+
+        # Setup
+        mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+        mock_settings.OPENAI_API_KEY = "sk-test-key"
+        mock_settings.LLM_REQUEST_TIMEOUT = 60.0
+        mock_settings.LLM_MAX_RETRIES = 3
+
+        service = LLMService()
+        provider = service.registry.get_provider_for_model("gpt-4.1-mini")
+
+        # Create async generator that raises error
+        async def mock_stream_with_error(request: LLMRequest) -> object:
+            yield "Hello"
+            raise ProviderError("openai", Exception("Stream error"))
+
+        # Mock the provider's stream method
+        with patch.object(provider, "stream", side_effect=mock_stream_with_error):
+            request = LLMRequest(
+                model="gpt-4.1-mini",
+                messages=[{"role": "user", "content": "test"}],
+                stream=True,
+            )
+
+            with pytest.raises(ProviderError) as exc_info:
+                async for _ in service.stream(request):
+                    pass
+
+            assert exc_info.value.provider == "openai"
+
+    @patch("agentcore.a2a_protocol.services.llm_service.settings")
+    def test_global_singleton_instance(self, mock_settings: MagicMock) -> None:
+        """Test that global llm_service singleton exists."""
+        from agentcore.a2a_protocol.services.llm_service import (
+            LLMService,
+            llm_service,
+        )
+
+        # Verify global instance exists and is correct type
+        assert llm_service is not None
+        assert isinstance(llm_service, LLMService)

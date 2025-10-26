@@ -44,8 +44,17 @@ Error Handling:
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 from agentcore.a2a_protocol.config import settings
-from agentcore.a2a_protocol.models.llm import ModelNotAllowedError, Provider
+from agentcore.a2a_protocol.models.llm import (
+    LLMRequest,
+    LLMResponse,
+    ModelNotAllowedError,
+    Provider,
+    ProviderError,
+    ProviderTimeoutError,
+)
 from agentcore.a2a_protocol.services.llm_client_anthropic import LLMClientAnthropic
 from agentcore.a2a_protocol.services.llm_client_base import LLMClient
 from agentcore.a2a_protocol.services.llm_client_gemini import LLMClientGemini
@@ -202,3 +211,316 @@ class ProviderRegistry:
 
         # This should never happen if Provider enum is complete
         raise ValueError(f"Unknown provider: {provider}")
+
+
+class LLMService:
+    """Main service interface for multi-provider LLM operations.
+
+    This class implements the Facade pattern, providing a unified interface for
+    LLM completions across OpenAI, Anthropic, and Gemini providers. It orchestrates
+    provider selection, model governance, A2A context propagation, and metrics collection.
+
+    The service is the main entry point for all LLM operations in AgentCore and
+    implements the following key responsibilities:
+
+    1. Model Governance: Validates all requests against ALLOWED_MODELS configuration
+    2. Provider Selection: Routes requests to appropriate provider via ProviderRegistry
+    3. A2A Context Propagation: Ensures trace_id and source_agent flow through all layers
+    4. Error Handling: Provides meaningful errors with proper context
+    5. Structured Logging: Logs all operations with trace_id, model, provider, latency
+    6. Request/Response Normalization: Unified interface regardless of provider
+
+    This is the CRITICAL PATH service - all LLM operations flow through this interface.
+    It blocks 6 downstream tickets (LLM-CLIENT-010, 011, 012, 013, 018, 019).
+
+    Attributes:
+        registry: ProviderRegistry for provider selection
+        timeout: Request timeout in seconds
+        max_retries: Maximum retry attempts on transient errors
+        logger: Structured logger for request tracking
+
+    Example:
+        ```python
+        from agentcore.a2a_protocol.services.llm_service import llm_service
+        from agentcore.a2a_protocol.models.llm import LLMRequest
+
+        # Non-streaming completion
+        request = LLMRequest(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": "Hello"}],
+            trace_id="trace-123",
+            source_agent="agent-001",
+        )
+        response = await llm_service.complete(request)
+        print(response.content)  # "Hello! How can I help you today?"
+
+        # Streaming completion
+        async for token in llm_service.stream(request):
+            print(token, end="", flush=True)
+        ```
+    """
+
+    def __init__(
+        self, timeout: float | None = None, max_retries: int | None = None
+    ) -> None:
+        """Initialize LLM service with optional timeout and retry configuration.
+
+        Args:
+            timeout: Request timeout in seconds (default from settings.LLM_REQUEST_TIMEOUT)
+            max_retries: Maximum retry attempts (default from settings.LLM_MAX_RETRIES)
+        """
+        import logging
+
+        self.timeout = timeout if timeout is not None else settings.LLM_REQUEST_TIMEOUT
+        self.max_retries = (
+            max_retries if max_retries is not None else settings.LLM_MAX_RETRIES
+        )
+        self.registry = ProviderRegistry(timeout=self.timeout, max_retries=self.max_retries)
+        self.logger = logging.getLogger(__name__)
+
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        """Execute non-streaming LLM completion with model governance and A2A context.
+
+        This is the main entry point for non-streaming LLM operations. It implements
+        the complete flow:
+
+        1. Model Governance: Validates request.model is in ALLOWED_MODELS
+        2. Provider Selection: Gets appropriate provider from registry
+        3. Request Execution: Calls provider.complete() with error handling
+        4. Structured Logging: Logs completion with trace_id, model, provider, latency
+
+        The method enforces CLAUDE.md governance rules by rejecting non-allowed models
+        BEFORE calling providers, preventing cost overruns and ensuring policy compliance.
+
+        Args:
+            request: Unified LLM request with model, messages, temperature, max_tokens,
+                and A2A context (trace_id, source_agent, session_id).
+
+        Returns:
+            Normalized LLM response with content, usage statistics, latency,
+            provider information, and propagated A2A context.
+
+        Raises:
+            ModelNotAllowedError: When request.model is not in ALLOWED_MODELS configuration
+            ProviderError: When provider API returns an error (authentication, rate limit, etc.)
+            ProviderTimeoutError: When request exceeds timeout limit
+            RuntimeError: When provider API key is not configured
+
+        Example:
+            >>> request = LLMRequest(
+            ...     model="gpt-4.1-mini",
+            ...     messages=[{"role": "user", "content": "Explain async/await"}],
+            ...     temperature=0.7,
+            ...     max_tokens=200,
+            ...     trace_id="trace-abc-123",
+            ... )
+            >>> response = await llm_service.complete(request)
+            >>> print(f"Provider: {response.provider}, Tokens: {response.usage.total_tokens}")
+            Provider: openai, Tokens: 57
+        """
+        import time
+
+        # Step 1: Model governance check
+        # This MUST happen before provider selection to enforce ALLOWED_MODELS policy
+        if request.model not in settings.ALLOWED_MODELS:
+            self.logger.warning(
+                "Model governance violation - model not allowed",
+                extra={
+                    "model": request.model,
+                    "allowed_models": settings.ALLOWED_MODELS,
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                },
+            )
+            raise ModelNotAllowedError(request.model, settings.ALLOWED_MODELS)
+
+        # Step 2: Provider selection via registry
+        try:
+            provider = self.registry.get_provider_for_model(request.model)
+        except (ValueError, RuntimeError) as e:
+            self.logger.error(
+                "Provider selection failed",
+                extra={
+                    "model": request.model,
+                    "error": str(e),
+                    "trace_id": request.trace_id,
+                },
+            )
+            raise
+
+        # Step 3: Execute request with timing
+        start_time = time.time()
+        try:
+            response = await provider.complete(request)
+            elapsed_ms = int((time.time() - start_time) * 1000)
+
+            # Step 4: Structured logging with all context
+            self.logger.info(
+                "LLM completion succeeded",
+                extra={
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                    "session_id": request.session_id,
+                    "model": request.model,
+                    "provider": response.provider,
+                    "latency_ms": elapsed_ms,
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens,
+                },
+            )
+
+            return response
+
+        except (ProviderError, ProviderTimeoutError) as e:
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            self.logger.error(
+                "LLM completion failed",
+                extra={
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                    "model": request.model,
+                    "provider": provider.__class__.__name__,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "latency_ms": elapsed_ms,
+                },
+            )
+            raise
+
+    async def stream(self, request: LLMRequest) -> AsyncIterator[str]:
+        """Execute streaming LLM completion with model governance and A2A context.
+
+        This method provides streaming completions where tokens are yielded as they
+        are generated by the provider. It implements the same governance and error
+        handling as complete(), but returns an async iterator instead of a single response.
+
+        Streaming is useful for:
+        - Real-time user interfaces (showing progress)
+        - Long-form content generation
+        - Reducing perceived latency (time to first token)
+
+        The method follows the same governance flow:
+        1. Model Governance: Validates request.model is in ALLOWED_MODELS
+        2. Provider Selection: Gets appropriate provider from registry
+        3. Stream Execution: Yields tokens from provider.stream()
+        4. Structured Logging: Logs stream start and completion
+
+        Args:
+            request: Unified LLM request with model, messages, temperature, max_tokens,
+                and A2A context (trace_id, source_agent, session_id).
+
+        Yields:
+            Content tokens as strings. Each yield represents a chunk of generated text.
+            Tokens are yielded in order and should be concatenated to reconstruct
+            the full response.
+
+        Raises:
+            ModelNotAllowedError: When request.model is not in ALLOWED_MODELS configuration
+            ProviderError: When provider API returns an error during streaming
+            ProviderTimeoutError: When stream does not produce tokens within timeout
+            RuntimeError: When provider API key is not configured
+
+        Example:
+            >>> request = LLMRequest(
+            ...     model="claude-3-5-haiku-20241022",
+            ...     messages=[{"role": "user", "content": "Count to 5"}],
+            ...     stream=True,
+            ...     trace_id="trace-xyz-789",
+            ... )
+            >>> async for token in llm_service.stream(request):
+            ...     print(token, end="", flush=True)
+            1 2 3 4 5
+
+        Notes:
+            - Tokens are yielded immediately as received (no buffering)
+            - Final usage statistics are not available during streaming
+            - Latency metrics track time to first token separately
+            - Client must handle stream interruptions (e.g., network errors)
+        """
+        import time
+
+        # Step 1: Model governance check (same as complete)
+        if request.model not in settings.ALLOWED_MODELS:
+            self.logger.warning(
+                "Model governance violation - model not allowed (streaming)",
+                extra={
+                    "model": request.model,
+                    "allowed_models": settings.ALLOWED_MODELS,
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                },
+            )
+            raise ModelNotAllowedError(request.model, settings.ALLOWED_MODELS)
+
+        # Step 2: Provider selection via registry
+        try:
+            provider = self.registry.get_provider_for_model(request.model)
+        except (ValueError, RuntimeError) as e:
+            self.logger.error(
+                "Provider selection failed (streaming)",
+                extra={
+                    "model": request.model,
+                    "error": str(e),
+                    "trace_id": request.trace_id,
+                },
+            )
+            raise
+
+        # Log streaming request start
+        start_time = time.time()
+        self.logger.info(
+            "LLM streaming started",
+            extra={
+                "trace_id": request.trace_id,
+                "source_agent": request.source_agent,
+                "session_id": request.session_id,
+                "model": request.model,
+                "provider": provider.__class__.__name__,
+            },
+        )
+
+        # Step 3: Execute streaming request and yield tokens
+        try:
+            token_count = 0
+            # Note: provider.stream() is an async generator, not a coroutine
+            # The abstract base class signature doesn't match the implementation
+            # (this is a known pattern for async generators in Python)
+            async for token in provider.stream(request):  # type: ignore[attr-defined]
+                token_count += 1
+                yield token
+
+            # Log streaming completion
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            self.logger.info(
+                "LLM streaming completed",
+                extra={
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                    "model": request.model,
+                    "provider": provider.__class__.__name__,
+                    "latency_ms": elapsed_ms,
+                    "token_chunks": token_count,
+                },
+            )
+
+        except (ProviderError, ProviderTimeoutError) as e:
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            self.logger.error(
+                "LLM streaming failed",
+                extra={
+                    "trace_id": request.trace_id,
+                    "source_agent": request.source_agent,
+                    "model": request.model,
+                    "provider": provider.__class__.__name__,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "latency_ms": elapsed_ms,
+                },
+            )
+            raise
+
+
+# Global singleton instance for easy access
+# This is the main entry point for all LLM operations in AgentCore
+llm_service = LLMService()
