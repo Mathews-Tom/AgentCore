@@ -55,18 +55,24 @@ TIER_MODEL_MAP: dict[ModelTier, list[str]] = {
     ModelTier.FAST: [
         "gpt-4.1-mini",
         "gpt-5-mini",
-        "claude-3-5-haiku-20241022",
-        "gemini-1.5-flash",
+        "claude-haiku-4-5-20251001",  # Latest Haiku
+        "claude-3-5-haiku-20241022",  # Legacy fallback
+        "gemini-2.5-flash",  # Latest Flash
+        "gemini-2.0-flash-exp",  # Legacy fallback
     ],
     ModelTier.BALANCED: [
         "gpt-4.1",
-        "claude-3-5-sonnet",
-        "gemini-1.5-pro",
+        "claude-sonnet-4-5-20250929",  # Latest Sonnet
+        "claude-3-5-sonnet",  # Legacy fallback
+        "gemini-2.5-pro",  # Latest Pro
+        "gemini-1.5-pro",  # Legacy fallback
     ],
     ModelTier.PREMIUM: [
         "gpt-5",
-        "claude-3-opus",
-        "gemini-2.0-flash-exp",
+        "claude-sonnet-4-5-20250929",  # Latest Sonnet as premium
+        "claude-3-opus",  # Legacy fallback
+        "gemini-2.5-pro",  # Latest Pro as premium
+        "gemini-2.0-flash-exp",  # Experimental fallback
     ],
 }
 
@@ -320,10 +326,10 @@ class ModelSelector:
 
         Example:
             >>> selector = ModelSelector(provider_preference=["openai", "anthropic"])
-            >>> models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-1.5-flash"]
+            >>> models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
             >>> sorted_models = selector._filter_by_preference(models)
             >>> print(sorted_models)
-            ["gpt-4.1-mini", "claude-3-5-haiku-20241022", "gemini-1.5-flash"]
+            ["gpt-4.1-mini", "claude-3-5-haiku-20241022", "gemini-2.0-flash-exp"]
         """
         if not self.provider_preference:
             return models

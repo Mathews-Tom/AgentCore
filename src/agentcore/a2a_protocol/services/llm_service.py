@@ -77,14 +77,20 @@ MODEL_PROVIDER_MAP: dict[str, Provider] = {
     "gpt-4.1-mini": Provider.OPENAI,
     "gpt-5": Provider.OPENAI,
     "gpt-5-mini": Provider.OPENAI,
-    # Anthropic models
+    # Anthropic models - latest
+    "claude-sonnet-4-5-20250929": Provider.ANTHROPIC,
+    "claude-haiku-4-5-20251001": Provider.ANTHROPIC,
+    # Anthropic models - legacy (keep for backwards compatibility)
     "claude-3-5-sonnet": Provider.ANTHROPIC,
     "claude-3-5-haiku-20241022": Provider.ANTHROPIC,
     "claude-3-opus": Provider.ANTHROPIC,
-    # Gemini models
+    # Gemini models - latest
+    "gemini-2.5-flash": Provider.GEMINI,
+    "gemini-2.5-pro": Provider.GEMINI,
+    # Gemini models - legacy (keep for backwards compatibility)
     "gemini-2.0-flash-exp": Provider.GEMINI,
     "gemini-1.5-pro": Provider.GEMINI,
-    "gemini-1.5-flash": Provider.GEMINI,
+    "gemini-2.0-flash-exp": Provider.GEMINI,
 }
 
 

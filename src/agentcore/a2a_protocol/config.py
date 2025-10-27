@@ -123,7 +123,7 @@ class Settings(BaseSettings):
             "gpt-4.1-mini",
             "gpt-5-mini",
             "claude-3-5-haiku-20241022",
-            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
         ],
         description="List of allowed LLM models for the service",
     )
