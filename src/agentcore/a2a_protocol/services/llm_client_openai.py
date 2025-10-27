@@ -107,6 +107,17 @@ class LLMClientOpenAI(LLMClient):
         self.max_retries = max_retries
         self.logger = logging.getLogger(__name__)
 
+    def _is_reasoning_model(self, model: str) -> bool:
+        """Check if model supports reasoning_effort parameter.
+
+        Args:
+            model: Model name to check
+
+        Returns:
+            True if model supports reasoning_effort, False otherwise
+        """
+        return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
+
     async def complete(self, request: LLMRequest) -> LLMResponse:
         """Execute non-streaming completion request with retry logic.
 
@@ -148,13 +159,20 @@ class LLMClientOpenAI(LLMClient):
         # Retry loop with exponential backoff
         for attempt in range(self.max_retries):
             try:
-                response = await self.client.chat.completions.create(
-                    model=request.model,
-                    messages=request.messages,  # type: ignore[arg-type]
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens,
-                    extra_headers=extra_headers if extra_headers else None,
-                )
+                # Build completion parameters (no temperature or max_tokens per CLAUDE.md)
+                completion_params: dict[str, object] = {
+                    "model": request.model,
+                    "messages": request.messages,
+                }
+
+                # Add reasoning_effort for reasoning models (GPT-5, o1, o3)
+                if request.reasoning_effort and self._is_reasoning_model(request.model):
+                    completion_params["reasoning_effort"] = request.reasoning_effort
+
+                if extra_headers:
+                    completion_params["extra_headers"] = extra_headers
+
+                response = await self.client.chat.completions.create(**completion_params)  # type: ignore[arg-type]
 
                 # Calculate latency and normalize response
                 latency_ms = int((time.perf_counter() - start_time) * 1000)
@@ -273,14 +291,21 @@ class LLMClientOpenAI(LLMClient):
             extra_headers["X-Session-ID"] = request.session_id
 
         try:
-            stream_response = await self.client.chat.completions.create(
-                model=request.model,
-                messages=request.messages,  # type: ignore[arg-type]
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                stream=True,
-                extra_headers=extra_headers if extra_headers else None,
-            )
+            # Build stream parameters (no temperature or max_tokens per CLAUDE.md)
+            stream_params: dict[str, object] = {
+                "model": request.model,
+                "messages": request.messages,
+                "stream": True,
+            }
+
+            # Add reasoning_effort for reasoning models (GPT-5, o1, o3)
+            if request.reasoning_effort and self._is_reasoning_model(request.model):
+                stream_params["reasoning_effort"] = request.reasoning_effort
+
+            if extra_headers:
+                stream_params["extra_headers"] = extra_headers
+
+            stream_response = await self.client.chat.completions.create(**stream_params)  # type: ignore[arg-type]
 
             # Yield tokens as they arrive
             async for chunk in stream_response:  # type: ignore[union-attr]
@@ -360,7 +385,16 @@ class LLMClientOpenAI(LLMClient):
         if not choices:
             raise ValueError("Invalid OpenAI response: empty 'choices' list")
 
-        content = choices[0].message.content
+        message = choices[0].message
+        content = message.content
+
+        # For GPT-5 models, check for text in annotations if content is empty
+        if not content and hasattr(message, 'annotations') and message.annotations:
+            for annotation in message.annotations:
+                if hasattr(annotation, 'text'):
+                    content = annotation.text
+                    break
+
         if content is None:
             content = ""
 
