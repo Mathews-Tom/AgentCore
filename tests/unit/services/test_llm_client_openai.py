@@ -22,8 +22,7 @@ from openai import (
     APITimeoutError,
     AuthenticationError,
     BadRequestError,
-    RateLimitError,
-)
+    RateLimitError)
 
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
@@ -31,8 +30,7 @@ from agentcore.a2a_protocol.models.llm import (
     LLMUsage,
     ProviderError,
     ProviderTimeoutError,
-    RateLimitError as CustomRateLimitError,
-)
+    RateLimitError as CustomRateLimitError)
 from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
 
 
@@ -57,13 +55,9 @@ def sample_request() -> LLMRequest:
     """Create sample LLM request."""
     return LLMRequest(
         model="gpt-4.1-mini",
-        messages=[{"role": "user", "content": "Hello"}],
-        temperature=0.7,
-        max_tokens=100,
-        trace_id="trace-123",
+        messages=[{"role": "user", "content": "Hello"}], trace_id="trace-123",
         source_agent="agent-1",
-        session_id="session-456",
-    )
+        session_id="session-456")
 
 
 @pytest.fixture
@@ -72,14 +66,12 @@ def mock_openai_response() -> Mock:
     response = Mock()
     response.choices = [
         Mock(
-            message=Mock(content="Hello! How can I help you?"),
-        )
+            message=Mock(content="Hello! How can I help you?"))
     ]
     response.usage = Mock(
         prompt_tokens=10,
         completion_tokens=8,
-        total_tokens=18,
-    )
+        total_tokens=18)
     return response
 
 
@@ -111,8 +103,7 @@ class TestLLMClientOpenAIComplete:
         self,
         llm_client: LLMClientOpenAI,
         sample_request: LLMRequest,
-        mock_openai_response: Mock,
-    ) -> None:
+        mock_openai_response: Mock) -> None:
         """Test successful completion request."""
         # Setup mock
         llm_client.client.chat.completions.create = AsyncMock(return_value=mock_openai_response)
@@ -131,12 +122,10 @@ class TestLLMClientOpenAIComplete:
         assert response.usage.total_tokens == 18
         assert response.latency_ms >= 0
 
-        # Verify API call
+        # Verify API call (no temperature/max_tokens per CLAUDE.md)
         llm_client.client.chat.completions.create.assert_called_once()
         call_kwargs = llm_client.client.chat.completions.create.call_args[1]
         assert call_kwargs["model"] == "gpt-4.1-mini"
-        assert call_kwargs["temperature"] == 0.7
-        assert call_kwargs["max_tokens"] == 100
         assert call_kwargs["extra_headers"]["X-Trace-ID"] == "trace-123"
         assert call_kwargs["extra_headers"]["X-Source-Agent"] == "agent-1"
         assert call_kwargs["extra_headers"]["X-Session-ID"] == "session-456"
@@ -145,27 +134,24 @@ class TestLLMClientOpenAIComplete:
     async def test_complete_without_a2a_context(
         self,
         llm_client: LLMClientOpenAI,
-        mock_openai_response: Mock,
-    ) -> None:
+        mock_openai_response: Mock) -> None:
         """Test completion without A2A context."""
         request = LLMRequest(
             model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "Hello"}],
-        )
+            messages=[{"role": "user", "content": "Hello"}])
         llm_client.client.chat.completions.create = AsyncMock(return_value=mock_openai_response)
 
         response = await llm_client.complete(request)
 
         assert response.trace_id is None
         call_kwargs = llm_client.client.chat.completions.create.call_args[1]
-        assert call_kwargs["extra_headers"] is None
+        assert "extra_headers" not in call_kwargs or call_kwargs["extra_headers"] is None
 
     @pytest.mark.asyncio
     async def test_complete_timeout_error(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test timeout error handling (no retry)."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=APITimeoutError(request=Mock())
@@ -183,15 +169,13 @@ class TestLLMClientOpenAIComplete:
     async def test_complete_authentication_error(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test authentication error handling (no retry)."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=AuthenticationError(
                 message="Invalid API key",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with pytest.raises(ProviderError) as exc_info:
@@ -205,15 +189,13 @@ class TestLLMClientOpenAIComplete:
     async def test_complete_bad_request_error(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test bad request error handling (no retry)."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=BadRequestError(
                 message="Invalid parameters",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with pytest.raises(ProviderError) as exc_info:
@@ -228,8 +210,7 @@ class TestLLMClientOpenAIComplete:
         self,
         llm_client: LLMClientOpenAI,
         sample_request: LLMRequest,
-        mock_openai_response: Mock,
-    ) -> None:
+        mock_openai_response: Mock) -> None:
         """Test retry logic on rate limit error."""
         # Fail twice with rate limit, then succeed
         llm_client.client.chat.completions.create = AsyncMock(
@@ -237,13 +218,11 @@ class TestLLMClientOpenAIComplete:
                 RateLimitError(
                     message="Rate limit exceeded",
                     response=Mock(),
-                    body=None,
-                ),
+                    body=None),
                 RateLimitError(
                     message="Rate limit exceeded",
                     response=Mock(),
-                    body=None,
-                ),
+                    body=None),
                 mock_openai_response,
             ]
         )
@@ -261,15 +240,13 @@ class TestLLMClientOpenAIComplete:
     async def test_complete_max_retries_exceeded(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test max retries exceeded."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=RateLimitError(
                 message="Rate limit exceeded",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -285,8 +262,7 @@ class TestLLMClientOpenAIComplete:
         self,
         llm_client: LLMClientOpenAI,
         sample_request: LLMRequest,
-        mock_openai_response: Mock,
-    ) -> None:
+        mock_openai_response: Mock) -> None:
         """Test retry logic on connection error."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=[
@@ -305,15 +281,13 @@ class TestLLMClientOpenAIComplete:
     async def test_complete_exponential_backoff(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test exponential backoff timing."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=RateLimitError(
                 message="Rate limit exceeded",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
@@ -333,8 +307,7 @@ class TestLLMClientOpenAIStream:
     async def test_stream_success(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test successful streaming completion."""
         # Mock streaming response
         chunks = [
@@ -369,8 +342,7 @@ class TestLLMClientOpenAIStream:
     async def test_stream_with_empty_chunks(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming with empty content chunks (should be filtered)."""
         chunks = [
             Mock(choices=[Mock(delta=Mock(content="Hello"))]),
@@ -397,8 +369,7 @@ class TestLLMClientOpenAIStream:
     async def test_stream_timeout_error(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming timeout error."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=APITimeoutError(request=Mock())
@@ -415,15 +386,13 @@ class TestLLMClientOpenAIStream:
     async def test_stream_authentication_error(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming authentication error."""
         llm_client.client.chat.completions.create = AsyncMock(
             side_effect=AuthenticationError(
                 message="Invalid API key",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with pytest.raises(ProviderError) as exc_info:
@@ -440,13 +409,11 @@ class TestLLMClientOpenAINormalizeResponse:
         self,
         llm_client: LLMClientOpenAI,
         sample_request: LLMRequest,
-        mock_openai_response: Mock,
-    ) -> None:
+        mock_openai_response: Mock) -> None:
         """Test successful response normalization."""
         normalized = llm_client._normalize_response(
             (mock_openai_response, 1500),
-            sample_request,
-        )
+            sample_request)
 
         assert isinstance(normalized, LLMResponse)
         assert normalized.content == "Hello! How can I help you?"
@@ -461,16 +428,14 @@ class TestLLMClientOpenAINormalizeResponse:
     def test_normalize_response_none_content(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with None content (should default to empty string)."""
         response = Mock()
-        response.choices = [Mock(message=Mock(content=None))]
+        response.choices = [Mock(message=Mock(content=None, annotations=None))]
         response.usage = Mock(
             prompt_tokens=10,
             completion_tokens=0,
-            total_tokens=10,
-        )
+            total_tokens=10)
 
         normalized = llm_client._normalize_response((response, 100), sample_request)
 
@@ -480,8 +445,7 @@ class TestLLMClientOpenAINormalizeResponse:
     def test_normalize_response_invalid_format(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with invalid response format."""
         with pytest.raises(ValueError, match="Invalid response format: expected tuple"):
             llm_client._normalize_response("invalid", sample_request)
@@ -489,8 +453,7 @@ class TestLLMClientOpenAINormalizeResponse:
     def test_normalize_response_missing_choices(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with missing choices field."""
         response = Mock(spec=[])  # No attributes
         with pytest.raises(ValueError, match="missing 'choices' field"):
@@ -499,8 +462,7 @@ class TestLLMClientOpenAINormalizeResponse:
     def test_normalize_response_empty_choices(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with empty choices list."""
         response = Mock()
         response.choices = []
@@ -512,8 +474,7 @@ class TestLLMClientOpenAINormalizeResponse:
     def test_normalize_response_missing_usage(
         self,
         llm_client: LLMClientOpenAI,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with missing usage field."""
         response = Mock()
         response.choices = [Mock(message=Mock(content="test"))]

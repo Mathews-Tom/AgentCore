@@ -15,8 +15,7 @@ from agentcore.a2a_protocol.metrics.llm_metrics import (
     record_llm_error,
     record_llm_request,
     record_llm_tokens,
-    track_active_requests,
-)
+    track_active_requests)
 
 
 @pytest.fixture(autouse=True)
@@ -114,7 +113,7 @@ class TestLLMMetricsDefinition:
     def test_llm_tokens_total_exists(self) -> None:
         """Test that llm_tokens_total counter exists with correct labels."""
         # Trigger metric creation
-        record_llm_tokens("gemini", "gemini-1.5-flash", "prompt", 100)
+        record_llm_tokens("gemini", "gemini-2.0-flash-exp", "prompt", 100)
 
         # Verify metric exists in registry
         metric_found = False
@@ -191,8 +190,7 @@ class TestLLMMetricsRecording:
         # Get initial value
         initial = get_metric_value(
             "llm_requests_total",
-            {"provider": "openai", "model": "gpt-4.1", "status": "success"},
-        )
+            {"provider": "openai", "model": "gpt-4.1", "status": "success"})
 
         # Record a successful request
         record_llm_request("openai", "gpt-4.1", "success")
@@ -200,8 +198,7 @@ class TestLLMMetricsRecording:
         # Verify it incremented
         value = get_metric_value(
             "llm_requests_total",
-            {"provider": "openai", "model": "gpt-4.1", "status": "success"},
-        )
+            {"provider": "openai", "model": "gpt-4.1", "status": "success"})
         assert value == initial + 1.0
 
     def test_record_llm_request_different_labels(self) -> None:
@@ -209,20 +206,17 @@ class TestLLMMetricsRecording:
         # Get initial values
         init_success = get_metric_value(
             "llm_requests_total",
-            {"provider": "openai", "model": "gpt-5-mini", "status": "success"},
-        )
+            {"provider": "openai", "model": "gpt-5-mini", "status": "success"})
         init_error = get_metric_value(
             "llm_requests_total",
-            {"provider": "openai", "model": "gpt-5-mini", "status": "error"},
-        )
+            {"provider": "openai", "model": "gpt-5-mini", "status": "error"})
         init_anthropic = get_metric_value(
             "llm_requests_total",
             {
                 "provider": "anthropic",
                 "model": "claude-3-opus",
                 "status": "success",
-            },
-        )
+            })
 
         # Record requests with different labels
         record_llm_request("openai", "gpt-5-mini", "success")
@@ -233,15 +227,13 @@ class TestLLMMetricsRecording:
         assert (
             get_metric_value(
                 "llm_requests_total",
-                {"provider": "openai", "model": "gpt-5-mini", "status": "success"},
-            )
+                {"provider": "openai", "model": "gpt-5-mini", "status": "success"})
             == init_success + 1.0
         )
         assert (
             get_metric_value(
                 "llm_requests_total",
-                {"provider": "openai", "model": "gpt-5-mini", "status": "error"},
-            )
+                {"provider": "openai", "model": "gpt-5-mini", "status": "error"})
             == init_error + 1.0
         )
         assert (
@@ -251,8 +243,7 @@ class TestLLMMetricsRecording:
                     "provider": "anthropic",
                     "model": "claude-3-opus",
                     "status": "success",
-                },
-            )
+                })
             == init_anthropic + 1.0
         )
 
@@ -261,8 +252,7 @@ class TestLLMMetricsRecording:
         # Get initial count
         init_count = get_metric_value(
             "llm_requests_duration_seconds_count",
-            {"provider": "gemini", "model": "gemini-2.0-flash-exp"},
-        )
+            {"provider": "gemini", "model": "gemini-2.0-flash-exp"})
 
         # Record some durations
         record_llm_duration("gemini", "gemini-2.0-flash-exp", 0.5)
@@ -272,8 +262,7 @@ class TestLLMMetricsRecording:
         # Verify histogram count increased by 3
         count = get_metric_value(
             "llm_requests_duration_seconds_count",
-            {"provider": "gemini", "model": "gemini-2.0-flash-exp"},
-        )
+            {"provider": "gemini", "model": "gemini-2.0-flash-exp"})
         assert count == init_count + 3.0
 
     def test_record_llm_tokens_increments_by_count(self) -> None:
@@ -281,12 +270,10 @@ class TestLLMMetricsRecording:
         # Get initial value
         init_prompt = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "prompt"},
-        )
+            {"provider": "openai", "model": "gpt-4.1", "token_type": "prompt"})
         init_completion = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "completion"},
-        )
+            {"provider": "openai", "model": "gpt-4.1", "token_type": "completion"})
 
         # Record prompt tokens
         record_llm_tokens("openai", "gpt-4.1", "prompt", 100)
@@ -295,8 +282,7 @@ class TestLLMMetricsRecording:
         # Verify counter increased by total
         value = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "prompt"},
-        )
+            {"provider": "openai", "model": "gpt-4.1", "token_type": "prompt"})
         assert value == init_prompt + 150.0
 
         # Record completion tokens
@@ -305,8 +291,7 @@ class TestLLMMetricsRecording:
         # Verify completion tokens tracked separately
         value = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "completion"},
-        )
+            {"provider": "openai", "model": "gpt-4.1", "token_type": "completion"})
         assert value == init_completion + 75.0
 
     def test_record_llm_error_increments_counter(self) -> None:
@@ -318,16 +303,14 @@ class TestLLMMetricsRecording:
                 "provider": "anthropic",
                 "model": "claude-3-5-sonnet",
                 "error_type": "ProviderError",
-            },
-        )
+            })
         init_timeout = get_metric_value(
             "llm_errors_total",
             {
                 "provider": "anthropic",
                 "model": "claude-3-5-sonnet",
                 "error_type": "ProviderTimeoutError",
-            },
-        )
+            })
 
         # Record errors
         record_llm_error("anthropic", "claude-3-5-sonnet", "ProviderError")
@@ -341,8 +324,7 @@ class TestLLMMetricsRecording:
                 "provider": "anthropic",
                 "model": "claude-3-5-sonnet",
                 "error_type": "ProviderError",
-            },
-        )
+            })
         assert provider_error_count == init_provider + 2.0
 
         timeout_error_count = get_metric_value(
@@ -351,8 +333,7 @@ class TestLLMMetricsRecording:
                 "provider": "anthropic",
                 "model": "claude-3-5-sonnet",
                 "error_type": "ProviderTimeoutError",
-            },
-        )
+            })
         assert timeout_error_count == init_timeout + 1.0
 
     def test_record_governance_violation_increments_counter(self) -> None:
@@ -360,12 +341,10 @@ class TestLLMMetricsRecording:
         # Get initial values
         init1 = get_metric_value(
             "llm_governance_violations_total",
-            {"model": "forbidden-model-1", "source_agent": "test-agent-111"},
-        )
+            {"model": "forbidden-model-1", "source_agent": "test-agent-111"})
         init2 = get_metric_value(
             "llm_governance_violations_total",
-            {"model": "forbidden-model-1", "source_agent": "test-agent-222"},
-        )
+            {"model": "forbidden-model-1", "source_agent": "test-agent-222"})
 
         # Record violations
         record_governance_violation("forbidden-model-1", "test-agent-111")
@@ -375,14 +354,12 @@ class TestLLMMetricsRecording:
         # Verify violation counts incremented correctly
         value1 = get_metric_value(
             "llm_governance_violations_total",
-            {"model": "forbidden-model-1", "source_agent": "test-agent-111"},
-        )
+            {"model": "forbidden-model-1", "source_agent": "test-agent-111"})
         assert value1 == init1 + 2.0
 
         value2 = get_metric_value(
             "llm_governance_violations_total",
-            {"model": "forbidden-model-1", "source_agent": "test-agent-222"},
-        )
+            {"model": "forbidden-model-1", "source_agent": "test-agent-222"})
         assert value2 == init2 + 1.0
 
     def test_record_governance_violation_unknown_agent(self) -> None:
@@ -390,8 +367,7 @@ class TestLLMMetricsRecording:
         # Get initial value
         init = get_metric_value(
             "llm_governance_violations_total",
-            {"model": "forbidden-model-2", "source_agent": "unknown"},
-        )
+            {"model": "forbidden-model-2", "source_agent": "unknown"})
 
         # Record violation with None source_agent
         record_governance_violation("forbidden-model-2", None)
@@ -399,8 +375,7 @@ class TestLLMMetricsRecording:
         # Verify it's recorded as 'unknown'
         value = get_metric_value(
             "llm_governance_violations_total",
-            {"model": "forbidden-model-2", "source_agent": "unknown"},
-        )
+            {"model": "forbidden-model-2", "source_agent": "unknown"})
         assert value == init + 1.0
 
     def test_track_active_requests_context_manager(self) -> None:

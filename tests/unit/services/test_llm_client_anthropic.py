@@ -23,16 +23,14 @@ from anthropic import (
     APITimeoutError,
     AuthenticationError,
     BadRequestError,
-    RateLimitError,
-)
+    RateLimitError)
 
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
     LLMResponse,
     ProviderError,
     ProviderTimeoutError,
-    RateLimitError as CustomRateLimitError,
-)
+    RateLimitError as CustomRateLimitError)
 from agentcore.a2a_protocol.services.llm_client_anthropic import LLMClientAnthropic
 
 
@@ -57,13 +55,9 @@ def sample_request() -> LLMRequest:
     """Create sample LLM request."""
     return LLMRequest(
         model="claude-3-5-haiku-20241022",
-        messages=[{"role": "user", "content": "Hello"}],
-        temperature=0.7,
-        max_tokens=100,
-        trace_id="trace-123",
+        messages=[{"role": "user", "content": "Hello"}], trace_id="trace-123",
         source_agent="agent-1",
-        session_id="session-456",
-    )
+        session_id="session-456")
 
 
 @pytest.fixture
@@ -74,9 +68,7 @@ def sample_request_with_system() -> LLMRequest:
         messages=[
             {"role": "system", "content": "You are a helpful assistant"},
             {"role": "user", "content": "Hello"},
-        ],
-        temperature=0.7,
-    )
+        ])
 
 
 @pytest.fixture
@@ -88,8 +80,7 @@ def mock_anthropic_response() -> Mock:
     ]
     response.usage = Mock(
         input_tokens=10,
-        output_tokens=8,
-    )
+        output_tokens=8)
     return response
 
 
@@ -175,8 +166,7 @@ class TestLLMClientAnthropicComplete:
         self,
         llm_client: LLMClientAnthropic,
         sample_request: LLMRequest,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test successful completion request."""
         # Setup mock
         llm_client.client.messages.create = AsyncMock(return_value=mock_anthropic_response)
@@ -195,12 +185,11 @@ class TestLLMClientAnthropicComplete:
         assert response.usage.total_tokens == 18
         assert response.latency_ms >= 0
 
-        # Verify API call
+        # Verify API call (no temperature per CLAUDE.md, max_tokens=4096 is Anthropic requirement)
         llm_client.client.messages.create.assert_called_once()
         call_kwargs = llm_client.client.messages.create.call_args[1]
         assert call_kwargs["model"] == "claude-3-5-haiku-20241022"
-        assert call_kwargs["temperature"] == 0.7
-        assert call_kwargs["max_tokens"] == 100
+        assert call_kwargs["max_tokens"] == 4096  # Anthropic API requirement
         assert "system" not in call_kwargs  # No system message in this request (param omitted)
         assert call_kwargs["extra_headers"]["X-Trace-ID"] == "trace-123"
         assert call_kwargs["extra_headers"]["X-Source-Agent"] == "agent-1"
@@ -211,8 +200,7 @@ class TestLLMClientAnthropicComplete:
         self,
         llm_client: LLMClientAnthropic,
         sample_request_with_system: LLMRequest,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test completion with system message."""
         llm_client.client.messages.create = AsyncMock(return_value=mock_anthropic_response)
 
@@ -231,13 +219,11 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_without_a2a_context(
         self,
         llm_client: LLMClientAnthropic,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test completion without A2A context."""
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
-            messages=[{"role": "user", "content": "Hello"}],
-        )
+            messages=[{"role": "user", "content": "Hello"}])
         llm_client.client.messages.create = AsyncMock(return_value=mock_anthropic_response)
 
         response = await llm_client.complete(request)
@@ -250,14 +236,11 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_without_max_tokens(
         self,
         llm_client: LLMClientAnthropic,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test completion defaults max_tokens to 4096 when not provided."""
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
-            messages=[{"role": "user", "content": "Hello"}],
-            max_tokens=None,
-        )
+            messages=[{"role": "user", "content": "Hello"}])
         llm_client.client.messages.create = AsyncMock(return_value=mock_anthropic_response)
 
         await llm_client.complete(request)
@@ -269,8 +252,7 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_timeout_error(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test timeout error handling (no retry)."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=APITimeoutError(request=Mock())
@@ -288,15 +270,13 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_authentication_error(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test authentication error handling (no retry)."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=AuthenticationError(
                 message="Invalid API key",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with pytest.raises(ProviderError) as exc_info:
@@ -310,15 +290,13 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_bad_request_error(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test bad request error handling (no retry)."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=BadRequestError(
                 message="Invalid parameters",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with pytest.raises(ProviderError) as exc_info:
@@ -333,8 +311,7 @@ class TestLLMClientAnthropicComplete:
         self,
         llm_client: LLMClientAnthropic,
         sample_request: LLMRequest,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test retry logic on rate limit error."""
         # Fail twice with rate limit, then succeed
         llm_client.client.messages.create = AsyncMock(
@@ -342,13 +319,11 @@ class TestLLMClientAnthropicComplete:
                 RateLimitError(
                     message="Rate limit exceeded",
                     response=Mock(),
-                    body=None,
-                ),
+                    body=None),
                 RateLimitError(
                     message="Rate limit exceeded",
                     response=Mock(),
-                    body=None,
-                ),
+                    body=None),
                 mock_anthropic_response,
             ]
         )
@@ -366,15 +341,13 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_max_retries_exceeded(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test max retries exceeded."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=RateLimitError(
                 message="Rate limit exceeded",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -390,8 +363,7 @@ class TestLLMClientAnthropicComplete:
         self,
         llm_client: LLMClientAnthropic,
         sample_request: LLMRequest,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test retry logic on connection error."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=[
@@ -410,15 +382,13 @@ class TestLLMClientAnthropicComplete:
     async def test_complete_exponential_backoff(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test exponential backoff timing."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=RateLimitError(
                 message="Rate limit exceeded",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
@@ -438,8 +408,7 @@ class TestLLMClientAnthropicStream:
     async def test_stream_success(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test successful streaming completion."""
         # Mock Anthropic streaming events
         events = [
@@ -474,8 +443,7 @@ class TestLLMClientAnthropicStream:
     async def test_stream_with_system_message(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request_with_system: LLMRequest,
-    ) -> None:
+        sample_request_with_system: LLMRequest) -> None:
         """Test streaming with system message."""
         events = [
             Mock(type="content_block_delta", delta=Mock(text="Hello")),
@@ -501,8 +469,7 @@ class TestLLMClientAnthropicStream:
     async def test_stream_with_non_delta_events(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming filters non-content_block_delta events."""
         events = [
             Mock(type="message_start"),  # Should be filtered
@@ -530,8 +497,7 @@ class TestLLMClientAnthropicStream:
     async def test_stream_timeout_error(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming timeout error."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=APITimeoutError(request=Mock())
@@ -548,15 +514,13 @@ class TestLLMClientAnthropicStream:
     async def test_stream_authentication_error(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming authentication error."""
         llm_client.client.messages.create = AsyncMock(
             side_effect=AuthenticationError(
                 message="Invalid API key",
                 response=Mock(),
-                body=None,
-            )
+                body=None)
         )
 
         with pytest.raises(ProviderError) as exc_info:
@@ -573,13 +537,11 @@ class TestLLMClientAnthropicNormalizeResponse:
         self,
         llm_client: LLMClientAnthropic,
         sample_request: LLMRequest,
-        mock_anthropic_response: Mock,
-    ) -> None:
+        mock_anthropic_response: Mock) -> None:
         """Test successful response normalization."""
         normalized = llm_client._normalize_response(
             (mock_anthropic_response, 1500),
-            sample_request,
-        )
+            sample_request)
 
         assert isinstance(normalized, LLMResponse)
         assert normalized.content == "Hello! How can I help you?"
@@ -594,15 +556,13 @@ class TestLLMClientAnthropicNormalizeResponse:
     def test_normalize_response_empty_content(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with empty content."""
         response = Mock()
         response.content = [Mock(text="")]
         response.usage = Mock(
             input_tokens=10,
-            output_tokens=0,
-        )
+            output_tokens=0)
 
         normalized = llm_client._normalize_response((response, 100), sample_request)
 
@@ -612,8 +572,7 @@ class TestLLMClientAnthropicNormalizeResponse:
     def test_normalize_response_invalid_format(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with invalid response format."""
         with pytest.raises(ValueError, match="Invalid response format: expected tuple"):
             llm_client._normalize_response("invalid", sample_request)
@@ -621,8 +580,7 @@ class TestLLMClientAnthropicNormalizeResponse:
     def test_normalize_response_missing_content(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with missing content field."""
         response = Mock(spec=[])  # No attributes
         with pytest.raises(ValueError, match="missing 'content' field"):
@@ -631,8 +589,7 @@ class TestLLMClientAnthropicNormalizeResponse:
     def test_normalize_response_empty_content_list(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with empty content list."""
         response = Mock()
         response.content = []
@@ -644,8 +601,7 @@ class TestLLMClientAnthropicNormalizeResponse:
     def test_normalize_response_missing_usage(
         self,
         llm_client: LLMClientAnthropic,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with missing usage field."""
         response = Mock()
         response.content = [Mock(text="test")]

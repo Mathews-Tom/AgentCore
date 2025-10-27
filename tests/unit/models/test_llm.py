@@ -142,8 +142,6 @@ class TestLLMRequest:
 
         assert request.model == "gpt-4.1-mini"
         assert len(request.messages) == 1
-        assert request.temperature == 0.7  # Default
-        assert request.max_tokens is None  # Default
         assert request.stream is False  # Default
         assert request.trace_id is None
         assert request.source_agent is None
@@ -157,9 +155,8 @@ class TestLLMRequest:
                 {"role": "system", "content": "You are helpful"},
                 {"role": "user", "content": "Hello"},
             ],
-            temperature=0.5,
-            max_tokens=100,
             stream=True,
+            reasoning_effort="medium",
             trace_id="trace-123",
             source_agent="agent-001",
             session_id="session-456",
@@ -167,102 +164,23 @@ class TestLLMRequest:
 
         assert request.model == "claude-3-5-sonnet-20241022"
         assert len(request.messages) == 2
-        assert request.temperature == 0.5
-        assert request.max_tokens == 100
         assert request.stream is True
+        assert request.reasoning_effort == "medium"
         assert request.trace_id == "trace-123"
         assert request.source_agent == "agent-001"
         assert request.session_id == "session-456"
-
-    def test_temperature_validation_min_boundary(self) -> None:
-        """Test that temperature=0.0 is valid (minimum boundary)."""
-        request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-            temperature=0.0,
-        )
-        assert request.temperature == 0.0
-
-    def test_temperature_validation_max_boundary(self) -> None:
-        """Test that temperature=2.0 is valid (maximum boundary)."""
-        request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-            temperature=2.0,
-        )
-        assert request.temperature == 2.0
-
-    def test_temperature_validation_below_min(self) -> None:
-        """Test that temperature below 0.0 raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            LLMRequest(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                temperature=-0.1,
-            )
-        assert "temperature" in str(exc_info.value).lower()
-
-    def test_temperature_validation_above_max(self) -> None:
-        """Test that temperature above 2.0 raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            LLMRequest(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                temperature=2.1,
-            )
-        assert "temperature" in str(exc_info.value).lower()
-
-    def test_max_tokens_validation_positive(self) -> None:
-        """Test that positive max_tokens is valid."""
-        request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-            max_tokens=1,
-        )
-        assert request.max_tokens == 1
-
-    def test_max_tokens_validation_zero(self) -> None:
-        """Test that max_tokens=0 raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            LLMRequest(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=0,
-            )
-        assert "max_tokens" in str(exc_info.value).lower()
-
-    def test_max_tokens_validation_negative(self) -> None:
-        """Test that negative max_tokens raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            LLMRequest(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=-1,
-            )
-        assert "max_tokens" in str(exc_info.value).lower()
-
-    def test_max_tokens_none_is_valid(self) -> None:
-        """Test that max_tokens=None is valid."""
-        request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-            max_tokens=None,
-        )
-        assert request.max_tokens is None
 
     def test_serialization_to_dict(self) -> None:
         """Test that LLMRequest can be serialized to dict."""
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "test"}],
-            temperature=0.7,
             trace_id="trace-123",
         )
         data = request.model_dump()
 
         assert data["model"] == "gpt-4.1-mini"
         assert data["messages"] == [{"role": "user", "content": "test"}]
-        assert data["temperature"] == 0.7
         assert data["trace_id"] == "trace-123"
 
     def test_deserialization_from_dict(self) -> None:
@@ -270,15 +188,13 @@ class TestLLMRequest:
         data = {
             "model": "gpt-4.1-mini",
             "messages": [{"role": "user", "content": "test"}],
-            "temperature": 0.9,
-            "max_tokens": 200,
             "stream": False,
+            "reasoning_effort": "high",
         }
         request = LLMRequest(**data)
 
         assert request.model == "gpt-4.1-mini"
-        assert request.temperature == 0.9
-        assert request.max_tokens == 200
+        assert request.reasoning_effort == "high"
 
 
 class TestLLMUsage:
@@ -437,21 +353,3 @@ class TestEdgeCases:
         ]
         request = LLMRequest(model="gpt-4.1-mini", messages=messages)
         assert len(request.messages) == 4
-
-    def test_large_max_tokens(self) -> None:
-        """Test that LLMRequest accepts large max_tokens values."""
-        request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-            max_tokens=1000000,
-        )
-        assert request.max_tokens == 1000000
-
-    def test_temperature_precision(self) -> None:
-        """Test that temperature accepts decimal precision."""
-        request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-            temperature=0.73456,
-        )
-        assert request.temperature == 0.73456

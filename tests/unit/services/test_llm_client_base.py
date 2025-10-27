@@ -66,8 +66,7 @@ class TestAbstractLLMClient:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model="test-model",
-                )
+                    model="test-model")
 
         with pytest.raises(TypeError, match="Can't instantiate abstract class"):
             ClientMissingComplete()  # type: ignore[abstract]
@@ -87,8 +86,7 @@ class TestAbstractLLMClient:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model="test-model",
-                )
+                    model="test-model")
 
             def _normalize_response(
                 self, raw_response: object, request: LLMRequest
@@ -101,8 +99,7 @@ class TestAbstractLLMClient:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model="test-model",
-                )
+                    model="test-model")
 
         with pytest.raises(TypeError, match="Can't instantiate abstract class"):
             ClientMissingStream()  # type: ignore[abstract]
@@ -122,8 +119,7 @@ class TestAbstractLLMClient:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model="test-model",
-                )
+                    model="test-model")
 
             async def stream(self, request: LLMRequest) -> AsyncIterator[str]:
                 """Stream implementation."""
@@ -156,8 +152,7 @@ class TestConcreteImplementation:
                     latency_ms=100,
                     provider="test",
                     model=request.model,
-                    trace_id=request.trace_id,
-                )
+                    trace_id=request.trace_id)
 
             async def stream(self, request: LLMRequest) -> AsyncIterator[str]:
                 """Execute streaming completion."""
@@ -177,8 +172,7 @@ class TestConcreteImplementation:
                     latency_ms=100,
                     provider="test",
                     model=request.model,
-                    trace_id=request.trace_id,
-                )
+                    trace_id=request.trace_id)
 
         # Should instantiate successfully
         client = CompleteClient()
@@ -202,8 +196,7 @@ class TestConcreteImplementation:
                     latency_ms=100,
                     provider="test",
                     model=request.model,
-                    trace_id=request.trace_id,
-                )
+                    trace_id=request.trace_id)
 
             async def stream(self, request: LLMRequest) -> AsyncIterator[str]:
                 """Execute streaming completion."""
@@ -220,15 +213,13 @@ class TestConcreteImplementation:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model=request.model,
-                )
+                    model=request.model)
 
         client = CompleteClient()
         request = LLMRequest(
             model="test-model",
             messages=[{"role": "user", "content": "Hello"}],
-            trace_id="trace-123",
-        )
+            trace_id="trace-123")
 
         response = await client.complete(request)
 
@@ -256,8 +247,7 @@ class TestConcreteImplementation:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model=request.model,
-                )
+                    model=request.model)
 
             async def stream(self, request: LLMRequest) -> AsyncIterator[str]:
                 """Execute streaming completion."""
@@ -276,15 +266,13 @@ class TestConcreteImplementation:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model=request.model,
-                )
+                    model=request.model)
 
         client = CompleteClient()
         request = LLMRequest(
             model="test-model",
             messages=[{"role": "user", "content": "Hello"}],
-            stream=True,
-        )
+            stream=True)
 
         tokens = []
         async for token in client.stream(request):
@@ -308,8 +296,7 @@ class TestConcreteImplementation:
                     ),
                     latency_ms=100,
                     provider="test",
-                    model=request.model,
-                )
+                    model=request.model)
 
             async def stream(self, request: LLMRequest) -> AsyncIterator[str]:
                 """Execute streaming completion."""
@@ -327,15 +314,13 @@ class TestConcreteImplementation:
                     latency_ms=50,
                     provider="test",
                     model=request.model,
-                    trace_id=request.trace_id,
-                )
+                    trace_id=request.trace_id)
 
         client = CompleteClient()
         request = LLMRequest(
             model="test-model",
             messages=[{"role": "user", "content": "Hello"}],
-            trace_id="trace-456",
-        )
+            trace_id="trace-456")
 
         raw_response = {"raw": "data"}
         normalized = client._normalize_response(raw_response, request)

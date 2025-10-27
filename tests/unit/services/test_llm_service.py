@@ -24,8 +24,7 @@ from agentcore.a2a_protocol.services.llm_client_gemini import LLMClientGemini
 from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
 from agentcore.a2a_protocol.services.llm_service import (
     MODEL_PROVIDER_MAP,
-    ProviderRegistry,
-)
+    ProviderRegistry)
 
 
 @pytest.fixture(autouse=True)
@@ -112,7 +111,7 @@ class TestProviderRegistry:
     ) -> None:
         """Test provider selection for Gemini models."""
         # Setup
-        mock_settings.ALLOWED_MODELS = ["gemini-1.5-flash"]
+        mock_settings.ALLOWED_MODELS = ["gemini-2.0-flash-exp"]
         mock_settings.GEMINI_API_KEY = "google-test-key"
         mock_gemini_instance = MagicMock(spec=LLMClientGemini)
         mock_gemini_class.return_value = mock_gemini_instance
@@ -120,7 +119,7 @@ class TestProviderRegistry:
         registry = ProviderRegistry(timeout=90.0, max_retries=1)
 
         # Execute
-        client = registry.get_provider_for_model("gemini-1.5-flash")
+        client = registry.get_provider_for_model("gemini-2.0-flash-exp")
 
         # Verify
         assert client is mock_gemini_instance
@@ -244,14 +243,14 @@ class TestProviderRegistry:
     def test_missing_google_api_key(self, mock_settings: MagicMock) -> None:
         """Test error when Google API key is not configured."""
         # Setup
-        mock_settings.ALLOWED_MODELS = ["gemini-1.5-flash"]
+        mock_settings.ALLOWED_MODELS = ["gemini-2.0-flash-exp"]
         mock_settings.GEMINI_API_KEY = None
 
         registry = ProviderRegistry()
 
         # Execute & Verify
         with pytest.raises(RuntimeError) as exc_info:
-            registry.get_provider_for_model("gemini-1.5-flash")
+            registry.get_provider_for_model("gemini-2.0-flash-exp")
 
         assert "Gemini API key not configured" in str(exc_info.value)
         assert "GEMINI_API_KEY" in str(exc_info.value)
@@ -280,7 +279,7 @@ class TestProviderRegistry:
         mock_settings.ALLOWED_MODELS = [
             "gpt-4.1-mini",
             "claude-3-5-haiku-20241022",
-            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
         ]
 
         registry = ProviderRegistry()
@@ -293,7 +292,7 @@ class TestProviderRegistry:
             [
                 "gpt-4.1-mini",
                 "claude-3-5-haiku-20241022",
-                "gemini-1.5-flash",
+                "gemini-2.0-flash-exp",
             ]
         )
         assert models == expected
@@ -321,14 +320,13 @@ class TestProviderRegistry:
         mock_settings: MagicMock,
         mock_gemini_class: MagicMock,
         mock_anthropic_class: MagicMock,
-        mock_openai_class: MagicMock,
-    ) -> None:
+        mock_openai_class: MagicMock) -> None:
         """Test all three providers can be created successfully."""
         # Setup
         mock_settings.ALLOWED_MODELS = [
             "gpt-4.1-mini",
             "claude-3-5-haiku-20241022",
-            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
         ]
         mock_settings.OPENAI_API_KEY = "sk-test-openai"
         mock_settings.ANTHROPIC_API_KEY = "sk-ant-test-anthropic"
@@ -347,7 +345,7 @@ class TestProviderRegistry:
         # Execute - request model from each provider
         openai_client = registry.get_provider_for_model("gpt-4.1-mini")
         anthropic_client = registry.get_provider_for_model("claude-3-5-haiku-20241022")
-        gemini_client = registry.get_provider_for_model("gemini-1.5-flash")
+        gemini_client = registry.get_provider_for_model("gemini-2.0-flash-exp")
 
         # Verify all providers created
         assert openai_client is mock_openai_instance
@@ -390,15 +388,16 @@ class TestModelProviderMap:
         gemini_models = [
             "gemini-2.0-flash-exp",
             "gemini-1.5-pro",
-            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
         ]
         for model in gemini_models:
             assert MODEL_PROVIDER_MAP[model] == Provider.GEMINI
 
     def test_total_model_count(self) -> None:
         """Test total number of models in mapping."""
-        # 4 OpenAI + 3 Anthropic + 3 Gemini = 10 total
-        assert len(MODEL_PROVIDER_MAP) == 10
+        # 4 OpenAI + 5 Anthropic (2 new + 3 legacy) + 4 Gemini (1 new + 3 legacy) = 13 total
+        # Note: gemini-1.5-flash was retired and removed from map
+        assert len(MODEL_PROVIDER_MAP) == 13
 
 
 class TestLLMService:
@@ -449,8 +448,7 @@ class TestLLMService:
         request = LLMRequest(
             model="gpt-5",  # Not in ALLOWED_MODELS
             messages=[{"role": "user", "content": "test"}],
-            trace_id="trace-123",
-        )
+            trace_id="trace-123")
 
         with pytest.raises(ModelNotAllowedError) as exc_info:
             await service.complete(request)
@@ -465,8 +463,7 @@ class TestLLMService:
         from agentcore.a2a_protocol.models.llm import (
             LLMRequest,
             LLMResponse,
-            LLMUsage,
-        )
+            LLMUsage)
         from agentcore.a2a_protocol.services.llm_service import LLMService
 
         # Setup
@@ -481,8 +478,7 @@ class TestLLMService:
             latency_ms=100,
             provider="openai",
             model="gpt-4.1-mini",
-            trace_id="trace-123",
-        )
+            trace_id="trace-123")
 
         service = LLMService()
 
@@ -490,14 +486,12 @@ class TestLLMService:
         with patch.object(
             service.registry.get_provider_for_model("gpt-4.1-mini"),
             "complete",
-            return_value=mock_response,
-        ) as mock_complete:
+            return_value=mock_response) as mock_complete:
             request = LLMRequest(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": "Hello"}],
                 trace_id="trace-123",
-                source_agent="agent-001",
-            )
+                source_agent="agent-001")
 
             response = await service.complete(request)
 
@@ -528,8 +522,7 @@ class TestLLMService:
         ):
             request = LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-            )
+                messages=[{"role": "user", "content": "test"}])
 
             with pytest.raises(ProviderError) as exc_info:
                 await service.complete(request)
@@ -543,8 +536,7 @@ class TestLLMService:
         """Test error handling when provider raises ProviderTimeoutError."""
         from agentcore.a2a_protocol.models.llm import (
             LLMRequest,
-            ProviderTimeoutError,
-        )
+            ProviderTimeoutError)
         from agentcore.a2a_protocol.services.llm_service import LLMService
 
         # Setup
@@ -560,12 +552,10 @@ class TestLLMService:
         with patch.object(
             provider,
             "complete",
-            side_effect=ProviderTimeoutError("openai", 60.0),
-        ):
+            side_effect=ProviderTimeoutError("openai", 60.0)):
             request = LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-            )
+                messages=[{"role": "user", "content": "test"}])
 
             with pytest.raises(ProviderTimeoutError) as exc_info:
                 await service.complete(request)
@@ -590,8 +580,7 @@ class TestLLMService:
         request = LLMRequest(
             model="claude-3-opus",  # Not in ALLOWED_MODELS
             messages=[{"role": "user", "content": "test"}],
-            stream=True,
-        )
+            stream=True)
 
         with pytest.raises(ModelNotAllowedError) as exc_info:
             async for _ in service.stream(request):
@@ -626,8 +615,7 @@ class TestLLMService:
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": "test"}],
                 stream=True,
-                trace_id="trace-xyz",
-            )
+                trace_id="trace-xyz")
 
             tokens = []
             async for token in service.stream(request):
@@ -662,8 +650,7 @@ class TestLLMService:
             request = LLMRequest(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": "test"}],
-                stream=True,
-            )
+                stream=True)
 
             with pytest.raises(ProviderError) as exc_info:
                 async for _ in service.stream(request):
@@ -676,8 +663,7 @@ class TestLLMService:
         """Test that global llm_service singleton exists."""
         from agentcore.a2a_protocol.services.llm_service import (
             LLMService,
-            llm_service,
-        )
+            llm_service)
 
         # Verify global instance exists and is correct type
         assert llm_service is not None

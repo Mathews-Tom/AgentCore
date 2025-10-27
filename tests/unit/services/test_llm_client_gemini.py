@@ -25,8 +25,7 @@ from agentcore.a2a_protocol.models.llm import (
     LLMUsage,
     ProviderError,
     ProviderTimeoutError,
-    RateLimitError as CustomRateLimitError,
-)
+    RateLimitError as CustomRateLimitError)
 from agentcore.a2a_protocol.services.llm_client_gemini import LLMClientGemini
 
 
@@ -41,14 +40,10 @@ def llm_client() -> LLMClientGemini:
 def sample_request() -> LLMRequest:
     """Create sample LLM request."""
     return LLMRequest(
-        model="gemini-1.5-flash",
-        messages=[{"role": "user", "content": "Hello"}],
-        temperature=0.7,
-        max_tokens=100,
-        trace_id="trace-123",
+        model="gemini-2.0-flash-exp",
+        messages=[{"role": "user", "content": "Hello"}], trace_id="trace-123",
         source_agent="agent-1",
-        session_id="session-456",
-    )
+        session_id="session-456")
 
 
 @pytest.fixture
@@ -159,8 +154,7 @@ class TestLLMClientGeminiComplete:
         self,
         llm_client: LLMClientGemini,
         sample_request: LLMRequest,
-        mock_gemini_response: Mock,
-    ) -> None:
+        mock_gemini_response: Mock) -> None:
         """Test successful completion request."""
         # Setup mock
         mock_model = Mock()
@@ -174,7 +168,7 @@ class TestLLMClientGeminiComplete:
         assert isinstance(response, LLMResponse)
         assert response.content == "Hello! How can I help you?"
         assert response.provider == "gemini"
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.0-flash-exp"
         assert response.trace_id == "trace-123"
         assert response.usage.prompt_tokens == 10
         assert response.usage.completion_tokens == 8
@@ -185,13 +179,11 @@ class TestLLMClientGeminiComplete:
     async def test_complete_without_a2a_context(
         self,
         llm_client: LLMClientGemini,
-        mock_gemini_response: Mock,
-    ) -> None:
+        mock_gemini_response: Mock) -> None:
         """Test completion without A2A context."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
-            messages=[{"role": "user", "content": "Hello"}],
-        )
+            model="gemini-2.0-flash-exp",
+            messages=[{"role": "user", "content": "Hello"}])
 
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(return_value=mock_gemini_response)
@@ -206,8 +198,7 @@ class TestLLMClientGeminiComplete:
     async def test_complete_timeout_error(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test timeout error handling (no retry)."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(side_effect=asyncio.TimeoutError())
@@ -226,8 +217,7 @@ class TestLLMClientGeminiComplete:
     async def test_complete_authentication_error(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test authentication error handling (no retry)."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(
@@ -247,8 +237,7 @@ class TestLLMClientGeminiComplete:
     async def test_complete_invalid_argument_error(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test invalid argument error handling (no retry)."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(
@@ -269,8 +258,7 @@ class TestLLMClientGeminiComplete:
         self,
         llm_client: LLMClientGemini,
         sample_request: LLMRequest,
-        mock_gemini_response: Mock,
-    ) -> None:
+        mock_gemini_response: Mock) -> None:
         """Test retry logic on resource exhausted error (rate limit)."""
         mock_model = Mock()
         # Fail twice with rate limit, then succeed
@@ -297,8 +285,7 @@ class TestLLMClientGeminiComplete:
     async def test_complete_max_retries_exceeded(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test max retries exceeded."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(
@@ -320,8 +307,7 @@ class TestLLMClientGeminiComplete:
         self,
         llm_client: LLMClientGemini,
         sample_request: LLMRequest,
-        mock_gemini_response: Mock,
-    ) -> None:
+        mock_gemini_response: Mock) -> None:
         """Test retry logic on service unavailable error."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(
@@ -347,8 +333,7 @@ class TestLLMClientGeminiStream:
     async def test_stream_success(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test successful streaming request."""
         # Create mock streaming chunks
         chunk1 = Mock()
@@ -389,8 +374,7 @@ class TestLLMClientGeminiStream:
     async def test_stream_timeout_error(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming timeout error."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(side_effect=asyncio.TimeoutError())
@@ -407,8 +391,7 @@ class TestLLMClientGeminiStream:
     async def test_stream_authentication_error(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test streaming authentication error."""
         mock_model = Mock()
         mock_model.generate_content_async = AsyncMock(
@@ -431,15 +414,14 @@ class TestLLMClientGeminiNormalizeResponse:
         self,
         llm_client: LLMClientGemini,
         sample_request: LLMRequest,
-        mock_gemini_response: Mock,
-    ) -> None:
+        mock_gemini_response: Mock) -> None:
         """Test successful response normalization."""
         response = llm_client._normalize_response((mock_gemini_response, 100), sample_request)
 
         assert isinstance(response, LLMResponse)
         assert response.content == "Hello! How can I help you?"
         assert response.provider == "gemini"
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.0-flash-exp"
         assert response.trace_id == "trace-123"
         assert response.usage.prompt_tokens == 10
         assert response.usage.completion_tokens == 8
@@ -449,8 +431,7 @@ class TestLLMClientGeminiNormalizeResponse:
     def test_normalize_invalid_format(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with invalid response format."""
         with pytest.raises(ValueError, match="Invalid response format"):
             llm_client._normalize_response("not a tuple", sample_request)
@@ -458,8 +439,7 @@ class TestLLMClientGeminiNormalizeResponse:
     def test_normalize_missing_candidates(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with missing candidates field."""
         invalid_response = Mock(spec=[])
         with pytest.raises(ValueError, match="missing 'candidates' field"):
@@ -468,8 +448,7 @@ class TestLLMClientGeminiNormalizeResponse:
     def test_normalize_empty_candidates(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization with empty candidates list."""
         invalid_response = Mock()
         invalid_response.candidates = []
@@ -479,8 +458,7 @@ class TestLLMClientGeminiNormalizeResponse:
     def test_normalize_without_usage_metadata(
         self,
         llm_client: LLMClientGemini,
-        sample_request: LLMRequest,
-    ) -> None:
+        sample_request: LLMRequest) -> None:
         """Test normalization without usage metadata (should default to 0)."""
         response = Mock(spec=["candidates"])
         candidate = Mock()

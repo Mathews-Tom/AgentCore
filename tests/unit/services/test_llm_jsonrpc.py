@@ -16,14 +16,12 @@ from agentcore.a2a_protocol.models.llm import (
     LLMUsage,
     ModelNotAllowedError,
     ProviderError,
-    ProviderTimeoutError,
-)
+    ProviderTimeoutError)
 from agentcore.a2a_protocol.services.llm_jsonrpc import (
     handle_llm_complete,
     handle_llm_metrics,
     handle_llm_models,
-    handle_llm_stream,
-)
+    handle_llm_stream)
 
 
 class TestHandleLLMComplete:
@@ -45,9 +43,7 @@ class TestHandleLLMComplete:
             a2a_context=A2AContext(
                 source_agent="test-agent",
                 trace_id="trace-123",
-                timestamp="2025-10-26T10:00:00Z",
-            ),
-        )
+                timestamp="2025-10-26T10:00:00Z"))
 
         # Mock LLMService.complete
         mock_response = LLMResponse(
@@ -56,14 +52,12 @@ class TestHandleLLMComplete:
             latency_ms=234,
             provider="openai",
             model="gpt-4.1-mini",
-            trace_id="trace-123",
-        )
+            trace_id="trace-123")
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.complete",
             new_callable=AsyncMock,
-            return_value=mock_response,
-        ):
+            return_value=mock_response):
             result = await handle_llm_complete(request)
 
         # Verify result
@@ -88,9 +82,7 @@ class TestHandleLLMComplete:
                 source_agent="agent-001",
                 trace_id="trace-abc",
                 session_id="session-xyz",
-                timestamp="2025-10-26T10:00:00Z",
-            ),
-        )
+                timestamp="2025-10-26T10:00:00Z"))
 
         mock_response = LLMResponse(
             content="Response",
@@ -98,14 +90,12 @@ class TestHandleLLMComplete:
             latency_ms=100,
             provider="openai",
             model="gpt-4.1-mini",
-            trace_id="trace-abc",
-        )
+            trace_id="trace-abc")
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.complete",
             new_callable=AsyncMock,
-            return_value=mock_response,
-        ) as mock_complete:
+            return_value=mock_response) as mock_complete:
             await handle_llm_complete(request)
 
             # Verify A2A context was passed to LLMRequest
@@ -125,14 +115,12 @@ class TestHandleLLMComplete:
                 "model": "gpt-3.5-turbo",  # Not in ALLOWED_MODELS
                 "messages": [{"role": "user", "content": "Test"}],
             },
-            id=3,
-        )
+            id=3)
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.complete",
             new_callable=AsyncMock,
-            side_effect=ModelNotAllowedError("gpt-3.5-turbo", ["gpt-4.1-mini"]),
-        ):
+            side_effect=ModelNotAllowedError("gpt-3.5-turbo", ["gpt-4.1-mini"])):
             with pytest.raises(ValueError, match="Model 'gpt-3.5-turbo' not allowed"):
                 await handle_llm_complete(request)
 
@@ -145,14 +133,12 @@ class TestHandleLLMComplete:
                 "model": "gpt-4.1-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
-            id=4,
-        )
+            id=4)
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.complete",
             new_callable=AsyncMock,
-            side_effect=ProviderTimeoutError("openai", 60.0),
-        ):
+            side_effect=ProviderTimeoutError("openai", 60.0)):
             with pytest.raises(RuntimeError, match="Request timed out after 60.0s"):
                 await handle_llm_complete(request)
 
@@ -165,15 +151,13 @@ class TestHandleLLMComplete:
                 "model": "gpt-4.1-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
-            id=5,
-        )
+            id=5)
 
         original_error = Exception("Rate limit exceeded")
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.complete",
             new_callable=AsyncMock,
-            side_effect=ProviderError("openai", original_error),
-        ):
+            side_effect=ProviderError("openai", original_error)):
             with pytest.raises(RuntimeError, match="Provider error: openai"):
                 await handle_llm_complete(request)
 
@@ -183,8 +167,7 @@ class TestHandleLLMComplete:
         request = JsonRpcRequest(
             method="llm.complete",
             params={},  # Missing model and messages
-            id=6,
-        )
+            id=6)
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_llm_complete(request)
@@ -202,8 +185,7 @@ class TestHandleLLMStream:
                 "model": "gpt-4.1-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
-            id=7,
-        )
+            id=7)
 
         result = await handle_llm_stream(request)
 
@@ -224,17 +206,14 @@ class TestHandleLLMModels:
         request = JsonRpcRequest(
             method="llm.models",
             params={},
-            id=8,
-        )
+            id=8)
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.registry.list_available_models",
-            return_value=["gpt-4.1-mini", "claude-3-5-haiku-20241022"],
-        ):
+            return_value=["gpt-4.1-mini", "claude-3-5-haiku-20241022"]):
             with patch(
                 "agentcore.a2a_protocol.config.settings.LLM_DEFAULT_MODEL",
-                "gpt-4.1-mini",
-            ):
+                "gpt-4.1-mini"):
                 result = await handle_llm_models(request)
 
         # Verify result
@@ -255,8 +234,7 @@ class TestHandleLLMMetrics:
         request = JsonRpcRequest(
             method="llm.metrics",
             params={},
-            id=9,
-        )
+            id=9)
 
         # Mock Prometheus metric sample
         mock_sample = MagicMock()
@@ -271,8 +249,7 @@ class TestHandleLLMMetrics:
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.REGISTRY.collect",
-            return_value=[mock_metric_family],
-        ):
+            return_value=[mock_metric_family]):
             result = await handle_llm_metrics(request)
 
         # Verify result structure
@@ -290,8 +267,7 @@ class TestHandleLLMMetrics:
         request = JsonRpcRequest(
             method="llm.metrics",
             params={},
-            id=10,
-        )
+            id=10)
 
         # Create mock samples for requests
         mock_sample1 = MagicMock()
@@ -326,8 +302,7 @@ class TestHandleLLMMetrics:
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.REGISTRY.collect",
-            return_value=[mock_family1, mock_family2],
-        ):
+            return_value=[mock_family1, mock_family2]):
             result = await handle_llm_metrics(request)
 
         # Verify aggregation
