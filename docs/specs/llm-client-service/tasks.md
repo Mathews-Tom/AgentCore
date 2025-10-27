@@ -59,7 +59,7 @@
 
 - **Description:** Add LLM service configuration to config.py using Pydantic Settings. Support environment variable loading for API keys and operational parameters.
 - **Acceptance Criteria:**
-  - [ ] ALLOWED_MODELS list in config.py (gpt-4.1-mini, gpt-5-mini, claude-3-5-haiku-20241022, gemini-1.5-flash)
+  - [ ] ALLOWED_MODELS list in config.py (gpt-4.1-mini, gpt-5-mini, claude-3-5-haiku-20241022, gemini-2.0-flash-exp)
   - [ ] LLM_DEFAULT_MODEL setting (default: gpt-4.1-mini)
   - [ ] Provider API key settings (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY) as Optional[str]
   - [ ] LLM_REQUEST_TIMEOUT float setting (default: 60.0)
@@ -150,7 +150,7 @@
   - [ ] Response normalization to LLMResponse
   - [ ] A2A context handling (Gemini API limitations noted)
   - [ ] Retry logic implementation
-  - [ ] Support for gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash models
+  - [ ] Support for gemini-2.0-flash-exp, gemini-1.5-pro, gemini-2.0-flash-exp models
   - [ ] Unit tests with mocked Google GenAI SDK (90%+ coverage)
   - [ ] Integration test with real Gemini API
 - **Effort:** 8 story points (3-4 days)

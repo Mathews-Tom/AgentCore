@@ -83,7 +83,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export GOOGLE_API_KEY="..."
 
 # Model governance (optional - defaults to all models)
-export ALLOWED_MODELS='["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-1.5-flash"]'
+export ALLOWED_MODELS='["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-2.0-flash-exp"]'
 
 # Timeout and retry configuration (optional)
 export LLM_REQUEST_TIMEOUT=60.0
@@ -180,7 +180,7 @@ curl -X POST http://localhost:8001/api/v1/jsonrpc \
 ### Google Gemini Models
 - `gemini-2.0-flash-exp` - Experimental flash model (fast tier)
 - `gemini-1.5-pro` - Advanced reasoning (premium tier)
-- `gemini-1.5-flash` - Fast responses (fast tier)
+- `gemini-2.0-flash-exp` - Fast responses (fast tier)
 
 **Model Governance:**
 

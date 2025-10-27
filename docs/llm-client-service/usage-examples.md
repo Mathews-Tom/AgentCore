@@ -190,7 +190,7 @@ prompt = "Explain the difference between lists and tuples in Python."
 providers = [
     ("gpt-4.1-mini", "OpenAI"),
     ("claude-3-5-haiku-20241022", "Anthropic"),
-    ("gemini-1.5-flash", "Gemini"),
+    ("gemini-2.0-flash-exp", "Gemini"),
 ]
 
 for model, provider_name in providers:
@@ -421,7 +421,7 @@ def select_model_for_task(task_complexity: str) -> str:
 
     if task_complexity == "simple":
         # Use fastest available model
-        for model in ["gpt-4.1-mini", "gemini-1.5-flash", "claude-3-5-haiku-20241022"]:
+        for model in ["gpt-4.1-mini", "gemini-2.0-flash-exp", "claude-3-5-haiku-20241022"]:
             if model in models:
                 return model
 

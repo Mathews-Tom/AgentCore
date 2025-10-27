@@ -381,7 +381,7 @@ class LLMClientGemini(LLMClient):
 **Supported Models:**
 - `gemini-2.0-flash-exp`
 - `gemini-1.5-pro`
-- `gemini-1.5-flash`
+- `gemini-2.0-flash-exp`
 
 ---
 
@@ -641,7 +641,7 @@ List allowed LLM models.
   "result": {
     "allowed_models": [
       "claude-3-5-haiku-20241022",
-      "gemini-1.5-flash",
+      "gemini-2.0-flash-exp",
       "gpt-4.1-mini"
     ],
     "default_model": "gpt-4.1-mini",

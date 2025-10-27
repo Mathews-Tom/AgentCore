@@ -18,7 +18,7 @@ The ModelSelector organizes models into three tiers based on capability and cost
 - `gpt-4.1-mini` (OpenAI) - Primary choice
 - `gpt-5-mini` (OpenAI) - Fallback
 - `claude-3-5-haiku-20241022` (Anthropic) - Multi-provider option
-- `gemini-1.5-flash` (Google) - Multi-provider option
+- `gemini-2.0-flash-exp` (Google) - Multi-provider option
 
 **Characteristics:**
 - Lowest cost per token
@@ -252,7 +252,7 @@ ALLOWED_MODELS: list[str] = [
     "gpt-4.1-mini",  # FAST tier
     "gpt-5-mini",     # FAST tier fallback
     "claude-3-5-haiku-20241022",  # FAST tier multi-provider
-    "gemini-1.5-flash",  # FAST tier multi-provider
+    "gemini-2.0-flash-exp",  # FAST tier multi-provider
 ]
 ```
 

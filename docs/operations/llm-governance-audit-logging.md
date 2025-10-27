@@ -42,7 +42,7 @@ All governance violations are logged with structured JSON format to a dedicated 
   "source_agent": "agent-researcher-001",
   "session_id": "session-xyz-789",
   "attempted_model": "gpt-4-turbo",
-  "allowed_models": ["gpt-4.1-mini", "gpt-5-mini", "claude-3-5-haiku-20241022", "gemini-1.5-flash"],
+  "allowed_models": ["gpt-4.1-mini", "gpt-5-mini", "claude-3-5-haiku-20241022", "gemini-2.0-flash-exp"],
   "reason": "Model 'gpt-4-turbo' is not in ALLOWED_MODELS configuration",
   "severity": "high"
 }

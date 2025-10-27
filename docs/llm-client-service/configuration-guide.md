@@ -34,7 +34,7 @@ ANTHROPIC_API_KEY="sk-ant-..."
 GOOGLE_API_KEY="..."
 
 # Model Governance (JSON array of allowed models)
-ALLOWED_MODELS='["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-1.5-flash"]'
+ALLOWED_MODELS='["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-2.0-flash-exp"]'
 
 # Default model (must be in ALLOWED_MODELS)
 LLM_DEFAULT_MODEL="gpt-4.1-mini"
@@ -197,7 +197,7 @@ export GOOGLE_API_KEY="..."
 GEMINI_MODELS = [
     "gemini-2.0-flash-exp",   # Experimental flash model (fast tier)
     "gemini-1.5-pro",         # Advanced reasoning (premium tier)
-    "gemini-1.5-flash",       # Fast responses (fast tier)
+    "gemini-2.0-flash-exp",       # Fast responses (fast tier)
 ]
 ```
 
@@ -210,7 +210,7 @@ GEMINI_MODELS = [
 
 | Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------|----------------------|------------------------|
-| gemini-1.5-flash | $0.075 | $0.30 |
+| gemini-2.0-flash-exp | $0.075 | $0.30 |
 | gemini-1.5-pro | $1.25 | $5.00 |
 | gemini-2.0-flash-exp | Free (limited) | Free (limited) |
 
@@ -229,7 +229,7 @@ Model governance prevents unauthorized model usage and controls costs.
 export ALLOWED_MODELS='[
   "gpt-4.1-mini",
   "claude-3-5-haiku-20241022",
-  "gemini-1.5-flash"
+  "gemini-2.0-flash-exp"
 ]'
 ```
 
@@ -247,7 +247,7 @@ export ALLOWED_MODELS='[
 # Only allow cost-effective fast tier models
 export ALLOWED_MODELS='[
   "gpt-4.1-mini",
-  "gemini-1.5-flash",
+  "gemini-2.0-flash-exp",
   "claude-3-5-haiku-20241022"
 ]'
 ```
@@ -288,7 +288,7 @@ export ALLOWED_MODELS='[
 export ALLOWED_MODELS='[
   "gpt-4.1-mini",
   "claude-3-5-haiku-20241022",
-  "gemini-1.5-flash"
+  "gemini-2.0-flash-exp"
 ]'
 ```
 
@@ -522,7 +522,7 @@ kind: ConfigMap
 metadata:
   name: llm-client-config
 data:
-  ALLOWED_MODELS: '["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-1.5-flash"]'
+  ALLOWED_MODELS: '["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-2.0-flash-exp"]'
   LLM_DEFAULT_MODEL: "gpt-4.1-mini"
   LLM_REQUEST_TIMEOUT: "60.0"
   LLM_MAX_RETRIES: "3"

@@ -271,7 +271,7 @@ class Settings(BaseSettings):
         default=[
             "gpt-4.1", "gpt-4.1-mini", "gpt-5", "gpt-5-mini",
             "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022",
-            "gemini-2.0-flash-exp", "gemini-1.5-flash"
+            "gemini-2.0-flash-exp", "gemini-2.0-flash-exp"
         ],
         description="Allowed LLM models per CLAUDE.md governance",
     )
@@ -904,7 +904,7 @@ data: {"done": true, "usage": {...}, "latency_ms": 456}
     "allowed_models": [
       "gpt-4.1", "gpt-4.1-mini", "gpt-5", "gpt-5-mini",
       "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022",
-      "gemini-2.0-flash-exp", "gemini-1.5-flash"
+      "gemini-2.0-flash-exp", "gemini-2.0-flash-exp"
     ],
     "default_model": "gpt-4.1-mini"
   },
@@ -1233,7 +1233,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
 
 # LLM Configuration (OPTIONAL - defaults in config.py)
-ALLOWED_MODELS=gpt-4.1,gpt-4.1-mini,gpt-5,gpt-5-mini,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,gemini-2.0-flash-exp,gemini-1.5-flash
+ALLOWED_MODELS=gpt-4.1,gpt-4.1-mini,gpt-5,gpt-5-mini,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,gemini-2.0-flash-exp,gemini-2.0-flash-exp
 LLM_DEFAULT_MODEL=gpt-4.1-mini
 LLM_REQUEST_TIMEOUT=60.0
 LLM_MAX_RETRIES=3
@@ -2427,7 +2427,7 @@ ALLOWED_MODELS: list[str] = Field(
     default=[
         "gpt-4.1", "gpt-4.1-mini", "gpt-5", "gpt-5-mini",
         "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229",
-        "gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash"
+        "gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-2.0-flash-exp"
     ],
     description="Allowed LLM models per CLAUDE.md governance",
 )
@@ -2477,7 +2477,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
 
 # LLM Configuration (OPTIONAL - defaults in config.py)
-ALLOWED_MODELS=gpt-4.1,gpt-4.1-mini,gpt-5,gpt-5-mini,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,gemini-2.0-flash-exp,gemini-1.5-flash
+ALLOWED_MODELS=gpt-4.1,gpt-4.1-mini,gpt-5,gpt-5-mini,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,gemini-2.0-flash-exp,gemini-2.0-flash-exp
 LLM_DEFAULT_MODEL=gpt-4.1-mini
 LLM_REQUEST_TIMEOUT=60.0
 LLM_MAX_RETRIES=3

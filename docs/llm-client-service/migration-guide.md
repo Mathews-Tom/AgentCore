@@ -300,7 +300,7 @@ import google.generativeai as genai
 
 # Initialize client
 genai.configure(api_key="...")
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
 # Non-streaming completion
 response = await model.generate_content_async("Hello")
@@ -333,7 +333,7 @@ from agentcore.a2a_protocol.models.llm import LLMRequest
 
 # Non-streaming completion
 request = LLMRequest(
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash-exp",
     messages=[{"role": "user", "content": "Hello"}],
 )
 
@@ -343,7 +343,7 @@ tokens = response.usage.total_tokens  # Now available!
 
 # Streaming completion
 request = LLMRequest(
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash-exp",
     messages=[{"role": "user", "content": "Count to 5"}],
     stream=True,
 )
@@ -402,7 +402,7 @@ async def get_completion(provider: str, prompt: str) -> str:
     elif provider == "gemini":
         import google.generativeai as genai
         genai.configure(api_key=GOOGLE_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
         response = await model.generate_content_async(prompt)
         return response.text
 
@@ -425,7 +425,7 @@ async def get_completion(model: str, prompt: str) -> str:
 # Use with any provider
 result1 = await get_completion("gpt-4.1-mini", "Hello")
 result2 = await get_completion("claude-3-5-haiku-20241022", "Hello")
-result3 = await get_completion("gemini-1.5-flash", "Hello")
+result3 = await get_completion("gemini-2.0-flash-exp", "Hello")
 ```
 
 ---
