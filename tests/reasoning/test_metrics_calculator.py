@@ -11,8 +11,7 @@ from src.agentcore.reasoning.models.reasoning_models import (
     BoundedContextConfig,
     BoundedContextIterationResult,
     BoundedContextResult,
-    IterationMetrics,
-)
+    IterationMetrics)
 from src.agentcore.reasoning.services.metrics_calculator import MetricsCalculator
 
 
@@ -26,8 +25,7 @@ def test_calculate_traditional_tokens() -> None:
     result = MetricsCalculator.calculate_traditional_tokens(
         query_tokens=100,
         iterations=3,
-        avg_generation_tokens=1000,
-    )
+        avg_generation_tokens=1000)
     assert result == 6300
 
 
@@ -36,8 +34,7 @@ def test_calculate_traditional_tokens_single_iteration() -> None:
     result = MetricsCalculator.calculate_traditional_tokens(
         query_tokens=100,
         iterations=1,
-        avg_generation_tokens=500,
-    )
+        avg_generation_tokens=500)
     # Iteration 0: 100 + 500 = 600
     assert result == 600
 
@@ -47,8 +44,7 @@ def test_calculate_traditional_tokens_no_iterations() -> None:
     result = MetricsCalculator.calculate_traditional_tokens(
         query_tokens=100,
         iterations=0,
-        avg_generation_tokens=500,
-    )
+        avg_generation_tokens=500)
     assert result == 0
 
 
@@ -61,8 +57,7 @@ def test_calculate_bounded_tokens() -> None:
     result = MetricsCalculator.calculate_bounded_tokens(
         chunk_size=8192,
         carryover_size=4096,
-        iterations=5,
-    )
+        iterations=5)
     assert result == 40960
 
 
@@ -71,8 +66,7 @@ def test_calculate_bounded_tokens_single_iteration() -> None:
     result = MetricsCalculator.calculate_bounded_tokens(
         chunk_size=8192,
         carryover_size=4096,
-        iterations=1,
-    )
+        iterations=1)
     assert result == 8192
 
 
@@ -81,8 +75,7 @@ def test_calculate_bounded_tokens_no_iterations() -> None:
     result = MetricsCalculator.calculate_bounded_tokens(
         chunk_size=8192,
         carryover_size=4096,
-        iterations=0,
-    )
+        iterations=0)
     assert result == 0
 
 
@@ -100,9 +93,7 @@ def test_calculate_compute_savings() -> None:
                 tokens=1000,
                 has_answer=False,
                 carryover_generated=True,
-                execution_time_ms=100,
-            ),
-        ),
+                execution_time_ms=100)),
         BoundedContextIterationResult(
             content="Step 2",
             has_answer=False,
@@ -113,9 +104,7 @@ def test_calculate_compute_savings() -> None:
                 tokens=1000,
                 has_answer=False,
                 carryover_generated=True,
-                execution_time_ms=100,
-            ),
-        ),
+                execution_time_ms=100)),
         BoundedContextIterationResult(
             content="Final",
             has_answer=True,
@@ -126,9 +115,7 @@ def test_calculate_compute_savings() -> None:
                 tokens=1000,
                 has_answer=True,
                 carryover_generated=False,
-                execution_time_ms=100,
-            ),
-        ),
+                execution_time_ms=100)),
     ]
 
     result = BoundedContextResult(
@@ -138,20 +125,17 @@ def test_calculate_compute_savings() -> None:
         total_iterations=3,
         compute_savings_pct=0.0,  # Will be calculated
         carryover_compressions=2,
-        execution_time_ms=300,
-    )
+        execution_time_ms=300)
 
     config = BoundedContextConfig(
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=5,
-    )
+        max_iterations=5)
 
     savings = MetricsCalculator.calculate_compute_savings(
         bounded_result=result,
         config=config,
-        query_tokens=100,
-    )
+        query_tokens=100)
 
     # Traditional: (100 + 1000) + (100 + 1000 + 1000) + (100 + 1000 + 1000 + 1000) = 1100 + 2100 + 3100 = 6300
     # Bounded: 3000
@@ -173,9 +157,7 @@ def test_calculate_compute_savings_zero_traditional() -> None:
                 tokens=100,
                 has_answer=True,
                 carryover_generated=False,
-                execution_time_ms=50,
-            ),
-        ),
+                execution_time_ms=50)),
     ]
 
     # Edge case: zero iterations in result
@@ -186,20 +168,17 @@ def test_calculate_compute_savings_zero_traditional() -> None:
         total_iterations=1,
         compute_savings_pct=0.0,
         carryover_compressions=0,
-        execution_time_ms=50,
-    )
+        execution_time_ms=50)
 
     config = BoundedContextConfig(
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=5,
-    )
+        max_iterations=5)
 
     savings = MetricsCalculator.calculate_compute_savings(
         bounded_result=result,
         config=config,
-        query_tokens=100,
-    )
+        query_tokens=100)
 
     # Should not crash with zero traditional tokens
     assert savings >= 0.0
@@ -209,8 +188,7 @@ def test_calculate_efficiency_ratio() -> None:
     """Test efficiency ratio calculation."""
     ratio = MetricsCalculator.calculate_efficiency_ratio(
         bounded_tokens=3000,
-        traditional_tokens=10000,
-    )
+        traditional_tokens=10000)
     assert ratio == 0.3
 
 
@@ -218,8 +196,7 @@ def test_calculate_efficiency_ratio_equal() -> None:
     """Test efficiency ratio when tokens are equal."""
     ratio = MetricsCalculator.calculate_efficiency_ratio(
         bounded_tokens=5000,
-        traditional_tokens=5000,
-    )
+        traditional_tokens=5000)
     assert ratio == 1.0
 
 
@@ -227,8 +204,7 @@ def test_calculate_efficiency_ratio_zero_traditional() -> None:
     """Test efficiency ratio with zero traditional tokens."""
     ratio = MetricsCalculator.calculate_efficiency_ratio(
         bounded_tokens=1000,
-        traditional_tokens=0,
-    )
+        traditional_tokens=0)
     assert ratio == 1.0  # Fallback
 
 
@@ -241,8 +217,7 @@ def test_estimate_max_reasoning_capacity() -> None:
     capacity = MetricsCalculator.estimate_max_reasoning_capacity(
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=5,
-    )
+        max_iterations=5)
     assert capacity == 24576
 
 
@@ -251,8 +226,7 @@ def test_estimate_max_reasoning_capacity_single_iteration() -> None:
     capacity = MetricsCalculator.estimate_max_reasoning_capacity(
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=1,
-    )
+        max_iterations=1)
     assert capacity == 8192
 
 
@@ -261,8 +235,7 @@ def test_estimate_max_reasoning_capacity_zero_iterations() -> None:
     capacity = MetricsCalculator.estimate_max_reasoning_capacity(
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=0,
-    )
+        max_iterations=0)
     assert capacity == 0
 
 
@@ -275,6 +248,5 @@ def test_estimate_max_reasoning_capacity_no_carryover() -> None:
     capacity = MetricsCalculator.estimate_max_reasoning_capacity(
         chunk_size=8192,
         carryover_size=512,
-        max_iterations=10,
-    )
+        max_iterations=10)
     assert capacity == 77312

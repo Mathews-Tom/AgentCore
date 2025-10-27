@@ -15,8 +15,7 @@ from openai import RateLimitError as OpenAIRateLimitError
 
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
-    RateLimitError as CustomRateLimitError,
-)
+    RateLimitError as CustomRateLimitError)
 from agentcore.a2a_protocol.services.llm_client_anthropic import LLMClientAnthropic
 from agentcore.a2a_protocol.services.llm_client_gemini import LLMClientGemini
 from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
@@ -31,8 +30,7 @@ class TestOpenAIRateLimitHandling:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="test-trace-123",
-        )
+            trace_id="test-trace-123")
 
         # Mock response with Retry-After header
         mock_response = Mock()
@@ -40,13 +38,11 @@ class TestOpenAIRateLimitHandling:
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch("agentcore.a2a_protocol.services.llm_client_openai.AsyncOpenAI") as mock_openai,
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             mock_client = Mock()
             mock_client.chat.completions.create = AsyncMock(side_effect=rate_limit_error)
             mock_openai.return_value = mock_client
@@ -68,8 +64,7 @@ class TestOpenAIRateLimitHandling:
         client = LLMClientOpenAI(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
             model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-        )
+            messages=[{"role": "user", "content": "test"}])
 
         # Mock rate limit error without Retry-After header
         mock_response = Mock()
@@ -77,17 +72,14 @@ class TestOpenAIRateLimitHandling:
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch.object(
                 client.client.chat.completions,
                 "create",
-                side_effect=rate_limit_error,
-            ),
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+                side_effect=rate_limit_error),
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 
@@ -102,8 +94,7 @@ class TestOpenAIRateLimitHandling:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "test"}],
-            stream=True,
-        )
+            stream=True)
 
         # Mock rate limit error with Retry-After
         mock_response = Mock()
@@ -111,8 +102,7 @@ class TestOpenAIRateLimitHandling:
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with patch.object(
             client.client.chat.completions, "create", side_effect=rate_limit_error
@@ -136,8 +126,7 @@ class TestAnthropicRateLimitHandling:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="test-trace-456",
-        )
+            trace_id="test-trace-456")
 
         # Mock response with retry-after header
         mock_response = Mock()
@@ -145,15 +134,13 @@ class TestAnthropicRateLimitHandling:
         rate_limit_error = AnthropicRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch.object(
                 client.client.messages, "create", side_effect=rate_limit_error
             ),
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             with pytest.raises(CustomRateLimitError) as exc_info:
                 await client.complete(request)
 
@@ -169,8 +156,7 @@ class TestAnthropicRateLimitHandling:
         client = LLMClientAnthropic(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
-            messages=[{"role": "user", "content": "test"}],
-        )
+            messages=[{"role": "user", "content": "test"}])
 
         # Mock rate limit error without retry-after header
         mock_response = Mock()
@@ -178,15 +164,13 @@ class TestAnthropicRateLimitHandling:
         rate_limit_error = AnthropicRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch.object(
                 client.client.messages, "create", side_effect=rate_limit_error
             ),
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 
@@ -200,8 +184,7 @@ class TestAnthropicRateLimitHandling:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "test"}],
-            stream=True,
-        )
+            stream=True)
 
         # Mock rate limit error
         mock_response = Mock()
@@ -209,8 +192,7 @@ class TestAnthropicRateLimitHandling:
         rate_limit_error = AnthropicRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with patch.object(
             client.client.messages, "create", side_effect=rate_limit_error
@@ -231,10 +213,9 @@ class TestGeminiRateLimitHandling:
         """Test rate limit handling for RESOURCE_EXHAUSTED error."""
         client = LLMClientGemini(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash-exp",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="test-trace-789",
-        )
+            trace_id="test-trace-789")
 
         # Mock RESOURCE_EXHAUSTED error (Gemini's rate limit error)
         rate_limit_error = google_exceptions.ResourceExhausted("Quota exceeded")
@@ -242,10 +223,8 @@ class TestGeminiRateLimitHandling:
         with (
             patch(
                 "google.generativeai.GenerativeModel.generate_content_async",
-                side_effect=rate_limit_error,
-            ),
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+                side_effect=rate_limit_error),
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             with pytest.raises(CustomRateLimitError) as exc_info:
                 await client.complete(request)
 
@@ -261,19 +240,16 @@ class TestGeminiRateLimitHandling:
         """Test rate limit backoff is capped at max delay."""
         client = LLMClientGemini(api_key="test-key", timeout=60.0, max_retries=6)
         request = LLMRequest(
-            model="gemini-1.5-flash",
-            messages=[{"role": "user", "content": "test"}],
-        )
+            model="gemini-2.0-flash-exp",
+            messages=[{"role": "user", "content": "test"}])
 
         rate_limit_error = google_exceptions.ResourceExhausted("Quota exceeded")
 
         with (
             patch(
                 "google.generativeai.GenerativeModel.generate_content_async",
-                side_effect=rate_limit_error,
-            ),
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+                side_effect=rate_limit_error),
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 
@@ -287,17 +263,15 @@ class TestGeminiRateLimitHandling:
         """Test rate limit handling during streaming."""
         client = LLMClientGemini(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash-exp",
             messages=[{"role": "user", "content": "test"}],
-            stream=True,
-        )
+            stream=True)
 
         rate_limit_error = google_exceptions.ResourceExhausted("Quota exceeded")
 
         with patch(
             "google.generativeai.GenerativeModel.generate_content_async",
-            side_effect=rate_limit_error,
-        ):
+            side_effect=rate_limit_error):
             with pytest.raises(CustomRateLimitError) as exc_info:
                 async for _ in client.stream(request):
                     pass
@@ -315,16 +289,14 @@ class TestRateLimitMetrics:
         client = LLMClientOpenAI(api_key="test-key", timeout=60.0, max_retries=2)
         request = LLMRequest(
             model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "test"}],
-        )
+            messages=[{"role": "user", "content": "test"}])
 
         mock_response = Mock()
         mock_response.headers = {}
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch.object(
@@ -336,8 +308,7 @@ class TestRateLimitMetrics:
             ) as mock_record_error,
             patch(
                 "agentcore.a2a_protocol.services.llm_client_openai.record_rate_limit_retry_delay"
-            ) as mock_record_delay,
-        ):
+            ) as mock_record_delay):
             with pytest.raises(CustomRateLimitError):
                 await client.complete(request)
 

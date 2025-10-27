@@ -17,8 +17,7 @@ from agentcore_cli.config import (
     Defaults,
     OutputConfig,
     TaskDefaults,
-    WorkflowDefaults,
-)
+    WorkflowDefaults)
 
 
 class TestApiConfig:
@@ -198,8 +197,7 @@ class TestConfig:
     def test_config_precedence(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+        monkeypatch: pytest.MonkeyPatch) -> None:
         """Test configuration precedence: project > global."""
         # Create global config
         global_config_dir = tmp_path / ".agentcore"
@@ -240,8 +238,7 @@ class TestConfig:
     def test_env_var_override(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+        monkeypatch: pytest.MonkeyPatch) -> None:
         """Test environment variable override."""
         os.chdir(tmp_path)
 
@@ -380,8 +377,7 @@ class TestConfig:
         config = Config(
             api=ApiConfig(
                 url="https://example.com",
-                verify_ssl=False,
-            )
+                verify_ssl=False)
         )
         warnings = config.validate_config()
         assert any("SSL verification is disabled" in w for w in warnings)
@@ -390,8 +386,7 @@ class TestConfig:
         config = Config(
             auth=AuthConfig(
                 type="jwt",
-                token="hardcoded-token",
-            )
+                token="hardcoded-token")
         )
         warnings = config.validate_config()
         assert any("hardcoded" in w for w in warnings)
@@ -408,13 +403,10 @@ class TestConfig:
         config = Config(
             api=ApiConfig(
                 url="https://example.com",
-                verify_ssl=True,
-            ),
+                verify_ssl=True),
             auth=AuthConfig(
                 type="jwt",
-                token="${AGENTCORE_TOKEN}",
-            ),
-        )
+                token="${AGENTCORE_TOKEN}"))
         warnings = config.validate_config()
         assert len(warnings) == 0
 

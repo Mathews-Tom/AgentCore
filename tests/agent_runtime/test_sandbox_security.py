@@ -15,8 +15,7 @@ from agentcore.agent_runtime.models.sandbox import (
     SandboxConfig,
     SandboxPermission,
     SandboxStats,
-    SecurityViolationError,
-)
+    SecurityViolationError)
 from agentcore.agent_runtime.services.audit_logger import AuditLogger
 from agentcore.agent_runtime.services.sandbox_service import SandboxService
 
@@ -41,8 +40,7 @@ async def audit_logger(temp_log_dir):
     logger = AuditLogger(
         log_directory=temp_log_dir,
         max_logs_in_memory=1000,
-        retention_days=7,
-    )
+        retention_days=7)
     await logger.start()
     yield logger
     await logger.stop()
@@ -53,8 +51,7 @@ async def sandbox_service(audit_logger, temp_workspace):
     """Create sandbox service instance."""
     return SandboxService(
         audit_logger=audit_logger,
-        workspace_root=temp_workspace,
-    )
+        workspace_root=temp_workspace)
 
 
 @pytest.fixture
@@ -67,10 +64,8 @@ def basic_sandbox_config():
         execution_limits=ExecutionLimits(
             max_execution_time_seconds=5,
             max_memory_mb=128,
-            max_cpu_percent=50.0,
-        ),
-        strict_mode=True,
-    )
+            max_cpu_percent=50.0),
+        strict_mode=True)
 
 
 @pytest.mark.asyncio
@@ -126,8 +121,7 @@ class TestPermissionEnforcement:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.READ,
-            resource="/data/test.txt",
-        )
+            resource="/data/test.txt")
 
         assert result is True
 
@@ -142,8 +136,7 @@ class TestPermissionEnforcement:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.WRITE,
-                resource="/data/test.txt",
-            )
+                resource="/data/test.txt")
 
         assert exc_info.value.permission == SandboxPermission.WRITE
 
@@ -157,8 +150,7 @@ class TestPermissionEnforcement:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.WRITE,
-            resource="/data/test.txt",
-        )
+            resource="/data/test.txt")
 
         assert result is False
 
@@ -171,8 +163,7 @@ class TestPermissionEnforcement:
             ResourcePolicy(
                 resource_pattern="/tmp/*",
                 allowed_permissions=[SandboxPermission.WRITE],
-                description="Allow writes to /tmp",
-            )
+                description="Allow writes to /tmp")
         )
 
         sandbox_id = await sandbox_service.create_sandbox(basic_sandbox_config)
@@ -181,8 +172,7 @@ class TestPermissionEnforcement:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.WRITE,
-            resource="/tmp/test.txt",
-        )
+            resource="/tmp/test.txt")
 
         assert result is True
 
@@ -196,8 +186,7 @@ class TestPermissionEnforcement:
                 resource_pattern="/secrets/*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ],
-                description="Deny reads from /secrets",
-            )
+                description="Deny reads from /secrets")
         )
 
         sandbox_id = await sandbox_service.create_sandbox(basic_sandbox_config)
@@ -207,8 +196,7 @@ class TestPermissionEnforcement:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.READ,
-                resource="/secrets/api_key.txt",
-            )
+                resource="/secrets/api_key.txt")
 
     async def test_network_permission_disabled(
         self, sandbox_service, basic_sandbox_config
@@ -221,8 +209,7 @@ class TestPermissionEnforcement:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.NETWORK,
-                resource="api.example.com",
-            )
+                resource="api.example.com")
 
     async def test_network_permission_allowed_hosts(
         self, sandbox_service, basic_sandbox_config
@@ -238,8 +225,7 @@ class TestPermissionEnforcement:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.NETWORK,
-            resource="api.example.com",
-        )
+            resource="api.example.com")
         assert result is True
 
         # Should deny other hosts in strict mode
@@ -247,8 +233,7 @@ class TestPermissionEnforcement:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.NETWORK,
-                resource="malicious.com",
-            )
+                resource="malicious.com")
 
 
 @pytest.mark.asyncio
@@ -265,8 +250,7 @@ result = 2 + 2
 
         result = await sandbox_service.execute_in_sandbox(
             sandbox_id=sandbox_id,
-            code=code,
-        )
+            code=code)
 
         assert result == 4
 
@@ -283,8 +267,7 @@ result = x + y
         result = await sandbox_service.execute_in_sandbox(
             sandbox_id=sandbox_id,
             code=code,
-            context={"x": 10, "y": 20},
-        )
+            context={"x": 10, "y": 20})
 
         assert result == 30
 
@@ -305,8 +288,7 @@ for i in range(100000000):
         with pytest.raises(ResourceLimitExceededError) as exc_info:
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
         assert exc_info.value.limit_type == "execution_time"
 
@@ -323,8 +305,7 @@ result = os.system('ls')
         with pytest.raises(SecurityViolationError):
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
     async def test_execute_safe_builtins(self, sandbox_service, basic_sandbox_config):
         """Test safe builtins are available."""
@@ -337,8 +318,7 @@ result = sum(data)
 
         result = await sandbox_service.execute_in_sandbox(
             sandbox_id=sandbox_id,
-            code=code,
-        )
+            code=code)
 
         assert result == 15
 
@@ -356,8 +336,7 @@ class TestAuditLogging:
             operation="read_file",
             resource="/data/test.txt",
             permission=SandboxPermission.READ,
-            result=True,
-        )
+            result=True)
 
         await audit_logger.log_event(entry)
 
@@ -374,8 +353,7 @@ class TestAuditLogging:
                 sandbox_id=f"sandbox-{i % 2}",
                 agent_id=f"agent-{i}",
                 operation="test",
-                result=True,
-            )
+                result=True)
             await audit_logger.log_event(entry)
 
         # Query for sandbox-0
@@ -393,8 +371,7 @@ class TestAuditLogging:
                 sandbox_id="test",
                 agent_id="test",
                 operation="test",
-                result=True,
-            )
+                result=True)
         )
         await audit_logger.log_event(
             AuditLogEntry(
@@ -402,8 +379,7 @@ class TestAuditLogging:
                 sandbox_id="test",
                 agent_id="test",
                 operation="test",
-                result=False,
-            )
+                result=False)
         )
 
         # Query for denials
@@ -427,8 +403,7 @@ class TestAuditLogging:
                 sandbox_id="test",
                 agent_id="test",
                 operation="test",
-                result=True,
-            )
+                result=True)
         )
 
         # Query with time range
@@ -438,8 +413,7 @@ class TestAuditLogging:
         # Query with past range
         results = await audit_logger.query_logs(
             start_time=past - timedelta(hours=1),
-            end_time=past,
-        )
+            end_time=past)
         assert len(results) == 0
 
     async def test_get_stats(self, audit_logger):
@@ -457,8 +431,7 @@ class TestAuditLogging:
                     sandbox_id="test",
                     agent_id="test",
                     operation="test",
-                    result=i % 2 == 0,
-                )
+                    result=i % 2 == 0)
             )
 
         stats = await audit_logger.get_stats(sandbox_id="test")
@@ -531,8 +504,7 @@ class TestResourceLimits:
             max_memory_mb=128,
             max_cpu_percent=50.0,
             max_processes=5,
-            max_file_descriptors=20,
-        )
+            max_file_descriptors=20)
 
         # Should not raise exception
         await sandbox_service.enforce_limits(sandbox_id=sandbox_id, limits=limits)
@@ -553,14 +525,12 @@ class TestSecurityViolations:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.WRITE,
-                resource="/readonly/file.txt",
-            )
+                resource="/readonly/file.txt")
 
         # Check audit log
         logs = await sandbox_service._audit_logger.query_logs(
             sandbox_id=sandbox_id,
-            event_type=AuditEventType.PERMISSION_DENIED,
-        )
+            event_type=AuditEventType.PERMISSION_DENIED)
 
         assert len(logs) >= 1
         assert logs[0].result is False

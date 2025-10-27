@@ -20,13 +20,11 @@ from agentcore.agent_runtime.services.container_manager import ContainerManager
 @pytest.mark.slow
 async def test_container_lifecycle_integration(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test complete container lifecycle with mocked Docker."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agent
     state = await lifecycle_manager.create_agent(agent_config)
@@ -65,13 +63,11 @@ async def test_container_lifecycle_integration(
 @pytest.mark.asyncio
 async def test_container_resource_monitoring(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test container resource monitoring integration."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create and start agent
     await lifecycle_manager.create_agent(agent_config)
@@ -94,8 +90,7 @@ async def test_container_resource_monitoring(
 @pytest.mark.asyncio
 async def test_container_failure_handling(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test handling of container failures."""
     # Simulate container creation failure
     mock_container_manager.create_container.side_effect = Exception(
@@ -104,8 +99,7 @@ async def test_container_failure_handling(
 
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Attempt to create agent
     with pytest.raises(Exception) as exc_info:
@@ -117,13 +111,11 @@ async def test_container_failure_handling(
 @pytest.mark.asyncio
 async def test_container_cleanup_on_error(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test container cleanup when errors occur."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agent successfully
     await lifecycle_manager.create_agent(agent_config)
@@ -143,13 +135,11 @@ async def test_container_cleanup_on_error(
 @pytest.mark.asyncio
 async def test_multiple_container_management(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test managing multiple containers simultaneously."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create multiple agents
     agents = []
@@ -158,8 +148,7 @@ async def test_multiple_container_management(
             agent_id=f"test-agent-{i:03d}",
             name=f"Test Agent {i}",
             philosophy=AgentPhilosophy.REACT,
-            capabilities=["test"],
-        )
+            capabilities=["test"])
 
         # Mock different container IDs
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
@@ -189,13 +178,11 @@ async def test_multiple_container_management(
 @pytest.mark.asyncio
 async def test_container_checkpoint_integration(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test container checkpoint and restore integration."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create and start agent
     await lifecycle_manager.create_agent(agent_config)
@@ -204,8 +191,7 @@ async def test_container_checkpoint_integration(
     # Create checkpoint using save_checkpoint
     await lifecycle_manager.save_checkpoint(
         agent_id="test-agent-001",
-        checkpoint_data=b"test checkpoint data",
-    )
+        checkpoint_data=b"test checkpoint data")
 
     # Restore from checkpoint
     restored_data = await lifecycle_manager.restore_checkpoint("test-agent-001")
@@ -219,8 +205,7 @@ async def test_container_checkpoint_integration(
 
 @pytest.mark.skipif(
     not hasattr(docker, "from_env"),
-    reason="Docker not available",
-)
+    reason="Docker not available")
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_real_docker_integration(agent_config):
@@ -245,13 +230,11 @@ async def test_real_docker_integration(agent_config):
 @pytest.mark.asyncio
 async def test_container_stats_collection(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test continuous container statistics collection."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create and start agent
     await lifecycle_manager.create_agent(agent_config)
@@ -274,13 +257,11 @@ async def test_container_stats_collection(
 @pytest.mark.asyncio
 async def test_container_logs_retrieval(
     mock_container_manager,
-    agent_config,
-):
+    agent_config):
     """Test agent status retrieval (logs would be through container manager directly)."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create and start agent
     await lifecycle_manager.create_agent(agent_config)
@@ -299,13 +280,11 @@ async def test_container_logs_retrieval(
 
 @pytest.mark.asyncio
 async def test_container_resource_limits_enforcement(
-    mock_container_manager,
-):
+    mock_container_manager):
     """Test that resource limits are properly enforced."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agent with specific resource limits
     config = AgentConfig(
@@ -316,8 +295,7 @@ async def test_container_resource_limits_enforcement(
         resource_limits={
             "cpu": "0.5",
             "memory": "256Mi",
-        },
-    )
+        })
 
     await lifecycle_manager.create_agent(config)
 

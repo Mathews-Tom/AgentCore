@@ -12,8 +12,7 @@ import pytest
 
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
-    RateLimitError as CustomRateLimitError,
-)
+    RateLimitError as CustomRateLimitError)
 from agentcore.a2a_protocol.services.llm_service import LLMService, ProviderRegistry
 
 
@@ -46,8 +45,7 @@ class TestRateLimitIntegration:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="integration-test-001",
-        )
+            trace_id="integration-test-001")
 
         # Mock response for successful retry
         mock_success_response = Mock()
@@ -64,8 +62,7 @@ class TestRateLimitIntegration:
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         call_count = 0
 
@@ -82,8 +79,7 @@ class TestRateLimitIntegration:
             patch(
                 "agentcore.a2a_protocol.services.llm_client_openai.AsyncOpenAI"
             ) as mock_openai_class,
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             mock_client = Mock()
             mock_client.chat.completions.create = AsyncMock(side_effect=mock_create)
             mock_openai_class.return_value = mock_client
@@ -105,8 +101,7 @@ class TestRateLimitIntegration:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="integration-test-002",
-        )
+            trace_id="integration-test-002")
 
         # Mock persistent rate limit error
         mock_response = Mock()
@@ -114,15 +109,13 @@ class TestRateLimitIntegration:
         rate_limit_error = AnthropicRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch(
                 "agentcore.a2a_protocol.services.llm_client_anthropic.AsyncAnthropic"
             ) as mock_anthropic_class,
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             mock_client = Mock()
             mock_client.messages.create = AsyncMock(side_effect=rate_limit_error)
             mock_anthropic_class.return_value = mock_client
@@ -143,20 +136,17 @@ class TestRateLimitIntegration:
 
         service = LLMService(timeout=60.0, max_retries=4)
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash-exp",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="integration-test-003",
-        )
+            trace_id="integration-test-003")
 
         rate_limit_error = google_exceptions.ResourceExhausted("Quota exceeded")
 
         with (
             patch(
                 "google.generativeai.GenerativeModel.generate_content_async",
-                side_effect=rate_limit_error,
-            ),
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+                side_effect=rate_limit_error),
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             # Should fail after exhausting retries
             with pytest.raises(CustomRateLimitError) as exc_info:
                 await service.complete(request)
@@ -183,23 +173,20 @@ class TestRateLimitIntegration:
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "test"}],
             stream=True,
-            trace_id="integration-test-004",
-        )
+            trace_id="integration-test-004")
 
         mock_response = Mock()
         mock_response.headers = {"Retry-After": "5"}
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch(
                 "agentcore.a2a_protocol.services.llm_client_openai.AsyncOpenAI"
             ) as mock_openai_class,
-            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        ):
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep):
             mock_client = Mock()
             mock_client.chat.completions.create = AsyncMock(side_effect=rate_limit_error)
             mock_openai_class.return_value = mock_client
@@ -223,16 +210,14 @@ class TestRateLimitIntegration:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "test"}],
-            trace_id="integration-test-005",
-        )
+            trace_id="integration-test-005")
 
         mock_response = Mock()
         mock_response.headers = {}
         rate_limit_error = OpenAIRateLimitError(
             "Rate limit exceeded",
             response=mock_response,
-            body={"error": {"message": "Rate limit exceeded"}},
-        )
+            body={"error": {"message": "Rate limit exceeded"}})
 
         with (
             patch(
@@ -250,8 +235,7 @@ class TestRateLimitIntegration:
             ) as mock_record_request,
             patch(
                 "agentcore.a2a_protocol.services.llm_service.record_llm_error"
-            ) as mock_record_llm_error,
-        ):
+            ) as mock_record_llm_error):
             mock_client = Mock()
             mock_client.chat.completions.create = AsyncMock(side_effect=rate_limit_error)
             mock_openai_class.return_value = mock_client

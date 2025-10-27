@@ -19,8 +19,7 @@ from agentcore_cli.services.task import TaskService
 from agentcore_cli.services.exceptions import (
     ValidationError,
     TaskNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 class TestTaskServiceCreate:
@@ -40,8 +39,7 @@ class TestTaskServiceCreate:
         assert task_id == "task-001"
         mock_client.call.assert_called_once_with(
             "task.create",
-            {"description": "Analyze code", "priority": "normal"},
-        )
+            {"description": "Analyze code", "priority": "normal"})
 
     def test_create_with_all_parameters(self) -> None:
         """Test creation with all optional parameters."""
@@ -55,8 +53,7 @@ class TestTaskServiceCreate:
             "Analyze code",
             agent_id="agent-001",
             priority="high",
-            parameters={"repo": "foo/bar"},
-        )
+            parameters={"repo": "foo/bar"})
 
         # Assert
         assert task_id == "task-002"
@@ -67,8 +64,7 @@ class TestTaskServiceCreate:
                 "priority": "high",
                 "agent_id": "agent-001",
                 "parameters": {"repo": "foo/bar"},
-            },
-        )
+            })
 
     def test_create_empty_description_raises_validation_error(self) -> None:
         """Test that empty description raises ValidationError."""
@@ -135,8 +131,7 @@ class TestTaskServiceListTasks:
         assert len(tasks) == 2
         mock_client.call.assert_called_once_with(
             "task.list",
-            {"limit": 100, "offset": 0},
-        )
+            {"limit": 100, "offset": 0})
 
     def test_list_with_status_filter(self) -> None:
         """Test listing with status filter."""
@@ -151,8 +146,7 @@ class TestTaskServiceListTasks:
         # Assert
         mock_client.call.assert_called_once_with(
             "task.list",
-            {"limit": 10, "offset": 5, "status": "running"},
-        )
+            {"limit": 10, "offset": 5, "status": "running"})
 
     def test_list_invalid_limit_raises_validation_error(self) -> None:
         """Test that invalid limit raises ValidationError."""
@@ -216,8 +210,7 @@ class TestTaskServiceGet:
         assert task["task_id"] == "task-001"
         mock_client.call.assert_called_once_with(
             "task.get",
-            {"task_id": "task-001"},
-        )
+            {"task_id": "task-001"})
 
     def test_get_empty_id_raises_validation_error(self) -> None:
         """Test that empty task_id raises ValidationError."""
@@ -280,8 +273,7 @@ class TestTaskServiceCancel:
         assert success is True
         mock_client.call.assert_called_once_with(
             "task.cancel",
-            {"task_id": "task-001", "force": False},
-        )
+            {"task_id": "task-001", "force": False})
 
     def test_cancel_with_force(self) -> None:
         """Test cancellation with force flag."""
@@ -338,8 +330,7 @@ class TestTaskServiceLogs:
         assert logs[0] == "[INFO] Log 1"
         mock_client.call.assert_called_once_with(
             "task.logs",
-            {"task_id": "task-001", "follow": False},
-        )
+            {"task_id": "task-001", "follow": False})
 
     def test_logs_with_parameters(self) -> None:
         """Test log retrieval with optional parameters."""
@@ -354,8 +345,7 @@ class TestTaskServiceLogs:
         # Assert
         mock_client.call.assert_called_once_with(
             "task.logs",
-            {"task_id": "task-001", "follow": True, "lines": 100},
-        )
+            {"task_id": "task-001", "follow": True, "lines": 100})
 
     def test_logs_invalid_lines_raises_validation_error(self) -> None:
         """Test that invalid lines raises ValidationError."""

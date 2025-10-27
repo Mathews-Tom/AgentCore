@@ -30,8 +30,7 @@ def sample_trajectories():
                 action={"step_type": "tool_call" if i % 2 == 0 else "think"},
                 result={},
                 timestamp=now,
-                duration_ms=100,
-            )
+                duration_ms=100)
         ]
 
         traj = Trajectory(
@@ -63,8 +62,7 @@ def test_policy_pattern_creation():
         pattern_type="tool_usage",
         description="Use tools frequently",
         examples=["tool1", "tool2"],
-        weight=0.8,
-    )
+        weight=0.8)
 
     assert pattern.pattern_type == "tool_usage"
     assert pattern.description == "Use tools frequently"
@@ -120,8 +118,7 @@ def test_extract_patterns_no_high_advantage(policy_updater):
                     action={"step_type": "think"},
                     result={},
                     timestamp=now,
-                    duration_ms=50,
-                )
+                    duration_ms=50)
             ],
             success=False,
             advantage=0.1,  # Below threshold of 0.5
@@ -154,12 +151,10 @@ def test_tool_usage_pattern_extraction(policy_updater):
                     action={"step_type": "tool_call"},
                     result={},
                     timestamp=now,
-                    duration_ms=100,
-                )
+                    duration_ms=100)
             ],
             success=True,
-            advantage=1.0,
-        )
+            advantage=1.0)
         for _ in range(3)
     ]
 
@@ -188,13 +183,11 @@ def test_reasoning_pattern_extraction(policy_updater):
                 action={"step_type": f"step{i}"},
                 result={},
                 timestamp=now,
-                duration_ms=50,
-            )
+                duration_ms=50)
             for i in range(5)  # 5 steps = reasoning
         ],
         success=True,
-        advantage=1.5,
-    )
+        advantage=1.5)
 
     patterns = policy_updater.extract_patterns([trajectory], [1.5])
 
@@ -210,8 +203,7 @@ def test_create_update(policy_updater, sample_trajectories):
             pattern_type="tool_usage",
             description="Test pattern",
             examples=["ex1"],
-            weight=0.8,
-        )
+            weight=0.8)
     ]
 
     update = policy_updater.create_update(patterns, sample_trajectories)
@@ -232,8 +224,7 @@ def test_create_update_records_history(policy_updater, sample_trajectories):
             pattern_type="test",
             description="Test",
             examples=[],
-            weight=1.0,
-        )
+            weight=1.0)
     ]
 
     policy_updater.create_update(patterns, sample_trajectories)
@@ -264,8 +255,7 @@ def test_apply_update():
             ]
         },
         source_trajectories=[uuid4()],
-        total_advantage=2.5,
-    )
+        total_advantage=2.5)
 
     updated_policy = updater.apply_update(update, current_policy)
 
@@ -292,8 +282,7 @@ def test_create_checkpoint(policy_updater):
         iteration=10,
         policy_data=policy_data,
         validation_score=0.85,
-        metrics=metrics,
-    )
+        metrics=metrics)
 
     assert checkpoint.agent_id == "test-agent"
     assert checkpoint.job_id == job_id
@@ -312,8 +301,7 @@ def test_get_update_history(policy_updater, sample_trajectories):
             pattern_type="test",
             description="Test",
             examples=[],
-            weight=1.0,
-        )
+            weight=1.0)
     ]
 
     for i in range(3):
@@ -350,14 +338,12 @@ def test_generate_update_summary(policy_updater):
             pattern_type="tool_usage",
             description="Use tools",
             examples=[],
-            weight=0.8,
-        ),
+            weight=0.8),
         PolicyPattern(
             pattern_type="verification",
             description="Verify results",
             examples=[],
-            weight=0.6,
-        ),
+            weight=0.6),
     ]
 
     summary = policy_updater._generate_update_summary(patterns)
@@ -391,12 +377,10 @@ def test_policy_update_weighted_by_advantage(policy_updater):
                 action={"step_type": "tool_call"},
                 result={},
                 timestamp=now,
-                duration_ms=100,
-            )
+                duration_ms=100)
         ],
         success=True,
-        advantage=2.0,
-    )
+        advantage=2.0)
 
     # Low-advantage trajectory (below threshold)
     low_adv_traj = Trajectory(
@@ -410,12 +394,10 @@ def test_policy_update_weighted_by_advantage(policy_updater):
                 action={"step_type": "tool_call"},
                 result={},
                 timestamp=now,
-                duration_ms=100,
-            )
+                duration_ms=100)
         ],
         success=True,
-        advantage=0.3,
-    )
+        advantage=0.3)
 
     trajectories = [high_adv_traj, low_adv_traj]
     patterns = policy_updater.extract_patterns(trajectories, [2.0, 0.3])
@@ -435,8 +417,7 @@ def test_multiple_updates_accumulate(policy_updater):
         update_type="pattern_based_update",
         content={"patterns": [{"type": "tool_usage", "weight": 0.8}]},
         source_trajectories=[],
-        total_advantage=1.0,
-    )
+        total_advantage=1.0)
 
     policy_after_1 = policy_updater.apply_update(update1, current_policy)
 
@@ -445,8 +426,7 @@ def test_multiple_updates_accumulate(policy_updater):
         update_type="pattern_based_update",
         content={"patterns": [{"type": "verification", "weight": 0.6}]},
         source_trajectories=[],
-        total_advantage=0.8,
-    )
+        total_advantage=0.8)
 
     policy_after_2 = policy_updater.apply_update(update2, policy_after_1)
 

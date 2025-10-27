@@ -15,8 +15,7 @@ from agentcore.orchestration.streams.models import (
     TaskCompletedEvent,
     TaskCreatedEvent,
     TaskFailedEvent,
-    WorkflowCreatedEvent,
-)
+    WorkflowCreatedEvent)
 
 
 class TestOrchestrationEvent:
@@ -48,8 +47,7 @@ class TestOrchestrationEvent:
             trace_id=trace_id,
             source_agent_id="agent-123",
             workflow_id=workflow_id,
-            metadata={"key": "value"},
-        )
+            metadata={"key": "value"})
 
         assert event.event_id == event_id
         assert event.event_type == EventType.AGENT_STARTED
@@ -81,8 +79,7 @@ class TestTaskCreatedEvent:
             task_type="data_analysis",
             agent_id="agent-1",
             input_data={"query": "test"},
-            timeout_seconds=600,
-        )
+            timeout_seconds=600)
 
         assert event.event_type == EventType.TASK_CREATED
         assert event.task_id == task_id
@@ -111,8 +108,7 @@ class TestTaskCompletedEvent:
             task_id=task_id,
             agent_id="agent-1",
             result_data={"status": "success"},
-            execution_time_ms=1500,
-        )
+            execution_time_ms=1500)
 
         assert event.event_type == EventType.TASK_COMPLETED
         assert event.task_id == task_id
@@ -133,8 +129,7 @@ class TestTaskFailedEvent:
             agent_id="agent-1",
             error_message="Task execution failed",
             error_type="RuntimeError",
-            retry_count=2,
-        )
+            retry_count=2)
 
         assert event.event_type == EventType.TASK_FAILED
         assert event.task_id == task_id
@@ -152,8 +147,7 @@ class TestAgentEvents:
         event = AgentStartedEvent(
             agent_id="agent-123",
             agent_type="research",
-            capabilities=["web_search", "data_analysis"],
-        )
+            capabilities=["web_search", "data_analysis"])
 
         assert event.event_type == EventType.AGENT_STARTED
         assert event.agent_id == "agent-123"
@@ -165,8 +159,7 @@ class TestAgentEvents:
         event = AgentStoppedEvent(
             agent_id="agent-123",
             reason="task_completed",
-            uptime_seconds=3600,
-        )
+            uptime_seconds=3600)
 
         assert event.event_type == EventType.AGENT_STOPPED
         assert event.agent_id == "agent-123"
@@ -185,8 +178,7 @@ class TestWorkflowEvents:
             workflow_id=workflow_id,
             workflow_name="research_pipeline",
             workflow_version="1.0",
-            orchestration_pattern="supervisor",
-        )
+            orchestration_pattern="supervisor")
 
         assert event.event_type == EventType.WORKFLOW_CREATED
         assert event.workflow_id == workflow_id

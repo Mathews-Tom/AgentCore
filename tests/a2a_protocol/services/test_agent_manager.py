@@ -18,8 +18,7 @@ from agentcore.a2a_protocol.models.agent import (
     AgentRegistrationRequest,
     AgentStatus,
     AuthenticationType,
-    EndpointType,
-)
+    EndpointType)
 from agentcore.a2a_protocol.services.agent_manager import AgentManager, agent_manager
 
 
@@ -46,8 +45,7 @@ def sample_agent_card():
         authentication=AgentAuthentication(
             type=AuthenticationType.NONE, required=False
         ),
-        metadata=AgentMetadata(tags=["ai", "nlp"], category="language-processing"),
-    )
+        metadata=AgentMetadata(tags=["ai", "nlp"], category="language-processing"))
 
 
 @pytest.fixture
@@ -63,8 +61,7 @@ def another_agent_card():
         authentication=AgentAuthentication(
             type=AuthenticationType.NONE, required=False
         ),
-        metadata=AgentMetadata(tags=["ai", "image"], category="image-processing"),
-    )
+        metadata=AgentMetadata(tags=["ai", "image"], category="image-processing"))
 
 
 # ==================== Agent Registration Tests ====================

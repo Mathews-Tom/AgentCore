@@ -15,8 +15,7 @@ from agentcore.a2a_protocol.models.jsonrpc import (
     JsonRpcError,
     JsonRpcErrorCode,
     JsonRpcBatchRequest,
-    A2AContext,
-)
+    A2AContext)
 
 
 @pytest.fixture

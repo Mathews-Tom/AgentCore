@@ -44,8 +44,7 @@ def test_user() -> User:
         username="testuser",
         email="test@example.com",
         roles=[UserRole.USER],
-        is_active=True,
-    )
+        is_active=True)
 
 
 class TestSessionManager:
@@ -73,8 +72,7 @@ class TestSessionManager:
         session = await session_manager_test.create_session(
             user=test_user,
             ip_address="192.168.1.1",
-            user_agent="Test Agent",
-        )
+            user_agent="Test Agent")
 
         assert session is not None
         assert session.session_id is not None
@@ -245,8 +243,7 @@ class TestSessionManager:
         metadata = {"client": "web", "version": "1.0"}
         session = await session_manager_test.create_session(
             user=test_user,
-            metadata=metadata,
-        )
+            metadata=metadata)
 
         assert session.metadata == metadata
 

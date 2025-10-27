@@ -13,8 +13,7 @@ from agentcore.integration.security.compliance import (
     DataClassification,
     DataRegion,
     DataResidencyConfig,
-    PIIPattern,
-)
+    PIIPattern)
 
 
 class TestComplianceManager:
@@ -30,8 +29,7 @@ class TestComplianceManager:
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST, DataRegion.US_WEST],
             primary_region=DataRegion.US_EAST,
-            compliance_frameworks=[ComplianceFramework.GDPR, ComplianceFramework.SOC2],
-        )
+            compliance_frameworks=[ComplianceFramework.GDPR, ComplianceFramework.SOC2])
 
         manager = ComplianceManager(residency_config=config)
         assert manager is not None
@@ -224,8 +222,7 @@ class TestComplianceManager:
         """Test validating allowed region."""
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST, DataRegion.US_WEST],
-            primary_region=DataRegion.US_EAST,
-        )
+            primary_region=DataRegion.US_EAST)
         manager = ComplianceManager(residency_config=config)
 
         assert manager.validate_region(DataRegion.US_EAST)
@@ -236,8 +233,7 @@ class TestComplianceManager:
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST],
             primary_region=DataRegion.US_EAST,
-            enforce_strict=True,
-        )
+            enforce_strict=True)
         manager = ComplianceManager(residency_config=config)
 
         with pytest.raises(ValueError, match="not allowed"):
@@ -248,8 +244,7 @@ class TestComplianceManager:
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST],
             primary_region=DataRegion.US_EAST,
-            enforce_strict=False,
-        )
+            enforce_strict=False)
         manager = ComplianceManager(residency_config=config)
 
         # Should return False but not raise
@@ -260,8 +255,7 @@ class TestComplianceManager:
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST],
             primary_region=DataRegion.US_EAST,
-            enforce_strict=True,
-        )
+            enforce_strict=True)
         manager = ComplianceManager(residency_config=config)
 
         assert manager.validate_region(DataRegion.GLOBAL)
@@ -279,8 +273,7 @@ class TestComplianceManager:
         """Test getting allowed regions with configuration."""
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST, DataRegion.US_WEST],
-            primary_region=DataRegion.US_EAST,
-        )
+            primary_region=DataRegion.US_EAST)
         manager = ComplianceManager(residency_config=config)
 
         regions = manager.get_allowed_regions()
@@ -423,8 +416,7 @@ class TestComplianceManager:
             name="employee_id",
             pattern=r"\bEMP-\d{6}\b",
             classification=DataClassification.INTERNAL,
-            redaction_mask="EMP-******",
-        )
+            redaction_mask="EMP-******")
 
         manager.add_pii_pattern(pattern)
 
@@ -443,8 +435,7 @@ class TestComplianceManager:
             name="custom_id",
             pattern=r"\bCUST-\d{4}\b",
             classification=DataClassification.PII,
-            redaction_mask="CUST-****",
-        )
+            redaction_mask="CUST-****")
 
         manager.add_pii_pattern(pattern)
 
@@ -470,8 +461,7 @@ class TestComplianceManager:
         config = DataResidencyConfig(
             allowed_regions=[DataRegion.US_EAST, DataRegion.US_WEST],
             primary_region=DataRegion.US_EAST,
-            compliance_frameworks=[ComplianceFramework.GDPR, ComplianceFramework.SOC2],
-        )
+            compliance_frameworks=[ComplianceFramework.GDPR, ComplianceFramework.SOC2])
 
         manager = ComplianceManager(residency_config=config)
         report = manager.generate_compliance_report()
@@ -487,8 +477,7 @@ class TestComplianceManager:
         custom_pattern = PIIPattern(
             name="custom",
             pattern=r"\bCUSTOM-\d+\b",
-            classification=DataClassification.PII,
-        )
+            classification=DataClassification.PII)
 
         manager = ComplianceManager(custom_pii_patterns=[custom_pattern])
         report = manager.generate_compliance_report()
@@ -504,13 +493,11 @@ class TestComplianceManager:
             PIIPattern(
                 name="custom1",
                 pattern=r"\bPAT1-\d+\b",
-                classification=DataClassification.PII,
-            ),
+                classification=DataClassification.PII),
             PIIPattern(
                 name="custom2",
                 pattern=r"\bPAT2-\d+\b",
-                classification=DataClassification.CONFIDENTIAL,
-            ),
+                classification=DataClassification.CONFIDENTIAL),
         ]
 
         manager = ComplianceManager(custom_pii_patterns=custom_patterns)

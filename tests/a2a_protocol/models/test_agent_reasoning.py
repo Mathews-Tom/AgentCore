@@ -11,8 +11,7 @@ from agentcore.a2a_protocol.models.agent import (
     AgentEndpoint,
     AgentStatus,
     AuthenticationType,
-    EndpointType,
-)
+    EndpointType)
 
 
 class TestAgentCardReasoningSupport:
@@ -25,11 +24,9 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
-            authentication=AgentAuthentication(type=AuthenticationType.NONE),
-        )
+            authentication=AgentAuthentication(type=AuthenticationType.NONE))
 
         assert agent.supports_bounded_reasoning is False
         assert agent.reasoning_config is None
@@ -41,12 +38,10 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         assert agent.supports_bounded_reasoning is True
         assert agent.reasoning_config is None
@@ -65,13 +60,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config=reasoning_config,
-        )
+            reasoning_config=reasoning_config)
 
         assert agent.supports_bounded_reasoning is True
         assert agent.reasoning_config == reasoning_config
@@ -90,13 +83,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=False,
-            reasoning_config=reasoning_config,
-        )
+            reasoning_config=reasoning_config)
 
         assert agent.supports_bounded_reasoning is False
         assert agent.reasoning_config == reasoning_config
@@ -108,13 +99,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config={},
-        )
+            reasoning_config={})
 
         assert agent.supports_bounded_reasoning is True
         assert agent.reasoning_config == {}
@@ -131,13 +120,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config=reasoning_config,
-        )
+            reasoning_config=reasoning_config)
 
         assert agent.supports_bounded_reasoning is True
         assert agent.reasoning_config["max_iterations"] == 7
@@ -152,13 +139,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config={"max_iterations": 5},
-        )
+            reasoning_config={"max_iterations": 5})
 
         summary = agent.to_discovery_summary()
 
@@ -172,11 +157,9 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
-            authentication=AgentAuthentication(type=AuthenticationType.NONE),
-        )
+            authentication=AgentAuthentication(type=AuthenticationType.NONE))
 
         summary = agent.to_discovery_summary()
 
@@ -196,13 +179,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config=reasoning_config,
-        )
+            reasoning_config=reasoning_config)
 
         # Test model_dump (Pydantic v2)
         data = agent.model_dump()
@@ -255,13 +236,11 @@ class TestAgentCardReasoningSupport:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config=reasoning_config,
-        )
+            reasoning_config=reasoning_config)
 
         assert agent.reasoning_config == reasoning_config
         assert agent.reasoning_config["custom_setting"] is True

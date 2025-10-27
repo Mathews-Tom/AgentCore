@@ -19,28 +19,24 @@ from agentcore.agent_runtime.services.multi_agent_coordinator import (
     MessageType,
     MultiAgentCoordinator,
     SharedState,
-    VoteOption,
-)
+    VoteOption)
 
 
 @pytest.mark.asyncio
 async def test_multi_agent_registration_and_discovery(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test agent registration and discovery in multi-agent system."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create multiple agents
     agents = []
     for i in range(3):
         config = AgentConfig(
             agent_id=f"agent-{i:03d}",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         # Mock container IDs
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
@@ -51,8 +47,7 @@ async def test_multi_agent_registration_and_discovery(
         # Register with coordinator
         await multi_agent_coordinator.register_agent(
             agent_id=state.agent_id,
-            metadata={"capabilities": [f"skill-{i}"]},
-        )
+            metadata={"capabilities": [f"skill-{i}"]})
 
     # Verify all registered
     assert len(agents) == 3
@@ -71,24 +66,20 @@ async def test_multi_agent_registration_and_discovery(
 @pytest.mark.asyncio
 async def test_inter_agent_messaging(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test direct messaging between agents."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create two agents
     agent1_config = AgentConfig(
         agent_id="agent-001",
-        philosophy=AgentPhilosophy.MULTI_AGENT,
-    )
+        philosophy=AgentPhilosophy.MULTI_AGENT)
 
     agent2_config = AgentConfig(
         agent_id="agent-002",
-        philosophy=AgentPhilosophy.MULTI_AGENT,
-    )
+        philosophy=AgentPhilosophy.MULTI_AGENT)
 
     # Mock container creation
     mock_container_manager.create_container.side_effect = [
@@ -113,8 +104,7 @@ async def test_inter_agent_messaging(
         recipient_id="agent-002",
         message_type=MessageType.REQUEST,
         priority=MessagePriority.NORMAL,
-        content={"data": "Hello from agent 1"},
-    )
+        content={"data": "Hello from agent 1"})
     await multi_agent_coordinator.send_message(message)
 
     # Receive message
@@ -134,21 +124,18 @@ async def test_inter_agent_messaging(
 @pytest.mark.asyncio
 async def test_broadcast_messaging(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test broadcast messaging to all agents."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create multiple agents
     agents = []
     for i in range(3):
         config = AgentConfig(
             agent_id=f"agent-{i:03d}",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
         await lifecycle_manager.create_agent(config)
@@ -163,8 +150,7 @@ async def test_broadcast_messaging(
         recipient_id=None,  # None means broadcast
         message_type=MessageType.BROADCAST,
         priority=MessagePriority.HIGH,
-        content={"data": "Broadcast to all"},
-    )
+        content={"data": "Broadcast to all"})
     await multi_agent_coordinator.send_message(broadcast_msg)
 
     # Verify all agents received message
@@ -182,21 +168,18 @@ async def test_broadcast_messaging(
 @pytest.mark.asyncio
 async def test_consensus_voting(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test consensus voting mechanism."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create voting agents
     agents = []
     for i in range(5):
         config = AgentConfig(
             agent_id=f"agent-{i:03d}",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
         await lifecycle_manager.create_agent(config)
@@ -217,8 +200,7 @@ async def test_consensus_voting(
         options=options,
         participating_agents=agents,
         required_votes=3,  # 60% of 5 = 3
-        timeout_seconds=5,
-    )
+        timeout_seconds=5)
 
     vote_id = await multi_agent_coordinator.initiate_consensus(consensus_request)
 
@@ -244,21 +226,18 @@ async def test_consensus_voting(
 @pytest.mark.asyncio
 async def test_conflict_resolution_majority_vote(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test conflict resolution using majority vote strategy."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agents
     agents = []
     for i in range(3):
         config = AgentConfig(
             agent_id=f"agent-{i:03d}",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
         await lifecycle_manager.create_agent(config)
@@ -282,8 +261,7 @@ async def test_conflict_resolution_majority_vote(
     resolution = await multi_agent_coordinator.resolve_conflict(
         conflict_data=conflict_data,
         strategy=ConflictResolutionStrategy.PRIORITY_BASED,
-        involved_agents=agents,
-    )
+        involved_agents=agents)
 
     assert resolution["strategy"] == "priority_based"
     assert resolution["selected_agent"] == "agent-000"  # Highest priority
@@ -298,21 +276,18 @@ async def test_conflict_resolution_majority_vote(
 @pytest.mark.asyncio
 async def test_shared_state_management(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test shared state management across agents."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agents
     agents = []
     for i in range(2):
         config = AgentConfig(
             agent_id=f"agent-{i:03d}",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
         await lifecycle_manager.create_agent(config)
@@ -325,15 +300,13 @@ async def test_shared_state_management(
     shared_state = SharedState(
         owner_id="agent-000",
         data={"counter": 10},
-        access_control={"read": ["agent-001"], "write": ["agent-001"]},
-    )
+        access_control={"read": ["agent-001"], "write": ["agent-001"]})
     state_id = await multi_agent_coordinator.create_shared_state(shared_state)
 
     # Agent 1 reads from shared state
     state = await multi_agent_coordinator.read_shared_state(
         state_id=state_id,
-        agent_id="agent-001",
-    )
+        agent_id="agent-001")
 
     assert state.data["counter"] == 10
 
@@ -341,14 +314,12 @@ async def test_shared_state_management(
     await multi_agent_coordinator.update_shared_state(
         state_id=state_id,
         agent_id="agent-001",
-        updates={"counter": 20},
-    )
+        updates={"counter": 20})
 
     # Agent 0 reads updated value (owner has implicit read access)
     state = await multi_agent_coordinator.read_shared_state(
         state_id=state_id,
-        agent_id="agent-000",
-    )
+        agent_id="agent-000")
 
     assert state.data["counter"] == 20
 
@@ -361,20 +332,17 @@ async def test_shared_state_management(
 @pytest.mark.asyncio
 async def test_state_locking_mechanism(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test exclusive access to shared state through locking."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agents
     for i in range(2):
         config = AgentConfig(
             agent_id=f"agent-{i:03d}",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         mock_container_manager.create_container.return_value = f"container-{i:03d}"
         await lifecycle_manager.create_agent(config)
@@ -386,35 +354,30 @@ async def test_state_locking_mechanism(
     shared_state = SharedState(
         owner_id="agent-000",
         data={"critical_resource": "value"},
-        access_control={"read": ["agent-001"], "write": ["agent-001"]},
-    )
+        access_control={"read": ["agent-001"], "write": ["agent-001"]})
     state_id = await multi_agent_coordinator.create_shared_state(shared_state)
 
     # Agent 0 acquires lock
     lock_acquired = await multi_agent_coordinator.lock_shared_state(
         state_id=state_id,
-        agent_id="agent-000",
-    )
+        agent_id="agent-000")
     assert lock_acquired is True
 
     # Agent 1 tries to acquire same lock (should fail)
     lock_acquired = await multi_agent_coordinator.lock_shared_state(
         state_id=state_id,
-        agent_id="agent-001",
-    )
+        agent_id="agent-001")
     assert lock_acquired is False
 
     # Agent 0 releases lock
     await multi_agent_coordinator.unlock_shared_state(
         state_id=state_id,
-        agent_id="agent-000",
-    )
+        agent_id="agent-000")
 
     # Now agent 1 can acquire
     lock_acquired = await multi_agent_coordinator.lock_shared_state(
         state_id=state_id,
-        agent_id="agent-001",
-    )
+        agent_id="agent-001")
     assert lock_acquired is True
 
     # Cleanup
@@ -428,13 +391,11 @@ async def test_state_locking_mechanism(
 @pytest.mark.asyncio
 async def test_priority_based_message_handling(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test that high priority messages are processed first."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agents
     mock_container_manager.create_container.side_effect = [
@@ -445,15 +406,13 @@ async def test_priority_based_message_handling(
     await lifecycle_manager.create_agent(
         AgentConfig(
             agent_id="agent-001",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
     )
 
     await lifecycle_manager.create_agent(
         AgentConfig(
             agent_id="agent-002",
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
     )
 
     await multi_agent_coordinator.register_agent(
@@ -470,8 +429,7 @@ async def test_priority_based_message_handling(
             recipient_id="agent-002",
             message_type=MessageType.REQUEST,
             priority=MessagePriority.LOW,
-            content={"order": 1, "type": "low_priority"},
-        )
+            content={"order": 1, "type": "low_priority"})
     )
 
     await multi_agent_coordinator.send_message(
@@ -480,8 +438,7 @@ async def test_priority_based_message_handling(
             recipient_id="agent-002",
             message_type=MessageType.REQUEST,
             priority=MessagePriority.URGENT,
-            content={"order": 2, "type": "critical"},
-        )
+            content={"order": 2, "type": "critical"})
     )
 
     await multi_agent_coordinator.send_message(
@@ -490,8 +447,7 @@ async def test_priority_based_message_handling(
             recipient_id="agent-002",
             message_type=MessageType.REQUEST,
             priority=MessagePriority.NORMAL,
-            content={"order": 3, "type": "normal"},
-        )
+            content={"order": 3, "type": "normal"})
     )
 
     # Receive messages (note: queue order may not be guaranteed without priority queue implementation)
@@ -514,13 +470,11 @@ async def test_priority_based_message_handling(
 @pytest.mark.asyncio
 async def test_coordinated_task_execution(
     mock_container_manager,
-    multi_agent_coordinator,
-):
+    multi_agent_coordinator):
     """Test coordinated task execution across multiple agents."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create specialized agents
     agents_config = [
@@ -532,8 +486,7 @@ async def test_coordinated_task_execution(
     for agent_id, capabilities in agents_config:
         config = AgentConfig(
             agent_id=agent_id,
-            philosophy=AgentPhilosophy.MULTI_AGENT,
-        )
+            philosophy=AgentPhilosophy.MULTI_AGENT)
 
         mock_container_manager.create_container.return_value = f"container-{agent_id}"
         await lifecycle_manager.create_agent(config)
@@ -549,8 +502,7 @@ async def test_coordinated_task_execution(
             recipient_id="agent-collector",
             message_type=MessageType.TASK_ASSIGNMENT,
             priority=MessagePriority.HIGH,
-            content={"action": "collect", "source": "database"},
-        )
+            content={"action": "collect", "source": "database"})
     )
 
     # 2. Send to processor
@@ -560,8 +512,7 @@ async def test_coordinated_task_execution(
             recipient_id="agent-processor",
             message_type=MessageType.TASK_ASSIGNMENT,
             priority=MessagePriority.NORMAL,
-            content={"action": "process", "data": "[collected]"},
-        )
+            content={"action": "process", "data": "[collected]"})
     )
 
     # 3. Send to aggregator
@@ -571,8 +522,7 @@ async def test_coordinated_task_execution(
             recipient_id="agent-aggregator",
             message_type=MessageType.TASK_ASSIGNMENT,
             priority=MessagePriority.NORMAL,
-            content={"action": "aggregate", "processed_data": "[processed]"},
-        )
+            content={"action": "aggregate", "processed_data": "[processed]"})
     )
 
     # Verify messages received

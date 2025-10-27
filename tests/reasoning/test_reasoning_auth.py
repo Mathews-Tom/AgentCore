@@ -15,13 +15,11 @@ from agentcore.a2a_protocol.models.security import Permission, Role, TokenPayloa
 from src.agentcore.reasoning.models.reasoning_models import (
     BoundedContextIterationResult,
     BoundedContextResult,
-    IterationMetrics,
-)
+    IterationMetrics)
 from src.agentcore.reasoning.services.reasoning_jsonrpc import (
     _extract_jwt_token,
     _validate_authentication,
-    handle_bounded_reasoning,
-)
+    handle_bounded_reasoning)
 
 
 @pytest.fixture
@@ -32,8 +30,7 @@ def valid_token_payload() -> TokenPayload:
         role=Role.AGENT,
         token_type="access",
         expiration_hours=24,
-        agent_id="agent-123",
-    )
+        agent_id="agent-123")
 
 
 @pytest.fixture
@@ -49,9 +46,7 @@ def mock_reasoning_result() -> BoundedContextResult:
             tokens=500,
             has_answer=True,
             carryover_generated=False,
-            execution_time_ms=1250,
-        ),
-    )
+            execution_time_ms=1250))
 
     return BoundedContextResult(
         answer="42",
@@ -60,8 +55,7 @@ def mock_reasoning_result() -> BoundedContextResult:
         total_iterations=1,
         compute_savings_pct=15.5,
         carryover_compressions=0,
-        execution_time_ms=1250,
-    )
+        execution_time_ms=1250)
 
 
 @pytest.fixture
@@ -82,8 +76,7 @@ def test_extract_jwt_token_from_params():
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"auth_token": "test-token-123", "query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     token = _extract_jwt_token(request)
     assert token == "test-token-123"
@@ -94,8 +87,7 @@ def test_extract_jwt_token_missing():
     # No params
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
-        id="test-123",
-    )
+        id="test-123")
 
     token = _extract_jwt_token(request)
     assert token is None
@@ -104,8 +96,7 @@ def test_extract_jwt_token_missing():
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     token = _extract_jwt_token(request)
     assert token is None
@@ -117,8 +108,7 @@ def test_extract_jwt_token_invalid_type():
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"auth_token": 12345, "query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     token = _extract_jwt_token(request)
     assert token is None
@@ -130,8 +120,7 @@ async def test_validate_authentication_missing_token():
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     with pytest.raises(ValueError, match="Authentication required: Missing JWT token"):
         _validate_authentication(request)
@@ -143,8 +132,7 @@ async def test_validate_authentication_invalid_token():
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"auth_token": "invalid-token", "query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     with patch(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.security_service"
@@ -175,8 +163,7 @@ async def test_validate_authentication_insufficient_permissions(valid_token_payl
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"auth_token": "valid-token", "query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     with patch(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.security_service"
@@ -193,8 +180,7 @@ async def test_validate_authentication_success(valid_token_payload):
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"auth_token": "valid-token", "query": "test"},
-        id="test-123",
-    )
+        id="test-123")
 
     with patch(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.security_service"
@@ -211,14 +197,12 @@ async def test_validate_authentication_success(valid_token_payload):
 async def test_handle_bounded_reasoning_auth_success(
     valid_request_params: dict,
     valid_token_payload: TokenPayload,
-    mock_reasoning_result: BoundedContextResult,
-):
+    mock_reasoning_result: BoundedContextResult):
     """Test successful bounded reasoning with valid authentication."""
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={**valid_request_params, "auth_token": "valid-token"},
-        id="test-123",
-    )
+        id="test-123")
 
     with (
         patch(
@@ -227,8 +211,7 @@ async def test_handle_bounded_reasoning_auth_success(
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch(
             "src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine"
-        ) as mock_engine_class,
-    ):
+        ) as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -249,8 +232,7 @@ async def test_handle_bounded_reasoning_missing_token(valid_request_params: dict
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params=valid_request_params,  # No auth_token
-        id="test-123",
-    )
+        id="test-123")
 
     with pytest.raises(ValueError, match="Authentication required: Missing JWT token"):
         await handle_bounded_reasoning(request)
@@ -262,8 +244,7 @@ async def test_handle_bounded_reasoning_invalid_token(valid_request_params: dict
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={**valid_request_params, "auth_token": "invalid-token"},
-        id="test-123",
-    )
+        id="test-123")
 
     with patch(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.security_service"
@@ -286,15 +267,13 @@ async def test_handle_bounded_reasoning_insufficient_permissions(valid_request_p
         token_type="access",
         expiration_hours=24,
         agent_id="agent-123",
-        additional_permissions=[],
-    )
+        additional_permissions=[])
     token_payload.permissions = [p for p in token_payload.permissions if p != Permission.REASONING_EXECUTE]
 
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={**valid_request_params, "auth_token": "valid-token"},
-        id="test-123",
-    )
+        id="test-123")
 
     with patch(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.security_service"
@@ -308,22 +287,19 @@ async def test_handle_bounded_reasoning_insufficient_permissions(valid_request_p
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_admin_permission(
     valid_request_params: dict,
-    mock_reasoning_result: BoundedContextResult,
-):
+    mock_reasoning_result: BoundedContextResult):
     """Test bounded reasoning succeeds with admin permission."""
     # Create admin token
     admin_token_payload = TokenPayload.create(
         subject="admin-user",
         role=Role.ADMIN,
         token_type="access",
-        expiration_hours=24,
-    )
+        expiration_hours=24)
 
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={**valid_request_params, "auth_token": "admin-token"},
-        id="test-123",
-    )
+        id="test-123")
 
     with (
         patch(
@@ -332,8 +308,7 @@ async def test_handle_bounded_reasoning_admin_permission(
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch(
             "src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine"
-        ) as mock_engine_class,
-    ):
+        ) as mock_engine_class):
         mock_security.validate_token.return_value = admin_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -350,22 +325,19 @@ async def test_handle_bounded_reasoning_admin_permission(
 async def test_handle_bounded_reasoning_with_a2a_context_auth(
     valid_request_params: dict,
     valid_token_payload: TokenPayload,
-    mock_reasoning_result: BoundedContextResult,
-):
+    mock_reasoning_result: BoundedContextResult):
     """Test bounded reasoning with A2A context and authentication."""
     a2a_context = A2AContext(
         source_agent="agent-123",
         target_agent="agent-456",
         trace_id="trace-abc",
-        timestamp="2025-01-01T00:00:00Z",
-    )
+        timestamp="2025-01-01T00:00:00Z")
 
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={**valid_request_params, "auth_token": "valid-token"},
         id="test-123",
-        a2a_context=a2a_context,
-    )
+        a2a_context=a2a_context)
 
     with (
         patch(
@@ -375,8 +347,7 @@ async def test_handle_bounded_reasoning_with_a2a_context_auth(
         patch(
             "src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine"
         ) as mock_engine_class,
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.logger") as mock_logger,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.logger") as mock_logger):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -393,5 +364,4 @@ async def test_handle_bounded_reasoning_with_a2a_context_auth(
             subject=valid_token_payload.sub,
             role=valid_token_payload.role.value,
             method="reasoning.bounded_context",
-            trace_id="trace-abc",
-        )
+            trace_id="trace-abc")

@@ -18,8 +18,7 @@ from agentcore_cli.services.session import SessionService
 from agentcore_cli.services.exceptions import (
     ValidationError,
     SessionNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 class TestSessionServiceCreate:
@@ -39,8 +38,7 @@ class TestSessionServiceCreate:
         assert session_id == "session-001"
         mock_client.call.assert_called_once_with(
             "session.create",
-            {"name": "test-session"},
-        )
+            {"name": "test-session"})
 
     def test_create_with_context(self) -> None:
         """Test creation with context."""
@@ -52,15 +50,13 @@ class TestSessionServiceCreate:
         # Act
         session_id = service.create(
             "test-session",
-            context={"user": "alice", "project": "foo"},
-        )
+            context={"user": "alice", "project": "foo"})
 
         # Assert
         assert session_id == "session-002"
         mock_client.call.assert_called_once_with(
             "session.create",
-            {"name": "test-session", "context": {"user": "alice", "project": "foo"}},
-        )
+            {"name": "test-session", "context": {"user": "alice", "project": "foo"}})
 
     def test_create_empty_name_raises_validation_error(self) -> None:
         """Test that empty name raises ValidationError."""
@@ -95,8 +91,7 @@ class TestSessionServiceListSessions:
         assert len(sessions) == 2
         mock_client.call.assert_called_once_with(
             "session.list",
-            {"limit": 100, "offset": 0},
-        )
+            {"limit": 100, "offset": 0})
 
     def test_list_with_state_filter(self) -> None:
         """Test listing with state filter."""
@@ -111,8 +106,7 @@ class TestSessionServiceListSessions:
         # Assert
         mock_client.call.assert_called_once_with(
             "session.list",
-            {"limit": 10, "offset": 0, "state": "active"},
-        )
+            {"limit": 10, "offset": 0, "state": "active"})
 
     def test_list_invalid_state_raises_validation_error(self) -> None:
         """Test that invalid state raises ValidationError."""
@@ -216,8 +210,7 @@ class TestSessionServiceDelete:
         assert success is True
         mock_client.call.assert_called_once_with(
             "session.delete",
-            {"session_id": "session-001", "force": False},
-        )
+            {"session_id": "session-001", "force": False})
 
     def test_delete_not_found_raises_session_not_found_error(self) -> None:
         """Test that 'not found' error raises SessionNotFoundError."""

@@ -15,8 +15,7 @@ from gateway.monitoring.metrics import (
     REQUEST_DURATION,
     WEBSOCKET_CONNECTIONS,
     get_metrics_registry,
-    set_gateway_info,
-)
+    set_gateway_info)
 
 
 class TestMetrics:
@@ -34,8 +33,7 @@ class TestMetrics:
         set_gateway_info(
             name="test-gateway",
             version="1.0.0",
-            environment="test",
-        )
+            environment="test")
         # If no exception is raised, the test passes
 
     def test_request_count_metric(self) -> None:

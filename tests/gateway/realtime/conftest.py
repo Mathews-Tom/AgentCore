@@ -54,13 +54,11 @@ def authenticated_token(redis_container):
             id=str(uuid.uuid4()),  # Use valid UUID
             username="testuser",
             email="test@example.com",
-            roles=[UserRole.USER],
-        )
+            roles=[UserRole.USER])
 
         token = jwt_manager.create_access_token(
             user=user,
-            session_id="test-session",
-        )
+            session_id="test-session")
 
         return token
 

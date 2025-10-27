@@ -15,8 +15,7 @@ from agentcore_cli.transport.exceptions import (
     HttpError,
     NetworkError,
     TimeoutError,
-    TransportError,
-)
+    TransportError)
 
 
 class TestHttpTransportInit:
@@ -37,8 +36,7 @@ class TestHttpTransportInit:
             base_url="https://api.example.com",
             timeout=60,
             retries=5,
-            verify_ssl=False,
-        )
+            verify_ssl=False)
 
         assert transport.base_url == "https://api.example.com"
         assert transport.timeout == 60
@@ -71,8 +69,7 @@ class TestHttpTransportPost:
         transport = HttpTransport("http://localhost:8001")
         result = transport.post(
             "/api/v1/jsonrpc",
-            {"jsonrpc": "2.0", "method": "ping", "id": 1},
-        )
+            {"jsonrpc": "2.0", "method": "ping", "id": 1})
 
         assert result == {"result": "success"}
         mock_post.assert_called_once()
@@ -96,8 +93,7 @@ class TestHttpTransportPost:
         transport.post(
             "/api/v1/jsonrpc",
             {},
-            headers={"Authorization": "Bearer token123"},
-        )
+            headers={"Authorization": "Bearer token123"})
 
         call_args = mock_post.call_args
         assert call_args.kwargs["headers"]["Authorization"] == "Bearer token123"

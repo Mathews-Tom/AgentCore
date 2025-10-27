@@ -18,8 +18,7 @@ from agentcore.orchestration.patterns.custom import (
     PatternStatus,
     PatternType,
     TaskNode,
-    ValidationRule,
-)
+    ValidationRule)
 
 
 class TestPatternMetadata:
@@ -32,8 +31,7 @@ class TestPatternMetadata:
             description="A test pattern",
             version="1.0.0",
             author="Test Author",
-            tags=["test", "custom"],
-        )
+            tags=["test", "custom"])
 
         assert metadata.name == "test_pattern"
         assert metadata.description == "A test pattern"
@@ -54,8 +52,7 @@ class TestAgentRequirement:
             capabilities=["search", "analyze"],
             min_count=1,
             max_count=3,
-            resource_requirements={"cpu": "2 cores", "memory": "4GB"},
-        )
+            resource_requirements={"cpu": "2 cores", "memory": "4GB"})
 
         assert req.role == "researcher"
         assert len(req.capabilities) == 2
@@ -75,8 +72,7 @@ class TestTaskNode:
             depends_on=["task_0"],
             parallel=False,
             timeout_seconds=600,
-            max_retries=5,
-        )
+            max_retries=5)
 
         assert task.task_id == "task_1"
         assert task.agent_role == "researcher"
@@ -96,8 +92,7 @@ class TestCoordinationConfig:
             event_driven_triggers=["agent.ready", "task.complete"],
             graph_based_tasks=["task_1", "task_2"],
             timeout_seconds=7200,
-            max_concurrent_tasks=20,
-        )
+            max_concurrent_tasks=20)
 
         assert config.model == CoordinationModel.HYBRID
         assert len(config.event_driven_triggers) == 2
@@ -115,8 +110,7 @@ class TestValidationRule:
             rule_id="rule_1",
             rule_type="agent_capability",
             condition={"capability": "search"},
-            error_message="Agent must have search capability",
-        )
+            error_message="Agent must have search capability")
 
         assert rule.rule_id == "rule_1"
         assert rule.rule_type == "agent_capability"
@@ -154,8 +148,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents=agents,
             tasks=tasks,
-            coordination=coordination,
-        )
+            coordination=coordination)
 
         assert pattern.metadata.name == "research_pattern"
         assert pattern.pattern_type == PatternType.CUSTOM
@@ -187,8 +180,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents=agents,
             tasks=tasks,
-            coordination=coordination,
-        )
+            coordination=coordination)
 
         is_valid, errors = pattern.validate_pattern()
 
@@ -206,8 +198,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents={},  # No agents
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         is_valid, errors = pattern.validate_pattern()
 
@@ -225,8 +216,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[],  # No tasks
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         is_valid, errors = pattern.validate_pattern()
 
@@ -258,8 +248,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents=agents,
             tasks=tasks,
-            coordination=coordination,
-        )
+            coordination=coordination)
 
         is_valid, errors = pattern.validate_pattern()
 
@@ -280,8 +269,7 @@ class TestPatternDefinition:
             TaskNode(
                 task_id="task_1",
                 agent_role="unknown_role",  # Unknown role
-                depends_on=[],
-            )
+                depends_on=[])
         ]
 
         coordination = CoordinationConfig(model=CoordinationModel.GRAPH_BASED)
@@ -291,8 +279,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents=agents,
             tasks=tasks,
-            coordination=coordination,
-        )
+            coordination=coordination)
 
         is_valid, errors = pattern.validate_pattern()
 
@@ -323,8 +310,7 @@ class TestPatternDefinition:
             pattern_type=PatternType.CUSTOM,
             agents=agents,
             tasks=tasks,
-            coordination=coordination,
-        )
+            coordination=coordination)
 
         is_valid, errors = pattern.validate_pattern()
 
@@ -351,8 +337,7 @@ class TestPatternDefinition:
             agents=agents,
             tasks=tasks,
             coordination=coordination,
-            template_parameters={"timeout": 3600},
-        )
+            template_parameters={"timeout": 3600})
 
         template = pattern.to_template()
 
@@ -388,8 +373,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents=agents,
             tasks=tasks,
-            coordination=coordination,
-        )
+            coordination=coordination)
 
         success, errors = registry.register_pattern(pattern)
 
@@ -411,8 +395,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={},
             tasks=[],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         success, errors = registry.register_pattern(pattern)
 
@@ -432,8 +415,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         # Create second pattern with same name
         metadata2 = PatternMetadata(
@@ -444,8 +426,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         registry.register_pattern(pattern1)
         success, errors = registry.register_pattern(pattern2)
@@ -465,8 +446,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         registry.register_pattern(pattern)
 
@@ -486,8 +466,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         registry.register_pattern(pattern)
 
@@ -509,8 +488,7 @@ class TestPatternRegistry:
                 pattern_type=PatternType.CUSTOM,
                 agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
                 tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-                coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-            )
+                coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
             registry.register_pattern(pattern)
 
         patterns = registry.list_patterns()
@@ -529,8 +507,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         # Register supervisor pattern
         metadata2 = PatternMetadata(
@@ -541,8 +518,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.SUPERVISOR,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         registry.register_pattern(pattern1)
         registry.register_pattern(pattern2)
@@ -563,8 +539,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         registry.register_pattern(pattern)
         result = registry.unregister_pattern(pattern.pattern_id)
@@ -584,8 +559,7 @@ class TestPatternRegistry:
             pattern_type=PatternType.CUSTOM,
             agents={"worker": AgentRequirement(role="worker", capabilities=["execute"])},
             tasks=[TaskNode(task_id="task_1", agent_role="worker", depends_on=[])],
-            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED),
-        )
+            coordination=CoordinationConfig(model=CoordinationModel.GRAPH_BASED))
 
         registry.register_pattern(pattern)
 

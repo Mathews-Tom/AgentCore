@@ -22,8 +22,7 @@ from agentcore.a2a_protocol.models.llm import ModelTier
 from agentcore.a2a_protocol.services.model_selector import (
     COMPLEXITY_TIER_MAP,
     TIER_MODEL_MAP,
-    ModelSelector,
-)
+    ModelSelector)
 
 
 class TestModelSelector:
@@ -52,7 +51,7 @@ class TestModelSelector:
             mock_settings.ALLOWED_MODELS = [
                 "gpt-4.1-mini",
                 "claude-3-5-haiku-20241022",
-                "gemini-1.5-flash",
+                "gemini-2.0-flash-exp",
             ]
 
             model = selector.select_model(ModelTier.FAST)
@@ -257,7 +256,7 @@ class TestModelSelector:
         """Test _filter_by_preference with single provider preference."""
         selector = ModelSelector(provider_preference=["openai"])
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-1.5-flash"]
+        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
         sorted_models = selector._filter_by_preference(models)
 
         # OpenAI model should be first
@@ -267,19 +266,19 @@ class TestModelSelector:
         """Test _filter_by_preference with multiple provider preferences."""
         selector = ModelSelector(provider_preference=["anthropic", "gemini", "openai"])
 
-        models = ["gpt-4.1-mini", "gemini-1.5-flash", "claude-3-5-haiku-20241022"]
+        models = ["gpt-4.1-mini", "gemini-2.0-flash-exp", "claude-3-5-haiku-20241022"]
         sorted_models = selector._filter_by_preference(models)
 
         # Should be sorted: anthropic, gemini, openai
         assert sorted_models[0] == "claude-3-5-haiku-20241022"  # anthropic
-        assert sorted_models[1] == "gemini-1.5-flash"  # gemini
+        assert sorted_models[1] == "gemini-2.0-flash-exp"  # gemini
         assert sorted_models[2] == "gpt-4.1-mini"  # openai
 
     def test_filter_by_preference_no_preference(self) -> None:
         """Test _filter_by_preference with no provider preference."""
         selector = ModelSelector(provider_preference=None)
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-1.5-flash"]
+        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
         sorted_models = selector._filter_by_preference(models)
 
         # Should return models unchanged
@@ -289,7 +288,7 @@ class TestModelSelector:
         """Test _filter_by_preference with empty provider preference list."""
         selector = ModelSelector(provider_preference=[])
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-1.5-flash"]
+        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
         sorted_models = selector._filter_by_preference(models)
 
         # Should return models unchanged
@@ -322,7 +321,7 @@ class TestModelSelector:
 
         # Should include mini/flash models
         assert "gpt-4.1-mini" in fast_models or "gpt-5-mini" in fast_models
-        assert "gemini-1.5-flash" in fast_models
+        assert "gemini-2.0-flash-exp" in fast_models
         assert "claude-3-5-haiku-20241022" in fast_models
 
     def test_tier_model_map_balanced_tier_models(self) -> None:
@@ -404,7 +403,7 @@ class TestModelSelector:
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # All FAST tier models allowed
             mock_settings.ALLOWED_MODELS = [
-                "gemini-1.5-flash",
+                "gemini-2.0-flash-exp",
                 "claude-3-5-haiku-20241022",
                 "gpt-4.1-mini",
                 "gpt-5-mini",
@@ -425,7 +424,7 @@ class TestModelSelector:
             # Only Anthropic and Gemini models allowed (no OpenAI)
             mock_settings.ALLOWED_MODELS = [
                 "claude-3-5-haiku-20241022",
-                "gemini-1.5-flash",
+                "gemini-2.0-flash-exp",
             ]
 
             model = selector.select_model(ModelTier.FAST)

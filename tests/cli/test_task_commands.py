@@ -14,8 +14,7 @@ from agentcore_cli.main import app
 from agentcore_cli.services.exceptions import (
     ValidationError,
     TaskNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 @pytest.fixture
@@ -43,8 +42,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -52,8 +50,7 @@ class TestTaskCreateCommand:
                     "create",
                     "--description",
                     "Analyze code repository",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0, f"Command failed: {result.output}"
@@ -68,8 +65,7 @@ class TestTaskCreateCommand:
             description="Analyze code repository",
             agent_id=None,
             priority="normal",
-            parameters=None,
-        )
+            parameters=None)
 
     def test_create_with_agent_assignment(
         self, runner: CliRunner, mock_task_service: Mock
@@ -81,8 +77,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -92,8 +87,7 @@ class TestTaskCreateCommand:
                     "Run tests",
                     "--agent-id",
                     "agent-001",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -103,8 +97,7 @@ class TestTaskCreateCommand:
             description="Run tests",
             agent_id="agent-001",
             priority="normal",
-            parameters=None,
-        )
+            parameters=None)
 
     def test_create_with_priority(
         self, runner: CliRunner, mock_task_service: Mock
@@ -116,8 +109,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -127,8 +119,7 @@ class TestTaskCreateCommand:
                     "Fix critical bug",
                     "--priority",
                     "critical",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -138,8 +129,7 @@ class TestTaskCreateCommand:
             description="Fix critical bug",
             agent_id=None,
             priority="critical",
-            parameters=None,
-        )
+            parameters=None)
 
     def test_create_with_parameters(
         self, runner: CliRunner, mock_task_service: Mock
@@ -151,8 +141,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -162,8 +151,7 @@ class TestTaskCreateCommand:
                     "Process data",
                     "--parameters",
                     '{"repo": "foo/bar", "branch": "main"}',
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -173,8 +161,7 @@ class TestTaskCreateCommand:
             description="Process data",
             agent_id=None,
             priority="normal",
-            parameters={"repo": "foo/bar", "branch": "main"},
-        )
+            parameters={"repo": "foo/bar", "branch": "main"})
 
     def test_create_with_invalid_json_parameters(
         self, runner: CliRunner, mock_task_service: Mock
@@ -183,8 +170,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -194,8 +180,7 @@ class TestTaskCreateCommand:
                     "Process data",
                     "--parameters",
                     "invalid json",
-                ],
-            )
+                ])
 
         # Verify exit code (2 for validation error)
         assert result.exit_code == 2
@@ -213,8 +198,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -223,8 +207,7 @@ class TestTaskCreateCommand:
                     "--description",
                     "JSON test",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -246,8 +229,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -255,8 +237,7 @@ class TestTaskCreateCommand:
                     "create",
                     "--description",
                     "",
-                ],
-            )
+                ])
 
         # Verify exit code (2 for validation error)
         assert result.exit_code == 2
@@ -277,8 +258,7 @@ class TestTaskCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app,
                 [
@@ -286,8 +266,7 @@ class TestTaskCreateCommand:
                     "create",
                     "--description",
                     "Test task",
-                ],
-            )
+                ])
 
         # Verify exit code (1 for operation error)
         assert result.exit_code == 1
@@ -325,8 +304,7 @@ class TestTaskListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "list"])
 
         # Verify exit code
@@ -356,8 +334,7 @@ class TestTaskListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "list", "--status", "running"])
 
         # Verify exit code
@@ -378,8 +355,7 @@ class TestTaskListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(
                 app, ["task", "list", "--limit", "10", "--offset", "20"]
             )
@@ -402,8 +378,7 @@ class TestTaskListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "list"])
 
         # Verify exit code
@@ -430,8 +405,7 @@ class TestTaskListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "list", "--json"])
 
         # Verify exit code
@@ -462,8 +436,7 @@ class TestTaskInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "info", "task-001"])
 
         # Verify exit code
@@ -486,8 +459,7 @@ class TestTaskInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "info", "task-999"])
 
         # Verify exit code
@@ -512,8 +484,7 @@ class TestTaskInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "info", "task-001", "--json"])
 
         # Verify exit code
@@ -537,8 +508,7 @@ class TestTaskCancelCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "cancel", "task-001"])
 
         # Verify exit code
@@ -561,8 +531,7 @@ class TestTaskCancelCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "cancel", "task-001", "--force"])
 
         # Verify exit code
@@ -583,8 +552,7 @@ class TestTaskCancelCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "cancel", "task-999"])
 
         # Verify exit code
@@ -603,8 +571,7 @@ class TestTaskCancelCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "cancel", "task-001", "--json"])
 
         # Verify exit code
@@ -632,8 +599,7 @@ class TestTaskLogsCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "logs", "task-001"])
 
         # Verify exit code
@@ -654,8 +620,7 @@ class TestTaskLogsCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "logs", "task-001", "--lines", "100"])
 
         # Verify exit code
@@ -676,8 +641,7 @@ class TestTaskLogsCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "logs", "task-001", "--follow"])
 
         # Verify exit code
@@ -698,8 +662,7 @@ class TestTaskLogsCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "logs", "task-001"])
 
         # Verify exit code
@@ -718,8 +681,7 @@ class TestTaskLogsCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "logs", "task-001", "--json"])
 
         # Verify exit code
@@ -742,8 +704,7 @@ class TestTaskLogsCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             result = runner.invoke(app, ["task", "logs", "task-999"])
 
         # Verify exit code
@@ -776,8 +737,7 @@ class TestJSONRPCCompliance:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_service,
-        ):
+            return_value=mock_service):
             result = runner.invoke(
                 app,
                 [
@@ -787,8 +747,7 @@ class TestJSONRPCCompliance:
                     "Test task",
                     "--priority",
                     "high",
-                ],
-            )
+                ])
 
         # Verify command succeeded
         assert result.exit_code == 0
@@ -820,8 +779,7 @@ class TestJSONRPCCompliance:
             description="Test task",
             agent_id="agent-001",
             priority="high",
-            parameters={"key": "value"},
-        )
+            parameters={"key": "value"})
 
         # Verify result
         assert task_id == "task-001"
@@ -870,8 +828,7 @@ class TestIntegrationFlow:
 
         with patch(
             "agentcore_cli.commands.task.get_task_service",
-            return_value=mock_task_service,
-        ):
+            return_value=mock_task_service):
             # Create
             result = runner.invoke(
                 app,
@@ -880,8 +837,7 @@ class TestIntegrationFlow:
                     "create",
                     "--description",
                     "Lifecycle task",
-                ],
-            )
+                ])
             assert result.exit_code == 0
 
             # Info

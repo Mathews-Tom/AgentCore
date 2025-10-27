@@ -37,7 +37,8 @@ import pytest
 
 
 # Mark all tests in this module as requiring live API server
-pytestmark = pytest.mark.skip(reason="E2E tests require live API server at http://localhost:8001 - run manually with docker-compose up")
+# pytestmark = pytest.mark.skip(reason="E2E tests require live API server at http://localhost:8001 - run manually with docker-compose up")
+# Skip marker removed - tests now rely on api_health_check fixture for conditional skipping
 
 
 # Constants
@@ -56,8 +57,7 @@ def api_health_check() -> None:
         ["curl", "-s", f"{API_URL}/api/v1/health"],
         capture_output=True,
         text=True,
-        timeout=5,
-    )
+        timeout=5)
 
     if result.returncode != 0:
         pytest.skip(
@@ -92,8 +92,7 @@ def cleanup_agents(request: pytest.FixtureRequest) -> list[str]:
             subprocess.run(
                 ["uv", "run", "agentcore", "agent", "remove", agent_id, "--yes"],
                 capture_output=True,
-                timeout=CLEANUP_TIMEOUT,
-            )
+                timeout=CLEANUP_TIMEOUT)
         except (subprocess.SubprocessError, subprocess.TimeoutExpired):
             pass  # Best effort cleanup
 
@@ -111,8 +110,7 @@ def cleanup_tasks(request: pytest.FixtureRequest) -> list[str]:
             subprocess.run(
                 ["uv", "run", "agentcore", "task", "cancel", task_id],
                 capture_output=True,
-                timeout=CLEANUP_TIMEOUT,
-            )
+                timeout=CLEANUP_TIMEOUT)
         except (subprocess.SubprocessError, subprocess.TimeoutExpired):
             pass  # Best effort cleanup
 
@@ -130,8 +128,7 @@ def cleanup_sessions(request: pytest.FixtureRequest) -> list[str]:
             subprocess.run(
                 ["uv", "run", "agentcore", "session", "delete", session_id, "--yes"],
                 capture_output=True,
-                timeout=CLEANUP_TIMEOUT,
-            )
+                timeout=CLEANUP_TIMEOUT)
         except (subprocess.SubprocessError, subprocess.TimeoutExpired):
             pass  # Best effort cleanup
 
@@ -143,8 +140,7 @@ def run_cli(
     *args: str,
     input_text: str | None = None,
     timeout: int = CLI_TIMEOUT,
-    env: dict[str, str] | None = None,
-) -> subprocess.CompletedProcess[str]:
+    env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run CLI command and return result.
 
     Args:
@@ -169,8 +165,7 @@ def run_cli(
         text=True,
         input=input_text,
         timeout=timeout,
-        env=final_env,
-    )
+        env=final_env)
 
     return result
 
@@ -211,16 +206,14 @@ class TestAgentLifecycle:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test agent registration and listing."""
         # Register agent
         agent_name = f"test-agent-{test_id}"
         result = run_cli_json(
             "agent", "register",
             "--name", agent_name,
-            "--capabilities", "text-generation",
-        )
+            "--capabilities", "text-generation")
 
         assert "id" in result or "agent_id" in result
         agent_id = result.get("id") or result.get("agent_id")
@@ -244,16 +237,14 @@ class TestAgentLifecycle:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test getting detailed agent information."""
         # Register agent
         agent_name = f"test-agent-info-{test_id}"
         register_result = run_cli_json(
             "agent", "register",
             "--name", agent_name,
-            "--capabilities", "info-test",
-        )
+            "--capabilities", "info-test")
 
         agent_id = register_result.get("id") or register_result.get("agent_id")
         cleanup_agents.append(agent_id)
@@ -271,8 +262,7 @@ class TestAgentLifecycle:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test searching agents by capability."""
         # Register agent with specific capability
         capability = f"custom-capability-{test_id}"
@@ -281,8 +271,7 @@ class TestAgentLifecycle:
         register_result = run_cli_json(
             "agent", "register",
             "--name", agent_name,
-            "--capabilities", capability,
-        )
+            "--capabilities", capability)
 
         agent_id = register_result.get("id") or register_result.get("agent_id")
         cleanup_agents.append(agent_id)
@@ -304,16 +293,14 @@ class TestAgentLifecycle:
     def test_agent_remove(
         self,
         api_health_check: None,
-        test_id: str,
-    ) -> None:
+        test_id: str) -> None:
         """Test agent removal (no cleanup needed)."""
         # Register agent
         agent_name = f"test-remove-{test_id}"
         register_result = run_cli_json(
             "agent", "register",
             "--name", agent_name,
-            "--capabilities", "remove-test",
-        )
+            "--capabilities", "remove-test")
 
         agent_id = register_result.get("id") or register_result.get("agent_id")
 
@@ -347,15 +334,13 @@ class TestTaskLifecycle:
         api_health_check: None,
         test_id: str,
         cleanup_agents: list[str],
-        cleanup_tasks: list[str],
-    ) -> None:
+        cleanup_tasks: list[str]) -> None:
         """Test task creation and status checking."""
         # First register an agent to assign task to
         agent_result = run_cli_json(
             "agent", "register",
             "--name", f"task-agent-{test_id}",
-            "--capabilities", "text-generation",
-        )
+            "--capabilities", "text-generation")
         agent_id = agent_result.get("id") or agent_result.get("agent_id")
         cleanup_agents.append(agent_id)
 
@@ -363,8 +348,7 @@ class TestTaskLifecycle:
         task_result = run_cli_json(
             "task", "create",
             "--description", "Generate text based on prompt",
-            "--parameters", json.dumps({"prompt": "test"}),
-        )
+            "--parameters", json.dumps({"prompt": "test"}))
 
         assert "id" in task_result or "task_id" in task_result
         task_id = task_result.get("id") or task_result.get("task_id")
@@ -380,23 +364,20 @@ class TestTaskLifecycle:
         api_health_check: None,
         test_id: str,
         cleanup_agents: list[str],
-        cleanup_tasks: list[str],
-    ) -> None:
+        cleanup_tasks: list[str]) -> None:
         """Test listing tasks."""
         # Register agent
         agent_result = run_cli_json(
             "agent", "register",
             "--name", f"list-agent-{test_id}",
-            "--capabilities", "list-test",
-        )
+            "--capabilities", "list-test")
         agent_id = agent_result.get("id") or agent_result.get("agent_id")
         cleanup_agents.append(agent_id)
 
         # Create task
         task_result = run_cli_json(
             "task", "create",
-            "--description", "Test task for listing",
-        )
+            "--description", "Test task for listing")
         task_id = task_result.get("id") or task_result.get("task_id")
         cleanup_tasks.append(task_id)
 
@@ -419,23 +400,20 @@ class TestTaskLifecycle:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test task cancellation (no cleanup needed)."""
         # Register agent
         agent_result = run_cli_json(
             "agent", "register",
             "--name", f"cancel-agent-{test_id}",
-            "--capabilities", "cancel-test",
-        )
+            "--capabilities", "cancel-test")
         agent_id = agent_result.get("id") or agent_result.get("agent_id")
         cleanup_agents.append(agent_id)
 
         # Create task
         task_result = run_cli_json(
             "task", "create",
-            "--description", "Test task for cancellation",
-        )
+            "--description", "Test task for cancellation")
         task_id = task_result.get("id") or task_result.get("task_id")
 
         # Cancel task
@@ -462,8 +440,7 @@ class TestSessionFlow:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_sessions: list[str],
-    ) -> None:
+        cleanup_sessions: list[str]) -> None:
         """Test saving and listing sessions."""
         session_name = f"test-session-{test_id}"
 
@@ -472,8 +449,7 @@ class TestSessionFlow:
             "session", "save",
             "--name", session_name,
             "--description", "E2E test session",
-            "--metadata", json.dumps({"test": "data"}),
-        )
+            "--metadata", json.dumps({"test": "data"}))
 
         assert "id" in save_result or "session_id" in save_result
         session_id = save_result.get("id") or save_result.get("session_id")
@@ -498,8 +474,7 @@ class TestSessionFlow:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_sessions: list[str],
-    ) -> None:
+        cleanup_sessions: list[str]) -> None:
         """Test getting session information."""
         session_name = f"test-info-{test_id}"
 
@@ -508,8 +483,7 @@ class TestSessionFlow:
             "session", "save",
             "--name", session_name,
             "--description", "Session info test",
-            "--metadata", json.dumps({"key": "value"}),
-        )
+            "--metadata", json.dumps({"key": "value"}))
         session_id = save_result.get("id") or save_result.get("session_id")
         cleanup_sessions.append(session_id)
 
@@ -523,8 +497,7 @@ class TestSessionFlow:
     def test_session_resume_and_delete(
         self,
         api_health_check: None,
-        test_id: str,
-    ) -> None:
+        test_id: str) -> None:
         """Test resuming and deleting sessions (no cleanup needed)."""
         session_name = f"test-resume-{test_id}"
 
@@ -533,8 +506,7 @@ class TestSessionFlow:
             "session", "save",
             "--name", session_name,
             "--description", "Resume test",
-            "--metadata", json.dumps({"state": "active"}),
-        )
+            "--metadata", json.dumps({"state": "active"}))
         session_id = save_result.get("id") or save_result.get("session_id")
 
         # Resume session
@@ -570,8 +542,7 @@ class TestWorkflowFlow:
         self,
         api_health_check: None,
         test_id: str,
-        tmp_path: Path,
-    ) -> None:
+        tmp_path: Path) -> None:
         """Test creating workflow from YAML file."""
         # Create workflow definition file
         workflow_file = tmp_path / f"workflow-{test_id}.yaml"
@@ -598,8 +569,7 @@ steps:
         api_health_check: None,
         test_id: str,
         tmp_path: Path,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test checking workflow status."""
         # Create simple workflow
         workflow_file = tmp_path / f"status-workflow-{test_id}.yaml"
@@ -661,8 +631,7 @@ auth:
 
         result = run_cli(
             "config", "validate",
-            "--config", str(config_file),
-        )
+            "--config", str(config_file))
 
         assert result.returncode == 0
 
@@ -670,8 +639,7 @@ auth:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test that environment variables override config."""
         custom_timeout = "60"
 
@@ -691,8 +659,7 @@ class TestOutputFormats:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test JSON output format."""
         agent_name = f"json-test-{test_id}"
 
@@ -700,8 +667,7 @@ class TestOutputFormats:
         result = run_cli_json(
             "agent", "register",
             "--name", agent_name,
-            "--capabilities", "json-test",
-        )
+            "--capabilities", "json-test")
 
         agent_id = result.get("id") or result.get("agent_id")
         cleanup_agents.append(agent_id)
@@ -714,8 +680,7 @@ class TestOutputFormats:
         self,
         api_health_check: None,
         test_id: str,
-        cleanup_agents: list[str],
-    ) -> None:
+        cleanup_agents: list[str]) -> None:
         """Test table output format (default)."""
         agent_name = f"table-test-{test_id}"
 
@@ -723,8 +688,7 @@ class TestOutputFormats:
         result = run_cli(
             "agent", "register",
             "--name", agent_name,
-            "--capabilities", "table-test",
-        )
+            "--capabilities", "table-test")
 
         assert result.returncode == 0
 
@@ -750,8 +714,7 @@ class TestErrorHandling:
         result = run_cli(
             "agent", "list",
             "--json",
-            env=env,
-        )
+            env=env)
 
         # Should fail with connection error (error message may be in stdout or stderr)
         assert result.returncode != 0
@@ -763,8 +726,7 @@ class TestErrorHandling:
         result = run_cli(
             "agent", "info",
             "invalid-agent-id-123",
-            "--json",
-        )
+            "--json")
 
         # Should fail
         assert result.returncode != 0
@@ -787,8 +749,7 @@ class TestErrorHandling:
         result = run_cli(
             "task", "create",
             "--description", "test task",
-            "--parameters", "not-valid-json",
-        )
+            "--parameters", "not-valid-json")
 
         # Should fail due to invalid JSON
         assert result.returncode != 0

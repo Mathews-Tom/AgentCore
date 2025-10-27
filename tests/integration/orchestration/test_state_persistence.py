@@ -14,8 +14,7 @@ from agentcore.orchestration.patterns.saga import (
     SagaDefinition,
     SagaStep,
     SagaStatus,
-    CompensationStrategy,
-)
+    CompensationStrategy)
 from agentcore.orchestration.state.integration import PersistentSagaOrchestrator
 from agentcore.orchestration.state.repository import WorkflowStateRepository
 from agentcore.orchestration.state.models import WorkflowStatus
@@ -39,14 +38,12 @@ class TestStatePersistence:
             ],
             compensation_strategy=CompensationStrategy.BACKWARD,
             enable_state_persistence=True,
-            checkpoint_interval=1,
-        )
+            checkpoint_interval=1)
 
         # Create orchestrator with persistent storage
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         # Register saga
         await orchestrator.register_saga(saga)
@@ -56,8 +53,7 @@ class TestStatePersistence:
             saga_id=saga.saga_id,
             input_data={"input": "test_data"},
             tags=["integration", "test"],
-            metadata={"test": True},
-        )
+            metadata={"test": True})
 
         assert execution_id is not None
 
@@ -87,13 +83,11 @@ class TestStatePersistence:
             steps=[
                 SagaStep(name="step1", order=1),
                 SagaStep(name="step2", order=2),
-            ],
-        )
+            ])
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
         execution_id = await orchestrator.create_execution(saga_id=saga.saga_id)
@@ -105,8 +99,7 @@ class TestStatePersistence:
             current_step=1,
             completed_steps=[saga.steps[0].step_id],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify state was updated
         async with db_session_factory() as session:
@@ -136,13 +129,11 @@ class TestStatePersistence:
         saga = SagaDefinition(
             name="checkpoint_saga",
             steps=[SagaStep(name="step1", order=1)],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
         execution_id = await orchestrator.create_execution(saga_id=saga.saga_id)
@@ -190,13 +181,11 @@ class TestStatePersistence:
             steps=[
                 SagaStep(name="step1", order=1),
                 SagaStep(name="step2", order=2),
-            ],
-        )
+            ])
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
         execution_id = await orchestrator.create_execution(saga_id=saga.saga_id)
@@ -210,16 +199,14 @@ class TestStatePersistence:
             step_id=step1_id,
             status="completed",
             retry_count=0,
-            result={"output": "step1_result"},
-        )
+            result={"output": "step1_result"})
 
         # Update step2 to running
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=step2_id,
             status="running",
-            retry_count=1,
-        )
+            retry_count=1)
 
         # Verify step states
         async with db_session_factory() as session:
@@ -244,13 +231,11 @@ class TestStatePersistence:
         """Test complete saga execution flow with state persistence."""
         saga = SagaDefinition(
             name="completion_saga",
-            steps=[SagaStep(name="step1", order=1)],
-        )
+            steps=[SagaStep(name="step1", order=1)])
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
         execution_id = await orchestrator.create_execution(saga_id=saga.saga_id)
@@ -262,8 +247,7 @@ class TestStatePersistence:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         await orchestrator.update_execution_state(
             execution_id=execution_id,
@@ -271,8 +255,7 @@ class TestStatePersistence:
             current_step=1,
             completed_steps=[saga.steps[0].step_id],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify final state
         async with db_session_factory() as session:
@@ -292,13 +275,11 @@ class TestStatePersistence:
         """Test execution statistics aggregation."""
         saga = SagaDefinition(
             name="stats_saga",
-            steps=[SagaStep(name="step1", order=1)],
-        )
+            steps=[SagaStep(name="step1", order=1)])
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
@@ -314,8 +295,7 @@ class TestStatePersistence:
             current_step=0,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         await orchestrator.update_execution_state(
             execution_id=exec1_id,
@@ -323,8 +303,7 @@ class TestStatePersistence:
             current_step=1,
             completed_steps=[saga.steps[0].step_id],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Fail second execution
         await orchestrator.update_execution_state(
@@ -334,8 +313,7 @@ class TestStatePersistence:
             completed_steps=[],
             failed_steps=[saga.steps[0].step_id],
             compensated_steps=[],
-            error_message="Test failure",
-        )
+            error_message="Test failure")
 
         # Get statistics
         stats = await orchestrator.get_execution_statistics(workflow_id=saga.saga_id)

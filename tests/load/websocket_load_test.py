@@ -39,7 +39,7 @@ class WebSocketUser(User):
         """Close WebSocket connection."""
         if self.connected:
             duration = time.time() - self.connection_start if self.connection_start else 0
-            print(f"WebSocket client {self.client_id} disconnected after {duration:.2f}s")
+            print(f"WebSocket client {self.client_id} disconnected after {duration:.2f}, s")
             self.connected = False
 
     @task
@@ -74,7 +74,7 @@ class LongLivedWebSocketUser(User):
         """Close long-lived WebSocket connection."""
         if self.connected:
             duration = time.time() - self.connection_start if self.connection_start else 0
-            print(f"Long-lived WebSocket client {self.client_id} disconnected after {duration:.2f}s")
+            print(f"Long-lived WebSocket client {self.client_id} disconnected after {duration:.2f}, s")
             self.connected = False
 
     @task

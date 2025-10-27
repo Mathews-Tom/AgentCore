@@ -11,8 +11,7 @@ import numpy as np
 from unittest.mock import Mock, patch, MagicMock
 from agentcore.a2a_protocol.services.embedding_service import (
     EmbeddingService,
-    get_embedding_service,
-)
+    get_embedding_service)
 
 
 class TestEmbeddingService:

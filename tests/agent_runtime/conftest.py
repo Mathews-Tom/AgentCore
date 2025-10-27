@@ -16,22 +16,19 @@ from agentcore.agent_runtime.models.agent_config import (
     AgentConfig,
     AgentPhilosophy,
     ResourceLimits,
-    SecurityProfile,
-)
+    SecurityProfile)
 from agentcore.agent_runtime.models.agent_state import AgentExecutionState
 from agentcore.agent_runtime.models.plugin import (
     PluginConfig,
     PluginMetadata,
     PluginState,
     PluginStatus,
-    PluginType,
-)
+    PluginType)
 from agentcore.agent_runtime.models.sandbox import (
     AuditEventType,
     AuditLogEntry,
     ExecutionLimits,
-    SandboxConfig,
-)
+    SandboxConfig)
 from agentcore.agent_runtime.models.tool_integration import ToolDefinition
 from agentcore.agent_runtime.services.a2a_client import A2AClient
 from agentcore.agent_runtime.services.container_manager import ContainerManager
@@ -53,16 +50,14 @@ def resource_limits() -> ResourceLimits:
     return ResourceLimits(
         max_cpu_cores=0.5,
         max_memory_mb=512,
-        storage_quota_mb=1024,
-    )
+        storage_quota_mb=1024)
 
 
 @pytest.fixture
 def security_profile() -> SecurityProfile:
     """Return default security profile for testing."""
     return SecurityProfile(
-        profile_name="standard",
-    )
+        profile_name="standard")
 
 
 @pytest.fixture
@@ -74,8 +69,7 @@ def agent_config(
         agent_id=agent_id,
         philosophy=AgentPhilosophy.REACT,
         resource_limits=resource_limits,
-        security_profile=security_profile,
-    )
+        security_profile=security_profile)
 
 
 @pytest.fixture
@@ -83,8 +77,7 @@ def agent_config_cot(agent_id: str) -> AgentConfig:
     """Return Chain-of-Thought agent configuration."""
     return AgentConfig(
         agent_id=f"{agent_id}-cot",
-        philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT,
-    )
+        philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT)
 
 
 @pytest.fixture
@@ -92,8 +85,7 @@ def agent_config_multi_agent(agent_id: str) -> AgentConfig:
     """Return multi-agent configuration."""
     return AgentConfig(
         agent_id=f"{agent_id}-multi",
-        philosophy=AgentPhilosophy.MULTI_AGENT,
-    )
+        philosophy=AgentPhilosophy.MULTI_AGENT)
 
 
 @pytest.fixture
@@ -101,8 +93,7 @@ def agent_config_autonomous(agent_id: str) -> AgentConfig:
     """Return autonomous agent configuration."""
     return AgentConfig(
         agent_id=f"{agent_id}-autonomous",
-        philosophy=AgentPhilosophy.AUTONOMOUS,
-    )
+        philosophy=AgentPhilosophy.AUTONOMOUS)
 
 
 @pytest.fixture
@@ -111,8 +102,7 @@ def agent_state(agent_id: str) -> AgentExecutionState:
     return AgentExecutionState(
         agent_id=agent_id,
         status="running",
-        container_id="test-container-123",
-    )
+        container_id="test-container-123")
 
 
 # ============================================================================
@@ -135,8 +125,7 @@ def tool_definition() -> ToolDefinition:
         returns={
             "type": "string",
             "description": "Output result",
-        },
-    )
+        })
 
 
 @pytest.fixture
@@ -150,8 +139,7 @@ def plugin_metadata() -> PluginMetadata:
         author="Test Author",
         license="MIT",
         plugin_type=PluginType.TOOL,
-        entry_point="test_plugin.main",
-    )
+        entry_point="test_plugin.main")
 
 
 @pytest.fixture
@@ -162,8 +150,7 @@ def plugin_config() -> PluginConfig:
         enabled=True,
         auto_load=False,
         priority=100,
-        config={},
-    )
+        config={})
 
 
 @pytest.fixture
@@ -176,8 +163,7 @@ def plugin_state(
         status=PluginStatus.LOADED,
         metadata=plugin_metadata,
         config=plugin_config,
-        load_time=datetime.now(UTC),
-    )
+        load_time=datetime.now(UTC))
 
 
 # ============================================================================
@@ -198,9 +184,7 @@ def sandbox_config() -> SandboxConfig:
             max_memory_mb=512,
             max_cpu_percent=50.0,
             max_execution_time_seconds=60,
-            max_processes=100,
-        ),
-    )
+            max_processes=100))
 
 
 @pytest.fixture
@@ -213,8 +197,7 @@ def audit_log() -> AuditLogEntry:
         operation="network_request",
         resource="https://example.com",
         result=False,
-        reason="Network access not allowed",
-    )
+        reason="Network access not allowed")
 
 
 # ============================================================================

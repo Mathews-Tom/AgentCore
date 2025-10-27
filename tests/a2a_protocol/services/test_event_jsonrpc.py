@@ -17,8 +17,7 @@ from agentcore.a2a_protocol.models.events import (
     EventPublishResponse,
     EventSubscribeResponse,
     EventSubscription,
-    EventType,
-)
+    EventType)
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 
 
@@ -34,8 +33,7 @@ class TestEventPublish:
         publish_response = EventPublishResponse(
             success=True,
             event_id="event-123",
-            subscribers_notified=5,
-        )
+            subscribers_notified=5)
         mock_manager.publish_event = AsyncMock(return_value=publish_response)
 
         request = JsonRpcRequest(
@@ -46,8 +44,7 @@ class TestEventPublish:
                 "source": "test-agent",
                 "data": {"status": "active"},
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_publish_event(request)
 
@@ -64,8 +61,7 @@ class TestEventPublish:
         publish_response = EventPublishResponse(
             success=True,
             event_id="event-123",
-            subscribers_notified=3,
-        )
+            subscribers_notified=3)
         mock_manager.publish_event = AsyncMock(return_value=publish_response)
 
         request = JsonRpcRequest(
@@ -78,8 +74,7 @@ class TestEventPublish:
                 "priority": "high",
                 "correlation_id": "corr-123",
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_publish_event(request)
 
@@ -94,8 +89,7 @@ class TestEventPublish:
             jsonrpc="2.0",
             method="event.publish",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_publish_event(request)
@@ -109,8 +103,7 @@ class TestEventPublish:
             jsonrpc="2.0",
             method="event.publish",
             params={"event_type": "agent.status_changed"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_publish_event(request)
@@ -127,8 +120,7 @@ class TestEventSubscribe:
 
         subscribe_response = EventSubscribeResponse(
             success=True,
-            subscription_id="sub-123",
-        )
+            subscription_id="sub-123")
         mock_manager.subscribe = AsyncMock(return_value=subscribe_response)
 
         request = JsonRpcRequest(
@@ -138,8 +130,7 @@ class TestEventSubscribe:
                 "subscriber_id": "subscriber-123",
                 "event_types": ["agent.status_changed"],
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_subscribe(request)
 
@@ -155,8 +146,7 @@ class TestEventSubscribe:
 
         subscribe_response = EventSubscribeResponse(
             success=True,
-            subscription_id="sub-123",
-        )
+            subscription_id="sub-123")
         mock_manager.subscribe = AsyncMock(return_value=subscribe_response)
 
         request = JsonRpcRequest(
@@ -168,8 +158,7 @@ class TestEventSubscribe:
                 "filters": {"status": "active"},
                 "ttl_seconds": 3600,
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_subscribe(request)
 
@@ -184,8 +173,7 @@ class TestEventSubscribe:
             jsonrpc="2.0",
             method="event.subscribe",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_subscribe(request)
@@ -199,8 +187,7 @@ class TestEventSubscribe:
             jsonrpc="2.0",
             method="event.subscribe",
             params={"event_types": ["agent.status_changed"]},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_subscribe(request)
@@ -221,8 +208,7 @@ class TestEventUnsubscribe:
             jsonrpc="2.0",
             method="event.unsubscribe",
             params={"subscription_id": "sub-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_unsubscribe(request)
 
@@ -241,8 +227,7 @@ class TestEventUnsubscribe:
             jsonrpc="2.0",
             method="event.unsubscribe",
             params={"subscription_id": "nonexistent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Subscription not found"):
             await handle_unsubscribe(request)
@@ -256,8 +241,7 @@ class TestEventUnsubscribe:
             jsonrpc="2.0",
             method="event.unsubscribe",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required"):
             await handle_unsubscribe(request)
@@ -271,20 +255,17 @@ class TestListSubscriptions:
     async def test_list_subscriptions_all(self, mock_manager):
         """Test listing all subscriptions."""
         from agentcore.a2a_protocol.services.event_jsonrpc import (
-            handle_list_subscriptions,
-        )
+            handle_list_subscriptions)
 
         subscriptions = [
             EventSubscription(
                 subscription_id="sub-1",
                 subscriber_id="subscriber-1",
-                event_types=[EventType.AGENT_STATUS_CHANGED],
-            ),
+                event_types=[EventType.AGENT_STATUS_CHANGED]),
             EventSubscription(
                 subscription_id="sub-2",
                 subscriber_id="subscriber-2",
-                event_types=[EventType.TASK_CREATED],
-            ),
+                event_types=[EventType.TASK_CREATED]),
         ]
         mock_manager.get_subscriptions = Mock(return_value=subscriptions)
 
@@ -292,8 +273,7 @@ class TestListSubscriptions:
             jsonrpc="2.0",
             method="event.list_subscriptions",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_list_subscriptions(request)
 
@@ -306,15 +286,13 @@ class TestListSubscriptions:
     async def test_list_subscriptions_by_subscriber(self, mock_manager):
         """Test listing subscriptions for specific subscriber."""
         from agentcore.a2a_protocol.services.event_jsonrpc import (
-            handle_list_subscriptions,
-        )
+            handle_list_subscriptions)
 
         subscriptions = [
             EventSubscription(
                 subscription_id="sub-1",
                 subscriber_id="subscriber-1",
-                event_types=[EventType.AGENT_STATUS_CHANGED],
-            ),
+                event_types=[EventType.AGENT_STATUS_CHANGED]),
         ]
         mock_manager.get_subscriptions = Mock(return_value=subscriptions)
 
@@ -322,8 +300,7 @@ class TestListSubscriptions:
             jsonrpc="2.0",
             method="event.list_subscriptions",
             params={"subscriber_id": "subscriber-1"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_list_subscriptions(request)
 
@@ -346,8 +323,7 @@ class TestEventHistory:
                 event_type=EventType.AGENT_STATUS_CHANGED,
                 source="agent-1",
                 data={"status": "active"},
-                timestamp=datetime.now(UTC),
-            ),
+                timestamp=datetime.now(UTC)),
         ]
         mock_manager.get_event_history = Mock(return_value=events)
 
@@ -355,8 +331,7 @@ class TestEventHistory:
             jsonrpc="2.0",
             method="event.get_history",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_history(request)
 
@@ -375,8 +350,7 @@ class TestEventHistory:
                 event_type=EventType.TASK_CREATED,
                 source="task-service",
                 data={"task_id": "task-123"},
-                timestamp=datetime.now(UTC),
-            ),
+                timestamp=datetime.now(UTC)),
         ]
         mock_manager.get_event_history = Mock(return_value=events)
 
@@ -384,8 +358,7 @@ class TestEventHistory:
             jsonrpc="2.0",
             method="event.get_history",
             params={"event_type": "task.created", "limit": 50},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_history(request)
 
@@ -400,8 +373,7 @@ class TestDeadLetterQueue:
     async def test_get_dead_letter_queue(self, mock_manager):
         """Test getting dead letter queue messages."""
         from agentcore.a2a_protocol.services.event_jsonrpc import (
-            handle_get_dead_letter_queue,
-        )
+            handle_get_dead_letter_queue)
 
         messages = [
             DeadLetterMessage(
@@ -411,13 +383,11 @@ class TestDeadLetterQueue:
                     event_type=EventType.AGENT_STATUS_CHANGED,
                     source="agent-1",
                     data={"status": "error"},
-                    timestamp=datetime.now(UTC),
-                ),
+                    timestamp=datetime.now(UTC)),
                 subscriber_id="subscriber-1",
                 failure_reason="Connection timeout",
                 retry_count=3,
-                failed_at=datetime.now(UTC),
-            ),
+                failed_at=datetime.now(UTC)),
         ]
         mock_manager.get_dead_letter_messages = Mock(return_value=messages)
 
@@ -425,8 +395,7 @@ class TestDeadLetterQueue:
             jsonrpc="2.0",
             method="event.get_dead_letter_queue",
             params={"limit": 50},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_dead_letter_queue(request)
 
@@ -438,8 +407,7 @@ class TestDeadLetterQueue:
     async def test_retry_dead_letter_success(self, mock_manager):
         """Test successful retry of dead letter message."""
         from agentcore.a2a_protocol.services.event_jsonrpc import (
-            handle_retry_dead_letter,
-        )
+            handle_retry_dead_letter)
 
         mock_manager.retry_dead_letter_message = AsyncMock(return_value=True)
 
@@ -447,8 +415,7 @@ class TestDeadLetterQueue:
             jsonrpc="2.0",
             method="event.retry_dead_letter",
             params={"message_id": "msg-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_retry_dead_letter(request)
 
@@ -460,8 +427,7 @@ class TestDeadLetterQueue:
     async def test_retry_dead_letter_failure(self, mock_manager):
         """Test failed retry of dead letter message."""
         from agentcore.a2a_protocol.services.event_jsonrpc import (
-            handle_retry_dead_letter,
-        )
+            handle_retry_dead_letter)
 
         mock_manager.retry_dead_letter_message = AsyncMock(return_value=False)
 
@@ -469,8 +435,7 @@ class TestDeadLetterQueue:
             jsonrpc="2.0",
             method="event.retry_dead_letter",
             params={"message_id": "nonexistent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Retry failed"):
             await handle_retry_dead_letter(request)
@@ -479,15 +444,13 @@ class TestDeadLetterQueue:
     async def test_retry_dead_letter_missing_params(self):
         """Test retry dead letter with missing parameters."""
         from agentcore.a2a_protocol.services.event_jsonrpc import (
-            handle_retry_dead_letter,
-        )
+            handle_retry_dead_letter)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="event.retry_dead_letter",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required"):
             await handle_retry_dead_letter(request)
@@ -513,8 +476,7 @@ class TestEventStats:
             jsonrpc="2.0",
             method="event.get_stats",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_event_stats(request)
 
@@ -539,8 +501,7 @@ class TestEventCleanup:
             jsonrpc="2.0",
             method="event.cleanup_expired",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_cleanup_expired(request)
 
@@ -556,8 +517,7 @@ class TestEventCleanup:
             jsonrpc="2.0",
             method="event.cleanup_expired",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_cleanup_expired(request)
 
@@ -569,8 +529,7 @@ class TestEventCleanup:
             jsonrpc="2.0",
             method="event.cleanup_expired",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_cleanup_expired(request)
 

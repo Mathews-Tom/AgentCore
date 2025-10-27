@@ -24,8 +24,7 @@ def custom_config():
         tool_usage_reward=0.2,
         verification_reward=0.1,
         length_penalty=-0.02,
-        enable_shaping=True,
-    )
+        enable_shaping=True)
 
 
 @pytest.fixture
@@ -38,22 +37,19 @@ def successful_trajectory():
             action={"step_type": "tool_call", "tool": "search"},
             result={"success": True},
             timestamp=now,
-            duration_ms=100,
-        ),
+            duration_ms=100),
         TrajectoryStep(
             state={"step": 2},
             action={"step_type": "verify", "check": "result"},
             result={"valid": True},
             timestamp=now,
-            duration_ms=50,
-        ),
+            duration_ms=50),
         TrajectoryStep(
             state={"step": 3},
             action={"step_type": "final_answer"},
             result={"answer": "correct"},
             timestamp=now,
-            duration_ms=75,
-        ),
+            duration_ms=75),
     ]
 
     return Trajectory(
@@ -61,8 +57,7 @@ def successful_trajectory():
         agent_id="agent-test",
         query="test query",
         steps=steps,
-        success=True,
-    )
+        success=True)
 
 
 @pytest.fixture
@@ -75,8 +70,7 @@ def failed_trajectory():
             action={"step_type": "think"},
             result={},
             timestamp=now,
-            duration_ms=50,
-        ),
+            duration_ms=50),
     ]
 
     return Trajectory(
@@ -84,8 +78,7 @@ def failed_trajectory():
         agent_id="agent-test",
         query="test query",
         steps=steps,
-        success=False,
-    )
+        success=False)
 
 
 def test_reward_engine_initialization():
@@ -159,16 +152,14 @@ def test_shaped_rewards_disabled():
             action={"step_type": "tool_call"},
             result={},
             timestamp=now,
-            duration_ms=100,
-        )
+            duration_ms=100)
     ]
     trajectory = Trajectory(
         job_id=uuid4(),
         agent_id="agent-test",
         query="test",
         steps=steps,
-        success=True,
-    )
+        success=True)
 
     reward = engine.compute_reward(trajectory)
 
@@ -274,8 +265,7 @@ def test_custom_reward_function(reward_engine):
         agent_id="agent-test",
         query="test",
         steps=[],
-        success=True,
-    )
+        success=True)
 
     # Use custom function
     reward = reward_engine.compute_reward(trajectory, custom_function="constant")
@@ -337,8 +327,7 @@ def test_complex_trajectory():
         agent_id="agent-test",
         query="complex task",
         steps=steps,
-        success=True,
-    )
+        success=True)
 
     reward = engine.compute_reward(trajectory)
 

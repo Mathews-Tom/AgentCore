@@ -15,8 +15,7 @@ from agentcore.a2a_protocol.models.session import (
     SessionPriority,
     SessionCreateResponse,
     SessionQueryResponse,
-    SessionQuery,
-)
+    SessionQuery)
 
 
 class TestSessionCreate:
@@ -32,8 +31,7 @@ class TestSessionCreate:
         create_response = SessionCreateResponse(
             session_id="session-123",
             state="active",
-            message="Session created successfully",
-        )
+            message="Session created successfully")
         mock_manager.create_session = AsyncMock(return_value=create_response)
 
         # Create request
@@ -45,8 +43,7 @@ class TestSessionCreate:
                 "owner_agent": "test-agent",
                 "priority": "normal",
             },
-            id="1",
-        )
+            id="1")
 
         # Execute
         result = await handle_session_create(request)
@@ -66,8 +63,7 @@ class TestSessionCreate:
             jsonrpc="2.0",
             method="session.create",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_session_create(request)
@@ -81,8 +77,7 @@ class TestSessionCreate:
             jsonrpc="2.0",
             method="session.create",
             params={"name": "Test Session"},  # Missing owner_agent
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_session_create(request)
@@ -109,8 +104,7 @@ class TestSessionGet:
             jsonrpc="2.0",
             method="session.get",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_get(request)
 
@@ -127,8 +121,7 @@ class TestSessionGet:
             jsonrpc="2.0",
             method="session.get",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: session_id"):
             await handle_session_get(request)
@@ -145,8 +138,7 @@ class TestSessionGet:
             jsonrpc="2.0",
             method="session.get",
             params={"session_id": "nonexistent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Session not found"):
             await handle_session_get(request)
@@ -167,8 +159,7 @@ class TestSessionDelete:
             jsonrpc="2.0",
             method="session.delete",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_delete(request)
 
@@ -188,8 +179,7 @@ class TestSessionDelete:
             jsonrpc="2.0",
             method="session.delete",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Session deletion failed"):
             await handle_session_delete(request)
@@ -210,8 +200,7 @@ class TestSessionStateTransitions:
             jsonrpc="2.0",
             method="session.pause",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_pause(request)
 
@@ -231,8 +220,7 @@ class TestSessionStateTransitions:
             jsonrpc="2.0",
             method="session.resume",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_resume(request)
 
@@ -251,8 +239,7 @@ class TestSessionStateTransitions:
             jsonrpc="2.0",
             method="session.suspend",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_suspend(request)
 
@@ -271,8 +258,7 @@ class TestSessionStateTransitions:
             jsonrpc="2.0",
             method="session.complete",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_complete(request)
 
@@ -294,8 +280,7 @@ class TestSessionStateTransitions:
                 "session_id": "session-123",
                 "reason": "Test failure",
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_fail(request)
 
@@ -322,8 +307,7 @@ class TestSessionContext:
                 "session_id": "session-123",
                 "updates": {"key": "value", "counter": 42},
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_update_context(request)
 
@@ -347,8 +331,7 @@ class TestSessionContext:
                 "agent_id": "test-agent",
                 "state": {"status": "processing", "progress": 0.5},
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_set_agent_state(request)
 
@@ -372,8 +355,7 @@ class TestSessionContext:
                 "session_id": "session-123",
                 "agent_id": "test-agent",
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_get_agent_state(request)
 
@@ -395,8 +377,7 @@ class TestSessionContext:
                 "session_id": "session-123",
                 "agent_id": "nonexistent-agent",
             },
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Agent state not found"):
             await handle_session_get_agent_state(request)
@@ -420,8 +401,7 @@ class TestSessionTasksAndEvents:
                 "session_id": "session-123",
                 "task_id": "task-123",
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_add_task(request)
 
@@ -445,8 +425,7 @@ class TestSessionTasksAndEvents:
                 "event_type": "state_change",
                 "event_data": {"old": "active", "new": "paused"},
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_record_event(request)
 
@@ -466,8 +445,7 @@ class TestSessionTasksAndEvents:
             jsonrpc="2.0",
             method="session.checkpoint",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_checkpoint(request)
 
@@ -489,8 +467,7 @@ class TestSessionQuery:
             sessions=[{"session_id": "session-123", "name": "Test Session"}],
             total_count=1,
             has_more=False,
-            query=SessionQuery(owner_agent="test-agent", state=SessionState.ACTIVE, limit=10, offset=0),
-        )
+            query=SessionQuery(owner_agent="test-agent", state=SessionState.ACTIVE, limit=10, offset=0))
         mock_manager.query_sessions = AsyncMock(return_value=query_response)
 
         request = JsonRpcRequest(
@@ -501,8 +478,7 @@ class TestSessionQuery:
                 "state": "active",
                 "limit": 10,
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_query(request)
 
@@ -522,8 +498,7 @@ class TestSessionQuery:
             jsonrpc="2.0",
             method="session.cleanup_expired",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_cleanup_expired(request)
 
@@ -542,8 +517,7 @@ class TestSessionQuery:
             jsonrpc="2.0",
             method="session.cleanup_idle",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_cleanup_idle(request)
 
@@ -567,8 +541,7 @@ class TestSessionImportExport:
             jsonrpc="2.0",
             method="session.export",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_export(request)
 
@@ -590,8 +563,7 @@ class TestSessionImportExport:
             jsonrpc="2.0",
             method="session.import",
             params={"json_data": json_data},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_import(request)
 
@@ -612,8 +584,7 @@ class TestSessionImportExport:
             jsonrpc="2.0",
             method="session.export_batch",
             params={"session_ids": ["session-1", "session-2"]},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_export_batch(request)
 
@@ -641,8 +612,7 @@ class TestSessionImportExport:
             jsonrpc="2.0",
             method="session.import_batch",
             params={"json_data": json_data},
-            id="1",
-        )
+            id="1")
 
         result = await handle_session_import_batch(request)
 
@@ -667,8 +637,7 @@ class TestErrorHandling:
             jsonrpc="2.0",
             method="session.pause",
             params={"session_id": "session-123"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Session pause failed"):
             await handle_session_pause(request)
@@ -682,8 +651,7 @@ class TestErrorHandling:
             jsonrpc="2.0",
             method="session.update_context",
             params={"session_id": "session-123"},  # Missing updates
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_session_update_context(request)
@@ -700,8 +668,7 @@ class TestErrorHandling:
             jsonrpc="2.0",
             method="session.export",
             params={"session_id": "nonexistent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Session not found"):
             await handle_session_export(request)
@@ -715,8 +682,7 @@ class TestErrorHandling:
             jsonrpc="2.0",
             method="session.export_batch",
             params={"session_ids": "not-a-list"},  # Should be array
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="must be array"):
             await handle_session_export_batch(request)

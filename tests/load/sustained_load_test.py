@@ -139,14 +139,14 @@ def on_test_stop(environment, **kwargs) -> None:
     print(f"\n{'='*70}")
     print(f"Sustained Load Test Results")
     print(f"{'='*70}")
-    print(f"Total Duration: {stats.last_request_timestamp - stats.start_time:.2f}s")
+    print(f"Total Duration: {stats.last_request_timestamp - stats.start_time:.2f}, s")
     print(f"Total Requests: {stats.num_requests:,}")
     print(f"Failed Requests: {stats.num_failures:,}")
     print(f"Average RPS: {stats.total_rps:,.2f}")
-    print(f"Average Response Time: {stats.avg_response_time:.2f}ms")
-    print(f"Median Response Time: {stats.median_response_time:.2f}ms")
-    print(f"95th Percentile: {stats.get_response_time_percentile(0.95):.2f}ms")
-    print(f"99th Percentile: {stats.get_response_time_percentile(0.99):.2f}ms")
+    print(f"Average Response Time: {stats.avg_response_time:.2f}, ms")
+    print(f"Median Response Time: {stats.median_response_time:.2f}, ms")
+    print(f"95th Percentile: {stats.get_response_time_percentile(0.95):.2f}, ms")
+    print(f"99th Percentile: {stats.get_response_time_percentile(0.99):.2f}, ms")
 
     # Check for performance degradation
     if len(time_series_stats) > 1:
@@ -160,8 +160,8 @@ def on_test_stop(environment, **kwargs) -> None:
             degradation = ((avg_second - avg_first) / avg_first) * 100
 
             print(f"\nPerformance Analysis:")
-            print(f"First Half Avg Response: {avg_first:.2f}ms")
-            print(f"Second Half Avg Response: {avg_second:.2f}ms")
+            print(f"First Half Avg Response: {avg_first:.2f}, ms")
+            print(f"Second Half Avg Response: {avg_second:.2f}, ms")
             print(f"Degradation: {degradation:+.2f}%")
 
             if degradation < 10:

@@ -14,8 +14,7 @@ from agentcore.agent_runtime.services.a2a_client import (
     A2AClient,
     A2AClientError,
     A2AConnectionError,
-    A2ARegistrationError,
-)
+    A2ARegistrationError)
 from agentcore.agent_runtime.models.agent_config import AgentConfig, AgentPhilosophy
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcResponse, JsonRpcError
 

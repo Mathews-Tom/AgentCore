@@ -16,8 +16,7 @@ from agentcore.orchestration.streams import (
     StreamConsumer,
     StreamProducer,
     TaskCompletedEvent,
-    TaskCreatedEvent,
-)
+    TaskCreatedEvent)
 from agentcore.orchestration.streams.config import StreamConfig
 
 
@@ -31,8 +30,7 @@ def redis_container():
         warnings.filterwarnings(
             "ignore",
             message="The @wait_container_is_ready decorator is deprecated",
-            category=DeprecationWarning,
-        )
+            category=DeprecationWarning)
         container = RedisContainer("redis:7-alpine")
         with container:
             yield container
@@ -49,8 +47,7 @@ async def redis_client(redis_container):
     config = StreamConfig(
         stream_name="test:events",
         consumer_group_name="test-group",
-        dead_letter_stream="test:events:dlq",
-    )
+        dead_letter_stream="test:events:dlq")
 
     client = RedisStreamsClient(redis_url=redis_url, config=config)
     await client.connect()
@@ -63,8 +60,7 @@ async def producer(redis_client):
     """Provide stream producer."""
     config = StreamConfig(
         stream_name="test:events",
-        dead_letter_stream="test:events:dlq",
-    )
+        dead_letter_stream="test:events:dlq")
     return StreamProducer(redis_client, config)
 
 
@@ -74,8 +70,7 @@ async def consumer(redis_client):
     config = StreamConfig(
         stream_name="test:events",
         consumer_group_name="test-group",
-        consumer_name="test-consumer-1",
-    )
+        consumer_name="test-consumer-1")
     group = ConsumerGroup("test-group", "test-consumer-1")
     return StreamConsumer(redis_client, group, config)
 
@@ -171,8 +166,7 @@ class TestStreamProducer:
         event = TaskCreatedEvent(
             task_id=task_id,
             task_type="data_analysis",
-            agent_id="agent-1",
-        )
+            agent_id="agent-1")
 
         message_id = await producer.publish(event)
         assert message_id is not None
@@ -206,8 +200,7 @@ class TestStreamProducer:
         message_id = await producer.publish_to_dlq(
             event,
             error="Processing failed",
-            retry_count=3,
-        )
+            retry_count=3)
 
         assert message_id is not None
 
@@ -261,13 +254,11 @@ class TestStreamConsumer:
         config1 = StreamConfig(
             stream_name="test:events",
             consumer_group_name="group-1",
-            consumer_name="consumer-1",
-        )
+            consumer_name="consumer-1")
         config2 = StreamConfig(
             stream_name="test:events",
             consumer_group_name="group-2",
-            consumer_name="consumer-1",
-        )
+            consumer_name="consumer-1")
 
         group1 = ConsumerGroup("group-1", "consumer-1")
         group2 = ConsumerGroup("group-2", "consumer-1")
@@ -345,8 +336,7 @@ class TestProducerConsumerIntegration:
             task_id=task_id,
             agent_id="test-agent",
             result_data={"status": "success"},
-            execution_time_ms=1000,
-        )
+            execution_time_ms=1000)
         await producer.publish(completed_event)
 
         # Wait for processing

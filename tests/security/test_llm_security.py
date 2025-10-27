@@ -31,8 +31,7 @@ from agentcore.a2a_protocol.config import settings
 from agentcore.a2a_protocol.models.llm import (
     LLMRequest,
     ModelNotAllowedError,
-    ProviderError,
-)
+    ProviderError)
 from agentcore.a2a_protocol.services.llm_client_anthropic import LLMClientAnthropic
 from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
 from agentcore.a2a_protocol.services.llm_service import LLMService, ProviderRegistry
@@ -43,7 +42,7 @@ API_KEY_PATTERNS = [
     r"sk-[a-zA-Z0-9]{32,}",  # OpenAI key pattern
     r"sk-ant-[a-zA-Z0-9-]{95,}",  # Anthropic key pattern
     r"AIzaSy[a-zA-Z0-9_-]{33}",  # Google API key pattern
-    r"['\"]api_key['\"]:\s*['\"][^'\"]+['\"]",  # JSON api_key field
+    r"['\"], api_key['\"]:\s*['\"][^'\"]+['\"]",  # JSON api_key field
     r"api_key=[a-zA-Z0-9-]+",  # URL parameter api_key
 ]
 
@@ -129,8 +128,7 @@ class TestAPIKeyProtection:
             request = LLMRequest(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": "Hello"}],
-                trace_id="test-trace-001",
-            )
+                trace_id="test-trace-001")
             response = await client.complete(request)
             assert response.content == "Test response"
 
@@ -164,8 +162,7 @@ class TestAPIKeyProtection:
             request = LLMRequest(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": "Hello"}],
-                trace_id="test-trace-002",
-            )
+                trace_id="test-trace-002")
 
             with pytest.raises(ProviderError):
                 await client.complete(request)
@@ -207,8 +204,7 @@ class TestAPIKeyProtection:
 
             request = LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "Hello"}],
-            )
+                messages=[{"role": "user", "content": "Hello"}])
 
             with pytest.raises(ProviderError) as exc_info:
                 await client.complete(request)
@@ -247,8 +243,7 @@ class TestAPIKeyProtection:
             request = LLMRequest(
                 model="claude-3-5-haiku-20241022",
                 messages=[{"role": "user", "content": "Hello"}],
-                trace_id="test-trace-003",
-            )
+                trace_id="test-trace-003")
             response = await client.complete(request)
             assert response.content == "Test response"
 
@@ -281,8 +276,7 @@ class TestAPIKeyProtection:
             request = LLMRequest(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": "Hello"}],
-                trace_id="test-trace-004",
-            )
+                trace_id="test-trace-004")
 
             with pytest.raises(Exception):  # Will raise CustomRateLimitError
                 await client.complete(request)
@@ -410,8 +404,7 @@ class TestInputSanitization:
         # Attempt SQL injection in model name
         malicious_request = LLMRequest(
             model="gpt-4.1-mini'; DROP TABLE agents; --",
-            messages=[{"role": "user", "content": "Hello"}],
-        )
+            messages=[{"role": "user", "content": "Hello"}])
 
         with pytest.raises(ModelNotAllowedError) as exc_info:
             await service.complete(malicious_request)
@@ -440,8 +433,7 @@ class TestInputSanitization:
         for pattern in injection_patterns:
             request = LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": pattern}],
-            )
+                messages=[{"role": "user", "content": pattern}])
 
             # Mock the provider to capture the request
             mock_response = MagicMock()
@@ -480,8 +472,7 @@ class TestInputSanitization:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Hello"}],
-            trace_id=malicious_trace_id,
-        )
+            trace_id=malicious_trace_id)
 
         # Mock response
         mock_response = MagicMock()
@@ -570,8 +561,7 @@ class TestErrorMessageSafety:
 
             request = LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "Hello"}],
-            )
+                messages=[{"role": "user", "content": "Hello"}])
 
             with pytest.raises(ProviderError) as exc_info:
                 await client.complete(request)
@@ -599,8 +589,7 @@ class TestErrorMessageSafety:
 
             request = LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "Hello"}],
-            )
+                messages=[{"role": "user", "content": "Hello"}])
 
             with pytest.raises(Exception) as exc_info:
                 await client.complete(request)
@@ -615,8 +604,7 @@ class TestErrorMessageSafety:
 
         request = LLMRequest(
             model="gpt-3.5-turbo",  # Not in ALLOWED_MODELS
-            messages=[{"role": "user", "content": "Hello"}],
-        )
+            messages=[{"role": "user", "content": "Hello"}])
 
         try:
             # Manually trigger the error
@@ -717,8 +705,7 @@ class TestIntegrationSecurity:
                 request = LLMRequest(
                     model="gpt-4.1-mini",
                     messages=[{"role": "user", "content": "Hello"}],
-                    trace_id="test-trace-e2e",
-                )
+                    trace_id="test-trace-e2e")
 
                 try:
                     # This will fail due to mocking, but we capture logs
@@ -745,8 +732,7 @@ class TestIntegrationSecurity:
         request = LLMRequest(
             model="gpt-3.5-turbo",  # Not allowed
             messages=[{"role": "user", "content": "Hello"}],
-            trace_id="test-trace-gov",
-        )
+            trace_id="test-trace-gov")
 
         with pytest.raises(ModelNotAllowedError):
             await service.complete(request)

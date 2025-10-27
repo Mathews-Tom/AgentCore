@@ -20,8 +20,7 @@ from gateway.middleware.rate_limit import RateLimitMiddleware
 from gateway.middleware.rate_limiter import (
     RateLimitAlgorithmType,
     RateLimitPolicy,
-    RateLimiter,
-)
+    RateLimiter)
 
 # Rate limit middleware integration tests
 # pytestmark = pytest.mark.skip(reason="Rate limit middleware tests require additional API configuration")
@@ -42,8 +41,7 @@ async def rate_limiter(redis_container):
     redis_url = f"redis://localhost:{redis_container.get_exposed_port(6379)}/0"
     limiter = RateLimiter(
         redis_url=redis_url,
-        default_algorithm=RateLimitAlgorithmType.SLIDING_WINDOW,
-    )
+        default_algorithm=RateLimitAlgorithmType.SLIDING_WINDOW)
     await limiter.initialize()
 
     # Clear all rate limit data before each test
@@ -71,8 +69,7 @@ async def ddos_protector(rate_limiter):
         burst_window_seconds=10,
         enable_auto_blocking=True,
         auto_block_duration_seconds=60,
-        auto_block_threshold=5,
-    )
+        auto_block_threshold=5)
     return DDoSProtector(rate_limiter, config)
 
 
@@ -92,15 +89,12 @@ async def test_app(rate_limiter):
             ),
             "endpoint": RateLimitPolicy(
                 limit=100,  # Higher limit for endpoint to test IP-specific limits
-                window_seconds=1,
-            ),
+                window_seconds=1),
             "user": RateLimitPolicy(
                 limit=100,
-                window_seconds=1,
-            ),
+                window_seconds=1),
         },
-        exempt_paths=["/health", "/metrics"],
-    )
+        exempt_paths=["/health", "/metrics"])
 
     @app.get("/test")
     async def test_endpoint(request: Request):
@@ -186,8 +180,7 @@ class TestDDoSProtection:
         test_app.add_middleware(
             RateLimitMiddleware,
             rate_limiter=ddos_protector.rate_limiter,
-            ddos_protector=ddos_protector,
-        )
+            ddos_protector=ddos_protector)
 
         # Try request with bot user agent
         response = await client.get(
@@ -204,8 +197,7 @@ class TestDDoSProtection:
         test_app.add_middleware(
             RateLimitMiddleware,
             rate_limiter=ddos_protector.rate_limiter,
-            ddos_protector=ddos_protector,
-        )
+            ddos_protector=ddos_protector)
 
         # Make requests that violate rate limit multiple times
         for _ in range(6):  # Exceed auto_block_threshold

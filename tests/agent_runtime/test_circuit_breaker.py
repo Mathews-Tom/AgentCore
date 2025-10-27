@@ -9,8 +9,7 @@ from agentcore.agent_runtime.services.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerError,
     CircuitBreakerRegistry,
-    CircuitState,
-)
+    CircuitState)
 
 
 @pytest.fixture
@@ -20,8 +19,7 @@ def config() -> CircuitBreakerConfig:
         failure_threshold=3,
         success_threshold=2,
         timeout_seconds=1.0,
-        half_open_max_attempts=2,
-    )
+        half_open_max_attempts=2)
 
 
 @pytest.fixture
@@ -52,8 +50,7 @@ class TestCircuitBreaker:
     async def test_failure_recording(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test failure recording and circuit opening."""
 
         async def fail_func() -> None:
@@ -71,8 +68,7 @@ class TestCircuitBreaker:
     async def test_circuit_open_blocks_execution(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test that open circuit blocks execution."""
 
         async def fail_func() -> None:
@@ -90,8 +86,7 @@ class TestCircuitBreaker:
     async def test_half_open_transition(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test transition from open to half-open after timeout."""
 
         async def fail_func() -> None:
@@ -118,8 +113,7 @@ class TestCircuitBreaker:
     async def test_circuit_closing_after_success(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test circuit closes after successful executions in half-open."""
 
         async def fail_func() -> None:
@@ -147,8 +141,7 @@ class TestCircuitBreaker:
     async def test_half_open_failure_reopens(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test that failures in half-open reopen the circuit."""
 
         async def fail_func() -> None:
@@ -173,8 +166,7 @@ class TestCircuitBreaker:
     async def test_reset(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test manual circuit reset."""
 
         async def fail_func() -> None:
@@ -196,8 +188,7 @@ class TestCircuitBreaker:
     async def test_stats(
         self,
         breaker: CircuitBreaker,
-        config: CircuitBreakerConfig,
-    ) -> None:
+        config: CircuitBreakerConfig) -> None:
         """Test statistics collection."""
         stats = breaker.get_stats()
 
@@ -208,8 +199,7 @@ class TestCircuitBreaker:
 
     async def test_sync_function_execution(
         self,
-        breaker: CircuitBreaker,
-    ) -> None:
+        breaker: CircuitBreaker) -> None:
         """Test execution of synchronous functions."""
 
         def sync_func() -> str:

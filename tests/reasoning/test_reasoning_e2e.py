@@ -21,8 +21,7 @@ from agentcore.a2a_protocol.models.security import Permission, Role, TokenPayloa
 from src.agentcore.reasoning.models.reasoning_models import (
     BoundedContextIterationResult,
     BoundedContextResult,
-    IterationMetrics,
-)
+    IterationMetrics)
 
 
 @pytest.fixture
@@ -44,9 +43,7 @@ def mock_reasoning_result():
             tokens=500,
             has_answer=True,
             carryover_generated=False,
-            execution_time_ms=1250,
-        ),
-    )
+            execution_time_ms=1250))
 
     return BoundedContextResult(
         answer="42",
@@ -55,8 +52,7 @@ def mock_reasoning_result():
         total_iterations=1,
         compute_savings_pct=15.5,
         carryover_compressions=0,
-        execution_time_ms=1250,
-    )
+        execution_time_ms=1250)
 
 
 @pytest.fixture
@@ -67,8 +63,7 @@ def valid_token_payload():
         role=Role.AGENT,
         token_type="access",
         expiration_hours=24,
-        agent_id="agent-test",
-    )
+        agent_id="agent-test")
 
 
 def test_single_request_valid_parameters(client, mock_reasoning_result, valid_token_payload):
@@ -76,8 +71,7 @@ def test_single_request_valid_parameters(client, mock_reasoning_result, valid_to
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -97,8 +91,7 @@ def test_single_request_valid_parameters(client, mock_reasoning_result, valid_to
                     "max_iterations": 5,
                 },
                 "id": 1,
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -125,8 +118,7 @@ def test_single_request_minimal_parameters(client, mock_reasoning_result, valid_
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -142,8 +134,7 @@ def test_single_request_minimal_parameters(client, mock_reasoning_result, valid_
                     "query": "Simple question",
                 },
                 "id": 2,
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -156,8 +147,7 @@ def test_batch_request(client, mock_reasoning_result, valid_token_payload):
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -207,8 +197,7 @@ def test_error_invalid_parameters(client):
                 "carryover_size": 4096,  # Invalid: equal to chunk_size
             },
             "id": 3,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -228,8 +217,7 @@ def test_error_missing_required_parameter(client):
             "method": "reasoning.bounded_context",
             "params": {},  # Missing required 'query'
             "id": 4,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -242,8 +230,7 @@ def test_error_llm_failure(client):
     """Test error handling when LLM client fails."""
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(
             side_effect=RuntimeError("LLM service unavailable")
@@ -257,8 +244,7 @@ def test_error_llm_failure(client):
                 "method": "reasoning.bounded_context",
                 "params": {"query": "Test query"},
                 "id": 5,
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -280,8 +266,7 @@ def test_error_invalid_temperature(client):
                 "temperature": 3.0,  # Invalid: > 2.0
             },
             "id": 6,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -302,8 +287,7 @@ def test_error_invalid_max_iterations(client):
                 "max_iterations": 100,  # Invalid: > 50
             },
             "id": 7,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -317,8 +301,7 @@ def test_notification_request(client, mock_reasoning_result, valid_token_payload
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -331,8 +314,7 @@ def test_notification_request(client, mock_reasoning_result, valid_token_payload
                 "method": "reasoning.bounded_context",
                 "params": {"auth_token": "test-token", "query": "Notification test"},
                 # No 'id' field = notification
-            },
-        )
+            })
 
         # Notifications execute but return 204 No Content
         # Note: JSON-RPC spec says notifications have no response
@@ -344,8 +326,7 @@ def test_response_format_validation(client, mock_reasoning_result, valid_token_p
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -358,8 +339,7 @@ def test_response_format_validation(client, mock_reasoning_result, valid_token_p
                 "method": "reasoning.bounded_context",
                 "params": {"auth_token": "test-token", "query": "Format test"},
                 "id": 8,
-            },
-        )
+            })
 
         data = response.json()
         result = data["result"]
@@ -402,8 +382,7 @@ def test_custom_system_prompt(client, mock_reasoning_result, valid_token_payload
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -420,8 +399,7 @@ def test_custom_system_prompt(client, mock_reasoning_result, valid_token_payload
                     "system_prompt": "You are a helpful assistant.",
                 },
                 "id": 9,
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -439,8 +417,7 @@ def test_a2a_context_in_request(client, mock_reasoning_result, valid_token_paylo
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -459,8 +436,7 @@ def test_a2a_context_in_request(client, mock_reasoning_result, valid_token_paylo
                     "trace_id": "trace-abc",
                     "timestamp": "2025-01-01T00:00:00Z",
                 },
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()

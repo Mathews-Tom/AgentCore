@@ -20,8 +20,7 @@ from agentcore.a2a_protocol.models.task import (
     TaskQuery,
     TaskQueryResponse,
     TaskRequirement,
-    TaskStatus,
-)
+    TaskStatus)
 from agentcore.a2a_protocol.services import task_jsonrpc
 
 # ==================== task.create Tests ====================
@@ -39,8 +38,7 @@ async def test_task_create_success():
             task_id="task-1",
             status=TaskStatus.PENDING,
             assigned_agent="agent-1",
-            message="Task created",
-        )
+            message="Task created")
         mock_manager.create_task = AsyncMock(return_value=mock_response)
 
         # Create request
@@ -56,8 +54,7 @@ async def test_task_create_success():
                     "description": "Test task",
                 },
                 "auto_assign": True,
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_create(request)
 
@@ -100,8 +97,7 @@ async def test_task_get_success():
             task_id="task-1",
             task_type="text.generation",
             title="Test Task",
-            description="Test",
-        )
+            description="Test")
         mock_execution = TaskExecution(
             execution_id="exec-1", task_definition=task_def, status=TaskStatus.RUNNING
         )
@@ -129,8 +125,7 @@ async def test_task_get_not_found():
             jsonrpc="2.0",
             method="task.get",
             id="1",
-            params={"execution_id": "nonexistent"},
-        )
+            params={"execution_id": "nonexistent"})
 
         with pytest.raises(ValueError, match="Task not found"):
             await task_jsonrpc.handle_task_get(request)
@@ -160,8 +155,7 @@ async def test_task_assign_success():
             jsonrpc="2.0",
             method="task.assign",
             id="1",
-            params={"execution_id": "exec-1", "agent_id": "agent-1"},
-        )
+            params={"execution_id": "exec-1", "agent_id": "agent-1"})
 
         result = await task_jsonrpc.handle_task_assign(request)
 
@@ -182,8 +176,7 @@ async def test_task_assign_failure():
             jsonrpc="2.0",
             method="task.assign",
             id="1",
-            params={"execution_id": "exec-1", "agent_id": "agent-1"},
-        )
+            params={"execution_id": "exec-1", "agent_id": "agent-1"})
 
         with pytest.raises(ValueError, match="Task assignment failed"):
             await task_jsonrpc.handle_task_assign(request)
@@ -215,8 +208,7 @@ async def test_task_start_success():
             jsonrpc="2.0",
             method="task.start",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         result = await task_jsonrpc.handle_task_start(request)
 
@@ -236,8 +228,7 @@ async def test_task_start_failure():
             jsonrpc="2.0",
             method="task.start",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         with pytest.raises(ValueError, match="Task start failed"):
             await task_jsonrpc.handle_task_start(request)
@@ -267,8 +258,7 @@ async def test_task_complete_success():
             jsonrpc="2.0",
             method="task.complete",
             id="1",
-            params={"execution_id": "exec-1", "result_data": {"output": "result"}},
-        )
+            params={"execution_id": "exec-1", "result_data": {"output": "result"}})
 
         result = await task_jsonrpc.handle_task_complete(request)
 
@@ -294,8 +284,7 @@ async def test_task_complete_with_artifacts():
                 "artifacts": [
                     {"name": "output.txt", "type": "file", "content": "test content"}
                 ],
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_complete(request)
 
@@ -318,8 +307,7 @@ async def test_task_complete_failure():
             jsonrpc="2.0",
             method="task.complete",
             id="1",
-            params={"execution_id": "exec-1", "result_data": {"output": "result"}},
-        )
+            params={"execution_id": "exec-1", "result_data": {"output": "result"}})
 
         with pytest.raises(ValueError, match="Task completion failed"):
             await task_jsonrpc.handle_task_complete(request)
@@ -355,8 +343,7 @@ async def test_task_fail_success():
                 "execution_id": "exec-1",
                 "error_message": "Task failed",
                 "should_retry": True,
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_fail(request)
 
@@ -377,8 +364,7 @@ async def test_task_fail_default_retry():
             jsonrpc="2.0",
             method="task.fail",
             id="1",
-            params={"execution_id": "exec-1", "error_message": "Task failed"},
-        )
+            params={"execution_id": "exec-1", "error_message": "Task failed"})
 
         result = await task_jsonrpc.handle_task_fail(request)
 
@@ -411,8 +397,7 @@ async def test_task_cancel_success():
             jsonrpc="2.0",
             method="task.cancel",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         result = await task_jsonrpc.handle_task_cancel(request)
 
@@ -432,8 +417,7 @@ async def test_task_cancel_failure():
             jsonrpc="2.0",
             method="task.cancel",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         with pytest.raises(ValueError, match="Task cancellation failed"):
             await task_jsonrpc.handle_task_cancel(request)
@@ -458,8 +442,7 @@ async def test_task_update_progress_success():
                 "execution_id": "exec-1",
                 "percentage": 50,
                 "current_step": "Processing data",
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_update_progress(request)
 
@@ -480,8 +463,7 @@ async def test_task_update_progress_without_step():
             jsonrpc="2.0",
             method="task.update_progress",
             id="1",
-            params={"execution_id": "exec-1", "percentage": 75},
-        )
+            params={"execution_id": "exec-1", "percentage": 75})
 
         result = await task_jsonrpc.handle_task_update_progress(request)
 
@@ -501,8 +483,7 @@ async def test_task_update_progress_failure():
             jsonrpc="2.0",
             method="task.update_progress",
             id="1",
-            params={"execution_id": "exec-1", "percentage": 50},
-        )
+            params={"execution_id": "exec-1", "percentage": 50})
 
         with pytest.raises(ValueError, match="Task progress update failed"):
             await task_jsonrpc.handle_task_update_progress(request)
@@ -521,8 +502,7 @@ async def test_task_query_all():
             tasks=[{"task_id": "task-1"}, {"task_id": "task-2"}],
             total_count=2,
             has_more=False,
-            query=TaskQuery(),
-        )
+            query=TaskQuery())
         mock_manager.query_tasks = AsyncMock(return_value=mock_response)
 
         request = JsonRpcRequest(jsonrpc="2.0", method="task.query", id="1", params={})
@@ -544,8 +524,7 @@ async def test_task_query_with_status_filter():
             tasks=[{"task_id": "task-1"}],
             total_count=1,
             has_more=False,
-            query=TaskQuery(status=TaskStatus.RUNNING),
-        )
+            query=TaskQuery(status=TaskStatus.RUNNING))
         mock_manager.query_tasks = AsyncMock(return_value=mock_response)
 
         request = JsonRpcRequest(
@@ -579,8 +558,7 @@ async def test_task_query_with_filters():
                 "tags": ["ai", "nlp"],
                 "limit": 10,
                 "offset": 5,
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_query(request)
 
@@ -613,8 +591,7 @@ async def test_task_query_with_time_filters():
             params={
                 "created_after": created_after.isoformat(),
                 "created_before": created_before.isoformat(),
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_query(request)
 
@@ -641,8 +618,7 @@ async def test_task_dependencies_success():
             jsonrpc="2.0",
             method="task.dependencies",
             id="1",
-            params={"task_id": "task-1"},
-        )
+            params={"task_id": "task-1"})
 
         result = await task_jsonrpc.handle_task_dependencies(request)
 
@@ -740,8 +716,7 @@ async def test_task_summary_success():
             jsonrpc="2.0",
             method="task.summary",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         result = await task_jsonrpc.handle_task_summary(request)
 
@@ -761,8 +736,7 @@ async def test_task_summary_not_found():
             jsonrpc="2.0",
             method="task.summary",
             id="1",
-            params={"execution_id": "nonexistent"},
-        )
+            params={"execution_id": "nonexistent"})
 
         with pytest.raises(ValueError, match="Task not found"):
             await task_jsonrpc.handle_task_summary(request)
@@ -789,8 +763,7 @@ async def test_task_add_artifact_success():
                 "type": "file",
                 "content": "test content",
                 "metadata": {"size": 100},
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_add_artifact(request)
 
@@ -816,8 +789,7 @@ async def test_task_add_artifact_without_metadata():
                 "name": "output.txt",
                 "type": "file",
                 "content": "test content",
-            },
-        )
+            })
 
         result = await task_jsonrpc.handle_task_add_artifact(request)
 
@@ -831,8 +803,7 @@ async def test_task_add_artifact_missing_params():
         jsonrpc="2.0",
         method="task.add_artifact",
         id="1",
-        params={"execution_id": "exec-1", "name": "output.txt"},
-    )
+        params={"execution_id": "exec-1", "name": "output.txt"})
 
     with pytest.raises(ValueError, match="Missing required parameters"):
         await task_jsonrpc.handle_task_add_artifact(request)
@@ -857,8 +828,7 @@ async def test_task_get_artifacts_success():
             jsonrpc="2.0",
             method="task.get_artifacts",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         result = await task_jsonrpc.handle_task_get_artifacts(request)
 
@@ -878,8 +848,7 @@ async def test_task_get_artifacts_task_not_found():
             jsonrpc="2.0",
             method="task.get_artifacts",
             id="1",
-            params={"execution_id": "nonexistent"},
-        )
+            params={"execution_id": "nonexistent"})
 
         with pytest.raises(ValueError, match="Task not found"):
             await task_jsonrpc.handle_task_get_artifacts(request)
@@ -907,8 +876,7 @@ async def test_task_status_transitions_success():
             jsonrpc="2.0",
             method="task.status_transitions",
             id="1",
-            params={"execution_id": "exec-1"},
-        )
+            params={"execution_id": "exec-1"})
 
         result = await task_jsonrpc.handle_task_status_transitions(request)
 
@@ -930,8 +898,7 @@ async def test_task_status_transitions_not_found():
             jsonrpc="2.0",
             method="task.status_transitions",
             id="1",
-            params={"execution_id": "nonexistent"},
-        )
+            params={"execution_id": "nonexistent"})
 
         with pytest.raises(ValueError, match="Task not found"):
             await task_jsonrpc.handle_task_status_transitions(request)

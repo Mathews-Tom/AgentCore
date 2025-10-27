@@ -12,8 +12,7 @@ from agentcore_cli.protocol.models import (
     JsonRpcRequest,
     JsonRpcResponse,
     JsonRpcError,
-    A2AContext,
-)
+    A2AContext)
 
 
 class TestJsonRpcError:
@@ -32,8 +31,7 @@ class TestJsonRpcError:
         error = JsonRpcError(
             code=-32602,
             message="Invalid params",
-            data={"param": "name", "reason": "required"},
-        )
+            data={"param": "name", "reason": "required"})
 
         assert error.code == -32602
         assert error.data["param"] == "name"
@@ -66,8 +64,7 @@ class TestJsonRpcRequest:
         request = JsonRpcRequest(
             method="agent.register",
             params={"name": "test-agent", "capabilities": ["python"]},
-            id=1,
-        )
+            id=1)
 
         assert request.method == "agent.register"
         assert request.params["name"] == "test-agent"
@@ -85,8 +82,7 @@ class TestJsonRpcRequest:
         request = JsonRpcRequest(
             method="agent.list",
             params={"limit": 10},
-            id=42,
-        )
+            id=42)
         data = request.model_dump()
 
         assert data["jsonrpc"] == "2.0"
@@ -133,8 +129,7 @@ class TestJsonRpcResponse:
         """Test successful response with result."""
         response = JsonRpcResponse(
             result={"agent_id": "agent-001", "status": "active"},
-            id=1,
-        )
+            id=1)
 
         assert response.jsonrpc == "2.0"
         assert response.result["agent_id"] == "agent-001"
@@ -145,8 +140,7 @@ class TestJsonRpcResponse:
         """Test error response."""
         response = JsonRpcResponse(
             error=JsonRpcError(code=-32601, message="Method not found"),
-            id=1,
-        )
+            id=1)
 
         assert response.result is None
         assert response.error is not None
@@ -157,8 +151,7 @@ class TestJsonRpcResponse:
         """Test response serializes correctly."""
         response = JsonRpcResponse(
             result={"count": 5},
-            id=10,
-        )
+            id=10)
         data = response.model_dump()
 
         assert data["jsonrpc"] == "2.0"
@@ -192,8 +185,7 @@ class TestA2AContext:
         """Test minimal A2A context."""
         context = A2AContext(
             trace_id="trace-123",
-            source_agent="agent-001",
-        )
+            source_agent="agent-001")
 
         assert context.trace_id == "trace-123"
         assert context.source_agent == "agent-001"
@@ -208,8 +200,7 @@ class TestA2AContext:
             source_agent="agent-001",
             target_agent="agent-002",
             session_id="session-789",
-            timestamp="2025-10-22T12:00:00Z",
-        )
+            timestamp="2025-10-22T12:00:00Z")
 
         assert context.trace_id == "trace-456"
         assert context.source_agent == "agent-001"
@@ -222,8 +213,7 @@ class TestA2AContext:
         context = A2AContext(
             trace_id="trace-xyz",
             source_agent="cli",
-            target_agent="server",
-        )
+            target_agent="server")
         data = context.model_dump(exclude_none=True)
 
         assert data["trace_id"] == "trace-xyz"
@@ -240,8 +230,7 @@ class TestJsonRpcCompliance:
         """CRITICAL: Test params are wrapped in object, not sent as flat dict."""
         request = JsonRpcRequest(
             method="agent.register",
-            params={"name": "test", "capabilities": ["python"]},
-        )
+            params={"name": "test", "capabilities": ["python"]})
 
         # Serialize to dict (what gets sent over wire)
         data = request.model_dump()

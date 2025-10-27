@@ -90,8 +90,7 @@ class TrainingAPIUser(HttpUser):
             "/api/v1/jsonrpc",
             json=request_data,
             headers=self.headers,
-            catch_response=True,
-        ) as response:
+            catch_response=True) as response:
             if response.status_code == 200:
                 result = response.json()
                 if "result" in result:
@@ -124,8 +123,7 @@ class TrainingAPIUser(HttpUser):
             json=request_data,
             headers=self.headers,
             catch_response=True,
-            name="/training.get_status",
-        ) as response:
+            name="/training.get_status") as response:
             if response.status_code == 200:
                 result = response.json()
                 if "result" in result or "error" in result:
@@ -159,8 +157,7 @@ class TrainingAPIUser(HttpUser):
             json=request_data,
             headers=self.headers,
             catch_response=True,
-            name="/training.export_trajectories",
-        ) as response:
+            name="/training.export_trajectories") as response:
             if response.status_code == 200:
                 response.success()
             else:
@@ -186,8 +183,7 @@ class TrainingAPIUser(HttpUser):
             json=request_data,
             headers=self.headers,
             catch_response=True,
-            name="/training.cancel",
-        ) as response:
+            name="/training.cancel") as response:
             if response.status_code == 200:
                 response.success()
             else:
@@ -226,8 +222,7 @@ class BurstTrainingUser(HttpUser):
             "/api/v1/jsonrpc",
             json=request_data,
             headers=self.headers,
-            name="/training.get_status (burst)",
-        )
+            name="/training.get_status (burst)")
 
 
 @events.test_start.add_listener
@@ -255,13 +250,13 @@ def on_test_stop(environment, **kwargs):
     print(f"  Total Requests: {total_requests}")
     print(f"  Total Failures: {total_failures}")
     print(f"  Failure Rate: {failure_rate:.2f}%")
-    print(f"  Average Response Time: {stats.total.avg_response_time:.1f}ms")
-    print(f"  Median Response Time: {stats.total.median_response_time:.1f}ms")
+    print(f"  Average Response Time: {stats.total.avg_response_time:.1f}, ms")
+    print(f"  Median Response Time: {stats.total.median_response_time:.1f}, ms")
     print(
-        f"  P95 Response Time: {stats.total.get_response_time_percentile(0.95):.1f}ms"
+        f"  P95 Response Time: {stats.total.get_response_time_percentile(0.95):.1f}, ms"
     )
     print(
-        f"  P99 Response Time: {stats.total.get_response_time_percentile(0.99):.1f}ms"
+        f"  P99 Response Time: {stats.total.get_response_time_percentile(0.99):.1f}, ms"
     )
     print(f"  Requests/sec: {stats.total.total_rps:.2f}")
 

@@ -23,8 +23,7 @@ async def test_db_engine():
     # Use in-memory SQLite for fast tests
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
-        echo=False,
-    )
+        echo=False)
 
     # Create all tables
     async with engine.begin() as conn:
@@ -45,8 +44,7 @@ async def init_test_db(test_db_engine):
     async_session = sessionmaker(
         test_db_engine,
         class_=AsyncSession,
-        expire_on_commit=False,
-    )
+        expire_on_commit=False)
 
     # Patch the SessionLocal to use test database
     with patch.object(connection, "SessionLocal", async_session):

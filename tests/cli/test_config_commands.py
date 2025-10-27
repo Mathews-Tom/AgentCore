@@ -29,12 +29,10 @@ def mock_config() -> Config:
         url="http://localhost:8001",
         timeout=30,
         retries=3,
-        verify_ssl=True,
-    )
+        verify_ssl=True)
     config.auth = AuthConfig(
         type="jwt",
-        token="test-token-12345",
-    )
+        token="test-token-12345")
     return config
 
 
@@ -91,8 +89,7 @@ class TestConfigShowCommand:
         """Test config show with error."""
         with patch(
             "agentcore_cli.commands.config.get_config",
-            side_effect=Exception("Config error"),
-        ):
+            side_effect=Exception("Config error")):
             result = runner.invoke(app, ["config", "show"])
 
         assert result.exit_code == 1
@@ -208,8 +205,7 @@ class TestConfigGetCommand:
         """Test get with error."""
         with patch(
             "agentcore_cli.commands.config.get_config",
-            side_effect=Exception("Config error"),
-        ):
+            side_effect=Exception("Config error")):
             result = runner.invoke(app, ["config", "get", "api.url"])
 
         assert result.exit_code == 1

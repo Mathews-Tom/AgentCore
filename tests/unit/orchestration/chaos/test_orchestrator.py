@@ -9,14 +9,12 @@ from agentcore.orchestration.chaos.models import (
     ExperimentStatus,
     FaultConfig,
     FaultType,
-    RecoveryStatus,
-)
+    RecoveryStatus)
 from agentcore.orchestration.chaos.orchestrator import ChaosOrchestrator
 from agentcore.orchestration.patterns.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
-    FaultToleranceCoordinator,
-)
+    FaultToleranceCoordinator)
 from agentcore.orchestration.patterns.saga import SagaOrchestrator
 
 
@@ -37,14 +35,12 @@ class TestChaosOrchestrator:
     def orchestrator(
         self,
         fault_tolerance_coordinator: FaultToleranceCoordinator,
-        saga_orchestrator: SagaOrchestrator,
-    ) -> ChaosOrchestrator:
+        saga_orchestrator: SagaOrchestrator) -> ChaosOrchestrator:
         """Create chaos orchestrator."""
         return ChaosOrchestrator(
             "test_orchestrator",
             fault_tolerance_coordinator=fault_tolerance_coordinator,
-            saga_orchestrator=saga_orchestrator,
-        )
+            saga_orchestrator=saga_orchestrator)
 
     @pytest.mark.asyncio
     async def test_create_experiment(self, orchestrator: ChaosOrchestrator) -> None:
@@ -57,10 +53,8 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=100,
-                    duration_seconds=1.0,
-                )
-            ],
-        )
+                    duration_seconds=1.0)
+            ])
 
         experiment_id = await orchestrator.create_experiment(scenario)
 
@@ -83,12 +77,10 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=100,
-                    duration_seconds=0.5,
-                )
+                    duration_seconds=0.5)
             ],
             max_recovery_time_seconds=10.0,
-            min_availability_percentage=95.0,
-        )
+            min_availability_percentage=95.0)
 
         experiment_id = await orchestrator.create_experiment(scenario)
         result = await orchestrator.run_experiment(experiment_id)
@@ -112,10 +104,8 @@ class TestChaosOrchestrator:
                 FaultConfig(
                     fault_type=FaultType.SERVICE_CRASH,
                     target_service="test_service",
-                    duration_seconds=0.5,
-                )
-            ],
-        )
+                    duration_seconds=0.5)
+            ])
 
         experiment_id = await orchestrator.create_experiment(scenario)
         result = await orchestrator.run_experiment(experiment_id)
@@ -136,10 +126,8 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.TIMEOUT,
                     target_service="test_service",
                     duration_seconds=0.5,
-                    intensity=1.0,
-                )
-            ],
-        )
+                    intensity=1.0)
+            ])
 
         experiment_id = await orchestrator.create_experiment(scenario)
         result = await orchestrator.run_experiment(experiment_id)
@@ -160,21 +148,17 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="service1",
                     latency_ms=100,
-                    duration_seconds=0.3,
-                ),
+                    duration_seconds=0.3),
                 FaultConfig(
                     fault_type=FaultType.SERVICE_CRASH,
                     target_service="service2",
-                    duration_seconds=0.3,
-                ),
+                    duration_seconds=0.3),
                 FaultConfig(
                     fault_type=FaultType.TIMEOUT,
                     target_service="service3",
                     duration_seconds=0.3,
-                    intensity=1.0,
-                ),
-            ],
-        )
+                    intensity=1.0),
+            ])
 
         experiment_id = await orchestrator.create_experiment(scenario)
         result = await orchestrator.run_experiment(experiment_id)
@@ -196,10 +180,8 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=100,
-                    duration_seconds=0.3,
-                )
-            ],
-        )
+                    duration_seconds=0.3)
+            ])
 
         experiment_id = await orchestrator.create_experiment(
             scenario, dry_run=True
@@ -221,8 +203,7 @@ class TestChaosOrchestrator:
             name="Test Benchmark",
             description="Test benchmark description",
             recovery_time_slo_seconds=30.0,
-            availability_slo_percentage=99.5,
-        )
+            availability_slo_percentage=99.5)
 
         assert benchmark_id is not None
 
@@ -248,10 +229,8 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=100,
-                    duration_seconds=0.3,
-                )
-            ],
-        )
+                    duration_seconds=0.3)
+            ])
 
         experiment_id = await orchestrator.create_experiment(scenario)
         result = await orchestrator.run_experiment(experiment_id)
@@ -278,10 +257,8 @@ class TestChaosOrchestrator:
                         fault_type=FaultType.NETWORK_LATENCY,
                         target_service=f"service{i}",
                         latency_ms=100,
-                        duration_seconds=0.3,
-                    )
-                ],
-            )
+                        duration_seconds=0.3)
+                ])
             for i in range(3)
         ]
 
@@ -310,10 +287,8 @@ class TestChaosOrchestrator:
                         fault_type=FaultType.NETWORK_LATENCY,
                         target_service=f"service{i}",
                         latency_ms=100,
-                        duration_seconds=0.3,
-                    )
-                ],
-            )
+                        duration_seconds=0.3)
+                ])
 
             experiment_id = await orchestrator.create_experiment(scenario)
             result = await orchestrator.run_experiment(experiment_id)
@@ -346,10 +321,8 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=100,
-                    duration_seconds=0.3,
-                )
-            ],
-        )
+                    duration_seconds=0.3)
+            ])
 
         experiment_id = await orchestrator.create_experiment(scenario)
         await orchestrator.run_experiment(experiment_id)
@@ -364,14 +337,12 @@ class TestChaosOrchestrator:
     async def test_experiment_validation(
         self,
         orchestrator: ChaosOrchestrator,
-        fault_tolerance_coordinator: FaultToleranceCoordinator,
-    ) -> None:
+        fault_tolerance_coordinator: FaultToleranceCoordinator) -> None:
         """Test experiment validation with recovery mechanisms."""
         # Register circuit breaker
         fault_tolerance_coordinator.register_circuit_breaker(
             "test_service",
-            CircuitBreakerConfig(failure_threshold=1),
-        )
+            CircuitBreakerConfig(failure_threshold=1))
 
         scenario = ChaosScenario(
             name="Validation Test",
@@ -381,13 +352,11 @@ class TestChaosOrchestrator:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=100,
-                    duration_seconds=0.3,
-                )
+                    duration_seconds=0.3)
             ],
             validate_circuit_breaker=True,
             validate_saga_compensation=True,
-            validate_retry_mechanism=True,
-        )
+            validate_retry_mechanism=True)
 
         experiment_id = await orchestrator.create_experiment(scenario)
         result = await orchestrator.run_experiment(experiment_id)

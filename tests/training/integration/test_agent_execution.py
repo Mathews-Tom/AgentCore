@@ -24,8 +24,7 @@ async def test_trajectory_collection_with_real_engine(init_test_db):
     agent_config = AgentConfig(
         agent_id="test-agent-integration",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
     # Create ReAct engine
     engine = ReActEngine(config=agent_config)
@@ -38,8 +37,7 @@ async def test_trajectory_collection_with_real_engine(init_test_db):
             engine=engine,
             max_concurrent=4,
             max_steps_per_trajectory=10,
-            timeout_seconds=10.0,
-        )
+            timeout_seconds=10.0)
 
         # Collect trajectories
         job_id = uuid4()
@@ -48,8 +46,7 @@ async def test_trajectory_collection_with_real_engine(init_test_db):
         trajectories = await collector.collect_trajectories(
             job_id=job_id,
             query=query,
-            n_trajectories=4,
-        )
+            n_trajectories=4)
 
         # Verify trajectories collected
         assert len(trajectories) == 4
@@ -75,8 +72,7 @@ async def test_trajectory_recorder_with_real_engine(init_test_db):
     agent_config = AgentConfig(
         agent_id="test-agent-recorder",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
     # Create ReAct engine
     engine = ReActEngine(config=agent_config)
@@ -92,8 +88,7 @@ async def test_trajectory_recorder_with_real_engine(init_test_db):
         input_data = {"goal": "Calculate 10 + 5", "max_iterations": 5}
         state = AgentExecutionState(
             agent_id=agent_config.agent_id,
-            status="running",
-        )
+            status="running")
 
         result, steps = await recorder.execute_with_recording(input_data, state)
 
@@ -132,8 +127,7 @@ async def test_end_to_end_trajectory_persistence(init_test_db):
         config=config,
         training_data=queries,
         total_iterations=100,
-        budget_usd=Decimal("50.00"),
-    )
+        budget_usd=Decimal("50.00"))
 
     async with get_session() as session:
         job_db = await TrainingJobRepository.create(session, job)
@@ -145,8 +139,7 @@ async def test_end_to_end_trajectory_persistence(init_test_db):
         agent_config = AgentConfig(
             agent_id="test-agent-e2e",
             philosophy="react",
-            model_config={"provider": "test", "model": "test-model"},
-        )
+            model_config={"provider": "test", "model": "test-model"})
 
         engine = ReActEngine(config=agent_config)
         await engine.initialize()
@@ -155,16 +148,14 @@ async def test_end_to_end_trajectory_persistence(init_test_db):
             collector = TrajectoryCollector(
                 agent_config=agent_config,
                 engine=engine,
-                max_concurrent=2,
-            )
+                max_concurrent=2)
 
             # Collect trajectories
             query = "What is 7 + 8?"
             trajectories = await collector.collect_trajectories(
                 job_id=job_id,
                 query=query,
-                n_trajectories=2,
-            )
+                n_trajectories=2)
 
             assert len(trajectories) == 2
 
@@ -206,8 +197,7 @@ async def test_parallel_trajectory_generation_performance(init_test_db):
     agent_config = AgentConfig(
         agent_id="test-agent-perf",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
     # Create ReAct engine
     engine = ReActEngine(config=agent_config)
@@ -218,8 +208,7 @@ async def test_parallel_trajectory_generation_performance(init_test_db):
             agent_config=agent_config,
             engine=engine,
             max_concurrent=8,
-            max_steps_per_trajectory=5,
-        )
+            max_steps_per_trajectory=5)
 
         job_id = uuid4()
         query = "Test query for performance"
@@ -229,8 +218,7 @@ async def test_parallel_trajectory_generation_performance(init_test_db):
         baseline_trajectories = await collector.collect_trajectories(
             job_id=job_id,
             query=query,
-            n_trajectories=1,
-        )
+            n_trajectories=1)
         baseline_time = time.time() - baseline_start
 
         assert len(baseline_trajectories) == 1
@@ -240,8 +228,7 @@ async def test_parallel_trajectory_generation_performance(init_test_db):
         parallel_trajectories = await collector.collect_trajectories(
             job_id=job_id,
             query=query,
-            n_trajectories=8,
-        )
+            n_trajectories=8)
         parallel_time = time.time() - parallel_start
 
         assert len(parallel_trajectories) == 8
@@ -253,14 +240,14 @@ async def test_parallel_trajectory_generation_performance(init_test_db):
 
         assert (
             parallel_time < max_acceptable_time
-        ), f"Parallel time {parallel_time:.2f}s exceeds 3x baseline {baseline_time:.2f}s"
+        ), f"Parallel time {parallel_time:.2f}, s exceeds 3x baseline {baseline_time:.2f}, s"
 
         # Log performance metrics
         print(f"\nPerformance Test Results:")
-        print(f"  Baseline (1 trajectory): {baseline_time:.3f}s")
-        print(f"  Parallel (8 trajectories): {parallel_time:.3f}s")
-        print(f"  Speedup: {(baseline_time * 8) / parallel_time:.2f}x")
-        print(f"  Target: < {max_acceptable_time:.3f}s (3x baseline or 10ms min)")
+        print(f"  Baseline (1 trajectory): {baseline_time:.3f}, s")
+        print(f"  Parallel (8 trajectories): {parallel_time:.3f}, s")
+        print(f"  Speedup: {(baseline_time * 8) / parallel_time:.2f}, x")
+        print(f"  Target: < {max_acceptable_time:.3f}, s (3x baseline or 10ms min)")
 
     finally:
         await engine.cleanup()
@@ -275,8 +262,7 @@ async def test_trajectory_collection_with_timeouts(init_test_db):
     agent_config = AgentConfig(
         agent_id="test-agent-timeout",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
     # Create mock engine that sometimes times out
     from agentcore.agent_runtime.engines.base import PhilosophyEngine
@@ -313,8 +299,7 @@ async def test_trajectory_collection_with_timeouts(init_test_db):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query="Test query",
-        n_trajectories=4,
-    )
+        n_trajectories=4)
 
     # Should get ~2 successful trajectories (odd indices)
     assert len(trajectories) >= 1
@@ -327,8 +312,7 @@ async def test_trajectory_steps_detail_capture(init_test_db):
     agent_config = AgentConfig(
         agent_id="test-agent-detail",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
     engine = ReActEngine(config=agent_config)
     await engine.initialize()
@@ -336,15 +320,13 @@ async def test_trajectory_steps_detail_capture(init_test_db):
     try:
         collector = TrajectoryCollector(
             agent_config=agent_config,
-            engine=engine,
-        )
+            engine=engine)
 
         job_id = uuid4()
         trajectories = await collector.collect_trajectories(
             job_id=job_id,
             query="Calculate 3 + 4",
-            n_trajectories=1,
-        )
+            n_trajectories=1)
 
         assert len(trajectories) == 1
         trajectory = trajectories[0]

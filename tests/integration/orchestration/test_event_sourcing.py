@@ -22,8 +22,7 @@ from agentcore.orchestration.patterns.saga import (
     CompensationStrategy,
     SagaDefinition,
     SagaStatus,
-    SagaStep,
-)
+    SagaStep)
 from agentcore.orchestration.state.integration import PersistentSagaOrchestrator
 from agentcore.orchestration.state.repository import WorkflowStateRepository
 from agentcore.orchestration.state.models import WorkflowStatus
@@ -40,8 +39,7 @@ from agentcore.orchestration.streams import (
     WorkflowFailedEvent,
     TaskCreatedEvent,
     TaskCompletedEvent,
-    TaskFailedEvent,
-)
+    TaskFailedEvent)
 
 
 class TestEventSourcingIntegration:
@@ -56,8 +54,7 @@ class TestEventSourcingIntegration:
         config = StreamConfig(
             stream_name="test:workflow:events",
             consumer_group_name="test-workflow-group",
-            consumer_name="test-workflow-consumer",
-        )
+            consumer_name="test-workflow-consumer")
 
         producer = StreamProducer(redis_client, config)
         consumer_group = ConsumerGroup("test-workflow-group", "test-workflow-consumer")
@@ -71,13 +68,11 @@ class TestEventSourcingIntegration:
                 SagaStep(name="step1", order=1, action_data={"task": "task1"}),
                 SagaStep(name="step2", order=2, action_data={"task": "task2"}),
             ],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="event_sourcing_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
@@ -88,23 +83,20 @@ class TestEventSourcingIntegration:
             workflow_version="1.0",
             orchestration_pattern="saga",
             total_tasks=len(saga.steps),
-            metadata={"event_sourced": True},
-        )
+            metadata={"event_sourced": True})
 
         await producer.publish(workflow_created_event)
 
         # Create execution
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"test": "event_sourcing"},
-        )
+            input_data={"test": "event_sourcing"})
 
         # Publish WorkflowStarted event
         workflow_started_event = WorkflowStartedEvent(
             workflow_id=saga.saga_id,
             execution_id=execution_id,
-            workflow_name=saga.name,
-        )
+            workflow_name=saga.name)
 
         await producer.publish(workflow_started_event)
 
@@ -115,8 +107,7 @@ class TestEventSourcingIntegration:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Publish TaskCreated events
         for step in saga.steps:
@@ -124,8 +115,7 @@ class TestEventSourcingIntegration:
                 task_id=step.step_id,
                 task_type=step.name,
                 workflow_id=saga.saga_id,
-                execution_id=execution_id,
-            )
+                execution_id=execution_id)
             await producer.publish(task_created_event)
 
         # Complete tasks and publish events
@@ -135,16 +125,14 @@ class TestEventSourcingIntegration:
                 execution_id=execution_id,
                 step_id=step.step_id,
                 status="completed",
-                result={"step": step.name, "completed": True},
-            )
+                result={"step": step.name, "completed": True})
 
             # Publish TaskCompleted event
             task_completed_event = TaskCompletedEvent(
                 task_id=step.step_id,
                 agent_id=f"agent_{idx}",
                 result_data={"step": step.name, "completed": True},
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
             await producer.publish(task_completed_event)
 
         # Complete workflow
@@ -154,16 +142,14 @@ class TestEventSourcingIntegration:
             current_step=2,
             completed_steps=[step.step_id for step in saga.steps],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Publish WorkflowCompleted event
         workflow_completed_event = WorkflowCompletedEvent(
             workflow_id=saga.saga_id,
             execution_id=execution_id,
             workflow_name=saga.name,
-            total_tasks_completed=len(saga.steps),
-        )
+            total_tasks_completed=len(saga.steps))
 
         await producer.publish(workflow_completed_event)
 
@@ -194,8 +180,7 @@ class TestEventSourcingIntegration:
         """Test reconstructing workflow state from event stream."""
         config = StreamConfig(
             stream_name="test:state:reconstruction",
-            consumer_group_name="test-reconstruction-group",
-        )
+            consumer_group_name="test-reconstruction-group")
 
         producer = StreamProducer(redis_client, config)
 
@@ -207,20 +192,17 @@ class TestEventSourcingIntegration:
                 SagaStep(name="step2", order=2),
                 SagaStep(name="step3", order=3),
             ],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="reconstruction_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"test": "reconstruction"},
-        )
+            input_data={"test": "reconstruction"})
 
         # Publish events as workflow progresses
         events_sequence = []
@@ -229,8 +211,7 @@ class TestEventSourcingIntegration:
         event1 = WorkflowStartedEvent(
             workflow_id=saga.saga_id,
             execution_id=execution_id,
-            workflow_name=saga.name,
-        )
+            workflow_name=saga.name)
         await producer.publish(event1)
         events_sequence.append(event1)
 
@@ -240,8 +221,7 @@ class TestEventSourcingIntegration:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Event 2-4: Task events for each step
         for idx, step in enumerate(saga.steps):
@@ -249,8 +229,7 @@ class TestEventSourcingIntegration:
                 task_id=step.step_id,
                 task_type=step.name,
                 workflow_id=saga.saga_id,
-                execution_id=execution_id,
-            )
+                execution_id=execution_id)
             await producer.publish(task_created)
             events_sequence.append(task_created)
 
@@ -258,15 +237,13 @@ class TestEventSourcingIntegration:
                 execution_id=execution_id,
                 step_id=step.step_id,
                 status="completed",
-                result={"step_index": idx},
-            )
+                result={"step_index": idx})
 
             task_completed = TaskCompletedEvent(
                 task_id=step.step_id,
                 agent_id=f"agent_{idx}",
                 result_data={"step_index": idx},
-                execution_time_ms=50,
-            )
+                execution_time_ms=50)
             await producer.publish(task_completed)
             events_sequence.append(task_completed)
 
@@ -277,15 +254,13 @@ class TestEventSourcingIntegration:
             current_step=3,
             completed_steps=[step.step_id for step in saga.steps],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         event_final = WorkflowCompletedEvent(
             workflow_id=saga.saga_id,
             execution_id=execution_id,
             workflow_name=saga.name,
-            total_tasks_completed=3,
-        )
+            total_tasks_completed=3)
         await producer.publish(event_final)
         events_sequence.append(event_final)
 
@@ -314,8 +289,7 @@ class TestEventSourcingIntegration:
         """Test replaying events to rebuild state."""
         config = StreamConfig(
             stream_name="test:event:replay",
-            consumer_group_name="test-replay-group",
-        )
+            consumer_group_name="test-replay-group")
 
         producer = StreamProducer(redis_client, config)
 
@@ -323,34 +297,29 @@ class TestEventSourcingIntegration:
         saga = SagaDefinition(
             name="replayable_workflow",
             steps=[SagaStep(name="step1", order=1)],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="replay_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"test": "replay"},
-        )
+            input_data={"test": "replay"})
 
         # Publish sequence of events
         events = [
             WorkflowStartedEvent(
                 workflow_id=saga.saga_id,
                 execution_id=execution_id,
-                workflow_name=saga.name,
-            ),
+                workflow_name=saga.name),
             TaskCreatedEvent(
                 task_id=saga.steps[0].step_id,
                 task_type="step1",
                 workflow_id=saga.saga_id,
-                execution_id=execution_id,
-            ),
+                execution_id=execution_id),
         ]
 
         for event in events:
@@ -363,23 +332,20 @@ class TestEventSourcingIntegration:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"completed": True},
-        )
+            result={"completed": True})
 
         # Publish completion event
         completion_event = TaskCompletedEvent(
             task_id=saga.steps[0].step_id,
             agent_id="agent_1",
             result_data={"completed": True},
-            execution_time_ms=100,
-        )
+            execution_time_ms=100)
         await producer.publish(completion_event)
 
         await orchestrator.update_execution_state(
@@ -388,8 +354,7 @@ class TestEventSourcingIntegration:
             current_step=1,
             completed_steps=[saga.steps[0].step_id],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify state can be queried
         async with db_session_factory() as session:
@@ -419,21 +384,18 @@ class TestEventSourcingIntegration:
                 SagaStep(name="step1", order=1),
                 SagaStep(name="step2", order=2),
             ],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="audit_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
             input_data={"audit_test": True},
-            metadata={"user": "test_user", "session_id": "sess_123"},
-        )
+            metadata={"user": "test_user", "session_id": "sess_123"})
 
         # Execute with state transitions
         transitions = [
@@ -444,8 +406,7 @@ class TestEventSourcingIntegration:
                 2,
                 [step.step_id for step in saga.steps],
                 [],
-                [],
-            ),
+                []),
         ]
 
         for status, current_step, completed, failed, compensated in transitions:
@@ -455,8 +416,7 @@ class TestEventSourcingIntegration:
                 current_step=current_step,
                 completed_steps=completed,
                 failed_steps=failed,
-                compensated_steps=compensated,
-            )
+                compensated_steps=compensated)
 
             # Update step states
             if completed:
@@ -465,8 +425,7 @@ class TestEventSourcingIntegration:
                         execution_id=execution_id,
                         step_id=step_id,
                         status="completed",
-                        result={"completed": True},
-                    )
+                        result={"completed": True})
 
         # Verify complete audit trail
         async with db_session_factory() as session:
@@ -499,13 +458,11 @@ class TestEventSourcingIntegration:
         saga = SagaDefinition(
             name="cqrs_workflow",
             steps=[SagaStep(name="step1", order=1)],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="cqrs_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         # Command: Register saga
         await orchestrator.register_saga(saga)
@@ -513,8 +470,7 @@ class TestEventSourcingIntegration:
         # Command: Create execution
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"cqrs": True},
-        )
+            input_data={"cqrs": True})
 
         # Command: Update state
         await orchestrator.update_execution_state(
@@ -523,8 +479,7 @@ class TestEventSourcingIntegration:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Queries: Read workflow state (should not modify state)
         async with db_session_factory() as session:
@@ -560,8 +515,7 @@ class TestEventSourcingIntegration:
         """Test event ordering guarantees and consistency."""
         config = StreamConfig(
             stream_name="test:event:ordering",
-            consumer_group_name="test-ordering-group",
-        )
+            consumer_group_name="test-ordering-group")
 
         producer = StreamProducer(redis_client, config)
 
@@ -572,28 +526,24 @@ class TestEventSourcingIntegration:
                 SagaStep(name="step2", order=2),
                 SagaStep(name="step3", order=3),
             ],
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="ordering_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"test": "ordering"},
-        )
+            input_data={"test": "ordering"})
 
         # Publish events in strict order
         ordered_events = [
             WorkflowStartedEvent(
                 workflow_id=saga.saga_id,
                 execution_id=execution_id,
-                workflow_name=saga.name,
-            ),
+                workflow_name=saga.name),
         ]
 
         for step in saga.steps:
@@ -602,8 +552,7 @@ class TestEventSourcingIntegration:
                     task_id=step.step_id,
                     task_type=step.name,
                     workflow_id=saga.saga_id,
-                    execution_id=execution_id,
-                )
+                    execution_id=execution_id)
             )
 
         # Publish all events
@@ -625,8 +574,7 @@ class TestEventSourcingIntegration:
         """Test event sourcing correctly captures failures and compensation."""
         config = StreamConfig(
             stream_name="test:failure:events",
-            consumer_group_name="test-failure-group",
-        )
+            consumer_group_name="test-failure-group")
 
         producer = StreamProducer(redis_client, config)
 
@@ -636,29 +584,24 @@ class TestEventSourcingIntegration:
                 SagaStep(
                     name="step1",
                     order=1,
-                    compensation_data={"action": "undo"},
-                ),
+                    compensation_data={"action": "undo"}),
                 SagaStep(
                     name="step2",
                     order=2,
-                    compensation_data={"action": "undo"},
-                ),
+                    compensation_data={"action": "undo"}),
             ],
             compensation_strategy=CompensationStrategy.BACKWARD,
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="failure_event_orchestrator",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"test": "failure_events"},
-        )
+            input_data={"test": "failure_events"})
 
         # Start workflow
         await orchestrator.update_execution_state(
@@ -667,16 +610,14 @@ class TestEventSourcingIntegration:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Step 1 succeeds
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"success": True},
-        )
+            result={"success": True})
 
         # Publish success event
         await producer.publish(
@@ -684,8 +625,7 @@ class TestEventSourcingIntegration:
                 task_id=saga.steps[0].step_id,
                 agent_id="agent_1",
                 result_data={"success": True},
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
         )
 
         # Step 2 fails
@@ -693,8 +633,7 @@ class TestEventSourcingIntegration:
             execution_id=execution_id,
             step_id=saga.steps[1].step_id,
             status="failed",
-            error_message="Step 2 failed",
-        )
+            error_message="Step 2 failed")
 
         # Publish failure event
         await producer.publish(
@@ -703,8 +642,7 @@ class TestEventSourcingIntegration:
                 agent_id="agent_2",
                 error_message="Step 2 failed",
                 error_type="RuntimeError",
-                retry_count=0,
-            )
+                retry_count=0)
         )
 
         # Publish workflow failed event
@@ -714,8 +652,7 @@ class TestEventSourcingIntegration:
                 execution_id=execution_id,
                 workflow_name=saga.name,
                 error_message="Step 2 failed",
-                failed_task_id=saga.steps[1].step_id,
-            )
+                failed_task_id=saga.steps[1].step_id)
         )
 
         # Update execution to failed status after failure events
@@ -726,8 +663,7 @@ class TestEventSourcingIntegration:
             completed_steps=[saga.steps[0].step_id],
             failed_steps=[saga.steps[1].step_id],
             compensated_steps=[],
-            error_message="Step 2 failed",
-        )
+            error_message="Step 2 failed")
 
         # Verify failure events captured
         async with db_session_factory() as session:

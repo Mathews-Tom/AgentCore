@@ -28,8 +28,7 @@ def checkpoint_manager(temp_checkpoint_dir: Path) -> CheckpointManager:
     return CheckpointManager(
         checkpoint_interval=10,
         max_checkpoints=5,
-        storage_path=temp_checkpoint_dir,
-    )
+        storage_path=temp_checkpoint_dir)
 
 
 # Test initialization
@@ -40,8 +39,7 @@ def test_checkpoint_manager_initialization(temp_checkpoint_dir: Path) -> None:
     manager = CheckpointManager(
         checkpoint_interval=5,
         max_checkpoints=3,
-        storage_path=temp_checkpoint_dir,
-    )
+        storage_path=temp_checkpoint_dir)
 
     assert manager.checkpoint_interval == 5
     assert manager.max_checkpoints == 3
@@ -95,8 +93,7 @@ def test_save_checkpoint(checkpoint_manager: CheckpointManager) -> None:
         iteration=iteration,
         policy_data=policy_data,
         validation_score=validation_score,
-        metrics=metrics,
-    )
+        metrics=metrics)
 
     assert checkpoint.checkpoint_id is not None
     assert checkpoint.agent_id == agent_id
@@ -118,16 +115,14 @@ def test_save_checkpoint_without_metrics(checkpoint_manager: CheckpointManager) 
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "test"},
-        validation_score=0.75,
-    )
+        validation_score=0.75)
 
     assert checkpoint.metrics == {}
 
 
 def test_save_checkpoint_persists_to_disk(
     checkpoint_manager: CheckpointManager,
-    temp_checkpoint_dir: Path,
-) -> None:
+    temp_checkpoint_dir: Path) -> None:
     """Test checkpoint is persisted to disk."""
     job_id = uuid4()
 
@@ -136,8 +131,7 @@ def test_save_checkpoint_persists_to_disk(
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "test"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     checkpoint_file = temp_checkpoint_dir / f"{checkpoint.checkpoint_id}.json"
     assert checkpoint_file.exists()
@@ -155,8 +149,7 @@ def test_load_checkpoint(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "test"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     loaded_checkpoint = checkpoint_manager.load_checkpoint(saved_checkpoint.checkpoint_id)  # type: ignore
 
@@ -168,8 +161,7 @@ def test_load_checkpoint(checkpoint_manager: CheckpointManager) -> None:
 
 def test_load_checkpoint_from_disk(
     checkpoint_manager: CheckpointManager,
-    temp_checkpoint_dir: Path,
-) -> None:
+    temp_checkpoint_dir: Path) -> None:
     """Test checkpoint loading from disk."""
     job_id = uuid4()
 
@@ -178,8 +170,7 @@ def test_load_checkpoint_from_disk(
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "test"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     # Clear memory cache
     checkpoint_manager._checkpoints.clear()
@@ -215,8 +206,7 @@ def test_get_best_checkpoint(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "v1"},
-        validation_score=0.7,
-    )
+        validation_score=0.7)
 
     best_checkpoint = checkpoint_manager.save_checkpoint(
         agent_id="test-agent",
@@ -231,8 +221,7 @@ def test_get_best_checkpoint(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=30,
         policy_data={"prompt": "v3"},
-        validation_score=0.75,
-    )
+        validation_score=0.75)
 
     loaded_best = checkpoint_manager.get_best_checkpoint(job_id)
 
@@ -264,16 +253,14 @@ def test_get_checkpoints_for_job(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "v1"},
-        validation_score=0.7,
-    )
+        validation_score=0.7)
 
     checkpoint_manager.save_checkpoint(
         agent_id="test-agent",
         job_id=job_id,
         iteration=20,
         policy_data={"prompt": "v2"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     # Save checkpoint for different job
     checkpoint_manager.save_checkpoint(
@@ -281,8 +268,7 @@ def test_get_checkpoints_for_job(checkpoint_manager: CheckpointManager) -> None:
         job_id=other_job_id,
         iteration=10,
         policy_data={"prompt": "other"},
-        validation_score=0.6,
-    )
+        validation_score=0.6)
 
     job_checkpoints = checkpoint_manager.get_checkpoints_for_job(job_id)
 
@@ -300,24 +286,21 @@ def test_get_latest_checkpoint(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "v1"},
-        validation_score=0.7,
-    )
+        validation_score=0.7)
 
     latest_checkpoint = checkpoint_manager.save_checkpoint(
         agent_id="test-agent",
         job_id=job_id,
         iteration=30,
         policy_data={"prompt": "v3"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     checkpoint_manager.save_checkpoint(
         agent_id="test-agent",
         job_id=job_id,
         iteration=20,
         policy_data={"prompt": "v2"},
-        validation_score=0.75,
-    )
+        validation_score=0.75)
 
     loaded_latest = checkpoint_manager.get_latest_checkpoint(job_id)
 
@@ -351,8 +334,7 @@ def test_automatic_cleanup(checkpoint_manager: CheckpointManager) -> None:
             job_id=job_id,
             iteration=(i + 1) * 10,
             policy_data={"prompt": f"v{i+1}"},
-            validation_score=score,
-        )
+            validation_score=score)
 
     # Should keep best 5: 0.9, 0.8, 0.75, 0.7, 0.65
     remaining_checkpoints = checkpoint_manager.get_checkpoints_for_job(job_id)
@@ -374,8 +356,7 @@ def test_cleanup_respects_max_checkpoints(temp_checkpoint_dir: Path) -> None:
     manager = CheckpointManager(
         checkpoint_interval=10,
         max_checkpoints=3,
-        storage_path=temp_checkpoint_dir,
-    )
+        storage_path=temp_checkpoint_dir)
 
     job_id = uuid4()
 
@@ -386,8 +367,7 @@ def test_cleanup_respects_max_checkpoints(temp_checkpoint_dir: Path) -> None:
             job_id=job_id,
             iteration=(i + 1) * 10,
             policy_data={"prompt": f"v{i+1}"},
-            validation_score=0.5 + i * 0.1,
-        )
+            validation_score=0.5 + i * 0.1)
 
     remaining_checkpoints = manager.get_checkpoints_for_job(job_id)
 
@@ -409,8 +389,7 @@ def test_resume_from_checkpoint(checkpoint_manager: CheckpointManager) -> None:
         iteration=50,
         policy_data=policy_data,
         validation_score=0.85,
-        metrics=metrics,
-    )
+        metrics=metrics)
 
     iteration, loaded_policy, loaded_metrics = checkpoint_manager.resume_from_checkpoint(
         checkpoint.checkpoint_id  # type: ignore
@@ -443,8 +422,7 @@ def test_get_checkpoint_count(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "v1"},
-        validation_score=0.7,
-    )
+        validation_score=0.7)
 
     assert checkpoint_manager.get_checkpoint_count(job_id) == 1
 
@@ -453,16 +431,14 @@ def test_get_checkpoint_count(checkpoint_manager: CheckpointManager) -> None:
         job_id=job_id,
         iteration=20,
         policy_data={"prompt": "v2"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     assert checkpoint_manager.get_checkpoint_count(job_id) == 2
 
 
 def test_clear_checkpoints(
     checkpoint_manager: CheckpointManager,
-    temp_checkpoint_dir: Path,
-) -> None:
+    temp_checkpoint_dir: Path) -> None:
     """Test clearing all checkpoints for a job."""
     job_id = uuid4()
 
@@ -472,16 +448,14 @@ def test_clear_checkpoints(
         job_id=job_id,
         iteration=10,
         policy_data={"prompt": "v1"},
-        validation_score=0.7,
-    )
+        validation_score=0.7)
 
     checkpoint_2 = checkpoint_manager.save_checkpoint(
         agent_id="test-agent",
         job_id=job_id,
         iteration=20,
         policy_data={"prompt": "v2"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     # Clear checkpoints
     checkpoint_manager.clear_checkpoints(job_id)
@@ -496,8 +470,7 @@ def test_clear_checkpoints(
 
 
 def test_clear_checkpoints_does_not_affect_other_jobs(
-    checkpoint_manager: CheckpointManager,
-) -> None:
+    checkpoint_manager: CheckpointManager) -> None:
     """Test clearing checkpoints for one job doesn't affect others."""
     job_id_1 = uuid4()
     job_id_2 = uuid4()
@@ -507,16 +480,14 @@ def test_clear_checkpoints_does_not_affect_other_jobs(
         job_id=job_id_1,
         iteration=10,
         policy_data={"prompt": "v1"},
-        validation_score=0.7,
-    )
+        validation_score=0.7)
 
     checkpoint_manager.save_checkpoint(
         agent_id="test-agent",
         job_id=job_id_2,
         iteration=10,
         policy_data={"prompt": "v2"},
-        validation_score=0.8,
-    )
+        validation_score=0.8)
 
     # Clear job_id_1 checkpoints
     checkpoint_manager.clear_checkpoints(job_id_1)

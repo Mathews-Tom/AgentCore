@@ -8,8 +8,7 @@ from agentcore.agent_runtime.services.agent_lifecycle import (
     AgentLifecycleError,
     AgentLifecycleManager,
     AgentNotFoundException,
-    AgentStateError,
-)
+    AgentStateError)
 from agentcore.agent_runtime.services.container_manager import ContainerManager
 
 
@@ -43,15 +42,13 @@ def agent_config() -> AgentConfig:
     """Create test agent configuration."""
     return AgentConfig(
         agent_id="test-agent-001",
-        philosophy=AgentPhilosophy.REACT,
-    )
+        philosophy=AgentPhilosophy.REACT)
 
 
 @pytest.mark.asyncio
 async def test_create_agent(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test agent creation."""
     state = await lifecycle_manager.create_agent(agent_config)
 
@@ -63,8 +60,7 @@ async def test_create_agent(
 @pytest.mark.asyncio
 async def test_create_duplicate_agent(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test creating duplicate agent fails."""
     await lifecycle_manager.create_agent(agent_config)
 
@@ -75,8 +71,7 @@ async def test_create_duplicate_agent(
 @pytest.mark.asyncio
 async def test_start_agent(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test starting agent."""
     state = await lifecycle_manager.create_agent(agent_config)
     assert state.status == "initializing"
@@ -89,8 +84,7 @@ async def test_start_agent(
 
 @pytest.mark.asyncio
 async def test_start_nonexistent_agent(
-    lifecycle_manager: AgentLifecycleManager,
-) -> None:
+    lifecycle_manager: AgentLifecycleManager) -> None:
     """Test starting nonexistent agent fails."""
     with pytest.raises(AgentNotFoundException):
         await lifecycle_manager.start_agent("nonexistent-agent")
@@ -99,8 +93,7 @@ async def test_start_nonexistent_agent(
 @pytest.mark.asyncio
 async def test_pause_agent(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test pausing agent."""
     await lifecycle_manager.create_agent(agent_config)
     await lifecycle_manager.start_agent(agent_config.agent_id)
@@ -114,8 +107,7 @@ async def test_pause_agent(
 @pytest.mark.asyncio
 async def test_pause_agent_invalid_state(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test pausing agent in invalid state fails."""
     await lifecycle_manager.create_agent(agent_config)
 
@@ -126,8 +118,7 @@ async def test_pause_agent_invalid_state(
 @pytest.mark.asyncio
 async def test_terminate_agent(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test terminating agent."""
     await lifecycle_manager.create_agent(agent_config)
     await lifecycle_manager.start_agent(agent_config.agent_id)
@@ -141,15 +132,13 @@ async def test_terminate_agent(
 
 @pytest.mark.asyncio
 async def test_list_agents(
-    lifecycle_manager: AgentLifecycleManager,
-) -> None:
+    lifecycle_manager: AgentLifecycleManager) -> None:
     """Test listing agents."""
     # Create multiple agents
     for i in range(3):
         config = AgentConfig(
             agent_id=f"test-agent-{i}",
-            philosophy=AgentPhilosophy.REACT,
-        )
+            philosophy=AgentPhilosophy.REACT)
         await lifecycle_manager.create_agent(config)
 
     agents = await lifecycle_manager.list_agents()
@@ -159,8 +148,7 @@ async def test_list_agents(
 @pytest.mark.asyncio
 async def test_save_and_restore_checkpoint(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test checkpoint save and restore."""
     await lifecycle_manager.create_agent(agent_config)
 
@@ -176,8 +164,7 @@ async def test_save_and_restore_checkpoint(
 @pytest.mark.asyncio
 async def test_update_agent_metrics(
     lifecycle_manager: AgentLifecycleManager,
-    agent_config: AgentConfig,
-) -> None:
+    agent_config: AgentConfig) -> None:
     """Test updating agent metrics."""
     await lifecycle_manager.create_agent(agent_config)
 

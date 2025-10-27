@@ -38,8 +38,7 @@ import shutil
 # )
 from agentcore.training.models import (
     TrainingJob,
-    GRPOConfig,
-)
+    GRPOConfig)
 
 
 @pytest.fixture
@@ -65,11 +64,9 @@ def training_job() -> TrainingJob:
         config=GRPOConfig(
             n_iterations=100,
             batch_size=16,
-            checkpoint_interval=10,
-        ),
+            checkpoint_interval=10),
         training_data=[],
-        status="running",
-    )
+        status="running")
 
 
 class TestCheckpointRecovery:
@@ -79,8 +76,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_creation(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test basic checkpoint creation."""
         job_id = training_job.job_id
         iteration = 10
@@ -93,8 +89,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=iteration,
             policy_state=policy_state,
-            metrics=metrics,
-        )
+            metrics=metrics)
 
         # Verify checkpoint was created
         assert checkpoint.checkpoint_id is not None
@@ -111,8 +106,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_restoration(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test checkpoint restoration after simulated failure."""
         job_id = training_job.job_id
 
@@ -122,8 +116,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=10,
             policy_state=policy_state_v1,
-            metrics={"train_loss": 0.8},
-        )
+            metrics={"train_loss": 0.8})
 
         # Create second checkpoint (better metrics)
         policy_state_v2 = {"weights": [0.15, 0.25, 0.35]}
@@ -131,8 +124,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=20,
             policy_state=policy_state_v2,
-            metrics={"train_loss": 0.5},
-        )
+            metrics={"train_loss": 0.5})
 
         # Simulate failure and restore from checkpoint2
         restored_checkpoint = await checkpoint_manager.load_checkpoint(
@@ -149,8 +141,7 @@ class TestCheckpointRecovery:
     async def test_best_checkpoint_tracking(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test that best checkpoint is tracked based on metrics."""
         job_id = training_job.job_id
 
@@ -162,8 +153,7 @@ class TestCheckpointRecovery:
                 job_id=job_id,
                 iteration=(i + 1) * 10,
                 policy_state={"weights": [0.1 * (i + 1)]},
-                metrics={"train_loss": loss, "validation_accuracy": 1.0 - loss},
-            )
+                metrics={"train_loss": loss, "validation_accuracy": 1.0 - loss})
             checkpoints.append(checkpoint)
 
         # Get best checkpoint (lowest loss = 0.4 at iteration 50)
@@ -179,8 +169,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_cleanup(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test checkpoint cleanup to save storage space."""
         job_id = training_job.job_id
 
@@ -191,8 +180,7 @@ class TestCheckpointRecovery:
                 job_id=job_id,
                 iteration=(i + 1) * 10,
                 policy_state={"weights": [i]},
-                metrics={"train_loss": 0.9 - (i * 0.05)},
-            )
+                metrics={"train_loss": 0.9 - (i * 0.05)})
             checkpoint_ids.append(checkpoint.checkpoint_id)
 
         # Verify all checkpoints exist
@@ -203,8 +191,7 @@ class TestCheckpointRecovery:
         await checkpoint_manager.cleanup_old_checkpoints(
             job_id=job_id,
             keep_last_n=3,
-            keep_best=True,
-        )
+            keep_best=True)
 
         # Verify cleanup
         remaining_checkpoints = await checkpoint_manager.list_checkpoints(job_id)
@@ -214,8 +201,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_versioning(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test checkpoint versioning and history."""
         job_id = training_job.job_id
 
@@ -226,8 +212,7 @@ class TestCheckpointRecovery:
                 job_id=job_id,
                 iteration=iteration,
                 policy_state={"weights": [iteration]},
-                metrics={"iteration": iteration},
-            )
+                metrics={"iteration": iteration})
 
         # List all checkpoints for job
         all_checkpoints = await checkpoint_manager.list_checkpoints(job_id)
@@ -239,8 +224,7 @@ class TestCheckpointRecovery:
         # Get checkpoint at specific iteration
         checkpoint_at_30 = await checkpoint_manager.get_checkpoint_at_iteration(
             job_id=job_id,
-            iteration=30,
-        )
+            iteration=30)
 
         assert checkpoint_at_30 is not None
         assert checkpoint_at_30.iteration == 30
@@ -251,8 +235,7 @@ class TestCheckpointRecovery:
         self,
         checkpoint_manager: CheckpointManager,
         training_job: TrainingJob,
-        checkpoint_dir: Path,
-    ) -> None:
+        checkpoint_dir: Path) -> None:
         """Test that checkpoint metadata is persisted correctly."""
         job_id = training_job.job_id
 
@@ -261,8 +244,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=50,
             policy_state={"weights": [1, 2, 3]},
-            metrics={"train_loss": 0.3, "validation_accuracy": 0.85},
-        )
+            metrics={"train_loss": 0.3, "validation_accuracy": 0.85})
 
         # Create new checkpoint manager instance (simulates restart)
         new_manager = CheckpointManager(base_path=checkpoint_dir)
@@ -282,8 +264,7 @@ class TestCheckpointRecovery:
     async def test_incremental_checkpoint_saving(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test incremental checkpoint saving based on checkpoint_interval."""
         job_id = training_job.job_id
         checkpoint_interval = 10
@@ -298,8 +279,7 @@ class TestCheckpointRecovery:
                     job_id=job_id,
                     iteration=iteration,
                     policy_state={"iteration": iteration},
-                    metrics={"loss": 1.0 - (iteration * 0.01)},
-                )
+                    metrics={"loss": 1.0 - (iteration * 0.01)})
                 checkpoints_created.append(checkpoint)
 
         # Verify correct number of checkpoints (50 / 10 = 5)
@@ -312,8 +292,7 @@ class TestCheckpointRecovery:
     async def test_resume_training_from_checkpoint(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test resuming training from a specific checkpoint."""
         job_id = training_job.job_id
 
@@ -330,8 +309,7 @@ class TestCheckpointRecovery:
                 job_id=job_id,
                 iteration=iteration,
                 policy_state=policy_state.copy(),
-                metrics={"iteration": iteration},
-            )
+                metrics={"iteration": iteration})
 
         # Simulate failure at iteration 35
         # Resume from iteration 30
@@ -339,8 +317,7 @@ class TestCheckpointRecovery:
         # Phase 2: Resume training
         resume_checkpoint = await checkpoint_manager.get_checkpoint_at_iteration(
             job_id=job_id,
-            iteration=30,
-        )
+            iteration=30)
 
         assert resume_checkpoint is not None
 
@@ -356,8 +333,7 @@ class TestCheckpointRecovery:
                 job_id=job_id,
                 iteration=iteration,
                 policy_state=resumed_policy_state.copy(),
-                metrics={"iteration": iteration},
-            )
+                metrics={"iteration": iteration})
 
         # Verify training continued correctly
         all_checkpoints = await checkpoint_manager.list_checkpoints(job_id)
@@ -367,8 +343,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_size_tracking(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test that checkpoint sizes are tracked."""
         job_id = training_job.job_id
 
@@ -382,8 +357,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=10,
             policy_state=large_policy_state,
-            metrics={},
-        )
+            metrics={})
 
         # Verify checkpoint has size information
         assert checkpoint.size_bytes is not None
@@ -397,8 +371,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_validation(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test checkpoint validation and corruption detection."""
         job_id = training_job.job_id
 
@@ -407,8 +380,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=10,
             policy_state={"weights": [1, 2, 3]},
-            metrics={"loss": 0.5},
-        )
+            metrics={"loss": 0.5})
 
         # Validate checkpoint
         is_valid = await checkpoint_manager.validate_checkpoint(
@@ -430,8 +402,7 @@ class TestCheckpointRecovery:
     @pytest.mark.asyncio
     async def test_multiple_jobs_checkpoint_isolation(
         self,
-        checkpoint_manager: CheckpointManager,
-    ) -> None:
+        checkpoint_manager: CheckpointManager) -> None:
         """Test that checkpoints from different jobs are isolated."""
         job1_id = uuid4()
         job2_id = uuid4()
@@ -442,8 +413,7 @@ class TestCheckpointRecovery:
                 job_id=job1_id,
                 iteration=iteration,
                 policy_state={"job": 1},
-                metrics={},
-            )
+                metrics={})
 
         # Create checkpoints for job 2
         for iteration in [10, 20, 30]:
@@ -451,8 +421,7 @@ class TestCheckpointRecovery:
                 job_id=job2_id,
                 iteration=iteration,
                 policy_state={"job": 2},
-                metrics={},
-            )
+                metrics={})
 
         # Verify isolation
         job1_checkpoints = await checkpoint_manager.list_checkpoints(job1_id)
@@ -469,8 +438,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_deletion(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test explicit checkpoint deletion."""
         job_id = training_job.job_id
 
@@ -479,8 +447,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=10,
             policy_state={"weights": [1]},
-            metrics={},
-        )
+            metrics={})
 
         checkpoint_id = checkpoint.checkpoint_id
 
@@ -499,8 +466,7 @@ class TestCheckpointRecovery:
     async def test_checkpoint_recovery_after_partial_failure(
         self,
         checkpoint_manager: CheckpointManager,
-        training_job: TrainingJob,
-    ) -> None:
+        training_job: TrainingJob) -> None:
         """Test recovery after partial checkpoint write failure."""
         job_id = training_job.job_id
 
@@ -509,8 +475,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=10,
             policy_state={"weights": [1, 2, 3]},
-            metrics={"loss": 0.5},
-        )
+            metrics={"loss": 0.5})
 
         # Simulate partial failure during second checkpoint
         # (In reality, this would be handled by atomic writes)
@@ -521,8 +486,7 @@ class TestCheckpointRecovery:
             job_id=job_id,
             iteration=20,
             policy_state={"weights": [1.1, 2.1, 3.1]},
-            metrics={"loss": 0.4},
-        )
+            metrics={"loss": 0.4})
 
         # Get latest valid checkpoint
         latest = await checkpoint_manager.get_latest_checkpoint(job_id)

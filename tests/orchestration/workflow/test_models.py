@@ -12,8 +12,7 @@ from orchestration.workflow.models import (
     TaskNode,
     WorkflowDefinition,
     WorkflowExecution,
-    WorkflowStatus,
-)
+    WorkflowStatus)
 
 
 def test_task_node_creation() -> None:
@@ -21,8 +20,7 @@ def test_task_node_creation() -> None:
     node = TaskNode(
         node_id="task1",
         agent_role="researcher",
-        timeout_seconds=300,
-    )
+        timeout_seconds=300)
 
     assert node.node_id == "task1"
     assert node.agent_role == "researcher"
@@ -36,8 +34,7 @@ def test_task_node_with_dependencies() -> None:
     node = TaskNode(
         node_id="task2",
         agent_role="analyzer",
-        depends_on=["task1"],
-    )
+        depends_on=["task1"])
 
     assert node.depends_on == ["task1"]
 
@@ -56,8 +53,7 @@ def test_workflow_definition() -> None:
     """Test workflow definition creation."""
     workflow = WorkflowDefinition(
         name="test_workflow",
-        version="1.0.0",
-    )
+        version="1.0.0")
 
     assert workflow.name == "test_workflow"
     assert workflow.version == "1.0.0"
@@ -69,8 +65,7 @@ def test_workflow_execution() -> None:
     workflow_id = uuid4()
     execution = WorkflowExecution(
         workflow_id=workflow_id,
-        status=WorkflowStatus.PLANNING,
-    )
+        status=WorkflowStatus.PLANNING)
 
     assert execution.workflow_id == workflow_id
     assert execution.status == WorkflowStatus.PLANNING

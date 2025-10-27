@@ -10,14 +10,12 @@ from agentcore.a2a_protocol.models.agent import (
     AgentEndpoint,
     AgentRegistrationRequest,
     AuthenticationType,
-    EndpointType,
-)
+    EndpointType)
 from agentcore.a2a_protocol.models.jsonrpc import MessageEnvelope
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
 from agentcore.a2a_protocol.services.message_router import (
     MessageRouter,
-    RoutingStrategy,
-)
+    RoutingStrategy)
 
 
 class TestMessageRoutingReasoning:
@@ -41,8 +39,7 @@ class TestMessageRoutingReasoning:
             endpoints=[
                 AgentEndpoint(url="https://agent1.com/api", type=EndpointType.HTTPS)
             ],
-            authentication=AgentAuthentication(type=AuthenticationType.NONE),
-        )
+            authentication=AgentAuthentication(type=AuthenticationType.NONE))
 
         # Agent 2: Reasoning support
         agent2 = AgentCard(
@@ -53,8 +50,7 @@ class TestMessageRoutingReasoning:
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             supports_bounded_reasoning=True,
-            reasoning_config={"max_iterations": 10, "chunk_size": 16384},
-        )
+            reasoning_config={"max_iterations": 10, "chunk_size": 16384})
 
         # Agent 3: Reasoning support
         agent3 = AgentCard(
@@ -64,8 +60,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://agent3.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         # Agent 4: No reasoning support
         agent4 = AgentCard(
@@ -74,8 +69,7 @@ class TestMessageRoutingReasoning:
             endpoints=[
                 AgentEndpoint(url="https://agent4.com/api", type=EndpointType.HTTPS)
             ],
-            authentication=AgentAuthentication(type=AuthenticationType.NONE),
-        )
+            authentication=AgentAuthentication(type=AuthenticationType.NONE))
 
         # Register all agents
         for agent in [agent1, agent2, agent3, agent4]:
@@ -95,8 +89,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://a.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         agent2 = AgentCard(
             agent_id="reasoning-b",
@@ -105,8 +98,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://b.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         await agent_manager.register_agent(
             AgentRegistrationRequest(agent_card=agent1, override_existing=True)
@@ -134,8 +126,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://basic.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=False,
-        )
+            supports_bounded_reasoning=False)
 
         reasoning_agent = AgentCard(
             agent_id="reasoning",
@@ -144,8 +135,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://reasoning.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         await agent_manager.register_agent(
             AgentRegistrationRequest(agent_card=basic_agent, override_existing=True)
@@ -174,8 +164,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://agent1.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=False,
-        )
+            supports_bounded_reasoning=False)
 
         agent2 = AgentCard(
             agent_id="basic-2",
@@ -184,8 +173,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://agent2.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=False,
-        )
+            supports_bounded_reasoning=False)
 
         await agent_manager.register_agent(
             AgentRegistrationRequest(agent_card=agent1, override_existing=True)
@@ -213,8 +201,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://basic.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=False,
-        )
+            supports_bounded_reasoning=False)
 
         reasoning_agent = AgentCard(
             agent_id="select-reasoning",
@@ -225,8 +212,7 @@ class TestMessageRoutingReasoning:
                 )
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         await agent_manager.register_agent(
             AgentRegistrationRequest(agent_card=basic_agent, override_existing=True)
@@ -256,8 +242,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://basic1.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=False,
-        )
+            supports_bounded_reasoning=False)
 
         basic2 = AgentCard(
             agent_id="rr-basic-2",
@@ -266,8 +251,7 @@ class TestMessageRoutingReasoning:
                 AgentEndpoint(url="https://basic2.com/api", type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=False,
-        )
+            supports_bounded_reasoning=False)
 
         reasoning1 = AgentCard(
             agent_id="rr-reasoning-1",
@@ -278,8 +262,7 @@ class TestMessageRoutingReasoning:
                 )
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         reasoning2 = AgentCard(
             agent_id="rr-reasoning-2",
@@ -290,8 +273,7 @@ class TestMessageRoutingReasoning:
                 )
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         for agent in [basic1, basic2, reasoning1, reasoning2]:
             await agent_manager.register_agent(
@@ -326,8 +308,7 @@ class TestMessageRoutingReasoning:
                 )
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         reasoning2 = AgentCard(
             agent_id="ll-reasoning-2",
@@ -338,8 +319,7 @@ class TestMessageRoutingReasoning:
                 )
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         reasoning3 = AgentCard(
             agent_id="ll-reasoning-3",
@@ -350,8 +330,7 @@ class TestMessageRoutingReasoning:
                 )
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
-            supports_bounded_reasoning=True,
-        )
+            supports_bounded_reasoning=True)
 
         for agent in [reasoning1, reasoning2, reasoning3]:
             await agent_manager.register_agent(
@@ -414,8 +393,7 @@ class TestMessageRoutingReasoning:
                     )
                 ],
                 authentication=AgentAuthentication(type=AuthenticationType.NONE),
-                supports_bounded_reasoning=reasoning,
-            )
+                supports_bounded_reasoning=reasoning)
             await agent_manager.register_agent(
                 AgentRegistrationRequest(agent_card=agent, override_existing=True)
             )

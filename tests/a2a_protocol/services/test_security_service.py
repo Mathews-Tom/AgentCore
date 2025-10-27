@@ -21,12 +21,10 @@ from agentcore.a2a_protocol.models.security import (
     Role,
     SignedRequest,
     TokenPayload,
-    TokenType,
-)
+    TokenType)
 from agentcore.a2a_protocol.services.security_service import (
     SecurityService,
-    security_service,
-)
+    security_service)
 
 
 @pytest.fixture
@@ -79,8 +77,7 @@ class TestJWTTokens:
         token = service.generate_token(
             subject="agent-1",
             role=Role.AGENT,
-            additional_permissions=[Permission.ADMIN],
-        )
+            additional_permissions=[Permission.ADMIN])
 
         payload = TokenPayload.model_validate(
             jwt.decode(
@@ -271,8 +268,7 @@ class TestRSASigning:
             agent_id="unknown-agent",
             timestamp=datetime.now(UTC),
             payload={},
-            signature="fake-signature",
-        )
+            signature="fake-signature")
 
         result = service.verify_signature(signed_request)
 
@@ -312,8 +308,7 @@ class TestRSASigning:
             agent_id="agent-1",
             timestamp=datetime.now(UTC) - timedelta(seconds=400),
             payload={},
-            signature="sig",
-        )
+            signature="sig")
 
         assert request.is_expired(max_age_seconds=300) is True
 
@@ -357,8 +352,7 @@ class TestRateLimiting:
             requests_count=100,
             window_start=datetime.now(UTC) - timedelta(seconds=70),
             window_duration_seconds=60,
-            max_requests=10,
-        )
+            max_requests=10)
         service._rate_limits["agent-1"] = rate_limit
 
         # Should reset window and allow request
@@ -557,8 +551,7 @@ class TestAuthentication:
         """Test authentication with invalid agent ID."""
         request = AuthenticationRequest(
             agent_id="x",  # Too short
-            credentials={"api_key": "key"},
-        )
+            credentials={"api_key": "key"})
 
         response = service.authenticate_agent(request)
 
@@ -570,8 +563,7 @@ class TestAuthentication:
         request = AuthenticationRequest(
             agent_id="agent-1",
             credentials={"api_key": "key"},
-            requested_permissions=[Permission.TASK_CREATE],
-        )
+            requested_permissions=[Permission.TASK_CREATE])
 
         response = service.authenticate_agent(request)
 
@@ -683,8 +675,7 @@ class TestCleanupAndStatistics:
             agent_id="unknown",
             timestamp=datetime.now(UTC),
             payload={},
-            signature="fake",
-        )
+            signature="fake")
         service.verify_signature(signed_request)
 
         assert service._security_stats["invalid_signatures"] == initial + 1
@@ -757,10 +748,8 @@ class TestGlobalInstance:
     def test_global_instance_is_singleton(self):
         """Test global instance behaves like singleton."""
         from agentcore.a2a_protocol.services.security_service import (
-            security_service as ss1,
-        )
+            security_service as ss1)
         from agentcore.a2a_protocol.services.security_service import (
-            security_service as ss2,
-        )
+            security_service as ss2)
 
         assert ss1 is ss2

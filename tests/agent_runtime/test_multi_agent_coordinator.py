@@ -12,8 +12,7 @@ from agentcore.agent_runtime.services.multi_agent_coordinator import (
     MessageType,
     MultiAgentCoordinator,
     SharedState,
-    VoteOption,
-)
+    VoteOption)
 
 
 @pytest.fixture
@@ -60,8 +59,7 @@ class TestMultiAgentCoordinator:
             recipient_id=recipient_id,
             message_type=MessageType.REQUEST,
             priority=MessagePriority.NORMAL,
-            content={"data": "test message"},
-        )
+            content={"data": "test message"})
 
         await coordinator.send_message(message)
 
@@ -86,8 +84,7 @@ class TestMultiAgentCoordinator:
             sender_id=sender_id,
             recipient_id=None,  # Broadcast
             message_type=MessageType.BROADCAST,
-            content={"announcement": "Hello everyone"},
-        )
+            content={"announcement": "Hello everyone"})
 
         await coordinator.send_message(message)
 
@@ -128,8 +125,7 @@ class TestMultiAgentCoordinator:
             options=options,
             participating_agents=[initiator_id] + participants,
             required_votes=3,
-            timeout_seconds=5,
-        )
+            timeout_seconds=5)
 
         request_id = await coordinator.initiate_consensus(request)
 
@@ -182,8 +178,7 @@ class TestMultiAgentCoordinator:
 
     async def test_conflict_resolution_majority_vote(
         self,
-        coordinator: MultiAgentCoordinator,
-    ) -> None:
+        coordinator: MultiAgentCoordinator) -> None:
         """Test conflict resolution with majority vote."""
         agents = ["agent-1", "agent-2", "agent-3"]
         for agent in agents:
@@ -199,8 +194,7 @@ class TestMultiAgentCoordinator:
             coordinator.resolve_conflict(
                 conflict_data=conflict_data,
                 strategy=ConflictResolutionStrategy.MAJORITY_VOTE,
-                involved_agents=agents,
-            )
+                involved_agents=agents)
         )
 
         # Wait a moment then cancel (since we're not manually voting)
@@ -209,8 +203,7 @@ class TestMultiAgentCoordinator:
 
     async def test_conflict_resolution_priority_based(
         self,
-        coordinator: MultiAgentCoordinator,
-    ) -> None:
+        coordinator: MultiAgentCoordinator) -> None:
         """Test priority-based conflict resolution."""
         agents = ["agent-1", "agent-2", "agent-3"]
         priorities = [3, 7, 5]
@@ -223,8 +216,7 @@ class TestMultiAgentCoordinator:
         result = await coordinator.resolve_conflict(
             conflict_data=conflict_data,
             strategy=ConflictResolutionStrategy.PRIORITY_BASED,
-            involved_agents=agents,
-        )
+            involved_agents=agents)
 
         assert result["strategy"] == ConflictResolutionStrategy.PRIORITY_BASED.value
         assert result["selected_agent"] == "agent-2"  # Highest priority (7)
@@ -238,8 +230,7 @@ class TestMultiAgentCoordinator:
         state = SharedState(
             owner_id=owner_id,
             data={"key": "value"},
-            access_control={"read": ["agent-reader"], "write": ["agent-writer"]},
-        )
+            access_control={"read": ["agent-reader"], "write": ["agent-writer"]})
 
         state_id = await coordinator.create_shared_state(state)
 
@@ -247,8 +238,7 @@ class TestMultiAgentCoordinator:
 
     async def test_shared_state_read_access(
         self,
-        coordinator: MultiAgentCoordinator,
-    ) -> None:
+        coordinator: MultiAgentCoordinator) -> None:
         """Test shared state read access control."""
         owner_id = "agent-owner"
         reader_id = "agent-reader"
@@ -259,8 +249,7 @@ class TestMultiAgentCoordinator:
         state = SharedState(
             owner_id=owner_id,
             data={"secret": "data"},
-            access_control={"read": [reader_id], "write": []},
-        )
+            access_control={"read": [reader_id], "write": []})
 
         state_id = await coordinator.create_shared_state(state)
 
@@ -277,8 +266,7 @@ class TestMultiAgentCoordinator:
 
     async def test_shared_state_write_access(
         self,
-        coordinator: MultiAgentCoordinator,
-    ) -> None:
+        coordinator: MultiAgentCoordinator) -> None:
         """Test shared state write access control."""
         owner_id = "agent-owner"
         writer_id = "agent-writer"
@@ -289,8 +277,7 @@ class TestMultiAgentCoordinator:
         state = SharedState(
             owner_id=owner_id,
             data={"counter": 0},
-            access_control={"read": [writer_id], "write": [writer_id]},
-        )
+            access_control={"read": [writer_id], "write": [writer_id]})
 
         state_id = await coordinator.create_shared_state(state)
 
@@ -298,8 +285,7 @@ class TestMultiAgentCoordinator:
         updated = await coordinator.update_shared_state(
             state_id,
             writer_id,
-            {"counter": 1},
-        )
+            {"counter": 1})
         assert updated.data["counter"] == 1
         assert updated.version == 2
 
@@ -311,13 +297,11 @@ class TestMultiAgentCoordinator:
             await coordinator.update_shared_state(
                 state_id,
                 unauthorized_id,
-                {"counter": 999},
-            )
+                {"counter": 999})
 
     async def test_shared_state_locking(
         self,
-        coordinator: MultiAgentCoordinator,
-    ) -> None:
+        coordinator: MultiAgentCoordinator) -> None:
         """Test shared state locking mechanism."""
         owner_id = "agent-owner"
         agent1_id = "agent-1"
@@ -330,8 +314,7 @@ class TestMultiAgentCoordinator:
         state = SharedState(
             owner_id=owner_id,
             data={"value": 0},
-            access_control={"read": [agent1_id, agent2_id], "write": [agent1_id, agent2_id]},
-        )
+            access_control={"read": [agent1_id, agent2_id], "write": [agent1_id, agent2_id]})
 
         state_id = await coordinator.create_shared_state(state)
 
@@ -352,8 +335,7 @@ class TestMultiAgentCoordinator:
 
     async def test_shared_state_lock_enforcement(
         self,
-        coordinator: MultiAgentCoordinator,
-    ) -> None:
+        coordinator: MultiAgentCoordinator) -> None:
         """Test that locked state prevents updates from other agents."""
         owner_id = "agent-owner"
         agent1_id = "agent-1"
@@ -366,8 +348,7 @@ class TestMultiAgentCoordinator:
         state = SharedState(
             owner_id=owner_id,
             data={"value": 0},
-            access_control={"read": [agent1_id, agent2_id], "write": [agent1_id, agent2_id]},
-        )
+            access_control={"read": [agent1_id, agent2_id], "write": [agent1_id, agent2_id]})
 
         state_id = await coordinator.create_shared_state(state)
 

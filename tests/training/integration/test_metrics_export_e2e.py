@@ -53,8 +53,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_training_metrics_collection(
         self,
-        metrics_collector: MetricsCollector,
-    ) -> None:
+        metrics_collector: MetricsCollector) -> None:
         """Test basic training metrics collection."""
         job_id = uuid4()
 
@@ -65,8 +64,7 @@ class TestMetricsExport:
             train_loss=0.5,
             validation_accuracy=0.85,
             avg_reward=0.7,
-            trajectories_generated=128,
-        )
+            trajectories_generated=128)
 
         # Retrieve metrics
         metrics = await metrics_collector.get_job_metrics(job_id)
@@ -80,8 +78,7 @@ class TestMetricsExport:
     async def test_prometheus_format_export(
         self,
         metrics_collector: MetricsCollector,
-        prometheus_exporter: PrometheusExporter,
-    ) -> None:
+        prometheus_exporter: PrometheusExporter) -> None:
         """Test Prometheus format export."""
         job_id = uuid4()
 
@@ -93,8 +90,7 @@ class TestMetricsExport:
                 train_loss=0.9 - (i * 0.1),
                 validation_accuracy=0.5 + (i * 0.1),
                 avg_reward=0.6 + (i * 0.05),
-                trajectories_generated=128,
-            )
+                trajectories_generated=128)
 
         # Export to Prometheus format
         prometheus_output = await prometheus_exporter.export_metrics(job_id)
@@ -108,8 +104,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_metric_types(
         self,
-        prometheus_exporter: PrometheusExporter,
-    ) -> None:
+        prometheus_exporter: PrometheusExporter) -> None:
         """Test different Prometheus metric types."""
         job_id = uuid4()
 
@@ -122,8 +117,7 @@ class TestMetricsExport:
         # Histogram: iteration_duration_seconds
         await prometheus_exporter.observe_histogram(
             "iteration_duration_seconds",
-            1.5,
-        )
+            1.5)
 
         # Export all metrics
         output = await prometheus_exporter.export_all_metrics()
@@ -136,8 +130,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_time_series_metrics(
         self,
-        metrics_collector: MetricsCollector,
-    ) -> None:
+        metrics_collector: MetricsCollector) -> None:
         """Test time-series metrics tracking."""
         job_id = uuid4()
 
@@ -150,8 +143,7 @@ class TestMetricsExport:
                 train_loss=0.9 - (iteration * 0.005),
                 validation_accuracy=0.5 + (iteration * 0.003),
                 avg_reward=0.6 + (iteration * 0.002),
-                trajectories_generated=128,
-            )
+                trajectories_generated=128)
             metrics_data.append(iteration)
 
         # Retrieve time-series
@@ -164,8 +156,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_cost_metrics_tracking(
         self,
-        metrics_collector: MetricsCollector,
-    ) -> None:
+        metrics_collector: MetricsCollector) -> None:
         """Test cost metrics tracking."""
         job_id = uuid4()
 
@@ -174,8 +165,7 @@ class TestMetricsExport:
             job_id=job_id,
             iteration=50,
             cost_usd=Decimal("5.50"),
-            budget_usd=Decimal("10.00"),
-        )
+            budget_usd=Decimal("10.00"))
 
         # Retrieve metrics
         metrics = await metrics_collector.get_cost_metrics(job_id)
@@ -187,8 +177,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_metrics_retention(
         self,
-        metrics_collector: MetricsCollector,
-    ) -> None:
+        metrics_collector: MetricsCollector) -> None:
         """Test metrics retention and cleanup."""
         job_id = uuid4()
 
@@ -200,8 +189,7 @@ class TestMetricsExport:
                 train_loss=0.5,
                 validation_accuracy=0.8,
                 avg_reward=0.7,
-                trajectories_generated=8,
-            )
+                trajectories_generated=8)
 
         # Cleanup old metrics (keep last 100)
         await metrics_collector.cleanup_old_metrics(job_id, keep_last_n=100)
@@ -213,8 +201,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_metrics_labels(
         self,
-        prometheus_exporter: PrometheusExporter,
-    ) -> None:
+        prometheus_exporter: PrometheusExporter) -> None:
         """Test Prometheus metric labels."""
         job_id = uuid4()
 
@@ -222,8 +209,7 @@ class TestMetricsExport:
         await prometheus_exporter.record_metric_with_labels(
             metric_name="training_iteration_duration",
             value=1.5,
-            labels={"job_id": str(job_id), "agent_id": "test_agent"},
-        )
+            labels={"job_id": str(job_id), "agent_id": "test_agent"})
 
         # Export with labels
         output = await prometheus_exporter.export_all_metrics()
@@ -236,8 +222,7 @@ class TestMetricsExport:
     async def test_metrics_scrape_endpoint(
         self,
         prometheus_exporter: PrometheusExporter,
-        metrics_collector: MetricsCollector,
-    ) -> None:
+        metrics_collector: MetricsCollector) -> None:
         """Test /metrics endpoint for Prometheus scraping."""
         # Record various metrics
         job_id = uuid4()
@@ -248,8 +233,7 @@ class TestMetricsExport:
             train_loss=0.3,
             validation_accuracy=0.92,
             avg_reward=0.85,
-            trajectories_generated=128,
-        )
+            trajectories_generated=128)
 
         # Simulate scrape request
         scrape_output = await prometheus_exporter.get_scrape_output()
@@ -260,8 +244,7 @@ class TestMetricsExport:
     @pytest.mark.asyncio
     async def test_concurrent_metrics_collection(
         self,
-        metrics_collector: MetricsCollector,
-    ) -> None:
+        metrics_collector: MetricsCollector) -> None:
         """Test concurrent metrics collection from multiple jobs."""
         import asyncio
 
@@ -276,8 +259,7 @@ class TestMetricsExport:
                     train_loss=0.5,
                     validation_accuracy=0.8,
                     avg_reward=0.7,
-                    trajectories_generated=8,
-                )
+                    trajectories_generated=8)
 
         await asyncio.gather(*[collect_for_job(jid) for jid in jobs])
 

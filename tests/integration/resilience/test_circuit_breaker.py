@@ -9,13 +9,11 @@ import pytest
 
 from agentcore.integration.resilience.circuit_breaker import (
     CircuitBreaker,
-    CircuitBreakerRegistry,
-)
+    CircuitBreakerRegistry)
 from agentcore.integration.resilience.exceptions import CircuitBreakerOpenError
 from agentcore.integration.resilience.models import (
     CircuitBreakerConfig,
-    CircuitBreakerState,
-)
+    CircuitBreakerState)
 
 
 class TestCircuitBreaker:
@@ -29,8 +27,7 @@ class TestCircuitBreaker:
             failure_threshold=3,
             success_threshold=2,
             timeout_seconds=1.0,
-            half_open_max_requests=2,
-        )
+            half_open_max_requests=2)
 
     @pytest.fixture
     async def breaker(

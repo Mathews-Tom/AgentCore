@@ -7,8 +7,7 @@ from agentcore.agent_runtime.models.tool_integration import ToolDefinition
 from agentcore.agent_runtime.services.tool_registry import (
     ToolExecutionError,
     ToolRegistry,
-    get_tool_registry,
-)
+    get_tool_registry)
 
 
 @pytest.fixture
@@ -27,8 +26,7 @@ async def test_register_tool(tool_registry: ToolRegistry) -> None:
         tool_id="test_tool",
         name="test_tool",
         description="Test tool",
-        parameters={"param": {"type": "string"}},
-    )
+        parameters={"param": {"type": "string"}})
 
     tool_registry.register_tool(tool_def, test_tool)
 
@@ -46,8 +44,7 @@ async def test_unregister_tool(tool_registry: ToolRegistry) -> None:
         tool_id="test_tool",
         name="test_tool",
         description="Test",
-        parameters={},
-    )
+        parameters={})
 
     tool_registry.register_tool(tool_def, test_tool)
     assert tool_registry.get_tool("test_tool") is not None
@@ -66,16 +63,14 @@ async def test_execute_tool_success(tool_registry: ToolRegistry) -> None:
         tool_id="add",
         name="add",
         description="Add two numbers",
-        parameters={"a": {"type": "number"}, "b": {"type": "number"}},
-    )
+        parameters={"a": {"type": "number"}, "b": {"type": "number"}})
 
     tool_registry.register_tool(tool_def, add_tool)
 
     tool_call = ToolCall(
         tool_name="add",
         parameters={"a": 5, "b": 3},
-        call_id="test-call-1",
-    )
+        call_id="test-call-1")
 
     result = await tool_registry.execute_tool(tool_call, "test-agent")
 
@@ -90,8 +85,7 @@ async def test_execute_tool_not_found(tool_registry: ToolRegistry) -> None:
     tool_call = ToolCall(
         tool_name="nonexistent",
         parameters={},
-        call_id="test-call-2",
-    )
+        call_id="test-call-2")
 
     result = await tool_registry.execute_tool(tool_call, "test-agent")
 
@@ -109,16 +103,14 @@ async def test_execute_tool_error(tool_registry: ToolRegistry) -> None:
         tool_id="error_tool",
         name="error_tool",
         description="Tool that errors",
-        parameters={},
-    )
+        parameters={})
 
     tool_registry.register_tool(tool_def, error_tool)
 
     tool_call = ToolCall(
         tool_name="error_tool",
         parameters={},
-        call_id="test-call-3",
-    )
+        call_id="test-call-3")
 
     result = await tool_registry.execute_tool(tool_call, "test-agent")
 
@@ -136,8 +128,7 @@ async def test_get_tool_descriptions(tool_registry: ToolRegistry) -> None:
         tool_id="tool1",
         name="tool1",
         description="Test tool 1",
-        parameters={"param": {"type": "string"}},
-    )
+        parameters={"param": {"type": "string"}})
 
     tool_registry.register_tool(tool_def, tool1)
 
@@ -168,8 +159,7 @@ async def test_builtin_calculator_tool() -> None:
     tool_call = ToolCall(
         tool_name="calculator",
         parameters={"operation": "+", "a": 10, "b": 5},
-        call_id="calc-1",
-    )
+        call_id="calc-1")
 
     result = await registry.execute_tool(tool_call, "test-agent")
 
@@ -185,8 +175,7 @@ async def test_builtin_echo_tool() -> None:
     tool_call = ToolCall(
         tool_name="echo",
         parameters={"message": "Hello, World!"},
-        call_id="echo-1",
-    )
+        call_id="echo-1")
 
     result = await registry.execute_tool(tool_call, "test-agent")
 
@@ -206,16 +195,14 @@ async def test_tool_execution_time_tracking(tool_registry: ToolRegistry) -> None
         tool_id="slow_tool",
         name="slow_tool",
         description="Slow tool",
-        parameters={},
-    )
+        parameters={})
 
     tool_registry.register_tool(tool_def, slow_tool)
 
     tool_call = ToolCall(
         tool_name="slow_tool",
         parameters={},
-        call_id="slow-1",
-    )
+        call_id="slow-1")
 
     result = await tool_registry.execute_tool(tool_call, "test-agent")
 

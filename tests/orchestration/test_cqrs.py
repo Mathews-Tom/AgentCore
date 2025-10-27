@@ -41,8 +41,7 @@ from agentcore.orchestration.cqrs import (
     WorkflowProjection,
     ExecutionProjection,
     AgentAssignmentProjection,
-    TaskProjection,
-)
+    TaskProjection)
 from agentcore.a2a_protocol.database.connection import get_session
 
 
@@ -59,8 +58,7 @@ class TestEvents:
             orchestration_pattern="supervisor",
             agent_requirements={"researcher": ["web_search"]},
             task_definitions=[{"task_id": "task1", "type": "research"}],
-            created_by="user123",
-        )
+            created_by="user123")
 
         assert event.event_type == EventType.WORKFLOW_CREATED
         assert event.workflow_name == "Test Workflow"
@@ -75,8 +73,7 @@ class TestEvents:
             aggregate_type="workflow",
             workflow_id=uuid4(),
             workflow_name="Test",
-            orchestration_pattern="supervisor",
-        )
+            orchestration_pattern="supervisor")
 
         with pytest.raises(Exception):
             event.workflow_name = "Changed"
@@ -88,8 +85,7 @@ class TestEvents:
             aggregate_type="workflow",
             workflow_id=uuid4(),
             workflow_name="Test Workflow",
-            orchestration_pattern="supervisor",
-        )
+            orchestration_pattern="supervisor")
 
         # Serialize to dict
         event_dict = original_event.model_dump()
@@ -112,8 +108,7 @@ class TestCommands:
             orchestration_pattern="supervisor",
             agent_requirements={"supervisor": ["task_decomposition"]},
             task_definitions=[],
-            user_id="user123",
-        )
+            user_id="user123")
 
         assert cmd.workflow_name == "Test Workflow"
         assert cmd.orchestration_pattern == "supervisor"
@@ -130,8 +125,7 @@ class TestCommands:
                 return CommandResult(
                     command_id=command.command_id,
                     success=True,
-                    aggregate_id=uuid4(),
-                )
+                    aggregate_id=uuid4())
 
             def can_handle(self, command):
                 return True
@@ -148,8 +142,7 @@ class TestCommands:
         bus = CommandBus()
         cmd = CreateWorkflowCommand(
             workflow_name="Test",
-            orchestration_pattern="supervisor",
-        )
+            orchestration_pattern="supervisor")
 
         result = await bus.dispatch(cmd)
 
@@ -166,8 +159,7 @@ class TestQueries:
             workflow_id=uuid4(),
             include_tasks=True,
             include_agents=True,
-            user_id="user123",
-        )
+            user_id="user123")
 
         assert isinstance(query.workflow_id, UUID)
         assert query.include_tasks is True
@@ -179,8 +171,7 @@ class TestQueries:
             orchestration_pattern="supervisor",
             status="running",
             limit=100,
-            offset=0,
-        )
+            offset=0)
 
         assert query.orchestration_pattern == "supervisor"
         assert query.status == "running"
@@ -196,8 +187,7 @@ class TestQueries:
                 return QueryResult(
                     query_id=query.query_id,
                     success=True,
-                    data={"workflow_id": "123"},
-                )
+                    data={"workflow_id": "123"})
 
             def can_handle(self, query):
                 return True
@@ -226,16 +216,14 @@ class TestEventStore:
                 workflow_id=aggregate_id,
                 workflow_name="Test Workflow",
                 orchestration_pattern="supervisor",
-                version=1,
-            )
+                version=1)
 
             event2 = WorkflowStartedEvent(
                 aggregate_id=aggregate_id,
                 aggregate_type="workflow",
                 workflow_id=aggregate_id,
                 execution_id=uuid4(),
-                version=2,
-            )
+                version=2)
 
             await store.append_event(event1)
             await store.append_event(event2)
@@ -262,15 +250,13 @@ class TestEventStore:
                     workflow_id=aggregate_id,
                     workflow_name="Test",
                     orchestration_pattern="supervisor",
-                    version=1,
-                ),
+                    version=1),
                 WorkflowStartedEvent(
                     aggregate_id=aggregate_id,
                     aggregate_type="workflow",
                     workflow_id=aggregate_id,
                     execution_id=uuid4(),
-                    version=2,
-                ),
+                    version=2),
             ]
 
             await store.append_events(events)
@@ -291,8 +277,7 @@ class TestEventStore:
                     workflow_id=uuid4(),
                     workflow_name=f"Workflow {i}",
                     orchestration_pattern="supervisor",
-                    version=1,
-                )
+                    version=1)
                 await store.append_event(event)
 
             # Retrieve by type
@@ -313,8 +298,7 @@ class TestEventStore:
                 version=10,
                 timestamp=datetime.now(UTC),
                 state={"status": "running", "tasks_completed": 5},
-                metadata={"snapshot_reason": "periodic"},
-            )
+                metadata={"snapshot_reason": "periodic"})
 
             await store.save_snapshot(snapshot)
 
@@ -344,8 +328,7 @@ class TestProjections:
                 orchestration_pattern="supervisor",
                 agent_requirements={},
                 task_definitions=[],
-                created_by="user123",
-            )
+                created_by="user123")
 
             # Check if projection handles this event type
             assert projection.handles_event_type(EventType.WORKFLOW_CREATED)
@@ -368,8 +351,7 @@ class TestProjections:
                 workflow_id=workflow_id,
                 execution_id=execution_id,
                 input_data={"query": "test"},
-                started_by="user123",
-            )
+                started_by="user123")
 
             assert projection.handles_event_type(EventType.WORKFLOW_STARTED)
             await projection.project(event, session)
@@ -391,8 +373,7 @@ class TestProjections:
                 aggregate_type="workflow",
                 workflow_id=workflow_id,
                 workflow_name="Test",
-                orchestration_pattern="supervisor",
-            )
+                orchestration_pattern="supervisor")
 
             # Project event through all projections
             await manager.project_event(event, session)
@@ -417,8 +398,7 @@ class TestEventualConsistency:
                 aggregate_type="workflow",
                 workflow_id=workflow_id,
                 workflow_name="Test Workflow",
-                orchestration_pattern="supervisor",
-            )
+                orchestration_pattern="supervisor")
 
             # Store event
             await event_store.append_event(event)
@@ -447,15 +427,13 @@ class TestEventualConsistency:
                     workflow_id=workflow_id,
                     workflow_name="Test",
                     orchestration_pattern="supervisor",
-                    version=1,
-                ),
+                    version=1),
                 WorkflowStartedEvent(
                     aggregate_id=workflow_id,
                     aggregate_type="workflow",
                     workflow_id=workflow_id,
                     execution_id=execution_id,
-                    version=2,
-                ),
+                    version=2),
             ]
 
             # Store events
@@ -472,8 +450,7 @@ class TestCQRSSeparation:
         """Test that commands represent write intent."""
         cmd = CreateWorkflowCommand(
             workflow_name="Test",
-            orchestration_pattern="supervisor",
-        )
+            orchestration_pattern="supervisor")
 
         # Commands should not return data, only results
         assert hasattr(cmd, "command_id")
@@ -495,8 +472,7 @@ class TestCQRSSeparation:
             aggregate_type="workflow",
             workflow_id=uuid4(),
             workflow_name="Test",
-            orchestration_pattern="supervisor",
-        )
+            orchestration_pattern="supervisor")
 
         # Should not be able to modify frozen event
         with pytest.raises(Exception):

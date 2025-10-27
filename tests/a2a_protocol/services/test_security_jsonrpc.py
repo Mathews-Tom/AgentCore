@@ -18,8 +18,7 @@ from agentcore.a2a_protocol.models.security import (
     Role,
     SignedRequest,
     TokenPayload,
-    TokenType,
-)
+    TokenType)
 
 
 class TestAuthentication:
@@ -37,8 +36,7 @@ class TestAuthentication:
             access_token="test-access-token",
             refresh_token="test-refresh-token",
             expires_in=3600,
-            token_type="Bearer",
-        )
+            token_type="Bearer")
         mock_service.authenticate_agent = Mock(return_value=auth_response)
 
         request = JsonRpcRequest(
@@ -48,8 +46,7 @@ class TestAuthentication:
                 "agent_id": "test-agent",
                 "credentials": {"api_key": "secret-key"},
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_authenticate(request)
 
@@ -69,8 +66,7 @@ class TestAuthentication:
             access_token="token",
             refresh_token="refresh",
             expires_in=3600,
-            token_type="Bearer",
-        )
+            token_type="Bearer")
         mock_service.authenticate_agent = Mock(return_value=auth_response)
 
         request = JsonRpcRequest(
@@ -81,8 +77,7 @@ class TestAuthentication:
                 "credentials": {"api_key": "key"},
                 "requested_permissions": ["task:read"],
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_authenticate(request)
 
@@ -97,8 +92,7 @@ class TestAuthentication:
             jsonrpc="2.0",
             method="auth.authenticate",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_authenticate(request)
@@ -112,8 +106,7 @@ class TestAuthentication:
             jsonrpc="2.0",
             method="auth.authenticate",
             params={"credentials": {"api_key": "key"}},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_authenticate(request)
@@ -127,8 +120,7 @@ class TestAuthentication:
             jsonrpc="2.0",
             method="auth.authenticate",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_authenticate(request)
@@ -142,8 +134,7 @@ class TestTokenValidation:
     async def test_validate_token_success(self, mock_service):
         """Test successful token validation."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_token,
-        )
+            handle_validate_token)
 
         token_payload = TokenPayload(
             sub="test-agent",
@@ -151,16 +142,14 @@ class TestTokenValidation:
             role=Role.AGENT,
             exp=datetime.now(UTC) + timedelta(hours=1),
             iat=datetime.now(UTC),
-            permissions=[Permission.AGENT_READ],
-        )
+            permissions=[Permission.AGENT_READ])
         mock_service.validate_token = Mock(return_value=token_payload)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="auth.validate_token",
             params={"token": "valid-token"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_validate_token(request)
 
@@ -173,8 +162,7 @@ class TestTokenValidation:
     async def test_validate_token_invalid(self, mock_service):
         """Test invalid token validation."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_token,
-        )
+            handle_validate_token)
 
         mock_service.validate_token = Mock(return_value=None)
 
@@ -182,8 +170,7 @@ class TestTokenValidation:
             jsonrpc="2.0",
             method="auth.validate_token",
             params={"token": "invalid-token"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Invalid or expired token"):
             await handle_validate_token(request)
@@ -192,15 +179,13 @@ class TestTokenValidation:
     async def test_validate_token_missing_params(self):
         """Test token validation with missing parameters."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_token,
-        )
+            handle_validate_token)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="auth.validate_token",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: token"):
             await handle_validate_token(request)
@@ -209,15 +194,13 @@ class TestTokenValidation:
     async def test_validate_token_missing_token(self):
         """Test token validation with missing token field."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_token,
-        )
+            handle_validate_token)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="auth.validate_token",
             params={},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: token"):
             await handle_validate_token(request)
@@ -231,8 +214,7 @@ class TestPermissionCheck:
     async def test_check_permission_has_permission(self, mock_service):
         """Test permission check when user has permission."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_permission,
-        )
+            handle_check_permission)
 
         mock_service.check_permission = Mock(return_value=True)
 
@@ -240,8 +222,7 @@ class TestPermissionCheck:
             jsonrpc="2.0",
             method="auth.check_permission",
             params={"token": "valid-token", "permission": "agent:read"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_permission(request)
 
@@ -253,8 +234,7 @@ class TestPermissionCheck:
     async def test_check_permission_no_permission(self, mock_service):
         """Test permission check when user lacks permission."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_permission,
-        )
+            handle_check_permission)
 
         mock_service.check_permission = Mock(return_value=False)
 
@@ -262,8 +242,7 @@ class TestPermissionCheck:
             jsonrpc="2.0",
             method="auth.check_permission",
             params={"token": "valid-token", "permission": "agent:delete"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_permission(request)
 
@@ -274,15 +253,13 @@ class TestPermissionCheck:
     async def test_check_permission_missing_params(self):
         """Test permission check with missing parameters."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_permission,
-        )
+            handle_check_permission)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="auth.check_permission",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_check_permission(request)
@@ -291,15 +268,13 @@ class TestPermissionCheck:
     async def test_check_permission_missing_token(self):
         """Test permission check with missing token."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_permission,
-        )
+            handle_check_permission)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="auth.check_permission",
             params={"permission": "agent:read"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_check_permission(request)
@@ -313,8 +288,7 @@ class TestRSAKeypair:
     async def test_generate_keypair_success(self, mock_service):
         """Test successful keypair generation."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_generate_keypair,
-        )
+            handle_generate_keypair)
 
         mock_service.generate_rsa_keypair = Mock(
             return_value={
@@ -327,8 +301,7 @@ class TestRSAKeypair:
             jsonrpc="2.0",
             method="security.generate_keypair",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_generate_keypair(request)
 
@@ -341,15 +314,13 @@ class TestRSAKeypair:
     async def test_generate_keypair_missing_params(self):
         """Test keypair generation with missing parameters."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_generate_keypair,
-        )
+            handle_generate_keypair)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="security.generate_keypair",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_generate_keypair(request)
@@ -363,8 +334,7 @@ class TestPublicKeyRegistration:
     async def test_register_public_key_success(self, mock_service):
         """Test successful public key registration."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_register_public_key,
-        )
+            handle_register_public_key)
 
         mock_service.register_public_key = Mock(return_value=True)
 
@@ -375,8 +345,7 @@ class TestPublicKeyRegistration:
                 "agent_id": "test-agent",
                 "public_key": "-----BEGIN PUBLIC KEY-----\ntest",
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_register_public_key(request)
 
@@ -389,8 +358,7 @@ class TestPublicKeyRegistration:
     async def test_register_public_key_failure(self, mock_service):
         """Test failed public key registration."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_register_public_key,
-        )
+            handle_register_public_key)
 
         mock_service.register_public_key = Mock(return_value=False)
 
@@ -401,8 +369,7 @@ class TestPublicKeyRegistration:
                 "agent_id": "test-agent",
                 "public_key": "invalid-key",
             },
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Failed to register public key"):
             await handle_register_public_key(request)
@@ -411,15 +378,13 @@ class TestPublicKeyRegistration:
     async def test_register_public_key_missing_params(self):
         """Test public key registration with missing parameters."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_register_public_key,
-        )
+            handle_register_public_key)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="security.register_public_key",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameters"):
             await handle_register_public_key(request)
@@ -433,8 +398,7 @@ class TestSignatureVerification:
     async def test_verify_signature_valid(self, mock_service):
         """Test valid signature verification."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_verify_signature,
-        )
+            handle_verify_signature)
 
         mock_service.verify_signature = Mock(return_value=True)
 
@@ -449,8 +413,7 @@ class TestSignatureVerification:
                     "timestamp": datetime.now(UTC).isoformat(),
                 }
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_verify_signature(request)
 
@@ -462,8 +425,7 @@ class TestSignatureVerification:
     async def test_verify_signature_invalid(self, mock_service):
         """Test invalid signature verification."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_verify_signature,
-        )
+            handle_verify_signature)
 
         mock_service.verify_signature = Mock(return_value=False)
 
@@ -478,8 +440,7 @@ class TestSignatureVerification:
                     "timestamp": datetime.now(UTC).isoformat(),
                 }
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_verify_signature(request)
 
@@ -489,15 +450,13 @@ class TestSignatureVerification:
     async def test_verify_signature_missing_params(self):
         """Test signature verification with missing parameters."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_verify_signature,
-        )
+            handle_verify_signature)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="security.verify_signature",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required"):
             await handle_verify_signature(request)
@@ -511,16 +470,14 @@ class TestRateLimiting:
     async def test_check_rate_limit_within_limit(self, mock_service):
         """Test rate limit check when within limit."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_rate_limit,
-        )
+            handle_check_rate_limit)
 
         rate_limit_info = RateLimitInfo(
             agent_id="test-agent",
             requests_count=5,
             max_requests=100,
             window_seconds=60,
-            window_start=datetime.now(UTC),
-        )
+            window_start=datetime.now(UTC))
         mock_service.check_rate_limit = Mock(return_value=True)
         mock_service.get_rate_limit_info = Mock(return_value=rate_limit_info)
 
@@ -528,8 +485,7 @@ class TestRateLimiting:
             jsonrpc="2.0",
             method="security.check_rate_limit",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_rate_limit(request)
 
@@ -542,16 +498,14 @@ class TestRateLimiting:
     async def test_check_rate_limit_exceeded(self, mock_service):
         """Test rate limit check when limit exceeded."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_rate_limit,
-        )
+            handle_check_rate_limit)
 
         rate_limit_info = RateLimitInfo(
             agent_id="test-agent",
             requests_count=101,
             max_requests=100,
             window_seconds=60,
-            window_start=datetime.now(UTC),
-        )
+            window_start=datetime.now(UTC))
         mock_service.check_rate_limit = Mock(return_value=False)
         mock_service.get_rate_limit_info = Mock(return_value=rate_limit_info)
 
@@ -559,8 +513,7 @@ class TestRateLimiting:
             jsonrpc="2.0",
             method="security.check_rate_limit",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_rate_limit(request)
 
@@ -572,8 +525,7 @@ class TestRateLimiting:
     async def test_check_rate_limit_no_info(self, mock_service):
         """Test rate limit check when no info exists."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_check_rate_limit,
-        )
+            handle_check_rate_limit)
 
         mock_service.check_rate_limit = Mock(return_value=True)
         mock_service.get_rate_limit_info = Mock(return_value=None)
@@ -582,8 +534,7 @@ class TestRateLimiting:
             jsonrpc="2.0",
             method="security.check_rate_limit",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_rate_limit(request)
 
@@ -595,24 +546,21 @@ class TestRateLimiting:
     async def test_get_rate_limit_info_exists(self, mock_service):
         """Test getting rate limit info when it exists."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_get_rate_limit_info,
-        )
+            handle_get_rate_limit_info)
 
         rate_limit_info = RateLimitInfo(
             agent_id="test-agent",
             requests_count=10,
             max_requests=100,
             window_seconds=60,
-            window_start=datetime.now(UTC),
-        )
+            window_start=datetime.now(UTC))
         mock_service.get_rate_limit_info = Mock(return_value=rate_limit_info)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="security.get_rate_limit_info",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_rate_limit_info(request)
 
@@ -624,8 +572,7 @@ class TestRateLimiting:
     async def test_get_rate_limit_info_not_exists(self, mock_service):
         """Test getting rate limit info when it does not exist."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_get_rate_limit_info,
-        )
+            handle_get_rate_limit_info)
 
         mock_service.get_rate_limit_info = Mock(return_value=None)
 
@@ -633,8 +580,7 @@ class TestRateLimiting:
             jsonrpc="2.0",
             method="security.get_rate_limit_info",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_rate_limit_info(request)
 
@@ -646,8 +592,7 @@ class TestRateLimiting:
     async def test_reset_rate_limit_success(self, mock_service):
         """Test successful rate limit reset."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_reset_rate_limit,
-        )
+            handle_reset_rate_limit)
 
         mock_service.reset_rate_limit = Mock(return_value=None)
 
@@ -655,8 +600,7 @@ class TestRateLimiting:
             jsonrpc="2.0",
             method="security.reset_rate_limit",
             params={"agent_id": "test-agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_reset_rate_limit(request)
 
@@ -673,8 +617,7 @@ class TestSecurityStats:
     async def test_get_security_stats(self, mock_service):
         """Test getting security statistics."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_get_security_stats,
-        )
+            handle_get_security_stats)
 
         stats = {
             "total_authentications": 100,
@@ -687,8 +630,7 @@ class TestSecurityStats:
             jsonrpc="2.0",
             method="security.get_stats",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_security_stats(request)
 
@@ -705,8 +647,7 @@ class TestAgentIdValidation:
     async def test_validate_agent_id_valid(self, mock_service):
         """Test valid agent ID validation."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_agent_id,
-        )
+            handle_validate_agent_id)
 
         mock_service.validate_agent_id = Mock(return_value=True)
 
@@ -714,8 +655,7 @@ class TestAgentIdValidation:
             jsonrpc="2.0",
             method="security.validate_agent_id",
             params={"agent_id": "valid-agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_validate_agent_id(request)
 
@@ -727,8 +667,7 @@ class TestAgentIdValidation:
     async def test_validate_agent_id_invalid(self, mock_service):
         """Test invalid agent ID validation."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_agent_id,
-        )
+            handle_validate_agent_id)
 
         mock_service.validate_agent_id = Mock(return_value=False)
 
@@ -736,8 +675,7 @@ class TestAgentIdValidation:
             jsonrpc="2.0",
             method="security.validate_agent_id",
             params={"agent_id": "invalid@agent"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_validate_agent_id(request)
 
@@ -747,15 +685,13 @@ class TestAgentIdValidation:
     async def test_validate_agent_id_missing_params(self):
         """Test agent ID validation with missing parameters."""
         from agentcore.a2a_protocol.services.security_jsonrpc import (
-            handle_validate_agent_id,
-        )
+            handle_validate_agent_id)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="security.validate_agent_id",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_validate_agent_id(request)

@@ -93,9 +93,7 @@ def agent_config() -> AgentConfig:
             max_memory_mb=512,
             max_cpu_cores=2.0,
             network_access="none",
-            storage_quota_mb=1024,
-        ),
-    )
+            storage_quota_mb=1024))
 
 
 @pytest.fixture
@@ -110,11 +108,9 @@ def sandbox_config() -> SandboxConfig:
             max_memory_mb=256,
             max_cpu_percent=25.0,
             max_execution_time_seconds=60,
-            max_processes=50,
-        ),
+            max_processes=50),
         read_only_paths=["/usr/lib"],
-        writable_paths=["/tmp"],
-    )
+        writable_paths=["/tmp"])
 
 
 @pytest.mark.asyncio
@@ -149,8 +145,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test container creation."""
         container_id = await container_manager.create_container(agent_config)
 
@@ -163,8 +158,7 @@ class TestContainerManager:
         container_manager: ContainerManager,
         agent_config: AgentConfig,
         sandbox_config: SandboxConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test container creation with sandbox configuration."""
         container_id = await container_manager.create_container(agent_config, sandbox_config)
 
@@ -182,8 +176,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_client: Mock,
-    ) -> None:
+        mock_docker_client: Mock) -> None:
         """Test container creation with Docker error."""
         mock_docker_client.containers.create = AsyncMock(
             side_effect=DockerError(status=500, data={"message": "Image not found"})
@@ -196,8 +189,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test starting a container."""
         await container_manager.create_container(agent_config)
         await container_manager.start_container(agent_config.agent_id)
@@ -213,8 +205,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test container start with Docker error."""
         await container_manager.create_container(agent_config)
         mock_docker_container.start = AsyncMock(
@@ -228,8 +219,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test stopping a container."""
         await container_manager.create_container(agent_config)
         await container_manager.stop_container(agent_config.agent_id, timeout=5)
@@ -245,8 +235,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test container stop with Docker error."""
         await container_manager.create_container(agent_config)
         mock_docker_container.stop = AsyncMock(
@@ -260,8 +249,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test removing a container."""
         await container_manager.create_container(agent_config)
         await container_manager.remove_container(agent_config.agent_id, force=True)
@@ -278,8 +266,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test container removal with Docker error."""
         await container_manager.create_container(agent_config)
         mock_docker_container.delete = AsyncMock(
@@ -292,8 +279,7 @@ class TestContainerManager:
     async def test_get_container_stats(
         self,
         container_manager: ContainerManager,
-        agent_config: AgentConfig,
-    ) -> None:
+        agent_config: AgentConfig) -> None:
         """Test getting container stats."""
         await container_manager.create_container(agent_config)
         stats = await container_manager.get_container_stats(agent_config.agent_id)
@@ -316,8 +302,7 @@ class TestContainerManager:
     async def test_get_container_logs(
         self,
         container_manager: ContainerManager,
-        agent_config: AgentConfig,
-    ) -> None:
+        agent_config: AgentConfig) -> None:
         """Test getting container logs."""
         await container_manager.create_container(agent_config)
         logs = await container_manager.get_container_logs(agent_config.agent_id, tail=50)
@@ -335,8 +320,7 @@ class TestContainerManager:
     async def test_container_is_running(
         self,
         container_manager: ContainerManager,
-        agent_config: AgentConfig,
-    ) -> None:
+        agent_config: AgentConfig) -> None:
         """Test checking if container is running."""
         await container_manager.create_container(agent_config)
         is_running = await container_manager.container_is_running(agent_config.agent_id)
@@ -352,8 +336,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        mock_docker_container: Mock,
-    ) -> None:
+        mock_docker_container: Mock) -> None:
         """Test checking container with Docker error."""
         await container_manager.create_container(agent_config)
         mock_docker_container.show = AsyncMock(
@@ -366,8 +349,7 @@ class TestContainerManager:
     async def test_build_container_config(
         self,
         container_manager: ContainerManager,
-        agent_config: AgentConfig,
-    ) -> None:
+        agent_config: AgentConfig) -> None:
         """Test building container configuration."""
         config = container_manager._build_container_config(agent_config)
 
@@ -382,8 +364,7 @@ class TestContainerManager:
         self,
         container_manager: ContainerManager,
         agent_config: AgentConfig,
-        sandbox_config: SandboxConfig,
-    ) -> None:
+        sandbox_config: SandboxConfig) -> None:
         """Test building container configuration with sandbox."""
         config = container_manager._build_container_config(agent_config, sandbox_config)
 
@@ -457,8 +438,7 @@ class TestContainerManager:
     async def test_close(
         self,
         container_manager: ContainerManager,
-        mock_docker_client: Mock,
-    ) -> None:
+        mock_docker_client: Mock) -> None:
         """Test closing container manager."""
         await container_manager.close()
         mock_docker_client.close.assert_called_once()

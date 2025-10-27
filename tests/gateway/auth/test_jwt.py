@@ -44,8 +44,7 @@ def test_user() -> User:
         username="testuser",
         email="test@example.com",
         roles=[UserRole.USER],
-        is_active=True,
-    )
+        is_active=True)
 
 
 class TestJWTManager:
@@ -81,8 +80,7 @@ class TestJWTManager:
         session_id = str(uuid4())
         token = jwt_manager_test.create_access_token(
             user=test_user,
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         assert token is not None
         assert isinstance(token, str)
@@ -94,8 +92,7 @@ class TestJWTManager:
             jwt_manager_test._public_key,
             algorithms=[jwt_manager_test.algorithm],
             audience=jwt_manager_test.audience,
-            issuer=jwt_manager_test.issuer,
-        )
+            issuer=jwt_manager_test.issuer)
 
         assert payload["sub"] == str(test_user.id)
         assert payload["username"] == test_user.username
@@ -116,8 +113,7 @@ class TestJWTManager:
         token = jwt_manager_test.create_access_token(
             user=test_user,
             session_id=session_id,
-            scope=scope,
-        )
+            scope=scope)
 
         payload = jwt_manager_test.decode_token(token)
         assert payload["scope"] == scope
@@ -132,8 +128,7 @@ class TestJWTManager:
         token = jwt_manager_test.create_access_token(
             user=test_user,
             session_id=session_id,
-            expires_delta=expires_delta,
-        )
+            expires_delta=expires_delta)
 
         payload = jwt_manager_test.decode_token(token)
         exp_time = datetime.fromtimestamp(payload["exp"])
@@ -151,8 +146,7 @@ class TestJWTManager:
         session_id = str(uuid4())
         token = jwt_manager_test.create_refresh_token(
             user_id=str(test_user.id),
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         assert token is not None
         assert isinstance(token, str)
@@ -170,8 +164,7 @@ class TestJWTManager:
         session_id = str(uuid4())
         token = jwt_manager_test.create_access_token(
             user=test_user,
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         # Validate token
         payload = jwt_manager_test.validate_access_token(token)
@@ -188,8 +181,7 @@ class TestJWTManager:
         session_id = str(uuid4())
         token = jwt_manager_test.create_refresh_token(
             user_id=str(test_user.id),
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         payload = jwt_manager_test.validate_refresh_token(token)
         assert payload.sub == str(test_user.id)
@@ -206,8 +198,7 @@ class TestJWTManager:
         # Create refresh token
         refresh_token = jwt_manager_test.create_refresh_token(
             user_id=str(test_user.id),
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         # Try to validate as access token - should fail
         with pytest.raises(JWTError, match="Invalid token type"):
@@ -216,8 +207,7 @@ class TestJWTManager:
         # Create access token
         access_token = jwt_manager_test.create_access_token(
             user=test_user,
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         # Try to validate as refresh token - should fail
         with pytest.raises(JWTError, match="Invalid token type"):
@@ -240,8 +230,7 @@ class TestJWTManager:
         token = jwt_manager_test.create_access_token(
             user=test_user,
             session_id=session_id,
-            expires_delta=timedelta(seconds=1),
-        )
+            expires_delta=timedelta(seconds=1))
 
         # Wait for expiration
         time.sleep(2)
@@ -259,8 +248,7 @@ class TestJWTManager:
         before = time.time()
         token = jwt_manager_test.create_access_token(
             user=test_user,
-            session_id=session_id,
-        )
+            session_id=session_id)
         after = time.time()
 
         expiry = jwt_manager_test.get_token_expiry(token)
@@ -280,16 +268,14 @@ class TestJWTManager:
         # Create valid token
         valid_token = jwt_manager_test.create_access_token(
             user=test_user,
-            session_id=session_id,
-        )
+            session_id=session_id)
         assert not jwt_manager_test.is_token_expired(valid_token)
 
         # Create expired token
         expired_token = jwt_manager_test.create_access_token(
             user=test_user,
             session_id=session_id,
-            expires_delta=timedelta(seconds=1),
-        )
+            expires_delta=timedelta(seconds=1))
         time.sleep(2)
         assert jwt_manager_test.is_token_expired(expired_token)
 
@@ -318,14 +304,12 @@ class TestJWTManager:
         admin_user = User(
             id=uuid4(),
             username="admin",
-            roles=[UserRole.ADMIN, UserRole.USER],
-        )
+            roles=[UserRole.ADMIN, UserRole.USER])
 
         session_id = str(uuid4())
         token = jwt_manager_test.create_access_token(
             user=admin_user,
-            session_id=session_id,
-        )
+            session_id=session_id)
 
         payload = jwt_manager_test.validate_access_token(token)
         assert UserRole.ADMIN in payload.roles

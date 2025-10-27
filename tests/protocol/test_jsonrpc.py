@@ -16,8 +16,7 @@ from agentcore_cli.protocol.exceptions import (
     MethodNotFoundError,
     InvalidParamsError,
     InternalError,
-    ParseError,
-)
+    ParseError)
 from agentcore_cli.transport.http import HttpTransport
 
 
@@ -144,8 +143,7 @@ class TestJsonRpcClientCall:
         context = A2AContext(
             trace_id="trace-123",
             source_agent="cli",
-            session_id="session-456",
-        )
+            session_id="session-456")
         client.call("test.method", a2a_context=context)
 
         call_args = transport.post.call_args
@@ -517,8 +515,7 @@ class TestJsonRpcClientIntegration:
         client = JsonRpcClient(transport, auth_token="jwt-token")
         result = client.call(
             "agent.register",
-            {"name": "test-agent", "capabilities": ["python", "analysis"]},
-        )
+            {"name": "test-agent", "capabilities": ["python", "analysis"]})
 
         # Verify result
         assert result["agent_id"] == "agent-001"

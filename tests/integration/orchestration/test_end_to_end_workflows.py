@@ -20,8 +20,7 @@ from agentcore.orchestration.patterns.saga import (
     CompensationStrategy,
     SagaDefinition,
     SagaStatus,
-    SagaStep,
-)
+    SagaStep)
 from agentcore.orchestration.state.integration import PersistentSagaOrchestrator
 from agentcore.orchestration.state.repository import WorkflowStateRepository
 from agentcore.orchestration.state.models import WorkflowStatus
@@ -43,28 +42,23 @@ class TestEndToEndWorkflows:
                 SagaStep(
                     name="initialize",
                     order=1,
-                    action_data={"task": "initialize_system"},
-                ),
+                    action_data={"task": "initialize_system"}),
                 SagaStep(
                     name="process",
                     order=2,
-                    action_data={"task": "process_data"},
-                ),
+                    action_data={"task": "process_data"}),
                 SagaStep(
                     name="finalize",
                     order=3,
-                    action_data={"task": "finalize_results"},
-                ),
+                    action_data={"task": "finalize_results"}),
             ],
             compensation_strategy=CompensationStrategy.BACKWARD,
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         # Create orchestrator
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator_001",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         # Register saga
         await orchestrator.register_saga(saga)
@@ -73,8 +67,7 @@ class TestEndToEndWorkflows:
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
             input_data={"workflow_type": "sequential", "priority": "high"},
-            tags=["test", "sequential"],
-        )
+            tags=["test", "sequential"])
 
         # Simulate workflow execution by marking steps as completed
         await orchestrator.update_execution_state(
@@ -83,32 +76,28 @@ class TestEndToEndWorkflows:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Complete step 1
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"initialized": True, "timestamp": "2025-10-20T00:00:00Z"},
-        )
+            result={"initialized": True, "timestamp": "2025-10-20T00:00:00Z"})
 
         # Complete step 2
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[1].step_id,
             status="completed",
-            result={"processed_items": 100, "status": "success"},
-        )
+            result={"processed_items": 100, "status": "success"})
 
         # Complete step 3 and workflow
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[2].step_id,
             status="completed",
-            result={"finalized": True, "output_file": "results.json"},
-        )
+            result={"finalized": True, "output_file": "results.json"})
 
         await orchestrator.update_execution_state(
             execution_id=execution_id,
@@ -116,8 +105,7 @@ class TestEndToEndWorkflows:
             current_step=3,
             completed_steps=[step.step_id for step in saga.steps],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify final state
         async with db_session_factory() as session:
@@ -149,39 +137,32 @@ class TestEndToEndWorkflows:
                 SagaStep(
                     name="analyze_text",
                     order=2,
-                    action_data={"task": "text_analysis"},
-                ),
+                    action_data={"task": "text_analysis"}),
                 SagaStep(
                     name="analyze_images",
                     order=2,
-                    action_data={"task": "image_analysis"},
-                ),
+                    action_data={"task": "image_analysis"}),
                 SagaStep(
                     name="analyze_audio",
                     order=2,
-                    action_data={"task": "audio_analysis"},
-                ),
+                    action_data={"task": "audio_analysis"}),
                 SagaStep(
                     name="merge_results",
                     order=3,
-                    action_data={"task": "merge_all"},
-                ),
+                    action_data={"task": "merge_all"}),
             ],
             compensation_strategy=CompensationStrategy.BACKWARD,
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator_002",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"content_types": ["text", "image", "audio"]},
-        )
+            input_data={"content_types": ["text", "image", "audio"]})
 
         # Start execution
         await orchestrator.update_execution_state(
@@ -190,16 +171,14 @@ class TestEndToEndWorkflows:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Complete init step
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"setup_complete": True},
-        )
+            result={"setup_complete": True})
 
         # Simulate parallel execution of analysis steps
         parallel_steps = saga.steps[1:4]
@@ -212,16 +191,14 @@ class TestEndToEndWorkflows:
                 result={
                     "analysis_type": step.action_data["task"],
                     "items_processed": 50,
-                },
-            )
+                })
 
         # Complete merge step
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[4].step_id,
             status="completed",
-            result={"merged_results": 150, "status": "success"},
-        )
+            result={"merged_results": 150, "status": "success"})
 
         # Complete workflow
         await orchestrator.update_execution_state(
@@ -230,8 +207,7 @@ class TestEndToEndWorkflows:
             current_step=3,
             completed_steps=[step.step_id for step in saga.steps],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify all parallel steps completed
         async with db_session_factory() as session:
@@ -263,36 +239,30 @@ class TestEndToEndWorkflows:
                     name="create_order",
                     order=1,
                     action_data={"action": "create"},
-                    compensation_data={"action": "delete_order"},
-                ),
+                    compensation_data={"action": "delete_order"}),
                 SagaStep(
                     name="charge_payment",
                     order=2,
                     action_data={"action": "charge"},
-                    compensation_data={"action": "refund_payment"},
-                ),
+                    compensation_data={"action": "refund_payment"}),
                 SagaStep(
                     name="send_confirmation",
                     order=3,
                     action_data={"action": "send_email"},
-                    compensation_data={"action": "send_cancellation"},
-                ),
+                    compensation_data={"action": "send_cancellation"}),
             ],
             compensation_strategy=CompensationStrategy.BACKWARD,
-            enable_state_persistence=True,
-        )
+            enable_state_persistence=True)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator_003",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"order_id": "ORD-12345", "amount": 99.99},
-        )
+            input_data={"order_id": "ORD-12345", "amount": 99.99})
 
         # Start execution
         await orchestrator.update_execution_state(
@@ -301,32 +271,28 @@ class TestEndToEndWorkflows:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Complete step 1 successfully
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"order_created": True, "order_id": "ORD-12345"},
-        )
+            result={"order_created": True, "order_id": "ORD-12345"})
 
         # Complete step 2 successfully
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[1].step_id,
             status="completed",
-            result={"payment_charged": True, "transaction_id": "TXN-67890"},
-        )
+            result={"payment_charged": True, "transaction_id": "TXN-67890"})
 
         # Step 3 fails
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[2].step_id,
             status="failed",
-            error_message="Email service unavailable",
-        )
+            error_message="Email service unavailable")
 
         # Mark execution as failed
         await orchestrator.update_execution_state(
@@ -336,8 +302,7 @@ class TestEndToEndWorkflows:
             completed_steps=[saga.steps[0].step_id, saga.steps[1].step_id],
             failed_steps=[saga.steps[2].step_id],
             compensated_steps=[],
-            error_message="Email service unavailable",
-        )
+            error_message="Email service unavailable")
 
         # Start compensation
         await orchestrator.update_execution_state(
@@ -346,23 +311,20 @@ class TestEndToEndWorkflows:
             current_step=3,
             completed_steps=[saga.steps[0].step_id, saga.steps[1].step_id],
             failed_steps=[saga.steps[2].step_id],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Compensate in reverse order (step 2, then step 1)
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[1].step_id,
             status="compensated",
-            result={"refunded": True, "refund_id": "REF-11111"},
-        )
+            result={"refunded": True, "refund_id": "REF-11111"})
 
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="compensated",
-            result={"order_deleted": True},
-        )
+            result={"order_deleted": True})
 
         # Mark as compensated
         await orchestrator.update_execution_state(
@@ -371,8 +333,7 @@ class TestEndToEndWorkflows:
             current_step=3,
             completed_steps=[saga.steps[0].step_id, saga.steps[1].step_id],
             failed_steps=[saga.steps[2].step_id],
-            compensated_steps=[saga.steps[0].step_id, saga.steps[1].step_id],
-        )
+            compensated_steps=[saga.steps[0].step_id, saga.steps[1].step_id])
 
         # Verify compensation completed
         async with db_session_factory() as session:
@@ -411,15 +372,13 @@ class TestEndToEndWorkflows:
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator_004",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
         execution_id = await orchestrator.create_execution(
             saga_id=saga.saga_id,
-            input_data={"batch_size": 1000},
-        )
+            input_data={"batch_size": 1000})
 
         # Start execution
         await orchestrator.update_execution_state(
@@ -428,24 +387,21 @@ class TestEndToEndWorkflows:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Complete step 1
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"processed": 250},
-        )
+            result={"processed": 250})
 
         # Complete step 2 and create checkpoint
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[1].step_id,
             status="completed",
-            result={"processed": 500},
-        )
+            result={"processed": 500})
 
         checkpoint_data_1 = {
             "completed_steps": 2,
@@ -454,24 +410,21 @@ class TestEndToEndWorkflows:
         }
         await orchestrator.create_checkpoint(
             execution_id=execution_id,
-            checkpoint_data=checkpoint_data_1,
-        )
+            checkpoint_data=checkpoint_data_1)
 
         # Complete step 3
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[2].step_id,
             status="completed",
-            result={"processed": 750},
-        )
+            result={"processed": 750})
 
         # Complete step 4 and create final checkpoint
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[3].step_id,
             status="completed",
-            result={"processed": 1000},
-        )
+            result={"processed": 1000})
 
         checkpoint_data_2 = {
             "completed_steps": 4,
@@ -480,8 +433,7 @@ class TestEndToEndWorkflows:
         }
         await orchestrator.create_checkpoint(
             execution_id=execution_id,
-            checkpoint_data=checkpoint_data_2,
-        )
+            checkpoint_data=checkpoint_data_2)
 
         # Complete workflow
         await orchestrator.update_execution_state(
@@ -490,8 +442,7 @@ class TestEndToEndWorkflows:
             current_step=4,
             completed_steps=[step.step_id for step in saga.steps],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify checkpoints were created
         async with db_session_factory() as session:
@@ -527,57 +478,47 @@ class TestEndToEndWorkflows:
                 SagaStep(
                     name="ingest_sources",
                     order=1,
-                    action_data={"sources": ["api", "database", "files"]},
-                ),
+                    action_data={"sources": ["api", "database", "files"]}),
                 # Stage 2: Parallel validation
                 SagaStep(
                     name="validate_api_data",
                     order=2,
-                    action_data={"source": "api"},
-                ),
+                    action_data={"source": "api"}),
                 SagaStep(
                     name="validate_db_data",
                     order=2,
-                    action_data={"source": "database"},
-                ),
+                    action_data={"source": "database"}),
                 SagaStep(
                     name="validate_file_data",
                     order=2,
-                    action_data={"source": "files"},
-                ),
+                    action_data={"source": "files"}),
                 # Stage 3: Transformation
                 SagaStep(
                     name="transform_data",
                     order=3,
-                    action_data={"transformations": ["normalize", "enrich"]},
-                ),
+                    action_data={"transformations": ["normalize", "enrich"]}),
                 # Stage 4: Parallel analysis
                 SagaStep(
                     name="statistical_analysis",
                     order=4,
-                    action_data={"analysis_type": "stats"},
-                ),
+                    action_data={"analysis_type": "stats"}),
                 SagaStep(
                     name="ml_analysis",
                     order=4,
-                    action_data={"analysis_type": "ml"},
-                ),
+                    action_data={"analysis_type": "ml"}),
                 # Stage 5: Output
                 SagaStep(
                     name="generate_reports",
                     order=5,
-                    action_data={"formats": ["pdf", "json"]},
-                ),
+                    action_data={"formats": ["pdf", "json"]}),
             ],
             compensation_strategy=CompensationStrategy.BACKWARD,
             enable_state_persistence=True,
-            checkpoint_interval=2,
-        )
+            checkpoint_interval=2)
 
         orchestrator = PersistentSagaOrchestrator(
             orchestrator_id="test_orchestrator_005",
-            session_factory=db_session_factory,
-        )
+            session_factory=db_session_factory)
 
         await orchestrator.register_saga(saga)
 
@@ -588,8 +529,7 @@ class TestEndToEndWorkflows:
                 "priority": "high",
                 "deadline": "2025-10-21T00:00:00Z",
             },
-            tags=["complex", "pipeline", "production"],
-        )
+            tags=["complex", "pipeline", "production"])
 
         # Execute workflow stages
         await orchestrator.update_execution_state(
@@ -598,16 +538,14 @@ class TestEndToEndWorkflows:
             current_step=1,
             completed_steps=[],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Stage 1: Ingest
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[0].step_id,
             status="completed",
-            result={"total_records": 10000},
-        )
+            result={"total_records": 10000})
 
         # Stage 2: Parallel validation
         for step in saga.steps[1:4]:
@@ -615,22 +553,19 @@ class TestEndToEndWorkflows:
                 execution_id=execution_id,
                 step_id=step.step_id,
                 status="completed",
-                result={"validated_records": 3333, "errors": 0},
-            )
+                result={"validated_records": 3333, "errors": 0})
 
         # Checkpoint after validation
         await orchestrator.create_checkpoint(
             execution_id=execution_id,
-            checkpoint_data={"stage": "validation_complete", "records": 10000},
-        )
+            checkpoint_data={"stage": "validation_complete", "records": 10000})
 
         # Stage 3: Transform
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[4].step_id,
             status="completed",
-            result={"transformed_records": 10000},
-        )
+            result={"transformed_records": 10000})
 
         # Stage 4: Parallel analysis
         for step in saga.steps[5:7]:
@@ -638,22 +573,19 @@ class TestEndToEndWorkflows:
                 execution_id=execution_id,
                 step_id=step.step_id,
                 status="completed",
-                result={"analysis_complete": True, "insights": 50},
-            )
+                result={"analysis_complete": True, "insights": 50})
 
         # Checkpoint after analysis
         await orchestrator.create_checkpoint(
             execution_id=execution_id,
-            checkpoint_data={"stage": "analysis_complete", "insights": 100},
-        )
+            checkpoint_data={"stage": "analysis_complete", "insights": 100})
 
         # Stage 5: Output
         await orchestrator.update_step_state(
             execution_id=execution_id,
             step_id=saga.steps[7].step_id,
             status="completed",
-            result={"reports_generated": 2, "output_path": "/reports/"},
-        )
+            result={"reports_generated": 2, "output_path": "/reports/"})
 
         # Complete workflow
         await orchestrator.update_execution_state(
@@ -662,8 +594,7 @@ class TestEndToEndWorkflows:
             current_step=5,
             completed_steps=[step.step_id for step in saga.steps],
             failed_steps=[],
-            compensated_steps=[],
-        )
+            compensated_steps=[])
 
         # Verify complete workflow execution
         async with db_session_factory() as session:

@@ -14,8 +14,7 @@ from agentcore.orchestration.patterns.saga import (
     SagaOrchestrator,
     SagaStatus,
     SagaStep,
-    SagaStepStatus,
-)
+    SagaStepStatus)
 
 
 @pytest.fixture
@@ -25,8 +24,7 @@ def saga_config() -> SagaConfig:
         enable_retry=True,
         max_retries=2,
         retry_delay_seconds=0,  # No delay for tests
-        enable_checkpointing=True,
-    )
+        enable_checkpointing=True)
 
 
 @pytest.fixture
@@ -34,8 +32,7 @@ def saga_orchestrator(saga_config: SagaConfig) -> SagaOrchestrator:
     """Create test saga orchestrator."""
     return SagaOrchestrator(
         orchestrator_id="test-orchestrator",
-        config=saga_config,
-    )
+        config=saga_config)
 
 
 class TestSagaOrchestrator:
@@ -50,8 +47,7 @@ class TestSagaOrchestrator:
             steps=[
                 SagaStep(name="step-1", order=0),
                 SagaStep(name="step-2", order=1),
-            ],
-        )
+            ])
 
         saga_orchestrator.register_saga(saga)
 
@@ -88,8 +84,7 @@ class TestSagaOrchestrator:
                 SagaStep(name="reserve-inventory", order=0),
                 SagaStep(name="charge-payment", order=1),
                 SagaStep(name="ship-order", order=2),
-            ],
-        )
+            ])
 
         saga_orchestrator.register_saga(saga)
 
@@ -134,8 +129,7 @@ class TestSagaOrchestrator:
                 SagaStep(name="step-2-fail", order=1),
                 SagaStep(name="step-3", order=2),
             ],
-            compensation_strategy=CompensationStrategy.BACKWARD,
-        )
+            compensation_strategy=CompensationStrategy.BACKWARD)
 
         saga_orchestrator.register_saga(saga)
 
@@ -182,8 +176,7 @@ class TestSagaOrchestrator:
             name="retry-saga",
             steps=[
                 SagaStep(name="retry-step", order=0, max_retries=2),
-            ],
-        )
+            ])
 
         saga_orchestrator.register_saga(saga)
 
@@ -221,8 +214,7 @@ class TestSagaOrchestrator:
                 SagaStep(name="step-2", order=1),
                 SagaStep(name="step-3-fail", order=2),
             ],
-            compensation_strategy=CompensationStrategy.BACKWARD,
-        )
+            compensation_strategy=CompensationStrategy.BACKWARD)
 
         saga_orchestrator.register_saga(saga)
 
@@ -282,8 +274,7 @@ class TestSagaModels:
         step = SagaStep(
             name="test-step",
             order=0,
-            action_data={"input": "data"},
-        )
+            action_data={"input": "data"})
 
         assert step.name == "test-step"
         assert step.status == SagaStepStatus.PENDING
@@ -297,8 +288,7 @@ class TestSagaModels:
                 SagaStep(name="step-1", order=0),
                 SagaStep(name="step-2", order=1),
             ],
-            compensation_strategy=CompensationStrategy.BACKWARD,
-        )
+            compensation_strategy=CompensationStrategy.BACKWARD)
 
         assert saga.name == "test-saga"
         assert len(saga.steps) == 2
@@ -309,8 +299,7 @@ class TestSagaModels:
         saga_id = uuid4()
         execution = SagaExecution(
             saga_id=saga_id,
-            saga_name="test-saga",
-        )
+            saga_name="test-saga")
 
         assert execution.saga_id == saga_id
         assert execution.status == SagaStatus.PENDING

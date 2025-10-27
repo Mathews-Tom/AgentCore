@@ -8,23 +8,19 @@ import pytest
 from agentcore.agent_runtime.models.state_persistence import (
     CompressionType,
     StateRestoreRequest,
-    StateVersion,
-)
+    StateVersion)
 from agentcore.agent_runtime.services.state_migration import (
     StateMigrationService,
-    get_migration_service,
-)
+    get_migration_service)
 from agentcore.agent_runtime.services.state_persistence import (
     StateNotFoundError,
     StatePersistenceError,
-    StatePersistenceService,
-)
+    StatePersistenceService)
 from agentcore.agent_runtime.services.state_serializer import (
     CURRENT_STATE_VERSION,
     StateDeserializationError,
     StateSerializationError,
-    StateSerializer,
-)
+    StateSerializer)
 
 
 class TestStateSerializer:
@@ -47,8 +43,7 @@ class TestStateSerializer:
         compressed_bytes, snapshot = serializer.serialize_state(
             agent_id="test-agent",
             state_data=state_data,
-            compression=CompressionType.GZIP,
-        )
+            compression=CompressionType.GZIP)
 
         assert compressed_bytes
         assert snapshot.agent_id == "test-agent"
@@ -75,8 +70,7 @@ class TestStateSerializer:
         compressed_bytes, snapshot = serializer.serialize_state(
             agent_id="test-agent",
             state_data=state_data,
-            compression=CompressionType.NONE,
-        )
+            compression=CompressionType.NONE)
 
         assert compressed_bytes
         assert snapshot.compressed_size == snapshot.uncompressed_size
@@ -97,13 +91,11 @@ class TestStateSerializer:
 
         compressed_bytes, original_snapshot = serializer.serialize_state(
             agent_id="test-agent",
-            state_data=state_data,
-        )
+            state_data=state_data)
 
         deserialized_snapshot = serializer.deserialize_state(
             compressed_data=compressed_bytes,
-            compression=CompressionType.GZIP,
-        )
+            compression=CompressionType.GZIP)
 
         assert deserialized_snapshot.agent_id == original_snapshot.agent_id
         assert deserialized_snapshot.snapshot_id == original_snapshot.snapshot_id
@@ -117,8 +109,7 @@ class TestStateSerializer:
         with pytest.raises(StateDeserializationError):
             serializer.deserialize_state(
                 compressed_data=b"invalid data",
-                compression=CompressionType.GZIP,
-            )
+                compression=CompressionType.GZIP)
 
     def test_checksum_calculation(self) -> None:
         """Test checksum calculation and verification."""
@@ -156,8 +147,7 @@ class TestStatePersistenceService:
         return StatePersistenceService(
             storage_path=temp_storage,
             compression=CompressionType.GZIP,
-            retention_days=7,
-        )
+            retention_days=7)
 
     async def test_save_state_success(
         self, persistence_service: StatePersistenceService
@@ -178,8 +168,7 @@ class TestStatePersistenceService:
         snapshot = await persistence_service.save_state(
             agent_id="agent-1",
             state_data=state_data,
-            tags=["test", "react"],
-        )
+            tags=["test", "react"])
 
         assert snapshot.agent_id == "agent-1"
         assert snapshot.philosophy == "react"
@@ -204,14 +193,12 @@ class TestStatePersistenceService:
         # Save state
         saved_snapshot = await persistence_service.save_state(
             agent_id="agent-2",
-            state_data=state_data,
-        )
+            state_data=state_data)
 
         # Load state
         loaded_snapshot = await persistence_service.load_state(
             agent_id="agent-2",
-            snapshot_id=saved_snapshot.snapshot_id,
-        )
+            snapshot_id=saved_snapshot.snapshot_id)
 
         assert loaded_snapshot.agent_id == "agent-2"
         assert loaded_snapshot.snapshot_id == saved_snapshot.snapshot_id
@@ -271,8 +258,7 @@ class TestStatePersistenceService:
         # Save state
         snapshot = await persistence_service.save_state(
             agent_id="agent-4",
-            state_data=state_data,
-        )
+            state_data=state_data)
 
         # Restore state
         restore_request = StateRestoreRequest(
@@ -281,8 +267,7 @@ class TestStatePersistenceService:
             restore_memory=True,
             restore_execution_context=True,
             restore_tools=True,
-            target_status="running",
-        )
+            target_status="running")
 
         result = await persistence_service.restore_state(restore_request)
 
@@ -308,8 +293,7 @@ class TestStatePersistenceService:
 
         snapshot = await persistence_service.save_state(
             agent_id="agent-5",
-            state_data=state_data,
-        )
+            state_data=state_data)
 
         # Restore only memory
         restore_request = StateRestoreRequest(
@@ -317,8 +301,7 @@ class TestStatePersistenceService:
             snapshot_id=snapshot.snapshot_id,
             restore_memory=True,
             restore_execution_context=False,
-            restore_tools=False,
-        )
+            restore_tools=False)
 
         result = await persistence_service.restore_state(restore_request)
 
@@ -345,8 +328,7 @@ class TestStatePersistenceService:
             await persistence_service.save_state(
                 agent_id="agent-6",
                 state_data=state_data,
-                tags=[f"snapshot-{i}"],
-            )
+                tags=[f"snapshot-{i}"])
 
         # List snapshots
         snapshots = await persistence_service.list_snapshots(agent_id="agent-6")
@@ -371,21 +353,18 @@ class TestStatePersistenceService:
 
         snapshot = await persistence_service.save_state(
             agent_id="agent-7",
-            state_data=state_data,
-        )
+            state_data=state_data)
 
         # Delete snapshot
         await persistence_service.delete_snapshot(
             agent_id="agent-7",
-            snapshot_id=snapshot.snapshot_id,
-        )
+            snapshot_id=snapshot.snapshot_id)
 
         # Verify deletion
         with pytest.raises(StateNotFoundError):
             await persistence_service.load_state(
                 agent_id="agent-7",
-                snapshot_id=snapshot.snapshot_id,
-            )
+                snapshot_id=snapshot.snapshot_id)
 
 
 class TestStateMigration:
@@ -425,8 +404,7 @@ class TestStateMigration:
             to_version=to_version,
             migration_func=test_migration,
             description="Test migration",
-            breaking_change=False,
-        )
+            breaking_change=False)
 
         assert service.can_migrate(from_version, to_version)
 
@@ -442,8 +420,7 @@ class TestStateMigration:
             snapshot_id="test-snapshot",
             version=version,
             status="running",
-            philosophy="react",
-        )
+            philosophy="react")
 
         migrated_snapshot, migrations = service.migrate_state(snapshot, version)
 

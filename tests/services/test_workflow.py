@@ -18,8 +18,7 @@ from agentcore_cli.services.workflow import WorkflowService
 from agentcore_cli.services.exceptions import (
     ValidationError,
     WorkflowNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 class TestWorkflowServiceRun:
@@ -44,8 +43,7 @@ class TestWorkflowServiceRun:
         assert workflow_id == "workflow-001"
         mock_client.call.assert_called_once_with(
             "workflow.run",
-            {"definition": definition},
-        )
+            {"definition": definition})
 
     def test_run_with_parameters(self) -> None:
         """Test execution with parameters."""
@@ -150,8 +148,7 @@ class TestWorkflowServiceListWorkflows:
         assert len(workflows) == 2
         mock_client.call.assert_called_once_with(
             "workflow.list",
-            {"limit": 100, "offset": 0},
-        )
+            {"limit": 100, "offset": 0})
 
     def test_list_with_status_filter(self) -> None:
         """Test listing with status filter."""
@@ -166,8 +163,7 @@ class TestWorkflowServiceListWorkflows:
         # Assert
         mock_client.call.assert_called_once_with(
             "workflow.list",
-            {"limit": 10, "offset": 0, "status": "running"},
-        )
+            {"limit": 10, "offset": 0, "status": "running"})
 
     def test_list_invalid_status_raises_validation_error(self) -> None:
         """Test that invalid status raises ValidationError."""
@@ -271,8 +267,7 @@ class TestWorkflowServiceStop:
         assert success is True
         mock_client.call.assert_called_once_with(
             "workflow.stop",
-            {"workflow_id": "workflow-001", "force": False},
-        )
+            {"workflow_id": "workflow-001", "force": False})
 
     def test_stop_with_force(self) -> None:
         """Test stopping with force flag."""

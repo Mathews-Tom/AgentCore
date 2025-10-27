@@ -20,8 +20,7 @@ from agentcore.integration.webhook import (
     WebhookNotFoundError,
     WebhookRegistration,
     WebhookValidationError,
-    WebhookValidator,
-)
+    WebhookValidator)
 
 
 @pytest.fixture
@@ -31,8 +30,7 @@ def webhook_config():
         default_max_retries=2,
         default_retry_delay_seconds=1,
         default_timeout_seconds=5,
-        max_concurrent_deliveries=10,
-    )
+        max_concurrent_deliveries=10)
 
 
 @pytest.fixture
@@ -67,8 +65,7 @@ class TestWebhookManager:
         webhook = await webhook_manager.register(
             name="Test Webhook",
             url="https://api.example.com/webhook",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         assert webhook.name == "Test Webhook"
         assert str(webhook.url) == "https://api.example.com/webhook"
@@ -84,8 +81,7 @@ class TestWebhookManager:
             name="Test Webhook",
             url="https://api.example.com/webhook",
             events=[WebhookEvent.TASK_COMPLETED],
-            secret=secret,
-        )
+            secret=secret)
 
         assert webhook.secret == secret
 
@@ -105,8 +101,7 @@ class TestWebhookManager:
         webhook = await webhook_manager.register(
             name="Test Webhook",
             url="https://api.example.com/webhook",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         retrieved = await webhook_manager.get(webhook.id)
         assert retrieved.id == webhook.id
@@ -124,14 +119,12 @@ class TestWebhookManager:
         webhook1 = await webhook_manager.register(
             name="Webhook 1",
             url="https://api.example.com/webhook1",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         webhook2 = await webhook_manager.register(
             name="Webhook 2",
             url="https://api.example.com/webhook2",
-            events=[WebhookEvent.TASK_STARTED],
-        )
+            events=[WebhookEvent.TASK_STARTED])
 
         webhooks = await webhook_manager.list()
         assert len(webhooks) == 2
@@ -144,14 +137,12 @@ class TestWebhookManager:
         await webhook_manager.register(
             name="Webhook 1",
             url="https://api.example.com/webhook1",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         webhook2 = await webhook_manager.register(
             name="Webhook 2",
             url="https://api.example.com/webhook2",
-            events=[WebhookEvent.TASK_STARTED],
-        )
+            events=[WebhookEvent.TASK_STARTED])
 
         # Filter by event type
         webhooks = await webhook_manager.list(
@@ -166,14 +157,12 @@ class TestWebhookManager:
         webhook = await webhook_manager.register(
             name="Test Webhook",
             url="https://api.example.com/webhook",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         updated = await webhook_manager.update(
             webhook.id,
             name="Updated Webhook",
-            active=False,
-        )
+            active=False)
 
         assert updated.name == "Updated Webhook"
         assert updated.active is False
@@ -184,8 +173,7 @@ class TestWebhookManager:
         webhook = await webhook_manager.register(
             name="Test Webhook",
             url="https://api.example.com/webhook",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         await webhook_manager.delete(webhook.id)
 
@@ -198,8 +186,7 @@ class TestWebhookManager:
         webhook = await webhook_manager.register(
             name="Test Webhook",
             url="https://api.example.com/webhook",
-            events=[WebhookEvent.TASK_COMPLETED],
-        )
+            events=[WebhookEvent.TASK_COMPLETED])
 
         # Update stats
         await webhook_manager.update_stats(webhook.id, success=True, latency_ms=100)
@@ -222,8 +209,7 @@ class TestEventPublisher:
         event = await event_publisher.publish(
             event_type=WebhookEvent.TASK_COMPLETED,
             data={"task_id": "123"},
-            source="test",
-        )
+            source="test")
 
         assert event.event_type == WebhookEvent.TASK_COMPLETED
         assert event.data["task_id"] == "123"
@@ -235,8 +221,7 @@ class TestEventPublisher:
         webhook_id = uuid4()
         subscription = await event_publisher.subscribe(
             webhook_id,
-            [WebhookEvent.TASK_COMPLETED, WebhookEvent.TASK_STARTED],
-        )
+            [WebhookEvent.TASK_COMPLETED, WebhookEvent.TASK_STARTED])
 
         assert subscription.webhook_id == webhook_id
         assert len(subscription.event_types) == 2
@@ -302,14 +287,12 @@ class TestDeliveryService:
             name="Test Webhook",
             url="https://api.example.com/webhook",
             events=[WebhookEvent.TASK_COMPLETED],
-            secret="a" * 32,
-        )
+            secret="a" * 32)
 
         event = EventPayload(
             event_type=WebhookEvent.TASK_COMPLETED,
             data={"task_id": "123"},
-            source="test",
-        )
+            source="test")
 
         # Mock HTTP client
         with patch.object(delivery_service, "_client") as mock_client:
@@ -337,14 +320,12 @@ class TestDeliveryService:
             events=[WebhookEvent.TASK_COMPLETED],
             secret="a" * 32,
             max_retries=2,
-            retry_delay_seconds=1,
-        )
+            retry_delay_seconds=1)
 
         event = EventPayload(
             event_type=WebhookEvent.TASK_COMPLETED,
             data={"task_id": "123"},
-            source="test",
-        )
+            source="test")
 
         # Mock HTTP client to fail once, then succeed
         with patch.object(delivery_service, "_client") as mock_client:
@@ -379,14 +360,12 @@ class TestDeliveryService:
             events=[WebhookEvent.TASK_COMPLETED],
             secret="a" * 32,
             max_retries=1,
-            retry_delay_seconds=1,
-        )
+            retry_delay_seconds=1)
 
         event = EventPayload(
             event_type=WebhookEvent.TASK_COMPLETED,
             data={"task_id": "123"},
-            source="test",
-        )
+            source="test")
 
         # Mock HTTP client to always fail
         with patch.object(delivery_service, "_client") as mock_client:
@@ -482,15 +461,13 @@ class TestWebhookValidator:
 async def test_end_to_end_workflow(
     webhook_manager,
     event_publisher,
-    delivery_service,
-):
+    delivery_service):
     """Test complete webhook workflow end-to-end."""
     # 1. Register webhook
     webhook = await webhook_manager.register(
         name="Test Webhook",
         url="https://api.example.com/webhook",
-        events=[WebhookEvent.TASK_COMPLETED],
-    )
+        events=[WebhookEvent.TASK_COMPLETED])
 
     # 2. Subscribe to events
     await event_publisher.subscribe(webhook.id, [WebhookEvent.TASK_COMPLETED])
@@ -499,8 +476,7 @@ async def test_end_to_end_workflow(
     event = await event_publisher.publish(
         event_type=WebhookEvent.TASK_COMPLETED,
         data={"task_id": "123", "status": "completed"},
-        source="agentcore.tasks",
-    )
+        source="agentcore.tasks")
 
     # 4. Mock delivery
     with patch.object(delivery_service, "_client") as mock_client:

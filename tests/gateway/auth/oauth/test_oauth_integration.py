@@ -16,8 +16,7 @@ from gateway.auth.oauth.models import (
     OAuthProvider,
     OAuthProviderConfig,
     OAuthUserInfo,
-    PKCEChallengeMethod,
-)
+    PKCEChallengeMethod)
 from gateway.auth.oauth.pkce import PKCEGenerator
 from gateway.auth.oauth.provider import OAuthProviderBase
 from gateway.auth.oauth.providers.github import GitHubOAuthProvider
@@ -45,8 +44,7 @@ class TestGoogleOAuthProvider:
             userinfo_endpoint=HttpUrl(GoogleOAuthProvider.USERINFO_ENDPOINT),
             redirect_uri="http://localhost:8080/oauth/callback/google",
             scopes=GoogleOAuthProvider.DEFAULT_SCOPES,
-            use_pkce=True,
-        )
+            use_pkce=True)
 
     @pytest.fixture
     def google_provider(self, google_config: OAuthProviderConfig) -> GoogleOAuthProvider:
@@ -55,15 +53,13 @@ class TestGoogleOAuthProvider:
 
     def test_google_provider_initialization(
         self,
-        google_provider: GoogleOAuthProvider,
-    ) -> None:
+        google_provider: GoogleOAuthProvider) -> None:
         """Test Google provider initialization."""
         assert google_provider.get_provider_name() == "google"
 
     def test_google_build_authorization_url(
         self,
-        google_provider: GoogleOAuthProvider,
-    ) -> None:
+        google_provider: GoogleOAuthProvider) -> None:
         """Test Google-specific authorization URL."""
         state = "test-state"
         auth_url = google_provider.build_authorization_url(state=state)
@@ -88,8 +84,7 @@ class TestGitHubOAuthProvider:
             userinfo_endpoint=HttpUrl(GitHubOAuthProvider.USERINFO_ENDPOINT),
             redirect_uri="http://localhost:8080/oauth/callback/github",
             scopes=GitHubOAuthProvider.DEFAULT_SCOPES,
-            use_pkce=True,
-        )
+            use_pkce=True)
 
     @pytest.fixture
     def github_provider(self, github_config: OAuthProviderConfig) -> GitHubOAuthProvider:
@@ -98,15 +93,13 @@ class TestGitHubOAuthProvider:
 
     def test_github_provider_initialization(
         self,
-        github_provider: GitHubOAuthProvider,
-    ) -> None:
+        github_provider: GitHubOAuthProvider) -> None:
         """Test GitHub provider initialization."""
         assert github_provider.get_provider_name() == "github"
 
     def test_github_build_authorization_url(
         self,
-        github_provider: GitHubOAuthProvider,
-    ) -> None:
+        github_provider: GitHubOAuthProvider) -> None:
         """Test GitHub-specific authorization URL."""
         state = "test-state"
         auth_url = github_provider.build_authorization_url(state=state)
@@ -134,14 +127,12 @@ class TestOAuthProviderRegistry:
             token_endpoint=HttpUrl(GoogleOAuthProvider.TOKEN_ENDPOINT),
             userinfo_endpoint=HttpUrl(GoogleOAuthProvider.USERINFO_ENDPOINT),
             redirect_uri="http://localhost:8080/oauth/callback/google",
-            scopes=GoogleOAuthProvider.DEFAULT_SCOPES,
-        )
+            scopes=GoogleOAuthProvider.DEFAULT_SCOPES)
 
     def test_register_provider(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test registering OAuth provider."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
 
@@ -151,8 +142,7 @@ class TestOAuthProviderRegistry:
     def test_get_provider(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test getting registered provider."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
 
@@ -170,8 +160,7 @@ class TestOAuthProviderRegistry:
     def test_get_config(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test getting provider config."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
 
@@ -183,8 +172,7 @@ class TestOAuthProviderRegistry:
     def test_disable_provider(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test disabling provider."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
         registry.disable_provider(OAuthProvider.GOOGLE)
@@ -195,8 +183,7 @@ class TestOAuthProviderRegistry:
     def test_enable_provider(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test enabling provider."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
         registry.disable_provider(OAuthProvider.GOOGLE)
@@ -207,8 +194,7 @@ class TestOAuthProviderRegistry:
     def test_unregister_provider(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test unregistering provider."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
         result = registry.unregister_provider(OAuthProvider.GOOGLE)
@@ -219,8 +205,7 @@ class TestOAuthProviderRegistry:
     def test_list_providers_enabled_only(
         self,
         registry: OAuthProviderRegistry,
-        google_config: OAuthProviderConfig,
-    ) -> None:
+        google_config: OAuthProviderConfig) -> None:
         """Test listing only enabled providers."""
         registry.register_provider(OAuthProvider.GOOGLE, google_config)
 
@@ -232,8 +217,7 @@ class TestOAuthProviderRegistry:
             authorization_endpoint=HttpUrl(GitHubOAuthProvider.AUTHORIZATION_ENDPOINT),
             token_endpoint=HttpUrl(GitHubOAuthProvider.TOKEN_ENDPOINT),
             redirect_uri="http://localhost:8080/callback",
-            enabled=False,
-        )
+            enabled=False)
         registry.register_provider(OAuthProvider.GITHUB, github_config)
 
         enabled = registry.list_providers(enabled_only=True)

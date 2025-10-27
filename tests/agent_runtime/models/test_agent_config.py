@@ -7,8 +7,7 @@ from agentcore.agent_runtime.models.agent_config import (
     AgentConfig,
     AgentPhilosophy,
     ResourceLimits,
-    SecurityProfile,
-)
+    SecurityProfile)
 
 
 def test_agent_philosophy_enum() -> None:
@@ -60,8 +59,7 @@ def test_agent_config_valid() -> None:
     """Test valid AgentConfig creation."""
     config = AgentConfig(
         agent_id="test-agent-001",
-        philosophy=AgentPhilosophy.REACT,
-    )
+        philosophy=AgentPhilosophy.REACT)
     assert config.agent_id == "test-agent-001"
     assert config.philosophy == AgentPhilosophy.REACT
     assert config.tools == []
@@ -73,8 +71,7 @@ def test_agent_config_invalid_agent_id() -> None:
     with pytest.raises(ValidationError):
         AgentConfig(
             agent_id="invalid agent id!",  # Contains spaces and special chars
-            philosophy=AgentPhilosophy.REACT,
-        )
+            philosophy=AgentPhilosophy.REACT)
 
 
 def test_agent_config_too_many_tools() -> None:
@@ -84,8 +81,7 @@ def test_agent_config_too_many_tools() -> None:
         AgentConfig(
             agent_id="test-agent",
             philosophy=AgentPhilosophy.REACT,
-            tools=tools,
-        )
+            tools=tools)
 
 
 def test_agent_config_restricted_env_vars() -> None:
@@ -106,9 +102,7 @@ def test_agent_config_with_custom_resources() -> None:
         resource_limits=ResourceLimits(
             max_memory_mb=2048,
             max_cpu_cores=4.0,
-            max_execution_time_seconds=600,
-        ),
-    )
+            max_execution_time_seconds=600))
     assert config.resource_limits.max_memory_mb == 2048
     assert config.resource_limits.max_cpu_cores == 4.0
     assert config.resource_limits.max_execution_time_seconds == 600
@@ -122,8 +116,6 @@ def test_agent_config_with_security_profile() -> None:
         security_profile=SecurityProfile(
             profile_name="minimal",
             user_namespace=True,
-            read_only_filesystem=True,
-        ),
-    )
+            read_only_filesystem=True))
     assert config.security_profile.profile_name == "minimal"
     assert config.security_profile.user_namespace is True

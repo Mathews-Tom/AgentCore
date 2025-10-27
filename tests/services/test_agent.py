@@ -19,8 +19,7 @@ from agentcore_cli.services.agent import AgentService
 from agentcore_cli.services.exceptions import (
     ValidationError,
     AgentNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 class TestAgentServiceRegister:
@@ -64,8 +63,7 @@ class TestAgentServiceRegister:
             "test-agent",
             ["python"],
             cost_per_request=0.05,
-            requirements={"memory": "4GB"},
-        )
+            requirements={"memory": "4GB"})
 
         # Assert
         assert agent_id == "agent-002"
@@ -176,8 +174,7 @@ class TestAgentServiceListAgents:
         assert agents[0]["agent_id"] == "agent-001"
         mock_client.call.assert_called_once_with(
             "agent.list",
-            {"limit": 100, "offset": 0},
-        )
+            {"limit": 100, "offset": 0})
 
     def test_list_with_status_filter(self) -> None:
         """Test listing with status filter."""
@@ -192,8 +189,7 @@ class TestAgentServiceListAgents:
         # Assert
         mock_client.call.assert_called_once_with(
             "agent.list",
-            {"limit": 10, "offset": 5, "status": "active"},
-        )
+            {"limit": 10, "offset": 5, "status": "active"})
 
     def test_list_invalid_limit_raises_validation_error(self) -> None:
         """Test that invalid limit raises ValidationError."""
@@ -267,8 +263,7 @@ class TestAgentServiceGet:
         assert agent["agent_id"] == "agent-001"
         mock_client.call.assert_called_once_with(
             "agent.get",
-            {"agent_id": "agent-001"},
-        )
+            {"agent_id": "agent-001"})
 
     def test_get_strips_whitespace(self) -> None:
         """Test that agent_id is stripped of whitespace."""
@@ -345,8 +340,7 @@ class TestAgentServiceRemove:
         assert success is True
         mock_client.call.assert_called_once_with(
             "agent.unregister",
-            {"agent_id": "agent-001", "force": False},
-        )
+            {"agent_id": "agent-001", "force": False})
 
     def test_remove_with_force(self) -> None:
         """Test removal with force flag."""
@@ -414,8 +408,7 @@ class TestAgentServiceSearch:
         assert len(agents) == 1
         mock_client.call.assert_called_once_with(
             "agent.discover",
-            {"capabilities": ["python"], "limit": 100},
-        )
+            {"capabilities": ["python"], "limit": 100})
 
     def test_search_with_limit(self) -> None:
         """Test search with custom limit."""

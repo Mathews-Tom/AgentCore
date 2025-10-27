@@ -20,8 +20,7 @@ from src.agentcore.reasoning.models.reasoning_models import BoundedContextConfig
 from src.agentcore.reasoning.services.llm_client import (
     GenerationResult,
     LLMClient,
-    LLMClientConfig,
-)
+    LLMClientConfig)
 
 
 @pytest.fixture
@@ -30,8 +29,7 @@ def llm_config() -> LLMClientConfig:
     return LLMClientConfig(
         api_key="test-key",
         base_url="https://api.test.com/v1",
-        timeout_seconds=30,
-    )
+        timeout_seconds=30)
 
 
 @pytest.fixture
@@ -40,8 +38,7 @@ def bounded_config() -> BoundedContextConfig:
     return BoundedContextConfig(
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=5,
-    )
+        max_iterations=5)
 
 
 @pytest.fixture
@@ -61,8 +58,7 @@ def mock_llm_client(llm_config: LLMClientConfig) -> LLMClient:
 @pytest.mark.asyncio
 async def test_single_iteration_answer(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test reasoning with answer found in first iteration."""
     # Setup mock to return answer immediately
     mock_llm_client.generate.return_value = GenerationResult(
@@ -70,8 +66,7 @@ async def test_single_iteration_answer(
         tokens_used=500,
         finish_reason="stop",
         model="gpt-4.1",
-        stop_sequence_found="<answer>",
-    )
+        stop_sequence_found="<answer>")
 
     # Create engine
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
@@ -91,8 +86,7 @@ async def test_single_iteration_answer(
 @pytest.mark.asyncio
 async def test_multi_iteration_reasoning(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test reasoning across multiple iterations."""
     # Setup mock to require multiple iterations
     responses = [
@@ -102,38 +96,33 @@ async def test_multi_iteration_reasoning(
             tokens_used=600,
             finish_reason="stop",
             model="gpt-4.1",
-            stop_sequence_found="<continue>",
-        ),
+            stop_sequence_found="<continue>"),
         # Iteration 1: Carryover generation (for carryover)
         GenerationResult(
             content='{"current_strategy": "Solve step by step", "key_findings": ["Problem decomposed"], "progress": "Started analysis", "next_steps": ["Calculate"], "unresolved": []}',
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         # Iteration 2: Still working
         GenerationResult(
             content="Step 2: Calculating intermediate results... <continue>",
             tokens_used=700,
             finish_reason="stop",
             model="gpt-4.1",
-            stop_sequence_found="<continue>",
-        ),
+            stop_sequence_found="<continue>"),
         # Iteration 3: Carryover generation
         GenerationResult(
             content='{"current_strategy": "Continue calculation", "key_findings": ["Intermediate result found"], "progress": "Halfway done", "next_steps": ["Final calculation"], "unresolved": []}',
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         # Iteration 4: Answer found
         GenerationResult(
             content="Step 3: Final calculation complete. <answer>The answer is 42</answer>",
             tokens_used=500,
             finish_reason="stop",
             model="gpt-4.1",
-            stop_sequence_found="<answer>",
-        ),
+            stop_sequence_found="<answer>"),
     ]
 
     mock_llm_client.generate.side_effect = responses
@@ -155,8 +144,7 @@ async def test_multi_iteration_reasoning(
 @pytest.mark.asyncio
 async def test_max_iterations_reached(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test reasoning when max iterations reached without finding answer."""
     # Setup mock to never find answer
     def generate_no_answer(*args, **kwargs):
@@ -165,8 +153,7 @@ async def test_max_iterations_reached(
             tokens_used=600,
             finish_reason="stop",
             model="gpt-4.1",
-            stop_sequence_found="<continue>",
-        )
+            stop_sequence_found="<continue>")
 
     mock_llm_client.generate.side_effect = [
         generate_no_answer(),  # Iteration 0
@@ -196,8 +183,7 @@ async def test_max_iterations_reached(
 @pytest.mark.asyncio
 async def test_answer_extraction(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test answer extraction from different formats."""
     # Test with closing tag
     mock_llm_client.generate.return_value = GenerationResult(
@@ -205,8 +191,7 @@ async def test_answer_extraction(
         tokens_used=500,
         finish_reason="stop",
         model="gpt-4.1",
-        stop_sequence_found="<answer>",
-    )
+        stop_sequence_found="<answer>")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
     result = await engine.reason(query="Test query")
@@ -219,8 +204,7 @@ async def test_answer_extraction(
         tokens_used=500,
         finish_reason="stop",
         model="gpt-4.1",
-        stop_sequence_found="<answer>",
-    )
+        stop_sequence_found="<answer>")
 
     result = await engine.reason(query="Test query 2")
     assert result.answer == "The answer is forty-two"
@@ -229,16 +213,14 @@ async def test_answer_extraction(
 @pytest.mark.asyncio
 async def test_metrics_calculation(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test that compute savings metrics are calculated."""
     mock_llm_client.generate.return_value = GenerationResult(
         content="<answer>Result</answer>",
         tokens_used=1000,
         finish_reason="stop",
         model="gpt-4.1",
-        stop_sequence_found="<answer>",
-    )
+        stop_sequence_found="<answer>")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
     result = await engine.reason(query="Test")
@@ -253,15 +235,13 @@ async def test_metrics_calculation(
 @pytest.mark.asyncio
 async def test_empty_query_handling(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test handling of empty query."""
     mock_llm_client.generate.return_value = GenerationResult(
         content="<answer>Empty query</answer>",
         tokens_used=100,
         finish_reason="stop",
-        model="gpt-4.1",
-    )
+        model="gpt-4.1")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
 
@@ -273,8 +253,7 @@ async def test_empty_query_handling(
 @pytest.mark.asyncio
 async def test_llm_failure_handling(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test handling of LLM generation failures."""
     # Mock LLM to raise exception
     mock_llm_client.generate.side_effect = RuntimeError("LLM service unavailable")
@@ -289,8 +268,7 @@ async def test_llm_failure_handling(
 @pytest.mark.asyncio
 async def test_iteration_metrics_tracking(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test that iteration metrics are properly tracked."""
     responses = [
         GenerationResult(content="Thinking... <continue>", tokens_used=500, finish_reason="stop", model="gpt-4.1"),
@@ -323,8 +301,7 @@ async def test_iteration_metrics_tracking(
 @pytest.mark.asyncio
 async def test_carryover_parse_failure_fallback(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test fallback when carryover JSON parsing fails."""
     responses = [
         # Iteration 0: No answer, continue
@@ -332,22 +309,19 @@ async def test_carryover_parse_failure_fallback(
             content="Step 1: Working on it... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         # Carryover generation returns invalid JSON
         GenerationResult(
             content="This is not valid JSON at all!",
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         # Iteration 1: Answer found
         GenerationResult(
             content="<answer>Final answer</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
     ]
 
     mock_llm_client.generate.side_effect = responses
@@ -365,29 +339,25 @@ async def test_carryover_parse_failure_fallback(
 @pytest.mark.asyncio
 async def test_carryover_missing_fields_fallback(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test fallback when carryover JSON is missing required fields."""
     responses = [
         GenerationResult(
             content="Reasoning... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         # Carryover with incomplete fields
         GenerationResult(
             content='{"current_strategy": "Plan", "key_findings": []}',  # Missing fields
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         GenerationResult(
             content="<answer>Done</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
     ]
 
     mock_llm_client.generate.side_effect = responses
@@ -403,29 +373,25 @@ async def test_carryover_missing_fields_fallback(
 @pytest.mark.asyncio
 async def test_carryover_exceeds_token_limit(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test that oversized carryover is trimmed."""
     responses = [
         GenerationResult(
             content="Step 1... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         # Very large carryover
         GenerationResult(
             content='{"current_strategy": "Plan", "key_findings": ["F1", "F2", "F3", "F4", "F5"], "progress": "Progress", "next_steps": ["N1", "N2", "N3", "N4", "N5"], "unresolved": []}',
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
         GenerationResult(
             content="<answer>Result</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1",
-        ),
+            model="gpt-4.1"),
     ]
 
     # Mock count_tokens to simulate oversized carryover that needs trimming
@@ -460,8 +426,7 @@ async def test_carryover_exceeds_token_limit(
 @pytest.mark.asyncio
 async def test_carryover_generation_exception(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test fallback when carryover generation raises exception."""
     call_count = [0]
 
@@ -473,8 +438,7 @@ async def test_carryover_generation_exception(
                 content="Working... <continue>",
                 tokens_used=600,
                 finish_reason="stop",
-                model="gpt-4.1",
-            )
+                model="gpt-4.1")
         elif call_count[0] == 2:
             # Second call: carryover generation - fails
             raise RuntimeError("Carryover generation failed")
@@ -484,8 +448,7 @@ async def test_carryover_generation_exception(
                 content="<answer>Answer</answer>",
                 tokens_used=500,
                 finish_reason="stop",
-                model="gpt-4.1",
-            )
+                model="gpt-4.1")
 
     mock_llm_client.generate.side_effect = side_effect_generator
 
@@ -500,16 +463,14 @@ async def test_carryover_generation_exception(
 @pytest.mark.asyncio
 async def test_metrics_calculator_edge_cases(
     mock_llm_client: LLMClient,
-    bounded_config: BoundedContextConfig,
-) -> None:
+    bounded_config: BoundedContextConfig) -> None:
     """Test metrics calculation with edge cases."""
     # Test with zero iterations (edge case, shouldn't happen in practice)
     mock_llm_client.generate.return_value = GenerationResult(
         content="<answer>Quick</answer>",
         tokens_used=100,
         finish_reason="stop",
-        model="gpt-4.1",
-    )
+        model="gpt-4.1")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
     result = await engine.reason(query="Test")

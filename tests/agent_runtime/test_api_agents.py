@@ -36,8 +36,7 @@ def test_create_agent_endpoint(client: TestClient) -> None:
                     "agent_id": "test-agent-001",
                     "philosophy": "react",
                 }
-            },
-        )
+            })
 
         assert response.status_code == 201
         data = response.json()
@@ -100,8 +99,7 @@ def test_get_agent_status_endpoint(client: TestClient) -> None:
             agent_id="test-agent-001",
             status="running",
             created_at=datetime.now(UTC),
-            last_updated=datetime.now(UTC),
-        )
+            last_updated=datetime.now(UTC))
         mock_lifecycle.get_agent_status = AsyncMock(return_value=mock_state)
 
         response = client.get("/api/v1/agents/test-agent-001/status")
@@ -126,8 +124,7 @@ def test_list_agents_endpoint(client: TestClient) -> None:
                 agent_id=f"test-agent-{i}",
                 status="running",
                 created_at=datetime.now(UTC),
-                last_updated=datetime.now(UTC),
-            )
+                last_updated=datetime.now(UTC))
             for i in range(3)
         ]
         mock_lifecycle.list_agents = AsyncMock(return_value=mock_states)

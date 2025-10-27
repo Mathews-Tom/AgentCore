@@ -147,8 +147,7 @@ class TestHealthChecks:
 
         with patch(
             "agentcore.a2a_protocol.services.health_monitor.HealthMetricRepository.record_health_check",
-            new=AsyncMock(),
-        ):
+            new=AsyncMock()):
             result = await monitor.check_agent_health(agent_id="agent-1")
 
         assert result is True
@@ -196,8 +195,7 @@ class TestHealthChecks:
 
         with patch(
             "agentcore.a2a_protocol.services.health_monitor.HealthMetricRepository.record_health_check",
-            new=AsyncMock(),
-        ):
+            new=AsyncMock()):
             result = await monitor.check_agent_health(
                 agent_id="agent-1", endpoint="http://agent-1.local"
             )
@@ -321,8 +319,7 @@ class TestAgentStatusUpdates:
         mock_agent_repo,
         mock_get_session,
         monitor,
-        mock_agent_db,
-    ):
+        mock_agent_db):
         """Test recovering agent to active status after successful check."""
         # Agent currently in ERROR status
         mock_agent_db.status = AgentStatus.ERROR
@@ -677,12 +674,10 @@ class TestStatistics:
         with patch("agentcore.a2a_protocol.services.health_monitor.get_session"):
             with patch(
                 "agentcore.a2a_protocol.services.health_monitor.AgentRepository.get_by_id",
-                new=AsyncMock(return_value=None),
-            ):
+                new=AsyncMock(return_value=None)):
                 with patch(
                     "agentcore.a2a_protocol.services.health_monitor.HealthMetricRepository.record_health_check",
-                    new=AsyncMock(),
-                ):
+                    new=AsyncMock()):
                     mock_response = MagicMock()
                     mock_response.status_code = 200
                     mock_client = AsyncMock()
@@ -703,8 +698,7 @@ class TestStatistics:
         with patch("agentcore.a2a_protocol.services.health_monitor.get_session"):
             with patch(
                 "agentcore.a2a_protocol.services.health_monitor.HealthMetricRepository.record_health_check",
-                new=AsyncMock(),
-            ):
+                new=AsyncMock()):
                 mock_client = AsyncMock()
                 mock_client.get = AsyncMock(side_effect=httpx.ConnectError("Failed"))
                 monitor._http_client = mock_client

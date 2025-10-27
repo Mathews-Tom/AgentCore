@@ -15,8 +15,7 @@ from agentcore.agent_runtime.models.sandbox import (
     ResourceLimitExceededError,
     SandboxConfig,
     SandboxPermission,
-    SecurityViolationError,
-)
+    SecurityViolationError)
 from agentcore.agent_runtime.services.audit_logger import AuditLogger
 from agentcore.agent_runtime.services.sandbox_service import SandboxService
 
@@ -36,9 +35,7 @@ def mock_sandbox_service() -> SandboxService:
                 max_memory_mb=512,
                 max_cpu_percent=50.0,
                 max_execution_time_seconds=60,
-                max_processes=100,
-            ),
-        )
+                max_processes=100))
     }
     return service
 
@@ -56,8 +53,7 @@ def security_middleware(mock_sandbox_service: SandboxService, mock_audit_logger:
     """Create security middleware with mocked dependencies."""
     return SecurityMiddleware(
         sandbox_service=mock_sandbox_service,
-        audit_logger=mock_audit_logger,
-    )
+        audit_logger=mock_audit_logger)
 
 
 @pytest.mark.asyncio
@@ -68,8 +64,7 @@ class TestSecurityMiddleware:
         self,
         security_middleware: SecurityMiddleware,
         mock_sandbox_service: SandboxService,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test permission decorator when permission is granted."""
 
         @security_middleware.require_permission(SandboxPermission.WRITE, "file_path")
@@ -79,22 +74,19 @@ class TestSecurityMiddleware:
         result = await write_file(
             sandbox_id="sandbox-001",
             file_path="/tmp/test.txt",
-            content="test content",
-        )
+            content="test content")
 
         assert result == "Written: test content"
         mock_sandbox_service.check_permission.assert_called_once_with(
             sandbox_id="sandbox-001",
             permission=SandboxPermission.WRITE,
-            resource="/tmp/test.txt",
-        )
+            resource="/tmp/test.txt")
         mock_audit_logger.log_event.assert_called_once()
 
     async def test_require_permission_denied(
         self,
         security_middleware: SecurityMiddleware,
-        mock_sandbox_service: SandboxService,
-    ) -> None:
+        mock_sandbox_service: SandboxService) -> None:
         """Test permission decorator when permission is denied."""
         mock_sandbox_service.check_permission = AsyncMock(return_value=False)
 
@@ -106,13 +98,11 @@ class TestSecurityMiddleware:
             await write_file(
                 sandbox_id="sandbox-001",
                 file_path="/tmp/test.txt",
-                content="test content",
-            )
+                content="test content")
 
     async def test_require_permission_no_sandbox_id(
         self,
-        security_middleware: SecurityMiddleware,
-    ) -> None:
+        security_middleware: SecurityMiddleware) -> None:
         """Test permission decorator without sandbox_id."""
 
         @security_middleware.require_permission(SandboxPermission.READ)
@@ -125,8 +115,7 @@ class TestSecurityMiddleware:
     async def test_require_permission_with_positional_args(
         self,
         security_middleware: SecurityMiddleware,
-        mock_sandbox_service: SandboxService,
-    ) -> None:
+        mock_sandbox_service: SandboxService) -> None:
         """Test permission decorator with positional arguments."""
 
         @security_middleware.require_permission(SandboxPermission.READ, "file_path")
@@ -142,8 +131,7 @@ class TestSecurityMiddleware:
         self,
         security_middleware: SecurityMiddleware,
         mock_sandbox_service: SandboxService,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test permission decorator with function exception."""
 
         @security_middleware.require_permission(SandboxPermission.EXECUTE, "command")
@@ -161,8 +149,7 @@ class TestSecurityMiddleware:
     async def test_enforce_execution_limits_success(
         self,
         security_middleware: SecurityMiddleware,
-        mock_sandbox_service: SandboxService,
-    ) -> None:
+        mock_sandbox_service: SandboxService) -> None:
         """Test execution limits decorator with no violations."""
 
         @security_middleware.enforce_execution_limits()
@@ -178,16 +165,14 @@ class TestSecurityMiddleware:
         self,
         security_middleware: SecurityMiddleware,
         mock_sandbox_service: SandboxService,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test execution limits decorator when limits exceeded."""
         mock_sandbox_service.enforce_limits = AsyncMock(
             side_effect=ResourceLimitExceededError(
                 message="Memory limit exceeded",
                 limit_type="memory",
                 current_value=600,
-                max_value=512,
-            )
+                max_value=512)
         )
 
         @security_middleware.enforce_execution_limits()
@@ -204,8 +189,7 @@ class TestSecurityMiddleware:
 
     async def test_enforce_execution_limits_no_sandbox_id(
         self,
-        security_middleware: SecurityMiddleware,
-    ) -> None:
+        security_middleware: SecurityMiddleware) -> None:
         """Test execution limits decorator without sandbox_id."""
 
         @security_middleware.enforce_execution_limits()
@@ -218,8 +202,7 @@ class TestSecurityMiddleware:
     async def test_enforce_execution_limits_sandbox_not_found(
         self,
         security_middleware: SecurityMiddleware,
-        mock_sandbox_service: SandboxService,
-    ) -> None:
+        mock_sandbox_service: SandboxService) -> None:
         """Test execution limits decorator with non-existent sandbox."""
         mock_sandbox_service._sandboxes = {}
 
@@ -233,8 +216,7 @@ class TestSecurityMiddleware:
     async def test_audit_operation_success(
         self,
         security_middleware: SecurityMiddleware,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test audit operation decorator on success."""
 
         @security_middleware.audit_operation(AuditEventType.EXECUTION_START)
@@ -252,8 +234,7 @@ class TestSecurityMiddleware:
     async def test_audit_operation_failure(
         self,
         security_middleware: SecurityMiddleware,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test audit operation decorator on failure."""
 
         @security_middleware.audit_operation(AuditEventType.EXECUTION_START)
@@ -272,8 +253,7 @@ class TestSecurityMiddleware:
     async def test_audit_operation_without_sandbox(
         self,
         security_middleware: SecurityMiddleware,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test audit operation decorator without sandbox_id."""
 
         @security_middleware.audit_operation()
@@ -290,15 +270,13 @@ class TestSecurityMiddleware:
         self,
         security_middleware: SecurityMiddleware,
         mock_sandbox_service: SandboxService,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test resource access validation when granted."""
         granted = await security_middleware.validate_resource_access(
             sandbox_id="sandbox-001",
             operation="read_file",
             resource="/tmp/test.txt",
-            required_permission=SandboxPermission.READ,
-        )
+            required_permission=SandboxPermission.READ)
 
         assert granted is True
         mock_sandbox_service.check_permission.assert_called_once()
@@ -310,8 +288,7 @@ class TestSecurityMiddleware:
         self,
         security_middleware: SecurityMiddleware,
         mock_sandbox_service: SandboxService,
-        mock_audit_logger: AuditLogger,
-    ) -> None:
+        mock_audit_logger: AuditLogger) -> None:
         """Test resource access validation when denied."""
         mock_sandbox_service.check_permission = AsyncMock(return_value=False)
 
@@ -319,8 +296,7 @@ class TestSecurityMiddleware:
             sandbox_id="sandbox-001",
             operation="write_file",
             resource="/etc/passwd",
-            required_permission=SandboxPermission.WRITE,
-        )
+            required_permission=SandboxPermission.WRITE)
 
         assert granted is False
         mock_audit_logger.log_event.assert_called_once()
@@ -330,15 +306,13 @@ class TestSecurityMiddleware:
     async def test_validate_resource_access_security_violation(
         self,
         security_middleware: SecurityMiddleware,
-        mock_sandbox_service: SandboxService,
-    ) -> None:
+        mock_sandbox_service: SandboxService) -> None:
         """Test resource access validation with security violation."""
         mock_sandbox_service.check_permission = AsyncMock(
             side_effect=SecurityViolationError(
                 message="Security violation",
                 permission=SandboxPermission.NETWORK,
-                resource="https://evil.com",
-            )
+                resource="https://evil.com")
         )
 
         with pytest.raises(SecurityViolationError):
@@ -346,14 +320,12 @@ class TestSecurityMiddleware:
                 sandbox_id="sandbox-001",
                 operation="network_request",
                 resource="https://evil.com",
-                required_permission=SandboxPermission.NETWORK,
-            )
+                required_permission=SandboxPermission.NETWORK)
 
     async def test_validate_resource_access_exception(
         self,
         security_middleware: SecurityMiddleware,
-        mock_sandbox_service: SandboxService,
-    ) -> None:
+        mock_sandbox_service: SandboxService) -> None:
         """Test resource access validation with unexpected exception."""
         mock_sandbox_service.check_permission = AsyncMock(
             side_effect=RuntimeError("Unexpected error")
@@ -363,8 +335,7 @@ class TestSecurityMiddleware:
             sandbox_id="sandbox-001",
             operation="test_operation",
             resource="test_resource",
-            required_permission=SandboxPermission.READ,
-        )
+            required_permission=SandboxPermission.READ)
 
         # Should return False on exception
         assert granted is False

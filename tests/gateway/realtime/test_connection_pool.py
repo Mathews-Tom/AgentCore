@@ -20,8 +20,7 @@ async def connection_pool():
     pool = ConnectionPool(
         max_connections=100,
         heartbeat_interval=1,
-        connection_timeout=5,
-    )
+        connection_timeout=5)
     await pool.start()
     yield pool
     await pool.stop()
@@ -39,8 +38,7 @@ class TestConnectionPool:
             client_id="client-1",
             user_id="user-1",
             remote_addr="127.0.0.1:5000",
-            user_agent="TestAgent/1.0",
-        )
+            user_agent="TestAgent/1.0")
 
         assert conn_info is not None
         assert conn_info.connection_id == "conn-1"
@@ -59,8 +57,7 @@ class TestConnectionPool:
         connection_pool.add_connection(
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-1",
-        )
+            client_id="client-1")
 
         result = connection_pool.remove_connection("conn-1")
         assert result is True
@@ -76,16 +73,14 @@ class TestConnectionPool:
             conn_info = connection_pool.add_connection(
                 connection_id=f"conn-{i}",
                 connection_type=ConnectionType.WEBSOCKET,
-                client_id=f"client-{i}",
-            )
+                client_id=f"client-{i}")
             assert conn_info is not None
 
         # Try to add one more connection (should fail)
         conn_info = connection_pool.add_connection(
             connection_id="conn-overflow",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-overflow",
-        )
+            client_id="client-overflow")
         assert conn_info is None
 
         # Cleanup
@@ -98,18 +93,15 @@ class TestConnectionPool:
         connection_pool.add_connection(
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-1",
-        )
+            client_id="client-1")
         connection_pool.add_connection(
             connection_id="conn-2",
             connection_type=ConnectionType.SSE,
-            client_id="client-1",
-        )
+            client_id="client-1")
         connection_pool.add_connection(
             connection_id="conn-3",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-2",
-        )
+            client_id="client-2")
 
         # Get connections for client-1
         connections = connection_pool.get_client_connections("client-1")
@@ -131,20 +123,17 @@ class TestConnectionPool:
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
             client_id="client-1",
-            user_id="user-1",
-        )
+            user_id="user-1")
         connection_pool.add_connection(
             connection_id="conn-2",
             connection_type=ConnectionType.SSE,
             client_id="client-2",
-            user_id="user-1",
-        )
+            user_id="user-1")
         connection_pool.add_connection(
             connection_id="conn-3",
             connection_type=ConnectionType.WEBSOCKET,
             client_id="client-3",
-            user_id="user-2",
-        )
+            user_id="user-2")
 
         # Get connections for user-1
         connections = connection_pool.get_user_connections("user-1")
@@ -164,8 +153,7 @@ class TestConnectionPool:
         connection_pool.add_connection(
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-1",
-        )
+            client_id="client-1")
 
         # Get initial last activity
         conn_info = connection_pool.get_connection("conn-1")
@@ -190,8 +178,7 @@ class TestConnectionPool:
         connection_pool.add_connection(
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-1",
-        )
+            client_id="client-1")
 
         # Record ping
         result = connection_pool.record_ping("conn-1")
@@ -216,8 +203,7 @@ class TestConnectionPool:
         connection_pool.add_connection(
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-1",
-        )
+            client_id="client-1")
 
         # Record sent message
         result = connection_pool.record_message_sent("conn-1", 100)
@@ -243,8 +229,7 @@ class TestConnectionPool:
         connection_pool.add_connection(
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
-            client_id="client-1",
-        )
+            client_id="client-1")
 
         # Get connection and manually set old last_activity
         conn_info = connection_pool.get_connection("conn-1")
@@ -264,14 +249,12 @@ class TestConnectionPool:
             connection_id="conn-1",
             connection_type=ConnectionType.WEBSOCKET,
             client_id="client-1",
-            user_id="user-1",
-        )
+            user_id="user-1")
         connection_pool.add_connection(
             connection_id="conn-2",
             connection_type=ConnectionType.SSE,
             client_id="client-2",
-            user_id="user-1",
-        )
+            user_id="user-1")
 
         # Get stats
         stats = connection_pool.get_stats()
@@ -297,8 +280,7 @@ class TestConnectionPool:
             user_id="user-1",
             remote_addr="127.0.0.1:5000",
             user_agent="TestAgent/1.0",
-            metadata={"key": "value"},
-        )
+            metadata={"key": "value"})
 
         conn_info = connection_pool.get_connection("conn-1")
         conn_dict = conn_info.to_dict()

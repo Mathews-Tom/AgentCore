@@ -25,7 +25,7 @@ class TestLLMConfig:
             "gpt-4.1-mini",
             "gpt-5-mini",
             "claude-3-5-haiku-20241022",
-            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
         ]
         assert settings.LLM_DEFAULT_MODEL == "gpt-4.1-mini"
         assert settings.OPENAI_API_KEY is None
@@ -136,7 +136,7 @@ class TestLLMConfig:
             "gpt-4.1-mini",
             "gpt-5-mini",
             "claude-3-5-haiku-20241022",
-            "gemini-1.5-flash",
+            "gemini-2.0-flash-exp",
         ]
 
         for model in expected_models:

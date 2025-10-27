@@ -17,8 +17,7 @@ from agentcore.training.reward_registry import (
     get_global_registry,
     reset_global_registry,
     response_accuracy_reward,
-    task_efficiency_reward,
-)
+    task_efficiency_reward)
 
 
 def create_test_trajectory(
@@ -30,23 +29,20 @@ def create_test_trajectory(
         agent_id="test_agent",
         query="test query",
         steps=steps or [],
-        success=success,
-    )
+        success=success)
 
 
 def create_test_step(
     action: dict | None = None,
     result: dict | None = None,
-    state: dict | None = None,
-) -> TrajectoryStep:
+    state: dict | None = None) -> TrajectoryStep:
     """Create test trajectory step with required fields."""
     return TrajectoryStep(
         state=state or {},
         action=action or {"step_type": "test"},
         result=result or {},
         timestamp=datetime.now(timezone.utc),
-        duration_ms=100,
-    )
+        duration_ms=100)
 
 
 class TestRewardRegistry:
@@ -324,8 +320,7 @@ class TestExampleRewardFunctions:
         """Test code quality reward with high test coverage."""
         step = create_test_step(
             action={"step_type": "run_tests"},
-            result={"test_coverage": 0.9},
-        )
+            result={"test_coverage": 0.9})
         traj = create_test_trajectory(success=True, steps=[step])
         reward = code_quality_reward(traj)
         assert reward > 0.5  # Should have bonus from coverage
@@ -335,8 +330,7 @@ class TestExampleRewardFunctions:
         """Test code quality reward with syntax errors."""
         step = create_test_step(
             action={"step_type": "validate"},
-            result={"error_type": "syntax"},
-        )
+            result={"error_type": "syntax"})
         traj = create_test_trajectory(success=False, steps=[step])
         reward = code_quality_reward(traj)
         assert 0.0 <= reward <= 1.0
@@ -352,8 +346,7 @@ class TestExampleRewardFunctions:
         """Test response accuracy reward with source citations."""
         step = create_test_step(
             action={"step_type": "answer"},
-            result={"sources": ["source1", "source2"], "confidence": 0.9},
-        )
+            result={"sources": ["source1", "source2"], "confidence": 0.9})
         traj = create_test_trajectory(success=True, steps=[step])
         reward = response_accuracy_reward(traj)
         assert reward > 0.6  # Bonus for sources and confidence
@@ -363,8 +356,7 @@ class TestExampleRewardFunctions:
         """Test response accuracy reward with clarification requests."""
         step = create_test_step(
             action={"step_type": "clarify"},
-            result={"needs_clarification": True},
-        )
+            result={"needs_clarification": True})
         traj = create_test_trajectory(success=True, steps=[step])
         reward = response_accuracy_reward(traj)
         assert 0.0 <= reward <= 1.0
@@ -391,8 +383,7 @@ class TestExampleRewardFunctions:
         """Test task efficiency reward with high resource usage."""
         step = create_test_step(
             action={"step_type": "compute"},
-            result={"resource_usage": 0.95},
-        )
+            result={"resource_usage": 0.95})
         traj = create_test_trajectory(success=True, steps=[step])
         reward = task_efficiency_reward(traj)
         assert 0.0 <= reward <= 1.0

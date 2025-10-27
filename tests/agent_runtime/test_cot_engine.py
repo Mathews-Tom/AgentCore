@@ -13,8 +13,7 @@ def agent_config() -> AgentConfig:
     """Create test agent configuration."""
     return AgentConfig(
         agent_id="test-cot-agent",
-        philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT,
-    )
+        philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT)
 
 
 @pytest.fixture
@@ -22,8 +21,7 @@ def agent_state() -> AgentExecutionState:
     """Create test agent state."""
     return AgentExecutionState(
         agent_id="test-cot-agent",
-        status="running",
-    )
+        status="running")
 
 
 @pytest.fixture
@@ -55,16 +53,14 @@ class TestCoTEngine:
     async def test_simple_execution(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test simple goal execution."""
         result = await cot_engine.execute(
             input_data={
                 "goal": "Calculate the sum of 5 and 3",
                 "max_steps": 5,
             },
-            state=agent_state,
-        )
+            state=agent_state)
 
         assert result["completed"] is True
         assert result["final_conclusion"] is not None
@@ -76,8 +72,7 @@ class TestCoTEngine:
     async def test_execution_with_verification(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test execution with verification enabled."""
         result = await cot_engine.execute(
             input_data={
@@ -85,8 +80,7 @@ class TestCoTEngine:
                 "max_steps": 5,
                 "verification_enabled": True,
             },
-            state=agent_state,
-        )
+            state=agent_state)
 
         assert result["completed"] is True
         assert result["verification_enabled"] is True
@@ -104,8 +98,7 @@ class TestCoTEngine:
     async def test_execution_without_verification(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test execution without verification."""
         result = await cot_engine.execute(
             input_data={
@@ -113,8 +106,7 @@ class TestCoTEngine:
                 "max_steps": 3,
                 "verification_enabled": False,
             },
-            state=agent_state,
-        )
+            state=agent_state)
 
         assert result["completed"] is True
         assert result["verification_enabled"] is False
@@ -131,8 +123,7 @@ class TestCoTEngine:
     async def test_max_steps_limit(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test max steps limit."""
         result = await cot_engine.execute(
             input_data={
@@ -140,8 +131,7 @@ class TestCoTEngine:
                 "max_steps": 2,  # Very low limit
                 "verification_enabled": False,  # Disable to test step limit directly
             },
-            state=agent_state,
-        )
+            state=agent_state)
 
         assert result["steps"] <= 2
         # May not be completed due to step limit
@@ -152,8 +142,7 @@ class TestCoTEngine:
     async def test_reasoning_chain_structure(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test reasoning chain structure."""
         result = await cot_engine.execute(
             input_data={
@@ -161,8 +150,7 @@ class TestCoTEngine:
                 "max_steps": 5,
                 "verification_enabled": True,
             },
-            state=agent_state,
-        )
+            state=agent_state)
 
         chain = result["reasoning_chain"]
         assert len(chain) > 0
@@ -191,16 +179,14 @@ class TestCoTEngine:
     async def test_context_window_management(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test context window management."""
         result = await cot_engine.execute(
             input_data={
                 "goal": "Goal with multiple steps",
                 "max_steps": 10,
             },
-            state=agent_state,
-        )
+            state=agent_state)
 
         # Context window should be populated during execution
         assert cot_engine.context is not None
@@ -211,8 +197,7 @@ class TestCoTEngine:
     async def test_conclusion_detection(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test conclusion detection and extraction."""
         # Test with various conclusion formats
         test_conclusions = [
@@ -235,8 +220,7 @@ class TestCoTEngine:
     async def test_error_handling(
         self,
         agent_config: AgentConfig,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test error handling."""
         engine = CoTEngine(agent_config, use_real_llm=False)
         await engine.initialize()
@@ -250,14 +234,12 @@ class TestCoTEngine:
     async def test_history_formatting(
         self,
         cot_engine: CoTEngine,
-        agent_state: AgentExecutionState,
-    ) -> None:
+        agent_state: AgentExecutionState) -> None:
         """Test history formatting."""
         # Execute to populate history
         await cot_engine.execute(
             input_data={"goal": "Test goal", "max_steps": 3},
-            state=agent_state,
-        )
+            state=agent_state)
 
         history = cot_engine._format_history()
         assert isinstance(history, str)

@@ -15,8 +15,7 @@ from gateway.monitoring.tracing import (
     get_span_id,
     get_trace_id,
     get_tracer,
-    record_exception,
-)
+    record_exception)
 
 
 class TestTracing:
@@ -28,8 +27,7 @@ class TestTracing:
             service_name="test-gateway",
             service_version="1.0.0",
             sample_rate=1.0,
-            enable_console_export=True,
-        )
+            enable_console_export=True)
 
         assert isinstance(provider, TracerProvider)
         assert provider is not None
@@ -41,8 +39,7 @@ class TestTracing:
                 service_name="test-gateway",
                 service_version="1.0.0",
                 otlp_endpoint="http://localhost:4317",
-                sample_rate=0.5,
-            )
+                sample_rate=0.5)
 
             assert isinstance(provider, TracerProvider)
 
@@ -58,8 +55,7 @@ class TestTracing:
         configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=1.0,
-        )
+            sample_rate=1.0)
 
         tracer = get_tracer()
         with tracer.start_as_current_span("test_span") as span:
@@ -67,8 +63,7 @@ class TestTracing:
                 user_id="user123",
                 tenant="acme-corp",
                 request_count=42,
-                is_authenticated=True,
-            )
+                is_authenticated=True)
 
             # Verify span is recording
             assert span.is_recording()
@@ -78,16 +73,14 @@ class TestTracing:
         configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=1.0,
-        )
+            sample_rate=1.0)
 
         tracer = get_tracer()
         with tracer.start_as_current_span("test_span") as span:
             add_span_event(
                 "cache_miss",
                 cache_key="user:123",
-                cache_type="redis",
-            )
+                cache_type="redis")
 
             assert span.is_recording()
 
@@ -96,8 +89,7 @@ class TestTracing:
         configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=1.0,
-        )
+            sample_rate=1.0)
 
         tracer = get_tracer()
         with tracer.start_as_current_span("test_span") as span:
@@ -111,8 +103,7 @@ class TestTracing:
         configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=1.0,
-        )
+            sample_rate=1.0)
 
         tracer = get_tracer()
         with tracer.start_as_current_span("test_span"):
@@ -125,8 +116,7 @@ class TestTracing:
         configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=1.0,
-        )
+            sample_rate=1.0)
 
         tracer = get_tracer()
         with tracer.start_as_current_span("test_span"):
@@ -150,8 +140,7 @@ class TestTracing:
         provider = configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=0.0,
-        )
+            sample_rate=0.0)
 
         assert provider is not None
 
@@ -159,7 +148,6 @@ class TestTracing:
         provider = configure_tracing(
             service_name="test-gateway",
             service_version="1.0.0",
-            sample_rate=1.0,
-        )
+            sample_rate=1.0)
 
         assert provider is not None

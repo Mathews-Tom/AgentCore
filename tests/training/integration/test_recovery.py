@@ -29,22 +29,19 @@ async def test_job_state_persistence() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Persistence test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=10,
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act - Create job
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     job_id = job.job_id
 
@@ -75,22 +72,19 @@ async def test_job_cancellation_cleanup() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Cleanup test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=100,  # Long-running
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
 
@@ -127,23 +121,20 @@ async def test_checkpoint_resumption_readiness() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Checkpoint resume test {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=10,
         batch_size=16,
-        checkpoint_interval=3,
-    )
+        checkpoint_interval=3)
 
     # Act
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -182,22 +173,19 @@ async def test_job_error_handling() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Error test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=5,
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     # Note: In Phase 1 simulated mode, errors are not triggered
     # This test validates the error handling structure exists
@@ -224,28 +212,24 @@ async def test_multiple_job_isolation() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Isolation test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=10,
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act - Create multiple jobs
     job1 = await job_manager.create_job(
         agent_id="test-agent-isolation-1",
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     job2 = await job_manager.create_job(
         agent_id="test-agent-isolation-2",
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job1.job_id)
     await job_manager.start_job(job2.job_id)

@@ -14,14 +14,12 @@ from agentcore.agent_runtime.models.agent_config import (
     AgentConfig,
     AgentPhilosophy,
     ResourceLimits,
-   SecurityProfile,
-)
+   SecurityProfile)
 from agentcore.agent_runtime.services.a2a_client import A2AClient
 from agentcore.agent_runtime.services.agent_lifecycle import AgentLifecycleManager
 from agentcore.agent_runtime.services.container_manager import ContainerManager
 from agentcore.agent_runtime.services.multi_agent_coordinator import (
-    MultiAgentCoordinator,
-)
+    MultiAgentCoordinator)
 
 
 @pytest.fixture
@@ -169,12 +167,9 @@ def agent_config() -> AgentConfig:
         resource_limits=ResourceLimits(
             max_cpu_cores=0.5,
             max_memory_mb=512,
-            storage_quota_mb=1024,
-        ),
+            storage_quota_mb=1024),
         security_profile=SecurityProfile(
-            profile_name="standard",
-        ),
-    )
+            profile_name="standard"))
 
 
 @pytest.fixture
@@ -186,9 +181,7 @@ def agent_config_cot() -> AgentConfig:
         resource_limits=ResourceLimits(
             max_cpu_cores=0.5,
             max_memory_mb=512,
-            storage_quota_mb=1024,
-        ),
-    )
+            storage_quota_mb=1024))
 
 
 @pytest.fixture
@@ -200,21 +193,17 @@ def agent_config_multi() -> AgentConfig:
         resource_limits=ResourceLimits(
             max_cpu_cores=0.5,
             max_memory_mb=512,
-            storage_quota_mb=1024,
-        ),
-    )
+            storage_quota_mb=1024))
 
 
 @pytest.fixture
 async def lifecycle_manager(
     mock_container_manager: ContainerManager,
-    mock_a2a_client: A2AClient,
-) -> AgentLifecycleManager:
+    mock_a2a_client: A2AClient) -> AgentLifecycleManager:
     """Create lifecycle manager with mocks."""
     return AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=mock_a2a_client,
-    )
+        a2a_client=mock_a2a_client)
 
 
 @pytest.fixture

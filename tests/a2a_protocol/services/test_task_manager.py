@@ -21,8 +21,7 @@ from agentcore.a2a_protocol.models.task import (
     TaskPriority,
     TaskQuery,
     TaskRequirement,
-    TaskStatus,
-)
+    TaskStatus)
 from agentcore.a2a_protocol.services.task_manager import TaskManager, task_manager
 
 
@@ -41,8 +40,7 @@ def sample_task_def():
         title="Test Task",
         description="Test Description",
         priority=TaskPriority.NORMAL,
-        parameters={"key": "value"},
-    )
+        parameters={"key": "value"})
 
 
 @pytest.fixture
@@ -53,8 +51,7 @@ def sample_agent():
         AgentCapability,
         AgentEndpoint,
         AuthenticationType,
-        EndpointType,
-    )
+        EndpointType)
 
     return AgentCard(
         agent_id="test-agent",
@@ -65,8 +62,7 @@ def sample_agent():
         endpoints=[AgentEndpoint(url="http://test.local", type=EndpointType.HTTP)],
         authentication=AgentAuthentication(
             type=AuthenticationType.NONE, required=False
-        ),
-    )
+        ))
 
 
 # ==================== Task Creation Tests ====================
@@ -100,8 +96,7 @@ async def test_create_task_with_dependencies_fails_when_missing(manager):
         description="Test",
         dependencies=[
             TaskDependency(task_id="nonexistent", type=DependencyType.PREDECESSOR)
-        ],
-    )
+        ])
 
     request = TaskCreateRequest(task_definition=task_def, auto_assign=False)
 
@@ -117,8 +112,7 @@ async def test_create_task_with_valid_dependencies(manager):
         task_id="prereq-task",
         task_type="text.generation",
         title="Prerequisite",
-        description="Test",
-    )
+        description="Test")
     prereq_request = TaskCreateRequest(task_definition=prereq_task, auto_assign=False)
     await manager.create_task(prereq_request)
 
@@ -130,8 +124,7 @@ async def test_create_task_with_valid_dependencies(manager):
         description="Test",
         dependencies=[
             TaskDependency(task_id="prereq-task", type=DependencyType.PREDECESSOR)
-        ],
-    )
+        ])
     dependent_request = TaskCreateRequest(
         task_definition=dependent_task, auto_assign=False
     )
@@ -158,8 +151,7 @@ async def test_create_task_with_auto_assign(manager, sample_task_def, sample_age
         request = TaskCreateRequest(
             task_definition=sample_task_def,
             auto_assign=True,
-            preferred_agent="test-agent",
-        )
+            preferred_agent="test-agent")
 
         response = await manager.create_task(request)
 
@@ -232,8 +224,7 @@ async def test_assign_task_lacking_capabilities(manager):
         task_type="text.generation",
         title="Test Task",
         description="Test",
-        requirements=TaskRequirement(required_capabilities=["special-capability"]),
-    )
+        requirements=TaskRequirement(required_capabilities=["special-capability"]))
     request = TaskCreateRequest(task_definition=task_def, auto_assign=False)
     response = await manager.create_task(request)
 
@@ -294,8 +285,7 @@ async def test_start_task_with_unsatisfied_dependencies(manager):
         task_id="prereq-task",
         task_type="text.generation",
         title="Prerequisite",
-        description="Test",
-    )
+        description="Test")
     await manager.create_task(
         TaskCreateRequest(task_definition=prereq_task, auto_assign=False)
     )
@@ -308,8 +298,7 @@ async def test_start_task_with_unsatisfied_dependencies(manager):
         description="Test",
         dependencies=[
             TaskDependency(task_id="prereq-task", type=DependencyType.PREDECESSOR)
-        ],
-    )
+        ])
     dependent_response = await manager.create_task(
         TaskCreateRequest(task_definition=dependent_task, auto_assign=False)
     )
@@ -374,8 +363,7 @@ async def test_complete_task_with_artifacts(manager, sample_task_def, sample_age
             TaskArtifact(
                 name="output.txt",
                 type="file",
-                content="test content",
-            )
+                content="test content")
         ]
         success = await manager.complete_task(
             response.execution_id, {"output": "success"}, artifacts
@@ -502,8 +490,7 @@ async def test_add_task_artifact_success(manager, sample_task_def, sample_agent)
             "output.txt",
             "file",
             "test content",
-            {"size": 100},
-        )
+            {"size": 100})
 
         assert success is True
 
@@ -542,8 +529,7 @@ async def test_query_tasks_all(manager, sample_task_def):
             task_id=f"task-{i}",
             task_type="text.generation",
             title=f"Task {i}",
-            description="Test",
-        )
+            description="Test")
         await manager.create_task(
             TaskCreateRequest(task_definition=task_def, auto_assign=False)
         )
@@ -564,8 +550,7 @@ async def test_query_tasks_by_status(manager):
         task_id="task-1",
         task_type="text.generation",
         title="Task 1",
-        description="Test",
-    )
+        description="Test")
     response1 = await manager.create_task(
         TaskCreateRequest(task_definition=task1, auto_assign=False)
     )
@@ -574,8 +559,7 @@ async def test_query_tasks_by_status(manager):
         task_id="task-2",
         task_type="text.generation",
         title="Task 2",
-        description="Test",
-    )
+        description="Test")
     response2 = await manager.create_task(
         TaskCreateRequest(task_definition=task2, auto_assign=False)
     )
@@ -600,8 +584,7 @@ async def test_query_tasks_with_pagination(manager):
             task_id=f"task-{i}",
             task_type="text.generation",
             title=f"Task {i}",
-            description="Test",
-        )
+            description="Test")
         await manager.create_task(
             TaskCreateRequest(task_definition=task_def, auto_assign=False)
         )
@@ -651,8 +634,7 @@ async def test_get_task_dependencies(manager):
         task_id="prereq-task",
         task_type="text.generation",
         title="Prerequisite",
-        description="Test",
-    )
+        description="Test")
     await manager.create_task(
         TaskCreateRequest(task_definition=prereq_task, auto_assign=False)
     )
@@ -665,8 +647,7 @@ async def test_get_task_dependencies(manager):
         description="Test",
         dependencies=[
             TaskDependency(task_id="prereq-task", type=DependencyType.PREDECESSOR)
-        ],
-    )
+        ])
     await manager.create_task(
         TaskCreateRequest(task_definition=dependent_task, auto_assign=False)
     )
@@ -690,8 +671,7 @@ async def test_get_ready_tasks(manager):
         task_id="task-1",
         task_type="text.generation",
         title="Task 1",
-        description="Test",
-    )
+        description="Test")
     await manager.create_task(
         TaskCreateRequest(task_definition=task1, auto_assign=False)
     )

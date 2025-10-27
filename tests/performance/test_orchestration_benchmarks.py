@@ -16,8 +16,7 @@ from agentcore.orchestration.performance.benchmarks import OrchestrationBenchmar
 from agentcore.orchestration.performance.graph_optimizer import (
     GraphOptimizer,
     analyze_workflow_parallelism,
-    optimize_workflow_graph,
-)
+    optimize_workflow_graph)
 
 
 class TestGraphPlanningPerformance:
@@ -56,7 +55,7 @@ class TestGraphPlanningPerformance:
 
         # Primary acceptance criterion
         assert result.duration_seconds < 1.0, (
-            f"ORCH-010 FAILED: Graph planning took {result.duration_seconds:.3f}s, "
+            f"ORCH-010 FAILED: Graph planning took {result.duration_seconds:.3f}, s, "
             "target is <1s for 1000+ nodes"
         )
 
@@ -101,8 +100,8 @@ class TestGraphPlanningPerformance:
             expected_ratio = count2 / count1
             actual_ratio = time2 / time1
             assert actual_ratio < expected_ratio * 6, (
-                f"Non-linear scaling detected: {count1} nodes in {time1:.3f}s, "
-                f"{count2} nodes in {time2:.3f}s (ratio {actual_ratio:.2f})"
+                f"Non-linear scaling detected: {count1} nodes in {time1:.3f}, s, "
+                f"{count2} nodes in {time2:.3f}, s (ratio {actual_ratio:.2f})"
             )
 
 
@@ -198,7 +197,7 @@ class TestEventProcessingPerformance:
             import warnings
             warnings.warn(
                 f"Large batch throughput {throughputs[-1]:,.0f} is <50% of "
-                f"small batch {throughputs[0]:,.0f} (ratio: {throughputs[-1]/throughputs[0]:.2f}x). "
+                f"small batch {throughputs[0]:,.0f} (ratio: {throughputs[-1]/throughputs[0]:.2f}, x). "
                 f"This may indicate batch size is not optimal for this workload, "
                 f"but both achieve acceptable absolute throughput."
             )
@@ -315,7 +314,7 @@ class TestPerformanceRegression:
         assert result.success
         # Store baseline for future comparison
         baseline_duration = result.duration_seconds
-        assert baseline_duration < 1.0, f"Baseline: {baseline_duration:.3f}s"
+        assert baseline_duration < 1.0, f"Baseline: {baseline_duration:.3f}, s"
 
     @pytest.mark.asyncio
     async def test_event_processing_baseline(self) -> None:

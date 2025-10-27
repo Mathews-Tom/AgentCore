@@ -18,8 +18,7 @@ from agentcore.agent_runtime.models.plugin import (
     PluginMarketplaceInfo,
     PluginMetadata,
     PluginType,
-    PluginValidationResult,
-)
+    PluginValidationResult)
 from agentcore.agent_runtime.services.plugin_registry import PluginRegistry
 from agentcore.agent_runtime.services.plugin_validator import PluginValidator
 
@@ -40,8 +39,7 @@ def mock_validator():
         return_value=PluginValidationResult(
             valid=True,
             security_score=95.0,
-            risk_level="low",
-        )
+            risk_level="low")
     )
     return validator
 
@@ -53,8 +51,7 @@ async def plugin_registry(temp_plugin_dir, mock_validator):
         plugin_directory=temp_plugin_dir,
         validator=mock_validator,
         marketplace_url="https://test.marketplace.io",
-        enable_marketplace=True,
-    )
+        enable_marketplace=True)
     yield registry
     await registry.close()
 
@@ -100,8 +97,7 @@ class TestPluginRegistryInitialization:
 
         registry = PluginRegistry(
             plugin_directory=plugin_dir,
-            validator=mock_validator,
-        )
+            validator=mock_validator)
 
         assert plugin_dir.exists()
         assert plugin_dir.is_dir()
@@ -113,8 +109,7 @@ class TestPluginRegistryInitialization:
             plugin_directory=tmp_path / "plugins",
             validator=mock_validator,
             marketplace_url="https://custom.marketplace.io",
-            enable_marketplace=False,
-        )
+            enable_marketplace=False)
 
         assert registry._marketplace_url == "https://custom.marketplace.io"
         assert registry._enable_marketplace is False
@@ -132,8 +127,7 @@ class TestMarketplaceSearch:
         with patch.object(
             plugin_registry._http_client,
             "get",
-            new_callable=AsyncMock,
-        ) as mock_get:
+            new_callable=AsyncMock) as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {
                 "plugins": [sample_marketplace_info],
@@ -156,8 +150,7 @@ class TestMarketplaceSearch:
         with patch.object(
             plugin_registry._http_client,
             "get",
-            new_callable=AsyncMock,
-        ) as mock_get:
+            new_callable=AsyncMock) as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {"plugins": [sample_marketplace_info]}
             mock_response.raise_for_status = Mock()
@@ -167,8 +160,7 @@ class TestMarketplaceSearch:
                 query="analytics",
                 plugin_type=PluginType.TOOL,
                 tags=["data", "visualization"],
-                limit=10,
-            )
+                limit=10)
 
             call_args = mock_get.call_args
             params = call_args.kwargs["params"]
@@ -183,8 +175,7 @@ class TestMarketplaceSearch:
         registry = PluginRegistry(
             plugin_directory=temp_plugin_dir,
             validator=mock_validator,
-            enable_marketplace=False,
-        )
+            enable_marketplace=False)
 
         with pytest.raises(RuntimeError, match="Marketplace integration is disabled"):
             await registry.search_marketplace(query="test")
@@ -197,13 +188,11 @@ class TestMarketplaceSearch:
         with patch.object(
             plugin_registry._http_client,
             "get",
-            new_callable=AsyncMock,
-        ) as mock_get:
+            new_callable=AsyncMock) as mock_get:
             mock_get.side_effect = httpx.HTTPStatusError(
                 message="Not found",
                 request=Mock(),
-                response=Mock(status_code=404),
-            )
+                response=Mock(status_code=404))
 
             with pytest.raises(httpx.HTTPStatusError):
                 await plugin_registry.search_marketplace(query="nonexistent")
@@ -214,8 +203,7 @@ class TestMarketplaceSearch:
         with patch.object(
             plugin_registry._http_client,
             "get",
-            new_callable=AsyncMock,
-        ) as mock_get:
+            new_callable=AsyncMock) as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {"plugins": []}
             mock_response.raise_for_status = Mock()
@@ -235,8 +223,7 @@ class TestPluginDownload:
         plugin_registry,
         sample_plugin_metadata,
         sample_marketplace_info,
-        tmp_path,
-    ):
+        tmp_path):
         """Test successful plugin download."""
         # Create mock plugin package
         temp_zip = tmp_path / "test_plugin.zip"
@@ -259,8 +246,7 @@ class TestPluginDownload:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(
                 **sample_marketplace_info
             )
@@ -269,8 +255,7 @@ class TestPluginDownload:
             with patch.object(
                 plugin_registry,
                 "_download_package",
-                new_callable=AsyncMock,
-            ) as mock_download:
+                new_callable=AsyncMock) as mock_download:
 
                 async def mock_download_impl(download_url, dest_dir):
                     # Extract zip to dest_dir
@@ -283,8 +268,7 @@ class TestPluginDownload:
                 with patch.object(
                     plugin_registry,
                     "_calculate_directory_checksum",
-                    new_callable=AsyncMock,
-                ) as mock_checksum:
+                    new_callable=AsyncMock) as mock_checksum:
                     mock_checksum.return_value = "abc123def456"
 
                     result_path = await plugin_registry.download_plugin(
@@ -303,8 +287,7 @@ class TestPluginDownload:
         registry = PluginRegistry(
             plugin_directory=temp_plugin_dir,
             validator=mock_validator,
-            enable_marketplace=False,
-        )
+            enable_marketplace=False)
 
         with pytest.raises(RuntimeError, match="Marketplace integration is disabled"):
             await registry.download_plugin(plugin_id="com.example.test")
@@ -319,8 +302,7 @@ class TestPluginDownload:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(
                 **sample_marketplace_info
             )
@@ -328,13 +310,11 @@ class TestPluginDownload:
             with patch.object(
                 plugin_registry,
                 "_download_package",
-                new_callable=AsyncMock,
-            ):
+                new_callable=AsyncMock):
                 with patch.object(
                     plugin_registry,
                     "_calculate_directory_checksum",
-                    new_callable=AsyncMock,
-                ) as mock_checksum:
+                    new_callable=AsyncMock) as mock_checksum:
                     mock_checksum.return_value = "wrong_checksum"
 
                     with pytest.raises(PluginLoadError, match="Checksum mismatch"):
@@ -350,8 +330,7 @@ class TestPluginDownload:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(
                 **sample_marketplace_info
             )
@@ -359,13 +338,11 @@ class TestPluginDownload:
             with patch.object(
                 plugin_registry,
                 "_download_package",
-                new_callable=AsyncMock,
-            ):
+                new_callable=AsyncMock):
                 with patch.object(
                     plugin_registry,
                     "_calculate_directory_checksum",
-                    new_callable=AsyncMock,
-                ) as mock_checksum:
+                    new_callable=AsyncMock) as mock_checksum:
                     mock_checksum.return_value = "abc123def456"
 
                     with pytest.raises(PluginLoadError, match="missing plugin.json"):
@@ -392,8 +369,7 @@ class TestPluginDownload:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(
                 **sample_marketplace_info
             )
@@ -401,8 +377,7 @@ class TestPluginDownload:
             with patch.object(
                 plugin_registry,
                 "_download_package",
-                new_callable=AsyncMock,
-            ) as mock_download:
+                new_callable=AsyncMock) as mock_download:
 
                 async def mock_download_impl(download_url, dest_dir):
                     with ZipFile(temp_zip, "r") as zipf:
@@ -413,8 +388,7 @@ class TestPluginDownload:
                 with patch.object(
                     plugin_registry,
                     "_calculate_directory_checksum",
-                    new_callable=AsyncMock,
-                ) as mock_checksum:
+                    new_callable=AsyncMock) as mock_checksum:
                     mock_checksum.return_value = "abc123def456"
 
                     # Make validator return invalid result
@@ -423,8 +397,7 @@ class TestPluginDownload:
                             valid=False,
                             errors=["Security vulnerability detected"],
                             security_score=20.0,
-                            risk_level="high",
-                        )
+                            risk_level="high")
                     )
 
                     with pytest.raises(
@@ -453,8 +426,7 @@ class TestPluginDownload:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(
                 **sample_marketplace_info
             )
@@ -462,8 +434,7 @@ class TestPluginDownload:
             with patch.object(
                 plugin_registry,
                 "_download_package",
-                new_callable=AsyncMock,
-            ) as mock_download:
+                new_callable=AsyncMock) as mock_download:
 
                 async def mock_download_impl(download_url, dest_dir):
                     with ZipFile(temp_zip, "r") as zipf:
@@ -474,14 +445,12 @@ class TestPluginDownload:
                 with patch.object(
                     plugin_registry,
                     "_calculate_directory_checksum",
-                    new_callable=AsyncMock,
-                ) as mock_checksum:
+                    new_callable=AsyncMock) as mock_checksum:
                     mock_checksum.return_value = "abc123def456"
 
                     result_path = await plugin_registry.download_plugin(
                         plugin_id="com.example.test",
-                        validate=False,
-                    )
+                        validate=False)
 
                     assert result_path.exists()
                     # Validator should not have been called
@@ -497,21 +466,18 @@ class TestPluginInstallUninstall:
         with patch.object(
             plugin_registry,
             "download_plugin",
-            new_callable=AsyncMock,
-        ) as mock_download:
+            new_callable=AsyncMock) as mock_download:
             mock_download.return_value = Path("/fake/path/com.example.test")
 
             result = await plugin_registry.install_plugin(
                 plugin_id="com.example.test",
-                version="1.0.0",
-            )
+                version="1.0.0")
 
             assert result == Path("/fake/path/com.example.test")
             mock_download.assert_called_once_with(
                 plugin_id="com.example.test",
                 version="1.0.0",
-                validate=True,
-            )
+                validate=True)
 
     @pytest.mark.asyncio
     async def test_uninstall_plugin_success(
@@ -621,8 +587,7 @@ class TestCheckUpdates:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(**marketplace_info)
 
             updates = await plugin_registry.check_updates()
@@ -644,8 +609,7 @@ class TestCheckUpdates:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.return_value = PluginMarketplaceInfo(
                 **sample_marketplace_info
             )
@@ -662,8 +626,7 @@ class TestCheckUpdates:
         registry = PluginRegistry(
             plugin_directory=temp_plugin_dir,
             validator=mock_validator,
-            enable_marketplace=False,
-        )
+            enable_marketplace=False)
 
         with pytest.raises(RuntimeError, match="Marketplace integration is disabled"):
             await registry.check_updates()
@@ -696,8 +659,7 @@ class TestCheckUpdates:
         with patch.object(
             plugin_registry,
             "_get_marketplace_info",
-            new_callable=AsyncMock,
-        ) as mock_get_info:
+            new_callable=AsyncMock) as mock_get_info:
             mock_get_info.side_effect = mock_get_info_side_effect
 
             updates = await plugin_registry.check_updates()
@@ -717,8 +679,7 @@ class TestHelperMethods:
         with patch.object(
             plugin_registry._http_client,
             "get",
-            new_callable=AsyncMock,
-        ) as mock_get:
+            new_callable=AsyncMock) as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = sample_marketplace_info
             mock_response.raise_for_status = Mock()
@@ -739,8 +700,7 @@ class TestHelperMethods:
         with patch.object(
             plugin_registry._http_client,
             "get",
-            new_callable=AsyncMock,
-        ) as mock_get:
+            new_callable=AsyncMock) as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = sample_marketplace_info
             mock_response.raise_for_status = Mock()
@@ -748,8 +708,7 @@ class TestHelperMethods:
 
             await plugin_registry._get_marketplace_info(
                 plugin_id="com.example.test",
-                version="1.0.0",
-            )
+                version="1.0.0")
 
             call_args = mock_get.call_args
             url = call_args[0][0]
@@ -782,8 +741,7 @@ class TestHelperMethods:
         with patch.object(
             plugin_registry._http_client,
             "aclose",
-            new_callable=AsyncMock,
-        ) as mock_close:
+            new_callable=AsyncMock) as mock_close:
             await plugin_registry.close()
 
             mock_close.assert_called_once()
@@ -831,12 +789,10 @@ class TestDownloadPackage:
         with patch.object(
             plugin_registry._http_client,
             "stream",
-            return_value=MockResponse(zip_content),
-        ):
+            return_value=MockResponse(zip_content)):
             await plugin_registry._download_package(
                 download_url="https://test.com/plugin.zip",
-                dest_dir=dest_dir,
-            )
+                dest_dir=dest_dir)
 
             # Verify extraction
             assert (dest_dir / "test.txt").exists()

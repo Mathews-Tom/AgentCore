@@ -11,8 +11,7 @@ from agentcore.a2a_protocol.services.context_chain import (
     ContextStage,
     calendar_analysis_pattern,
     research_synthesis_pattern,
-    multi_step_reasoning_pattern,
-)
+    multi_step_reasoning_pattern)
 
 
 class TestContextStage:

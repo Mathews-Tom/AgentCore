@@ -156,8 +156,7 @@ class TestRunner:
         components: list[str] | None = None,
         parallel: bool = False,
         coverage: bool = True,
-        verbose: bool = False,
-    ):
+        verbose: bool = False):
         self.components = components
         self.parallel = parallel
         self.coverage = coverage
@@ -249,8 +248,7 @@ class TestRunner:
                 duration=duration,
                 coverage=coverage_pct,
                 coverage_lines=coverage_lines,
-                status=status,
-            )
+                status=status)
 
         except subprocess.TimeoutExpired:
             duration = time.time() - start_time
@@ -262,8 +260,7 @@ class TestRunner:
                 errors=1,
                 warnings=0,
                 duration=duration,
-                status="timeout",
-            )
+                status="timeout")
         except Exception as e:
             duration = time.time() - start_time
             return ComponentResult(
@@ -274,8 +271,7 @@ class TestRunner:
                 errors=1,
                 warnings=0,
                 duration=duration,
-                status=f"error: {str(e)}",
-            )
+                status=f"error: {str(e)}")
 
     def _parse_pytest_output(self, output: str) -> dict[str, int]:
         """Parse pytest output for test counts."""
@@ -371,14 +367,13 @@ class TestRunner:
                 print(
                     f"[{i}/{len(components)}] Running {display_name}...",
                     end=" ",
-                    flush=True,
-                )
+                    flush=True)
                 result = self.run_component_tests(component)
                 results.append(result)
 
                 # Quick status
                 status_icon = "✅" if result.status == "passed" else "❌"
-                print(f"{status_icon} ({result.duration:.1f}s)")
+                print(f"{status_icon} ({result.duration:.1f}, s)")
 
         end_time = datetime.now(UTC)
         total_duration = (end_time - start_time).total_seconds()
@@ -396,8 +391,7 @@ class TestRunner:
             end_time=end_time,
             total_duration=total_duration,
             components=results,
-            overall_coverage=overall_coverage,
-        )
+            overall_coverage=overall_coverage)
 
     def run_all(self) -> TestReport:
         """Run all tests (synchronous wrapper)."""
@@ -411,10 +405,10 @@ class ReportFormatter:
     def format_duration(seconds: float) -> str:
         """Format duration in human-readable format."""
         if seconds < 60:
-            return f"{seconds:.1f}s"
+            return f"{seconds:.1f}, s"
         minutes = int(seconds // 60)
         secs = seconds % 60
-        return f"{minutes}m {secs:.1f}s"
+        return f"{minutes}, m {secs:.1f}, s"
 
     @staticmethod
     def format_percentage(value: float) -> str:
@@ -561,14 +555,12 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Comprehensive test runner with detailed metrics",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+        formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument(
         "--components",
         type=str,
-        help='Comma-separated list of components to test (e.g., "a2a_protocol,agent_runtime")',
-    )
+        help='Comma-separated list of components to test (e.g., "a2a_protocol,agent_runtime")')
     parser.add_argument(
         "--parallel", action="store_true", help="Run test components in parallel"
     )
@@ -592,8 +584,7 @@ def main():
         components=components,
         parallel=args.parallel,
         coverage=not args.no_coverage,
-        verbose=args.verbose,
-    )
+        verbose=args.verbose)
 
     # Run tests
     try:

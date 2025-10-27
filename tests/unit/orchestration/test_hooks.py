@@ -18,8 +18,7 @@ from agentcore.orchestration.hooks.models import (
     HookExecution,
     HookExecutionMode,
     HookStatus,
-    HookTrigger,
-)
+    HookTrigger)
 
 
 class TestHookConfig:
@@ -32,8 +31,7 @@ class TestHookConfig:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["hello"],
-            priority=50,
-        )
+            priority=50)
 
         assert hook.name == "test_hook"
         assert hook.trigger == HookTrigger.POST_TASK
@@ -58,8 +56,7 @@ class TestHookConfig:
             name="test_hook",
             trigger=HookTrigger.POST_TASK,
             command="echo",
-            event_filters={"status": "completed"},
-        )
+            event_filters={"status": "completed"})
 
         # Matching event
         assert hook.matches_event({"status": "completed"}) is True
@@ -73,8 +70,7 @@ class TestHookConfig:
             name="test_hook",
             trigger=HookTrigger.POST_TASK,
             command="echo",
-            event_filters={"task.status": "completed"},
-        )
+            event_filters={"task.status": "completed"})
 
         # Matching event
         assert hook.matches_event({"task": {"status": "completed"}}) is True
@@ -94,8 +90,7 @@ class TestHookExecution:
             trigger=HookTrigger.POST_TASK,
             status=HookStatus.PENDING,
             started_at=datetime.now(UTC),
-            input_data={"test": "data"},
-        )
+            input_data={"test": "data"})
 
         assert execution.hook_id == hook_id
         assert execution.trigger == HookTrigger.POST_TASK
@@ -112,8 +107,7 @@ class TestHookExecution:
             trigger=HookTrigger.POST_TASK,
             status=HookStatus.RUNNING,
             started_at=datetime.now(UTC),
-            input_data={},
-        )
+            input_data={})
 
         # Small delay to ensure measurable duration
         time.sleep(0.001)
@@ -134,8 +128,7 @@ class TestHookExecution:
             trigger=HookTrigger.POST_TASK,
             status=HookStatus.RUNNING,
             started_at=datetime.now(UTC),
-            input_data={},
-        )
+            input_data={})
 
         error_msg = "Test error"
         execution.mark_failed(error_msg)
@@ -152,8 +145,7 @@ class TestHookExecution:
             trigger=HookTrigger.POST_TASK,
             status=HookStatus.RUNNING,
             started_at=datetime.now(UTC),
-            input_data={},
-        )
+            input_data={})
 
         execution.mark_timeout()
 
@@ -174,8 +166,7 @@ class TestHookExecutor:
             name="echo_test",
             trigger=HookTrigger.POST_TASK,
             command="echo",
-            args=["test"],
-        )
+            args=["test"])
 
         event = HookEvent(
             trigger=HookTrigger.POST_TASK, source="test", data={"key": "value"}
@@ -237,8 +228,7 @@ class TestHookExecutor:
             command="echo",
             args=["success"],
             retry_enabled=True,
-            max_retries=3,
-        )
+            max_retries=3)
 
         event = HookEvent(trigger=HookTrigger.POST_TASK, source="test", data={})
 
@@ -257,8 +247,7 @@ class TestHookExecutor:
             trigger=HookTrigger.POST_TASK,
             command="false",
             retry_enabled=False,
-            max_retries=3,
-        )
+            max_retries=3)
 
         event = HookEvent(trigger=HookTrigger.POST_TASK, source="test", data={})
 
@@ -393,8 +382,7 @@ class TestHookManager:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["test"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         event = HookEvent(trigger=HookTrigger.POST_TASK, source="test", data={})
@@ -416,16 +404,14 @@ class TestHookManager:
             command="echo",
             args=["first"],
             priority=10,
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         hook2 = HookConfig(
             name="low_priority",
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["second"],
             priority=100,
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
 
         manager.register_hook(hook2)  # Register in reverse order
         manager.register_hook(hook1)
@@ -449,16 +435,14 @@ class TestHookManager:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             event_filters={"status": "completed"},
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         # Matching event
         event1 = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={"status": "completed"},
-        )
+            data={"status": "completed"})
         executions1 = await manager.trigger_hooks(event1)
         assert len(executions1) == 1
 
@@ -500,8 +484,7 @@ class TestHookEvent:
             source="test_source",
             data={"key": "value"},
             workflow_id="wf-123",
-            task_id="task-456",
-        )
+            task_id="task-456")
 
         assert event.trigger == HookTrigger.POST_TASK
         assert event.source == "test_source"

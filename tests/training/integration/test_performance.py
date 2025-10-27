@@ -33,8 +33,7 @@ async def test_parallel_trajectory_generation_performance() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Performance test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
@@ -50,8 +49,7 @@ async def test_parallel_trajectory_generation_performance() -> None:
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -61,7 +59,7 @@ async def test_parallel_trajectory_generation_performance() -> None:
     # Assert
     # In simulated mode, should complete very quickly
     # Real implementation would target <30s for 8 trajectories
-    assert elapsed_time < 30.0, f"Job took {elapsed_time:.2f}s, expected <30s"
+    assert elapsed_time < 30.0, f"Job took {elapsed_time:.2f}, s, expected <30s"
 
     final_job = job_manager.get_job(job.job_id)
     assert final_job.status.value in ["completed", "running"]
@@ -82,21 +80,18 @@ async def test_job_status_api_response_time() -> None:
     training_queries = [
         TrainingQuery(
             query=f"API perf test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=10,
-        batch_size=16,
-    )
+        batch_size=16)
 
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
 
@@ -106,7 +101,7 @@ async def test_job_status_api_response_time() -> None:
     elapsed_ms = (time.time() - start_time) * 1000
 
     # Assert
-    assert elapsed_ms < 200.0, f"get_job_status took {elapsed_ms:.2f}ms, expected <200ms"
+    assert elapsed_ms < 200.0, f"get_job_status took {elapsed_ms:.2f}, ms, expected <200ms"
     assert status["job_id"] == str(job.job_id)
     assert "status" in status
     assert "progress" in status
@@ -128,15 +123,13 @@ async def test_concurrent_job_throughput() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Concurrent test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=3,  # Small number for fast concurrent test
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act - Create and start multiple jobs concurrently
     jobs = []
@@ -144,8 +137,7 @@ async def test_concurrent_job_throughput() -> None:
         job = await job_manager.create_job(
             agent_id=f"test-agent-concurrent-{i}",
             training_data=training_queries,
-            config=config,
-        )
+            config=config)
         await job_manager.start_job(job.job_id)
         jobs.append(job)
 
@@ -179,15 +171,13 @@ async def test_training_iteration_throughput() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Iteration throughput test {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=5,
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act
     start_time = time.time()
@@ -195,8 +185,7 @@ async def test_training_iteration_throughput() -> None:
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -207,7 +196,7 @@ async def test_training_iteration_throughput() -> None:
     final_job = job_manager.get_job(job.job_id)
 
     # Simulated mode should complete very quickly
-    assert elapsed_time < 60.0, f"5 iterations took {elapsed_time:.2f}s, expected <60s"
+    assert elapsed_time < 60.0, f"5 iterations took {elapsed_time:.2f}, s, expected <60s"
 
     # Verify all iterations completed or job is still running
     assert final_job.current_iteration >= 1

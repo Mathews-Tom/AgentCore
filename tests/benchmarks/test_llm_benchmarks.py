@@ -25,8 +25,7 @@ import pytest
 from agentcore.a2a_protocol.models.llm import LLMRequest
 from agentcore.a2a_protocol.services.llm_service import (
     MODEL_PROVIDER_MAP,
-    ProviderRegistry,
-)
+    ProviderRegistry)
 
 
 class TestMicrobenchmarks:
@@ -77,11 +76,7 @@ class TestMicrobenchmarks:
         def validate_request() -> LLMRequest:
             return LLMRequest(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                temperature=0.7,
-                max_tokens=100,
-                trace_id="bench-001",
-            )
+                messages=[{"role": "user", "content": "test"}], trace_id="bench-001")
 
         result = benchmark(validate_request)
         assert result is not None
@@ -109,9 +104,8 @@ class TestMicrobenchmarks:
     [
         "gpt-4.1-mini",
         "claude-3-5-haiku-20241022",
-        "gemini-1.5-flash",
-    ],
-)
+        "gemini-2.0-flash-exp",
+    ])
 class TestModelSpecificBenchmarks:
     """Benchmarks for each supported model."""
 

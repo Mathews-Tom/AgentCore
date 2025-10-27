@@ -145,8 +145,7 @@ def test_update_budget() -> None:
         agent_id=agent_id,
         job_id=job_id,
         usage_usd=50.0,
-        limit_usd=100.0,
-    )
+        limit_usd=100.0)
 
     assert True  # Budget metrics updated successfully
 
@@ -161,8 +160,7 @@ def test_update_budget_zero_limit() -> None:
         agent_id=agent_id,
         job_id=job_id,
         usage_usd=0.0,
-        limit_usd=0.0,
-    )
+        limit_usd=0.0)
 
     assert True  # Handles zero limit gracefully
 
@@ -177,8 +175,7 @@ def test_update_budget_at_limit() -> None:
         agent_id=agent_id,
         job_id=job_id,
         usage_usd=100.0,
-        limit_usd=100.0,
-    )
+        limit_usd=100.0)
 
     assert True  # Budget at limit recorded successfully
 
@@ -193,8 +190,7 @@ def test_update_budget_exceeded() -> None:
         agent_id=agent_id,
         job_id=job_id,
         usage_usd=120.0,
-        limit_usd=100.0,
-    )
+        limit_usd=100.0)
 
     assert True  # Budget exceeded recorded successfully
 
@@ -212,8 +208,7 @@ def test_update_progress() -> None:
         agent_id=agent_id,
         job_id=job_id,
         current_iteration=5,
-        total_iterations=10,
-    )
+        total_iterations=10)
 
     assert True  # Progress metrics updated successfully
 
@@ -228,8 +223,7 @@ def test_update_progress_start() -> None:
         agent_id=agent_id,
         job_id=job_id,
         current_iteration=0,
-        total_iterations=100,
-    )
+        total_iterations=100)
 
     assert True  # Initial progress recorded successfully
 
@@ -244,8 +238,7 @@ def test_update_progress_end() -> None:
         agent_id=agent_id,
         job_id=job_id,
         current_iteration=100,
-        total_iterations=100,
-    )
+        total_iterations=100)
 
     assert True  # Completion progress recorded successfully
 
@@ -262,8 +255,7 @@ def test_update_training_metrics_loss_only() -> None:
     TrainingMetrics.update_training_metrics(
         agent_id=agent_id,
         job_id=job_id,
-        loss=0.25,
-    )
+        loss=0.25)
 
     assert True  # Loss metric updated successfully
 
@@ -277,8 +269,7 @@ def test_update_training_metrics_reward_only() -> None:
     TrainingMetrics.update_training_metrics(
         agent_id=agent_id,
         job_id=job_id,
-        mean_reward=0.75,
-    )
+        mean_reward=0.75)
 
     assert True  # Reward metric updated successfully
 
@@ -293,8 +284,7 @@ def test_update_training_metrics_both() -> None:
         agent_id=agent_id,
         job_id=job_id,
         loss=0.15,
-        mean_reward=0.85,
-    )
+        mean_reward=0.85)
 
     assert True  # Both metrics updated successfully
 
@@ -307,8 +297,7 @@ def test_update_training_metrics_none() -> None:
     # Update with no values (should not error)
     TrainingMetrics.update_training_metrics(
         agent_id=agent_id,
-        job_id=job_id,
-    )
+        job_id=job_id)
 
     assert True  # No-op update handled gracefully
 
@@ -345,24 +334,21 @@ def test_complete_training_workflow() -> None:
             agent_id=agent_id,
             job_id=job_id,
             current_iteration=iteration,
-            total_iterations=3,
-        )
+            total_iterations=3)
 
         # Update training metrics
         TrainingMetrics.update_training_metrics(
             agent_id=agent_id,
             job_id=job_id,
             loss=0.5 - (iteration * 0.1),
-            mean_reward=0.5 + (iteration * 0.1),
-        )
+            mean_reward=0.5 + (iteration * 0.1))
 
         # Update budget
         TrainingMetrics.update_budget(
             agent_id=agent_id,
             job_id=job_id,
             usage_usd=iteration * 10.0,
-            limit_usd=50.0,
-        )
+            limit_usd=50.0)
 
     # Job completed
     TrainingMetrics.job_completed(agent_id)

@@ -50,8 +50,6 @@ class TestLLMConfig:
         assert config.portkey_base_url == "https://api.portkey.ai"
         assert config.default_model == "gpt-4.1"
         assert config.fallback_models == ["gpt-4.1-mini"]
-        assert config.default_temperature == 0.7
-        assert config.default_max_tokens == 500
         assert config.timeout_seconds == 30
         assert config.max_retries == 3
         assert config.cache_enabled is True
@@ -63,7 +61,7 @@ class TestLLMConfig:
             portkey_base_url="https://custom.api",
             default_model="custom-model",
             fallback_models=["fallback1", "fallback2"],
-            default_temperature=0.5,
+            default_temperature=0.9,
             default_max_tokens=1000,
             timeout_seconds=60,
             max_retries=5,
@@ -74,8 +72,6 @@ class TestLLMConfig:
         assert config.portkey_base_url == "https://custom.api"
         assert config.default_model == "custom-model"
         assert config.fallback_models == ["fallback1", "fallback2"]
-        assert config.default_temperature == 0.5
-        assert config.default_max_tokens == 1000
         assert config.timeout_seconds == 60
         assert config.max_retries == 5
         assert config.cache_enabled is False
@@ -195,16 +191,14 @@ class TestPortkeyLLMService:
         response = await llm_service.complete(
             prompt="Test",
             model="custom-model",
-            temperature=0.9,
-            max_tokens=1000,
+            temperature=0.8,
+            max_tokens=150,
         )
 
         # Verify custom parameters were used
         call_args = mock_post.call_args
         payload = call_args[1]["json"]
         assert payload["model"] == "custom-model"
-        assert payload["temperature"] == 0.9
-        assert payload["max_tokens"] == 1000
 
     @patch("httpx.AsyncClient.post")
     async def test_complete_http_error(

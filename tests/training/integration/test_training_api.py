@@ -8,16 +8,12 @@ from uuid import UUID
 import pytest
 
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
-from agentcore.training.training_jsonrpc import (
+from agentcore.training.services.training_jsonrpc import (
     handle_cancel,
     handle_export_trajectories,
     handle_get_status,
     handle_list_jobs,
-    handle_start_grpo,
-)
-
-# Skip all tests - training tables not migrated
-pytestmark = pytest.mark.skip(reason="Training tables not migrated - feature inactive")
+    handle_start_grpo)
 
 
 @pytest.fixture
@@ -56,8 +52,7 @@ async def test_start_grpo_success(sample_training_data, sample_config):
             "agent_id": "test-agent",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     response = await handle_start_grpo(request)
 
@@ -78,8 +73,7 @@ async def test_start_grpo_with_defaults(sample_training_data):
             "agent_id": "test-agent",
             "training_queries": sample_training_data,
             # No config - should use defaults
-        },
-    )
+        })
 
     response = await handle_start_grpo(request)
 
@@ -96,8 +90,7 @@ async def test_start_grpo_missing_agent_id(sample_training_data):
         params={
             "training_queries": sample_training_data,
             # Missing agent_id
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="Missing required parameter: agent_id"):
         await handle_start_grpo(request)
@@ -112,8 +105,7 @@ async def test_start_grpo_missing_training_queries(sample_config):
             "agent_id": "test-agent",
             "config": sample_config,
             # Missing training_queries
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="Missing required parameter: training_queries"):
         await handle_start_grpo(request)
@@ -129,8 +121,7 @@ async def test_start_grpo_insufficient_queries():
             "training_queries": [
                 {"query": "test", "expected_outcome": {"success": True}}
             ],  # Only 1 query
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="must contain at least 100 queries"):
         await handle_start_grpo(request)
@@ -162,8 +153,7 @@ async def test_get_status_success(sample_training_data, sample_config):
             "agent_id": "test-agent",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -171,8 +161,7 @@ async def test_get_status_success(sample_training_data, sample_config):
     # Get status
     status_request = JsonRpcRequest(
         method="training.get_status",
-        params={"job_id": job_id},
-    )
+        params={"job_id": job_id})
 
     response = await handle_get_status(status_request)
 
@@ -202,8 +191,7 @@ async def test_get_status_invalid_job_id():
     """Test error handling for invalid job_id format."""
     request = JsonRpcRequest(
         method="training.get_status",
-        params={"job_id": "not-a-uuid"},
-    )
+        params={"job_id": "not-a-uuid"})
 
     with pytest.raises(ValueError, match="Invalid job_id format"):
         await handle_get_status(request)
@@ -216,8 +204,7 @@ async def test_get_status_job_not_found():
 
     request = JsonRpcRequest(
         method="training.get_status",
-        params={"job_id": fake_uuid},
-    )
+        params={"job_id": fake_uuid})
 
     with pytest.raises(ValueError, match="Job .* not found"):
         await handle_get_status(request)
@@ -235,8 +222,7 @@ async def test_cancel_success(sample_training_data, sample_config):
             "agent_id": "test-agent",
             "training_queries": sample_training_data,
             "config": long_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -244,8 +230,7 @@ async def test_cancel_success(sample_training_data, sample_config):
     # Cancel the job
     cancel_request = JsonRpcRequest(
         method="training.cancel",
-        params={"job_id": job_id},
-    )
+        params={"job_id": job_id})
 
     response = await handle_cancel(cancel_request)
 
@@ -272,8 +257,7 @@ async def test_cancel_invalid_job_id():
     """Test error handling for invalid job_id format in cancel."""
     request = JsonRpcRequest(
         method="training.cancel",
-        params={"job_id": "not-a-uuid"},
-    )
+        params={"job_id": "not-a-uuid"})
 
     with pytest.raises(ValueError, match="Invalid job_id format"):
         await handle_cancel(request)
@@ -286,8 +270,7 @@ async def test_cancel_job_not_found():
 
     request = JsonRpcRequest(
         method="training.cancel",
-        params={"job_id": fake_uuid},
-    )
+        params={"job_id": fake_uuid})
 
     with pytest.raises(ValueError, match="Job .* not found"):
         await handle_cancel(request)
@@ -304,15 +287,13 @@ async def test_list_jobs_all(sample_training_data, sample_config):
                 "agent_id": f"agent-{i}",
                 "training_queries": sample_training_data,
                 "config": sample_config,
-            },
-        )
+            })
         await handle_start_grpo(request)
 
     # List all jobs
     list_request = JsonRpcRequest(
         method="training.list_jobs",
-        params={},
-    )
+        params={})
 
     response = await handle_list_jobs(list_request)
 
@@ -332,15 +313,13 @@ async def test_list_jobs_filtered_by_agent(sample_training_data, sample_config):
                 "agent_id": f"filter-agent-{i}",
                 "training_queries": sample_training_data,
                 "config": sample_config,
-            },
-        )
+            })
         await handle_start_grpo(request)
 
     # List jobs for specific agent
     list_request = JsonRpcRequest(
         method="training.list_jobs",
-        params={"agent_id": "filter-agent-0"},
-    )
+        params={"agent_id": "filter-agent-0"})
 
     response = await handle_list_jobs(list_request)
 
@@ -356,8 +335,7 @@ async def test_list_jobs_empty():
     """Test listing jobs when none exist for agent."""
     request = JsonRpcRequest(
         method="training.list_jobs",
-        params={"agent_id": "nonexistent-agent"},
-    )
+        params={"agent_id": "nonexistent-agent"})
 
     response = await handle_list_jobs(request)
 
@@ -391,8 +369,7 @@ async def test_end_to_end_job_lifecycle(sample_training_data, sample_config):
             "agent_id": "lifecycle-agent",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     assert start_response["success"] is True
@@ -401,8 +378,7 @@ async def test_end_to_end_job_lifecycle(sample_training_data, sample_config):
     # 2. Check status
     status_request = JsonRpcRequest(
         method="training.get_status",
-        params={"job_id": job_id},
-    )
+        params={"job_id": job_id})
 
     status_response = await handle_get_status(status_request)
     assert status_response["success"] is True
@@ -411,8 +387,7 @@ async def test_end_to_end_job_lifecycle(sample_training_data, sample_config):
     # 3. List jobs (should include this one)
     list_request = JsonRpcRequest(
         method="training.list_jobs",
-        params={"agent_id": "lifecycle-agent"},
-    )
+        params={"agent_id": "lifecycle-agent"})
 
     list_response = await handle_list_jobs(list_request)
     assert list_response["success"] is True
@@ -422,8 +397,7 @@ async def test_end_to_end_job_lifecycle(sample_training_data, sample_config):
     if status_response["status"] == "running":
         cancel_request = JsonRpcRequest(
             method="training.cancel",
-            params={"job_id": job_id},
-        )
+            params={"job_id": job_id})
 
         cancel_response = await handle_cancel(cancel_request)
         assert cancel_response["success"] is True
@@ -442,8 +416,7 @@ async def test_export_trajectories_success(sample_training_data, sample_config, 
             "agent_id": "export-agent",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -451,8 +424,7 @@ async def test_export_trajectories_success(sample_training_data, sample_config, 
     # Export trajectories (Phase 1: returns empty list as trajectories not stored)
     export_request = JsonRpcRequest(
         method="training.export_trajectories",
-        params={"job_id": job_id},
-    )
+        params={"job_id": job_id})
 
     response = await handle_export_trajectories(export_request)
 
@@ -478,8 +450,7 @@ async def test_export_trajectories_with_success_filter(sample_training_data, sam
             "agent_id": "export-agent-success",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -490,8 +461,7 @@ async def test_export_trajectories_with_success_filter(sample_training_data, sam
         params={
             "job_id": job_id,
             "success_only": True,
-        },
-    )
+        })
 
     response = await handle_export_trajectories(export_request)
 
@@ -508,8 +478,7 @@ async def test_export_trajectories_with_min_reward(sample_training_data, sample_
             "agent_id": "export-agent-reward",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -520,8 +489,7 @@ async def test_export_trajectories_with_min_reward(sample_training_data, sample_
         params={
             "job_id": job_id,
             "min_reward": 0.5,
-        },
-    )
+        })
 
     response = await handle_export_trajectories(export_request)
 
@@ -538,8 +506,7 @@ async def test_export_trajectories_with_both_filters(sample_training_data, sampl
             "agent_id": "export-agent-both",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -551,8 +518,7 @@ async def test_export_trajectories_with_both_filters(sample_training_data, sampl
             "job_id": job_id,
             "success_only": True,
             "min_reward": 0.7,
-        },
-    )
+        })
 
     response = await handle_export_trajectories(export_request)
 
@@ -570,8 +536,7 @@ async def test_export_trajectories_with_pagination(sample_training_data, sample_
             "agent_id": "export-agent-paginate",
             "training_queries": sample_training_data,
             "config": sample_config,
-        },
-    )
+        })
 
     start_response = await handle_start_grpo(start_request)
     job_id = start_response["job_id"]
@@ -583,8 +548,7 @@ async def test_export_trajectories_with_pagination(sample_training_data, sample_
             "job_id": job_id,
             "limit": 50,
             "offset": 10,
-        },
-    )
+        })
 
     response = await handle_export_trajectories(export_request)
 
@@ -610,8 +574,7 @@ async def test_export_trajectories_invalid_job_id():
     """Test error handling for invalid job_id format."""
     request = JsonRpcRequest(
         method="training.export_trajectories",
-        params={"job_id": "not-a-uuid"},
-    )
+        params={"job_id": "not-a-uuid"})
 
     with pytest.raises(ValueError, match="Invalid job_id format"):
         await handle_export_trajectories(request)
@@ -627,8 +590,7 @@ async def test_export_trajectories_exceeds_max_limit():
         params={
             "job_id": fake_uuid,
             "limit": 20000,  # Exceeds max of 10000
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="limit exceeds maximum allowed value"):
         await handle_export_trajectories(request)
@@ -644,8 +606,7 @@ async def test_export_trajectories_invalid_success_only_type():
         params={
             "job_id": fake_uuid,
             "success_only": "not-a-boolean",
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="success_only must be a boolean"):
         await handle_export_trajectories(request)
@@ -661,8 +622,7 @@ async def test_export_trajectories_invalid_min_reward_type():
         params={
             "job_id": fake_uuid,
             "min_reward": "not-a-number",
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="min_reward must be a number"):
         await handle_export_trajectories(request)
@@ -678,8 +638,7 @@ async def test_export_trajectories_invalid_limit_type():
         params={
             "job_id": fake_uuid,
             "limit": "not-an-integer",
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="limit must be a positive integer"):
         await handle_export_trajectories(request)
@@ -695,8 +654,7 @@ async def test_export_trajectories_negative_offset():
         params={
             "job_id": fake_uuid,
             "offset": -10,
-        },
-    )
+        })
 
     with pytest.raises(ValueError, match="offset must be a non-negative integer"):
         await handle_export_trajectories(request)

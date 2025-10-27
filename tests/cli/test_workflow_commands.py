@@ -16,8 +16,7 @@ from agentcore_cli.main import app
 from agentcore_cli.services.exceptions import (
     ValidationError,
     WorkflowNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 @pytest.fixture
@@ -65,8 +64,7 @@ class TestWorkflowRunCommand:
             # Patch the container to return mock service
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(app, ["workflow", "run", workflow_file])
 
             # Verify exit code
@@ -103,8 +101,7 @@ class TestWorkflowRunCommand:
             # Patch the container to return mock service
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(
                     app,
                     [
@@ -113,8 +110,7 @@ class TestWorkflowRunCommand:
                         workflow_file,
                         "--parameters",
                         '{"repo": "foo/bar", "branch": "main"}',
-                    ],
-                )
+                    ])
 
             # Verify exit code
             assert result.exit_code == 0
@@ -148,8 +144,7 @@ class TestWorkflowRunCommand:
             # Patch the container to return mock service
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(
                     app, ["workflow", "run", workflow_file, "--json"]
                 )
@@ -174,8 +169,7 @@ class TestWorkflowRunCommand:
         """Test workflow run with non-existent file."""
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(
                 app, ["workflow", "run", "/nonexistent/workflow.yaml"]
             )
@@ -196,8 +190,7 @@ class TestWorkflowRunCommand:
         try:
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(app, ["workflow", "run", workflow_file])
 
             # Verify exit code
@@ -222,8 +215,7 @@ class TestWorkflowRunCommand:
         try:
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(
                     app,
                     [
@@ -232,8 +224,7 @@ class TestWorkflowRunCommand:
                         workflow_file,
                         "--parameters",
                         "invalid json",
-                    ],
-                )
+                    ])
 
             # Verify exit code
             assert result.exit_code == 2
@@ -262,8 +253,7 @@ class TestWorkflowRunCommand:
 
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(app, ["workflow", "run", workflow_file])
 
             # Verify exit code
@@ -293,8 +283,7 @@ class TestWorkflowRunCommand:
 
             with patch(
                 "agentcore_cli.commands.workflow.get_workflow_service",
-                return_value=mock_workflow_service,
-            ):
+                return_value=mock_workflow_service):
                 result = runner.invoke(app, ["workflow", "run", workflow_file])
 
             # Verify exit code
@@ -334,8 +323,7 @@ class TestWorkflowListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "list"])
 
         # Verify exit code
@@ -368,8 +356,7 @@ class TestWorkflowListCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "list", "--status", "running"])
 
         # Verify exit code
@@ -389,8 +376,7 @@ class TestWorkflowListCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(
                 app, ["workflow", "list", "--limit", "10", "--offset", "20"]
             )
@@ -420,8 +406,7 @@ class TestWorkflowListCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "list", "--json"])
 
         # Verify exit code
@@ -441,8 +426,7 @@ class TestWorkflowListCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "list"])
 
         # Verify exit code
@@ -462,8 +446,7 @@ class TestWorkflowListCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "list"])
 
         # Verify exit code
@@ -483,8 +466,7 @@ class TestWorkflowListCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "list"])
 
         # Verify exit code
@@ -514,8 +496,7 @@ class TestWorkflowInfoCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "info", "workflow-001"])
 
         # Verify exit code
@@ -546,8 +527,7 @@ class TestWorkflowInfoCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "info", "workflow-001", "--json"])
 
         # Verify exit code
@@ -571,8 +551,7 @@ class TestWorkflowInfoCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "info", "workflow-999"])
 
         # Verify exit code
@@ -592,8 +571,7 @@ class TestWorkflowInfoCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "info", ""])
 
         # Verify exit code
@@ -613,8 +591,7 @@ class TestWorkflowInfoCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "info", "workflow-001"])
 
         # Verify exit code
@@ -636,8 +613,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "stop", "workflow-001"])
 
         # Verify exit code
@@ -659,8 +635,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(
                 app, ["workflow", "stop", "workflow-001", "--force"]
             )
@@ -680,8 +655,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(
                 app, ["workflow", "stop", "workflow-001", "--json"]
             )
@@ -707,8 +681,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "stop", "workflow-999"])
 
         # Verify exit code
@@ -728,8 +701,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "stop", ""])
 
         # Verify exit code
@@ -749,8 +721,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "stop", "workflow-001"])
 
         # Verify exit code
@@ -768,8 +739,7 @@ class TestWorkflowStopCommand:
 
         with patch(
             "agentcore_cli.commands.workflow.get_workflow_service",
-            return_value=mock_workflow_service,
-        ):
+            return_value=mock_workflow_service):
             result = runner.invoke(app, ["workflow", "stop", "workflow-001"])
 
         # Verify exit code

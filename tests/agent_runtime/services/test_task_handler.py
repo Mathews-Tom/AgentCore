@@ -14,8 +14,7 @@ from agentcore.agent_runtime.services.agent_lifecycle import AgentLifecycleManag
 from agentcore.agent_runtime.services.task_handler import (
     TaskExecutionError,
     TaskHandler,
-    TaskHandlerError,
-)
+    TaskHandlerError)
 
 
 @pytest.fixture
@@ -36,8 +35,7 @@ def mock_lifecycle_manager() -> AgentLifecycleManager:
     manager.get_agent_status = AsyncMock(return_value=AgentExecutionState(
         agent_id="test-agent-001",
         status="running",
-        container_id="test-container-123",
-    ))
+        container_id="test-container-123"))
     return manager
 
 
@@ -46,8 +44,7 @@ def task_handler(mock_a2a_client: A2AClient, mock_lifecycle_manager: AgentLifecy
     """Create task handler with mocked dependencies."""
     return TaskHandler(
         a2a_client=mock_a2a_client,
-        lifecycle_manager=mock_lifecycle_manager,
-    )
+        lifecycle_manager=mock_lifecycle_manager)
 
 
 @pytest.fixture
@@ -68,20 +65,17 @@ class TestTaskHandler:
         self,
         task_handler: TaskHandler,
         mock_a2a_client: A2AClient,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test successful task assignment."""
         result = await task_handler.assign_task(
             task_id="task-001",
             agent_id="test-agent-001",
-            task_data=task_data,
-        )
+            task_data=task_data)
 
         assert result is True
         mock_a2a_client.accept_task.assert_called_once_with(
             task_id="task-001",
-            agent_id="test-agent-001",
-        )
+            agent_id="test-agent-001")
 
         # Task executor should be created
         assert "task-001" in task_handler._task_executors
@@ -90,28 +84,24 @@ class TestTaskHandler:
         self,
         task_handler: TaskHandler,
         mock_lifecycle_manager: AgentLifecycleManager,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test task assignment when agent not running."""
         mock_lifecycle_manager.get_agent_status = AsyncMock(return_value=AgentExecutionState(
             agent_id="test-agent-001",
             status="paused",
-            container_id="test-container-123",
-        ))
+            container_id="test-container-123"))
 
         with pytest.raises(TaskHandlerError, match="not in running state"):
             await task_handler.assign_task(
                 task_id="task-001",
                 agent_id="test-agent-001",
-                task_data=task_data,
-            )
+                task_data=task_data)
 
     async def test_assign_task_agent_not_found(
         self,
         task_handler: TaskHandler,
         mock_lifecycle_manager: AgentLifecycleManager,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test task assignment when agent doesn't exist."""
         mock_lifecycle_manager.get_agent_status = AsyncMock(
             side_effect=AgentNotFoundException("Agent not found")
@@ -121,15 +111,13 @@ class TestTaskHandler:
             await task_handler.assign_task(
                 task_id="task-001",
                 agent_id="nonexistent",
-                task_data=task_data,
-            )
+                task_data=task_data)
 
     async def test_assign_task_a2a_error(
         self,
         task_handler: TaskHandler,
         mock_a2a_client: A2AClient,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test task assignment with A2A client error."""
         mock_a2a_client.accept_task = AsyncMock(
             side_effect=A2AClientError("A2A protocol error")
@@ -139,21 +127,18 @@ class TestTaskHandler:
             await task_handler.assign_task(
                 task_id="task-001",
                 agent_id="test-agent-001",
-                task_data=task_data,
-            )
+                task_data=task_data)
 
     async def test_execute_task_success(
         self,
         task_handler: TaskHandler,
         mock_a2a_client: A2AClient,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test successful task execution."""
         await task_handler.assign_task(
             task_id="task-001",
             agent_id="test-agent-001",
-            task_data=task_data,
-        )
+            task_data=task_data)
 
         # Wait for task execution to complete
         await asyncio.sleep(1.5)
@@ -161,8 +146,7 @@ class TestTaskHandler:
         # Verify task lifecycle calls
         mock_a2a_client.start_task.assert_called_once_with(
             task_id="task-001",
-            agent_id="test-agent-001",
-        )
+            agent_id="test-agent-001")
         mock_a2a_client.complete_task.assert_called_once()
 
         # Task executor should be cleaned up
@@ -172,8 +156,7 @@ class TestTaskHandler:
         self,
         task_handler: TaskHandler,
         mock_a2a_client: A2AClient,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test task execution failure."""
         # Make start_task fail
         mock_a2a_client.start_task = AsyncMock(
@@ -183,8 +166,7 @@ class TestTaskHandler:
         await task_handler.assign_task(
             task_id="task-001",
             agent_id="test-agent-001",
-            task_data=task_data,
-        )
+            task_data=task_data)
 
         # Wait for task execution to fail
         await asyncio.sleep(1.5)
@@ -199,8 +181,7 @@ class TestTaskHandler:
         self,
         task_handler: TaskHandler,
         mock_a2a_client: A2AClient,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test task execution failure when failure reporting also fails."""
         # Make both start_task and fail_task fail
         mock_a2a_client.start_task = AsyncMock(
@@ -213,8 +194,7 @@ class TestTaskHandler:
         await task_handler.assign_task(
             task_id="task-001",
             agent_id="test-agent-001",
-            task_data=task_data,
-        )
+            task_data=task_data)
 
         # Wait for task execution to fail
         await asyncio.sleep(1.5)
@@ -229,14 +209,12 @@ class TestTaskHandler:
     async def test_cancel_task_success(
         self,
         task_handler: TaskHandler,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test successful task cancellation."""
         await task_handler.assign_task(
             task_id="task-001",
             agent_id="test-agent-001",
-            task_data=task_data,
-        )
+            task_data=task_data)
 
         # Cancel task
         result = await task_handler.cancel_task("task-001")
@@ -251,8 +229,7 @@ class TestTaskHandler:
     async def test_get_active_tasks(
         self,
         task_handler: TaskHandler,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test getting active tasks."""
         # Initially empty
         active = await task_handler.get_active_tasks()
@@ -273,8 +250,7 @@ class TestTaskHandler:
     async def test_shutdown_with_running_tasks(
         self,
         task_handler: TaskHandler,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test shutdown with running tasks."""
         # Assign multiple tasks
         await task_handler.assign_task("task-001", "test-agent-001", task_data)
@@ -302,8 +278,7 @@ class TestTaskHandler:
     async def test_shutdown_timeout_handling(
         self,
         task_handler: TaskHandler,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test shutdown handles task timeout."""
         await task_handler.assign_task("task-001", "test-agent-001", task_data)
 
@@ -317,15 +292,13 @@ class TestTaskHandler:
         self,
         task_handler: TaskHandler,
         mock_a2a_client: A2AClient,
-        task_data: dict[str, Any],
-    ) -> None:
+        task_data: dict[str, Any]) -> None:
         """Test handling multiple concurrent tasks."""
         # Assign multiple tasks concurrently
         await asyncio.gather(
             task_handler.assign_task("task-001", "test-agent-001", task_data),
             task_handler.assign_task("task-002", "test-agent-001", task_data),
-            task_handler.assign_task("task-003", "test-agent-001", task_data),
-        )
+            task_handler.assign_task("task-003", "test-agent-001", task_data))
 
         # All tasks should be tracked
         active = await task_handler.get_active_tasks()

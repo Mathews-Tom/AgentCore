@@ -19,8 +19,7 @@ from agentcore.integration.api import (
     AuthScheme,
     HTTPMethod,
     RateLimitConfig,
-    RetryConfig,
-)
+    RetryConfig)
 
 
 @pytest.fixture
@@ -40,8 +39,7 @@ def bearer_auth_config(base_config: APIConfig) -> APIConfig:
     """Create configuration with Bearer auth."""
     base_config.auth = AuthConfig(
         scheme=AuthScheme.BEARER,
-        token=SecretStr("test-token-123"),
-    )
+        token=SecretStr("test-token-123"))
     return base_config
 
 
@@ -51,8 +49,7 @@ def basic_auth_config(base_config: APIConfig) -> APIConfig:
     base_config.auth = AuthConfig(
         scheme=AuthScheme.BASIC,
         username="testuser",
-        password=SecretStr("testpass"),
-    )
+        password=SecretStr("testpass"))
     return base_config
 
 
@@ -62,8 +59,7 @@ def api_key_config(base_config: APIConfig) -> APIConfig:
     base_config.auth = AuthConfig(
         scheme=AuthScheme.API_KEY,
         api_key=SecretStr("test-api-key"),
-        api_key_header="X-API-Key",
-    )
+        api_key_header="X-API-Key")
     return base_config
 
 
@@ -234,8 +230,7 @@ class TestErrorHandling:
             return_value=Response(
                 429,
                 headers={"Retry-After": "60"},
-                json={"error": "Rate limit exceeded"},
-            )
+                json={"error": "Rate limit exceeded"})
         )
 
         async with APIClient(base_config) as client:
@@ -271,8 +266,7 @@ class TestRetryLogic:
             enabled=True,
             max_attempts=3,
             initial_backoff_ms=10,
-            jitter=False,
-        )
+            jitter=False)
 
         # First two attempts timeout, third succeeds
         route = respx.get("https://api.example.com/slow").mock(
@@ -298,8 +292,7 @@ class TestRetryLogic:
             enabled=True,
             max_attempts=2,
             initial_backoff_ms=10,
-            jitter=False,
-        )
+            jitter=False)
 
         route = respx.get("https://api.example.com/broken").mock(
             return_value=Response(500, json={"error": "Server error"})
@@ -323,8 +316,7 @@ class TestRateLimiting:
             enabled=True,
             requests_per_window=2,
             window_seconds=10,  # Longer window to ensure rate limit is hit
-            burst_size=2,
-        )
+            burst_size=2)
 
         respx.get("https://api.example.com/data").mock(
             return_value=Response(200, json={"data": "ok"})
@@ -354,8 +346,7 @@ class TestResponseTransformation:
             return_value=Response(
                 200,
                 headers={"Content-Type": "application/json"},
-                json={"key": "value", "nested": {"data": "test"}},
-            )
+                json={"key": "value", "nested": {"data": "test"}})
         )
 
         async with APIClient(base_config) as client:
@@ -373,8 +364,7 @@ class TestResponseTransformation:
             return_value=Response(
                 200,
                 headers={"Content-Type": "text/plain"},
-                text="Plain text response",
-            )
+                text="Plain text response")
         )
 
         async with APIClient(base_config) as client:

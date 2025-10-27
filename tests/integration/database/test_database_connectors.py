@@ -20,8 +20,7 @@ from agentcore.integration.database import (
     DatabaseConfig,
     DatabaseFactory,
     PostgreSQLConnector,
-    QueryResult,
-)
+    QueryResult)
 
 
 class MockPostgreSQLConnector(PostgreSQLConnector):
@@ -61,8 +60,7 @@ class MockPostgreSQLConnector(PostgreSQLConnector):
     async def execute_query(
         self,
         query: str,
-        params: dict | None = None,
-    ) -> QueryResult:
+        params: dict | None = None) -> QueryResult:
         """Mock query execution."""
         if not self._connected:
             raise RuntimeError("Database not connected")
@@ -108,8 +106,7 @@ class MockPostgreSQLConnector(PostgreSQLConnector):
             columns=columns,
             execution_time_ms=execution_time_ms,
             cached=False,
-            query_hash=cache_key if self.config.cache_enabled else None,
-        )
+            query_hash=cache_key if self.config.cache_enabled else None)
 
         # Store in cache
         if self.config.cache_enabled:
@@ -120,8 +117,7 @@ class MockPostgreSQLConnector(PostgreSQLConnector):
     async def execute_update(
         self,
         query: str,
-        params: dict | None = None,
-    ) -> int:
+        params: dict | None = None) -> int:
         """Mock update execution."""
         if not self._connected:
             raise RuntimeError("Database not connected")
@@ -138,8 +134,7 @@ class MockPostgreSQLConnector(PostgreSQLConnector):
 
     async def execute_transaction(
         self,
-        queries: list[tuple[str, dict | None]],
-    ) -> list[int]:
+        queries: list[tuple[str, dict | None]]) -> list[int]:
         """Mock transaction execution."""
         if not self._connected:
             raise RuntimeError("Database not connected")
@@ -173,8 +168,7 @@ def db_config() -> DatabaseConfig:
         ssl_enabled=False,  # Disable SSL for testing
         query_timeout=30,
         cache_enabled=True,
-        cache_ttl=300,
-    )
+        cache_ttl=300)
 
 
 @pytest_asyncio.fixture
@@ -219,8 +213,7 @@ class TestDatabaseConfigValidation:
                 port=70000,  # Invalid port
                 database="test",
                 username="user",
-                password=SecretStr("pass"),
-            )
+                password=SecretStr("pass"))
 
 
 class TestDatabaseConnectorBasics:
@@ -273,8 +266,7 @@ class TestQueryExecution:
         """Test parameterized query execution."""
         result = await db_connector.execute_query(
             "SELECT * FROM users WHERE id = $id",
-            params={"id": 1},
-        )
+            params={"id": 1})
 
         assert result.row_count == 1
         assert result.rows[0]["name"] == "Alice"
@@ -324,8 +316,7 @@ class TestQueryCaching:
         # Update (invalidates cache)
         await db_connector.execute_update(
             "UPDATE users SET name = $name WHERE id = $id",
-            params={"name": "Alice Updated", "id": 1},
-        )
+            params={"name": "Alice Updated", "id": 1})
 
         # Third query (cache miss after invalidation)
         result3 = await db_connector.execute_query("SELECT * FROM users")
@@ -339,14 +330,12 @@ class TestQueryCaching:
         # Query user 1
         result1 = await db_connector.execute_query(
             "SELECT * FROM users WHERE id = $id",
-            params={"id": 1},
-        )
+            params={"id": 1})
 
         # Query user 2 (different params, cache miss)
         result2 = await db_connector.execute_query(
             "SELECT * FROM users WHERE id = $id",
-            params={"id": 2},
-        )
+            params={"id": 2})
 
         assert result1.cached is False
         assert result2.cached is False
@@ -418,8 +407,7 @@ class TestDatabaseFactory:
             port=5432,
             database="test",
             username="user",
-            password=SecretStr("pass"),
-        )
+            password=SecretStr("pass"))
 
         with pytest.raises(ValueError, match="Unsupported database type"):
             DatabaseFactory.create(config)
@@ -443,8 +431,7 @@ class TestDataSecurity:
             port=5432,
             database="secure_db",
             username="secure_user",
-            password=SecretStr("super_secret_password"),
-        )
+            password=SecretStr("super_secret_password"))
 
         # Password should not appear in string representation
         config_str = str(config)
@@ -459,8 +446,7 @@ class TestDataSecurity:
             port=5432,
             database="test",
             username="user",
-            password=SecretStr("pass"),
-        )
+            password=SecretStr("pass"))
 
         assert config.ssl_enabled is True
         assert config.ssl_verify is True

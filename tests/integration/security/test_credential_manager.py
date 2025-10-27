@@ -15,8 +15,7 @@ from agentcore.integration.security.credential_manager import (
     CredentialManager,
     CredentialStatus,
     CredentialType,
-    EncryptedCredential,
-)
+    EncryptedCredential)
 
 
 class TestCredentialManager:
@@ -45,8 +44,7 @@ class TestCredentialManager:
             credential_id="test-001",
             service_name="test-service",
             credential_type=CredentialType.API_KEY,
-            credential_value="super-secret-api-key-12345",
-        )
+            credential_value="super-secret-api-key-12345")
 
         assert cred.credential_id == "test-001"
         assert cred.service_name == "test-service"
@@ -64,8 +62,7 @@ class TestCredentialManager:
             credential_id="test-002",
             service_name="database",
             credential_type=CredentialType.DATABASE,
-            credential_value=original_value,
-        )
+            credential_value=original_value)
 
         decrypted = manager.decrypt_credential("test-002")
         assert decrypted == original_value
@@ -87,8 +84,7 @@ class TestCredentialManager:
                 credential_id=cred_id,
                 service_name="test",
                 credential_type=CredentialType.API_KEY,
-                credential_value=value,
-            )
+                credential_value=value)
 
             decrypted = manager.decrypt_credential(cred_id)
             assert decrypted == value
@@ -101,16 +97,14 @@ class TestCredentialManager:
             credential_id="duplicate",
             service_name="service1",
             credential_type=CredentialType.API_KEY,
-            credential_value="value1",
-        )
+            credential_value="value1")
 
         with pytest.raises(ValueError, match="already exists"):
             manager.encrypt_credential(
                 credential_id="duplicate",
                 service_name="service2",
                 credential_type=CredentialType.API_KEY,
-                credential_value="value2",
-            )
+                credential_value="value2")
 
     def test_decrypt_nonexistent_fails(self) -> None:
         """Test that decrypting nonexistent credential fails."""
@@ -128,8 +122,7 @@ class TestCredentialManager:
             credential_id="test-wrong-key",
             service_name="test",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret",
-        )
+            credential_value="secret")
 
         # Try to decrypt with different manager (different key)
         manager2._credentials["test-wrong-key"] = cred
@@ -147,8 +140,7 @@ class TestCredentialManager:
             credential_id="rotate-test",
             service_name="test",
             credential_type=CredentialType.API_KEY,
-            credential_value=original_value,
-        )
+            credential_value=original_value)
 
         # Get initial state
         cred_before = manager.get_credential("rotate-test")
@@ -181,8 +173,7 @@ class TestCredentialManager:
             credential_id="revoke-test",
             service_name="test",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret",
-        )
+            credential_value="secret")
 
         # Revoke
         manager.revoke_credential("revoke-test")
@@ -207,8 +198,7 @@ class TestCredentialManager:
             service_name="test",
             credential_type=CredentialType.API_KEY,
             credential_value="secret",
-            expires_at=expires_at,
-        )
+            expires_at=expires_at)
 
         # Check is_expired
         cred = manager.get_credential("expired-test")
@@ -228,8 +218,7 @@ class TestCredentialManager:
             service_name="test",
             credential_type=CredentialType.API_KEY,
             credential_value="secret",
-            rotation_interval_days=30,
-        )
+            rotation_interval_days=30)
 
         # Set last rotation to past
         cred = manager.get_credential("rotation-due")
@@ -254,8 +243,7 @@ class TestCredentialManager:
                 credential_id=f"cred-{i}",
                 service_name=f"service-{i}",
                 credential_type=CredentialType.API_KEY,
-                credential_value=f"secret-{i}",
-            )
+                credential_value=f"secret-{i}")
 
         credentials = manager.list_credentials()
         assert len(credentials) == 5
@@ -269,20 +257,17 @@ class TestCredentialManager:
             credential_id="service1-cred1",
             service_name="service1",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret1",
-        )
+            credential_value="secret1")
         manager.encrypt_credential(
             credential_id="service1-cred2",
             service_name="service1",
             credential_type=CredentialType.DATABASE,
-            credential_value="secret2",
-        )
+            credential_value="secret2")
         manager.encrypt_credential(
             credential_id="service2-cred1",
             service_name="service2",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret3",
-        )
+            credential_value="secret3")
 
         # Filter by service
         credentials = manager.list_credentials(service_name="service1")
@@ -298,14 +283,12 @@ class TestCredentialManager:
             credential_id="api-key-1",
             service_name="service",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret1",
-        )
+            credential_value="secret1")
         manager.encrypt_credential(
             credential_id="oauth-1",
             service_name="service",
             credential_type=CredentialType.OAUTH2,
-            credential_value="secret2",
-        )
+            credential_value="secret2")
 
         # Filter by type
         credentials = manager.list_credentials(credential_type=CredentialType.API_KEY)
@@ -321,14 +304,12 @@ class TestCredentialManager:
             credential_id="active-1",
             service_name="service",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret1",
-        )
+            credential_value="secret1")
         manager.encrypt_credential(
             credential_id="revoked-1",
             service_name="service",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret2",
-        )
+            credential_value="secret2")
         manager.revoke_credential("revoked-1")
 
         # Filter by status
@@ -350,8 +331,7 @@ class TestCredentialManager:
             service_name="service",
             credential_type=CredentialType.API_KEY,
             credential_value="secret",
-            rotation_interval_days=30,
-        )
+            rotation_interval_days=30)
         cred = manager.get_credential("needs-rotation")
         cred.last_rotated_at = datetime.now(timezone.utc) - timedelta(days=31)
 
@@ -360,8 +340,7 @@ class TestCredentialManager:
             credential_id="no-rotation-needed",
             service_name="service",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret",
-        )
+            credential_value="secret")
 
         # Check
         needs_rotation = manager.check_rotations_needed()
@@ -410,8 +389,7 @@ class TestCredentialManager:
             service_name="api",
             credential_type=CredentialType.API_KEY,
             credential_value="secret",
-            metadata=metadata,
-        )
+            metadata=metadata)
 
         # Retrieve and check metadata
         retrieved = manager.get_credential("with-metadata")
@@ -427,15 +405,13 @@ class TestCredentialManager:
             credential_id="test1",
             service_name="test",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret",
-        )
+            credential_value="secret")
 
         manager2.encrypt_credential(
             credential_id="test2",
             service_name="test",
             credential_type=CredentialType.API_KEY,
-            credential_value="secret",
-        )
+            credential_value="secret")
 
         # Should decrypt successfully
         assert manager1.decrypt_credential("test1") == "secret"

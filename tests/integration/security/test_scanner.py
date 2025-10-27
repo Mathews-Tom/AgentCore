@@ -11,16 +11,14 @@ from agentcore.integration.security.compliance import (
     ComplianceFramework,
     ComplianceManager,
     DataRegion,
-    DataResidencyConfig,
-)
+    DataResidencyConfig)
 from agentcore.integration.security.credential_manager import CredentialType
 from agentcore.integration.security.scanner import (
     SecurityIssue,
     SecurityIssueType,
     SecurityPolicy,
     SecurityScanner,
-    SecuritySeverity,
-)
+    SecuritySeverity)
 
 
 class TestSecurityScanner:
@@ -36,8 +34,7 @@ class TestSecurityScanner:
         policy = SecurityPolicy(
             require_strong_passwords=True,
             min_password_length=20,
-            max_credential_age_days=60,
-        )
+            max_credential_age_days=60)
 
         scanner = SecurityScanner(policy=policy)
         assert scanner is not None
@@ -54,8 +51,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="a-very-strong-api-key-with-randomness-ABC123!@#",
-            credential_type=CredentialType.API_KEY,
-        )
+            credential_type=CredentialType.API_KEY)
 
         # Should pass validation
         assert len(issues) == 0
@@ -63,14 +59,12 @@ class TestSecurityScanner:
     def test_validate_credential_not_allowed_type(self) -> None:
         """Test validating credential with disallowed type."""
         policy = SecurityPolicy(
-            allowed_credential_types=[CredentialType.OAUTH2],
-        )
+            allowed_credential_types=[CredentialType.OAUTH2])
         scanner = SecurityScanner(policy=policy)
 
         issues = scanner.validate_credential(
             credential_value="some-credential",
-            credential_type=CredentialType.API_KEY,
-        )
+            credential_type=CredentialType.API_KEY)
 
         # Should have policy violation
         assert len(issues) > 0
@@ -83,8 +77,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="short",
-            credential_type=CredentialType.API_KEY,
-        )
+            credential_type=CredentialType.API_KEY)
 
         # Should have weak credential issue
         assert len(issues) > 0
@@ -97,8 +90,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="password123456789",
-            credential_type=CredentialType.DATABASE,
-        )
+            credential_type=CredentialType.DATABASE)
 
         # Should detect weak pattern
         assert len(issues) > 0
@@ -114,8 +106,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="admin1234567890",
-            credential_type=CredentialType.BASIC_AUTH,
-        )
+            credential_type=CredentialType.BASIC_AUTH)
 
         # Should detect weak pattern
         assert any(i.severity == SecuritySeverity.CRITICAL for i in issues)
@@ -128,8 +119,7 @@ class TestSecurityScanner:
         # Only lowercase
         issues = scanner.validate_credential(
             credential_value="alllowercaseletters",
-            credential_type=CredentialType.API_KEY,
-        )
+            credential_type=CredentialType.API_KEY)
 
         # Should have complexity issue
         assert any(
@@ -144,8 +134,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="StrongPassword123!@#WithComplexity",
-            credential_type=CredentialType.API_KEY,
-        )
+            credential_type=CredentialType.API_KEY)
 
         # Should pass complexity check (may still have other issues)
         complexity_issues = [
@@ -162,8 +151,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="my_api_key_secret_1234567890",
-            credential_type=CredentialType.API_KEY,
-        )
+            credential_type=CredentialType.API_KEY)
 
         # Should detect exposed secret
         assert any(i.issue_type == SecurityIssueType.EXPOSED_SECRET for i in issues)
@@ -174,8 +162,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value="ya29.a0AfH6SMBx...",  # OAuth2 tokens have different format
-            credential_type=CredentialType.OAUTH2,
-        )
+            credential_type=CredentialType.OAUTH2)
 
         # OAuth2 tokens shouldn't trigger credential-specific validations
         # (they're validated differently)
@@ -273,8 +260,7 @@ class TestSecurityScanner:
     def test_scan_configuration_blocked_pattern(self) -> None:
         """Test scanning configuration with blocked pattern."""
         policy = SecurityPolicy(
-            blocked_patterns=[r"debug.*true", r"test_mode"],
-        )
+            blocked_patterns=[r"debug.*true", r"test_mode"])
         scanner = SecurityScanner(policy=policy)
 
         config = {
@@ -311,8 +297,7 @@ class TestSecurityScanner:
 
         issues = scanner.check_compliance(
             data={"email": "user@example.com"},
-            resource_name="user-data",
-        )
+            resource_name="user-data")
 
         # Should return empty list
         assert len(issues) == 0
@@ -321,8 +306,7 @@ class TestSecurityScanner:
         """Test compliance check with GDPR violation."""
         compliance_manager = ComplianceManager()
         policy = SecurityPolicy(
-            compliance_frameworks=[ComplianceFramework.GDPR],
-        )
+            compliance_frameworks=[ComplianceFramework.GDPR])
         scanner = SecurityScanner(policy=policy, compliance_manager=compliance_manager)
 
         data = {
@@ -344,8 +328,7 @@ class TestSecurityScanner:
             compliance_frameworks=[
                 ComplianceFramework.GDPR,
                 ComplianceFramework.CCPA,
-            ],
-        )
+            ])
         scanner = SecurityScanner(policy=policy, compliance_manager=compliance_manager)
 
         data = {
@@ -379,24 +362,21 @@ class TestSecurityScanner:
                 title="Weak password",
                 description="Password is too weak",
                 resource="cred-001",
-                remediation="Use stronger password",
-            ),
+                remediation="Use stronger password"),
             SecurityIssue(
                 issue_type=SecurityIssueType.INSECURE_CONFIG,
                 severity=SecuritySeverity.HIGH,
                 title="SSL disabled",
                 description="SSL is not enabled",
                 resource="api-config",
-                remediation="Enable SSL",
-            ),
+                remediation="Enable SSL"),
             SecurityIssue(
                 issue_type=SecurityIssueType.POLICY_VIOLATION,
                 severity=SecuritySeverity.MEDIUM,
                 title="Policy violation",
                 description="Configuration violates policy",
                 resource="app-config",
-                remediation="Update configuration",
-            ),
+                remediation="Update configuration"),
         ]
 
         report = scanner.generate_security_report(issues)
@@ -419,24 +399,21 @@ class TestSecurityScanner:
                 title="Weak 1",
                 description="Desc",
                 resource="res1",
-                remediation="Fix",
-            ),
+                remediation="Fix"),
             SecurityIssue(
                 issue_type=SecurityIssueType.WEAK_CREDENTIAL,
                 severity=SecuritySeverity.HIGH,
                 title="Weak 2",
                 description="Desc",
                 resource="res2",
-                remediation="Fix",
-            ),
+                remediation="Fix"),
             SecurityIssue(
                 issue_type=SecurityIssueType.EXPOSED_SECRET,
                 severity=SecuritySeverity.CRITICAL,
                 title="Secret",
                 description="Desc",
                 resource="res3",
-                remediation="Fix",
-            ),
+                remediation="Fix"),
         ]
 
         report = scanner.generate_security_report(issues)
@@ -455,24 +432,21 @@ class TestSecurityScanner:
                 title="Issue 1",
                 description="Desc",
                 resource="resource-1",
-                remediation="Fix",
-            ),
+                remediation="Fix"),
             SecurityIssue(
                 issue_type=SecurityIssueType.WEAK_CREDENTIAL,
                 severity=SecuritySeverity.HIGH,
                 title="Issue 2",
                 description="Desc",
                 resource="resource-1",  # Same resource
-                remediation="Fix",
-            ),
+                remediation="Fix"),
             SecurityIssue(
                 issue_type=SecurityIssueType.EXPOSED_SECRET,
                 severity=SecuritySeverity.CRITICAL,
                 title="Issue 3",
                 description="Desc",
                 resource="resource-2",  # Different resource
-                remediation="Fix",
-            ),
+                remediation="Fix"),
         ]
 
         report = scanner.generate_security_report(issues)
@@ -518,8 +492,7 @@ class TestSecurityScanner:
         """Test integration scan with compliance checks."""
         compliance_manager = ComplianceManager()
         policy = SecurityPolicy(
-            compliance_frameworks=[ComplianceFramework.GDPR],
-        )
+            compliance_frameworks=[ComplianceFramework.GDPR])
         scanner = SecurityScanner(policy=policy, compliance_manager=compliance_manager)
 
         integration_config = {
@@ -551,8 +524,7 @@ class TestSecurityScanner:
             require_strong_passwords=False,
             min_password_length=8,
             max_credential_age_days=30,
-            allow_weak_tls=True,
-        )
+            allow_weak_tls=True)
 
         assert not policy.require_strong_passwords
         assert policy.min_password_length == 8
@@ -566,8 +538,7 @@ class TestSecurityScanner:
         # Credential with multiple problems
         issues = scanner.validate_credential(
             credential_value="password",  # Too short, weak pattern, lacks complexity
-            credential_type=CredentialType.DATABASE,
-        )
+            credential_type=CredentialType.DATABASE)
 
         # Should have multiple issues
         assert len(issues) >= 2
@@ -603,8 +574,7 @@ class TestSecurityScanner:
             description="Test description",
             resource="test-resource",
             remediation="Fix it",
-            metadata={"key": "value"},
-        )
+            metadata={"key": "value"})
 
         assert issue.issue_type == SecurityIssueType.WEAK_CREDENTIAL
         assert issue.severity == SecuritySeverity.HIGH
@@ -620,8 +590,7 @@ class TestSecurityScanner:
 
         issues = scanner.validate_credential(
             credential_value=jwt_token,
-            credential_type=CredentialType.JWT,
-        )
+            credential_type=CredentialType.JWT)
 
         # JWTs are not validated for password strength
         weak_cred_issues = [

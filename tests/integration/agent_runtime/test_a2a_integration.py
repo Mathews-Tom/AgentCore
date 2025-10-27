@@ -18,8 +18,7 @@ def agent_config():
         name="Test Agent",
         philosophy=AgentPhilosophy.REACT,
         capabilities=["test", "demo"],
-        resource_limits={"cpu": "1.0", "memory": "512Mi"},
-    )
+        resource_limits={"cpu": "1.0", "memory": "512Mi"})
 
 
 @pytest.fixture
@@ -58,14 +57,12 @@ def mock_a2a_client():
 async def test_agent_lifecycle_with_a2a_integration(
     agent_config,
     mock_container_manager,
-    mock_a2a_client,
-):
+    mock_a2a_client):
     """Test agent lifecycle with A2A protocol integration."""
     # Create lifecycle manager with A2A client
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=mock_a2a_client,
-    )
+        a2a_client=mock_a2a_client)
 
     # Create agent
     state = await lifecycle_manager.create_agent(agent_config)
@@ -105,14 +102,12 @@ async def test_agent_lifecycle_with_a2a_integration(
 @pytest.mark.asyncio
 async def test_agent_lifecycle_without_a2a_client(
     agent_config,
-    mock_container_manager,
-):
+    mock_container_manager):
     """Test agent lifecycle works without A2A client (local mode)."""
     # Create lifecycle manager without A2A client
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=None,
-    )
+        a2a_client=None)
 
     # Create agent
     state = await lifecycle_manager.create_agent(agent_config)
@@ -145,19 +140,16 @@ async def test_a2a_client_connectivity(mock_a2a_client):
 async def test_task_assignment_and_execution(
     agent_config,
     mock_container_manager,
-    mock_a2a_client,
-):
+    mock_a2a_client):
     """Test task assignment and execution through A2A."""
     # Create lifecycle manager and task handler
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=mock_a2a_client,
-    )
+        a2a_client=mock_a2a_client)
 
     task_handler = TaskHandler(
         a2a_client=mock_a2a_client,
-        lifecycle_manager=lifecycle_manager,
-    )
+        lifecycle_manager=lifecycle_manager)
 
     # Create and start agent
     await lifecycle_manager.create_agent(agent_config)
@@ -170,8 +162,7 @@ async def test_task_assignment_and_execution(
     success = await task_handler.assign_task(
         task_id=task_id,
         agent_id="test-agent-001",
-        task_data=task_data,
-    )
+        task_data=task_data)
 
     assert success is True
 
@@ -203,13 +194,11 @@ async def test_task_assignment_and_execution(
 async def test_agent_health_reporting(
     agent_config,
     mock_container_manager,
-    mock_a2a_client,
-):
+    mock_a2a_client):
     """Test agent health reporting to A2A protocol."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=mock_a2a_client,
-    )
+        a2a_client=mock_a2a_client)
 
     # Create and start agent
     await lifecycle_manager.create_agent(agent_config)
@@ -231,8 +220,7 @@ async def test_agent_health_reporting(
 @pytest.mark.asyncio
 async def test_a2a_registration_failure_handling(
     agent_config,
-    mock_container_manager,
-):
+    mock_container_manager):
     """Test that agent creation succeeds even if A2A registration fails."""
     # Create mock A2A client that fails registration
     failing_a2a_client = AsyncMock(spec=A2AClient)
@@ -240,8 +228,7 @@ async def test_a2a_registration_failure_handling(
 
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=failing_a2a_client,
-    )
+        a2a_client=failing_a2a_client)
 
     # Create agent - should succeed despite A2A registration failure
     state = await lifecycle_manager.create_agent(agent_config)
@@ -263,26 +250,22 @@ async def test_a2a_registration_failure_handling(
 async def test_task_failure_reporting(
     agent_config,
     mock_container_manager,
-    mock_a2a_client,
-):
+    mock_a2a_client):
     """Test task failure reporting to A2A protocol."""
     lifecycle_manager = AgentLifecycleManager(
         container_manager=mock_container_manager,
-        a2a_client=mock_a2a_client,
-    )
+        a2a_client=mock_a2a_client)
 
     # Mock task execution to fail
     task_handler = TaskHandler(
         a2a_client=mock_a2a_client,
-        lifecycle_manager=lifecycle_manager,
-    )
+        lifecycle_manager=lifecycle_manager)
 
     # Patch execute_task to raise exception
     with patch.object(
         task_handler,
         "_execute_task",
-        side_effect=Exception("Task execution error"),
-    ):
+        side_effect=Exception("Task execution error")):
         # Create and start agent
         await lifecycle_manager.create_agent(agent_config)
         await lifecycle_manager.start_agent("test-agent-001")
@@ -295,8 +278,7 @@ async def test_task_failure_reporting(
         success = await task_handler.assign_task(
             task_id=task_id,
             agent_id="test-agent-001",
-            task_data=task_data,
-        )
+            task_data=task_data)
 
         assert success is True
 

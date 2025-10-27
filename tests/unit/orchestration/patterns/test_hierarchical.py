@@ -17,8 +17,7 @@ from agentcore.orchestration.patterns.hierarchical import (
     DelegationPolicy,
     EscalationReason,
     HierarchicalConfig,
-    HierarchicalCoordinator,
-)
+    HierarchicalCoordinator)
 
 
 class TestHierarchicalCoordinator:
@@ -31,16 +30,14 @@ class TestHierarchicalCoordinator:
             max_hierarchy_depth=5,
             delegation_policy=DelegationPolicy.STRICT_HIERARCHY,
             enable_escalation=True,
-            escalation_threshold_failures=2,
-        )
+            escalation_threshold_failures=2)
 
     @pytest.fixture
     def coordinator(self, config: HierarchicalConfig) -> HierarchicalCoordinator:
         """Create hierarchical coordinator instance."""
         return HierarchicalCoordinator(
             coordinator_id="test-hierarchy",
-            config=config,
-        )
+            config=config)
 
     @pytest.mark.asyncio
     async def test_add_agent(self, coordinator: HierarchicalCoordinator) -> None:
@@ -49,8 +46,7 @@ class TestHierarchicalCoordinator:
         await coordinator.add_agent(
             agent_id="ceo",
             authority_level=AuthorityLevel.EXECUTIVE,
-            capabilities=["strategy", "decision_making"],
-        )
+            capabilities=["strategy", "decision_making"])
 
         # Verify hierarchy
         tree = await coordinator.get_hierarchy_tree()
@@ -120,8 +116,7 @@ class TestHierarchicalCoordinator:
             task_id=task_id,
             from_agent_id="ceo",
             task_data={"type": "test"},
-            required_capabilities=["task_a"],
-        )
+            required_capabilities=["task_a"])
 
         # Verify delegation
         assert target == "manager"
@@ -166,8 +161,7 @@ class TestHierarchicalCoordinator:
             task_id=task_id,
             from_agent_id="manager",
             reason=EscalationReason.INSUFFICIENT_AUTHORITY,
-            context={"details": "needs executive approval"},
-        )
+            context={"details": "needs executive approval"})
 
         # Verify escalation
         assert target == "ceo"
@@ -186,8 +180,7 @@ class TestHierarchicalCoordinator:
         target = await coordinator.escalate_task(
             task_id=task_id,
             from_agent_id="ceo",
-            reason=EscalationReason.EXPLICIT_REQUEST,
-        )
+            reason=EscalationReason.EXPLICIT_REQUEST)
 
         # Should fail (no parent)
         assert target is None
@@ -307,8 +300,7 @@ class TestHierarchicalCoordinator:
             "worker",
             AuthorityLevel.WORKER,
             parent_id="manager",
-            capabilities=["task"],
-        )
+            capabilities=["task"])
 
         # Delegate from CEO should go to Manager (direct child), not Worker
         task_id = uuid4()
@@ -332,8 +324,7 @@ class TestHierarchicalCoordinator:
             "worker",
             AuthorityLevel.WORKER,
             parent_id="manager",
-            capabilities=["task"],
-        )
+            capabilities=["task"])
 
         # With best fit, should find worker with matching capability
         task_id = uuid4()
@@ -396,8 +387,7 @@ class TestHierarchicalCoordinator:
             "worker",
             AuthorityLevel.WORKER,
             parent_id="ceo",
-            capabilities=["task"],
-        )
+            capabilities=["task"])
 
         # Set max concurrent to 2
         async with coordinator._lock:
@@ -440,8 +430,7 @@ class TestHierarchyEdgeCases:
         target = await coordinator.escalate_task(
             task_id,
             "nonexistent",
-            EscalationReason.EXPLICIT_REQUEST,
-        )
+            EscalationReason.EXPLICIT_REQUEST)
         assert target is None
 
     @pytest.mark.asyncio

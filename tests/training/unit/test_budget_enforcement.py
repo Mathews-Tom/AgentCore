@@ -9,8 +9,7 @@ import pytest
 from agentcore.training.utils.budget import (
     BudgetEnforcer,
     BudgetStatus,
-    check_budget,
-)
+    check_budget)
 
 
 def test_budget_enforcer_initialization():
@@ -28,8 +27,7 @@ def test_budget_enforcer_custom_thresholds():
     enforcer = BudgetEnforcer(
         max_budget_usd=Decimal("50.00"),
         warning_threshold_75=0.70,
-        warning_threshold_90=0.85,
-    )
+        warning_threshold_90=0.85)
 
     assert enforcer.warning_threshold_75 == Decimal("0.70")
     assert enforcer.warning_threshold_90 == Decimal("0.85")
@@ -227,8 +225,7 @@ def test_check_budget_function_ok():
     is_ok, message = check_budget(
         current_cost=Decimal("50.00"),
         max_budget=Decimal("100.00"),
-        required_amount=Decimal("25.00"),
-    )
+        required_amount=Decimal("25.00"))
 
     assert is_ok is True
     assert "Budget OK" in message
@@ -240,8 +237,7 @@ def test_check_budget_function_exceeded():
     is_ok, message = check_budget(
         current_cost=Decimal("80.00"),
         max_budget=Decimal("100.00"),
-        required_amount=Decimal("30.00"),
-    )
+        required_amount=Decimal("30.00"))
 
     assert is_ok is False
     assert "Budget would be exceeded" in message
@@ -253,8 +249,7 @@ def test_check_budget_function_exact_limit():
     is_ok, message = check_budget(
         current_cost=Decimal("75.00"),
         max_budget=Decimal("100.00"),
-        required_amount=Decimal("25.00"),
-    )
+        required_amount=Decimal("25.00"))
 
     assert is_ok is True
 
@@ -264,8 +259,7 @@ def test_check_budget_function_no_additional_cost():
     is_ok, message = check_budget(
         current_cost=Decimal("90.00"),
         max_budget=Decimal("100.00"),
-        required_amount=Decimal("0.00"),
-    )
+        required_amount=Decimal("0.00"))
 
     assert is_ok is True
     assert "10.00" in message  # Remaining
