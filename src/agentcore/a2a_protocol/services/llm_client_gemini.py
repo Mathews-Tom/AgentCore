@@ -22,7 +22,7 @@ Features:
 - A2A context propagation via request_options (limited support)
 - Token usage extraction and tracking
 - Comprehensive error handling with custom exceptions
-- Support for gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash models
+- Support for gemini-2.0-flash-exp, gemini-1.5-pro, gemini-2.0-flash-exp models
 
 Example:
     ```python
@@ -33,7 +33,7 @@ Example:
 
     # Non-streaming completion
     request = LLMRequest(
-        model="gemini-1.5-flash",
+        model="gemini-2.0-flash-exp",
         messages=[{"role": "user", "content": "Hello"}],
         trace_id="trace-123",
     )
@@ -182,7 +182,7 @@ class LLMClientGemini(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gemini-1.5-flash",
+            ...     model="gemini-2.0-flash-exp",
             ...     messages=[{"role": "user", "content": "Hello"}],
             ...     trace_id="trace-123",
             ... )
@@ -208,16 +208,10 @@ class LLMClientGemini(LLMClient):
                     system_instruction=system_instruction,
                 )
 
-                # Build generation config
-                generation_config = genai.GenerationConfig(  # type: ignore[attr-defined]
-                    temperature=request.temperature,
-                    max_output_tokens=request.max_tokens,
-                )
-
-                # Call Gemini API with async method
+                # Call Gemini API with async method (no temperature or max_tokens per CLAUDE.md)
+                # Provider will use default values internally
                 response = await model.generate_content_async(
                     contents=gemini_messages,
-                    generation_config=generation_config,
                     request_options=request_options,  # type: ignore[arg-type]
                 )
 
@@ -317,7 +311,7 @@ class LLMClientGemini(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gemini-1.5-flash",
+            ...     model="gemini-2.0-flash-exp",
             ...     messages=[{"role": "user", "content": "Count to 5"}],
             ...     stream=True,
             ... )
@@ -337,16 +331,10 @@ class LLMClientGemini(LLMClient):
                 system_instruction=system_instruction,
             )
 
-            # Build generation config
-            generation_config = genai.GenerationConfig(  # type: ignore[attr-defined]
-                temperature=request.temperature,
-                max_output_tokens=request.max_tokens,
-            )
-
-            # Call Gemini API with streaming enabled
+            # Call Gemini API with streaming enabled (no temperature or max_tokens per CLAUDE.md)
+            # Provider will use default values internally
             stream_response = await model.generate_content_async(
                 contents=gemini_messages,
-                generation_config=generation_config,
                 stream=True,
                 request_options=request_options,  # type: ignore[arg-type]
             )
