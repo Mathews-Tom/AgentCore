@@ -35,6 +35,9 @@ from agentcore.a2a_protocol.services import (
 # Import reasoning JSON-RPC methods
 from agentcore.reasoning.services import reasoning_jsonrpc
 
+# Import training JSON-RPC methods
+from agentcore.training.services import training_jsonrpc
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
