@@ -64,8 +64,6 @@ class TestLLMRequest:
 
         assert request.model == "gpt-4"
         assert len(request.messages) == 1
-        assert request.max_tokens is None
-        assert request.temperature is None
         assert request.stream is False
         assert request.model_requirements is None
         assert request.context == {}
@@ -76,44 +74,15 @@ class TestLLMRequest:
         request = LLMRequest(
             model="gpt-4",
             messages=[{"role": "user", "content": "Hello"}],
-            max_tokens=100,
-            temperature=0.7,
             stream=True,
             model_requirements=requirements,
             context={"agent_id": "test-agent"},
         )
 
         assert request.model == "gpt-4"
-        assert request.max_tokens == 100
-        assert request.temperature == 0.7
         assert request.stream is True
         assert request.model_requirements == requirements
         assert request.context["agent_id"] == "test-agent"
-
-    def test_temperature_validation(self) -> None:
-        """Test temperature validation."""
-        # Valid temperatures
-        LLMRequest(model="gpt-4", messages=[], temperature=0.0)
-        LLMRequest(model="gpt-4", messages=[], temperature=1.0)
-        LLMRequest(model="gpt-4", messages=[], temperature=2.0)
-
-        # Invalid temperatures
-        with pytest.raises(ValidationError):
-            LLMRequest(model="gpt-4", messages=[], temperature=-0.1)
-
-        with pytest.raises(ValidationError):
-            LLMRequest(model="gpt-4", messages=[], temperature=2.1)
-
-    def test_max_tokens_validation(self) -> None:
-        """Test max_tokens validation."""
-        # Valid max_tokens
-        LLMRequest(model="gpt-4", messages=[], max_tokens=1)
-        LLMRequest(model="gpt-4", messages=[], max_tokens=1000)
-
-        # Invalid max_tokens
-        with pytest.raises(ValidationError):
-            LLMRequest(model="gpt-4", messages=[], max_tokens=0)
-
 
 class TestLLMResponse:
     """Test suite for LLMResponse."""

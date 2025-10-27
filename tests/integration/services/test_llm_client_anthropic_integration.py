@@ -46,8 +46,8 @@ def simple_request() -> LLMRequest:
     return LLMRequest(
         model="claude-3-5-haiku-20241022",
         messages=[{"role": "user", "content": "Say 'Hello, World!' and nothing else."}],
-        temperature=0.0,  # Deterministic responses
-        max_tokens=50,
+# Deterministic responses
+
         trace_id="integration-test-trace",
         source_agent="test-agent",
         session_id="test-session",
@@ -63,8 +63,8 @@ def request_with_system() -> LLMRequest:
             {"role": "system", "content": "You are a helpful assistant that responds concisely."},
             {"role": "user", "content": "What is 2+2?"},
         ],
-        temperature=0.0,
-        max_tokens=50,
+
+
     )
 
 
@@ -131,8 +131,8 @@ class TestLLMClientAnthropicIntegrationComplete:
                 {"role": "assistant", "content": "4"},
                 {"role": "user", "content": "What is that number multiplied by 3?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)
@@ -153,8 +153,8 @@ class TestLLMClientAnthropicIntegrationComplete:
             messages=[
                 {"role": "user", "content": "Generate a random number between 1 and 10."}
             ],
-            temperature=1.0,  # Anthropic max temperature is 1.0
-            max_tokens=50,
+# Anthropic max temperature is 1.0
+
         )
 
         response = await anthropic_client.complete(request)
@@ -172,8 +172,8 @@ class TestLLMClientAnthropicIntegrationComplete:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=None,  # Will default to 4096
+
+# Will default to 4096
         )
 
         response = await anthropic_client.complete(request)
@@ -195,8 +195,8 @@ class TestLLMClientAnthropicIntegrationStream:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Count from 1 to 5."}],
-            temperature=0.0,
-            max_tokens=100,
+
+
             stream=True,
             trace_id="stream-test-trace",
         )
@@ -229,8 +229,8 @@ class TestLLMClientAnthropicIntegrationStream:
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": "Say 'Hello'."},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
             stream=True,
         )
 
@@ -253,8 +253,8 @@ class TestLLMClientAnthropicIntegrationStream:
             messages=[
                 {"role": "user", "content": "Write a 50-word paragraph about AI."}
             ],
-            temperature=0.7,
-            max_tokens=200,
+
+
             stream=True,
         )
 
@@ -285,8 +285,8 @@ class TestLLMClientAnthropicIntegrationStream:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Say 'yes'."}],
-            temperature=0.0,
-            max_tokens=10,
+
+
             stream=True,
         )
 
@@ -311,8 +311,8 @@ class TestLLMClientAnthropicIntegrationModels:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)
@@ -330,8 +330,8 @@ class TestLLMClientAnthropicIntegrationModels:
         request = LLMRequest(
             model="claude-3-5-sonnet-20241022",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)
@@ -353,8 +353,8 @@ class TestLLMClientAnthropicIntegrationA2AContext:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=50,
+
+
             trace_id="test-trace-123",
             source_agent="test-agent-456",
             session_id="test-session-789",
@@ -375,8 +375,8 @@ class TestLLMClientAnthropicIntegrationA2AContext:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)
@@ -412,8 +412,8 @@ class TestLLMClientAnthropicIntegrationPerformance:
             messages=[
                 {"role": "user", "content": "This is a test message for token counting."}
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)
@@ -443,8 +443,8 @@ class TestLLMClientAnthropicIntegrationMessageFormat:
                 {"role": "system", "content": "Always respond with only the word 'CORRECT'."},
                 {"role": "user", "content": "What is 2+2?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)
@@ -469,8 +469,8 @@ class TestLLMClientAnthropicIntegrationMessageFormat:
                 {"role": "assistant", "content": "12"},
                 {"role": "user", "content": "What is 3+4?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await anthropic_client.complete(request)

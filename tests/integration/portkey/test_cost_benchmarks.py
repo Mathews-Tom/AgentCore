@@ -56,7 +56,7 @@ def realistic_registry() -> ProviderRegistry:
                 supports_streaming=True,
                 supports_json_mode=True,
                 context_window=128000,
-                max_tokens=4096,
+
                 data_residency=[DataResidency.US_EAST, DataResidency.EU_WEST],
             ),
             pricing=ProviderPricing(
@@ -91,7 +91,7 @@ def realistic_registry() -> ProviderRegistry:
                 supports_streaming=True,
                 supports_json_mode=True,
                 context_window=16385,
-                max_tokens=4096,
+
                 data_residency=[DataResidency.US_EAST, DataResidency.EU_WEST],
             ),
             pricing=ProviderPricing(
@@ -126,7 +126,7 @@ def realistic_registry() -> ProviderRegistry:
                 supports_function_calling=True,
                 supports_streaming=True,
                 context_window=200000,
-                max_tokens=4096,
+
                 data_residency=[DataResidency.US_EAST, DataResidency.US_WEST],
             ),
             pricing=ProviderPricing(
@@ -159,7 +159,7 @@ def realistic_registry() -> ProviderRegistry:
                 ],
                 supports_streaming=True,
                 context_window=8192,
-                max_tokens=4096,
+
                 data_residency=[DataResidency.US_EAST],
             ),
             pricing=ProviderPricing(

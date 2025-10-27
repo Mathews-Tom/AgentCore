@@ -141,8 +141,6 @@ class TestLLMServiceIntegration:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say 'test' and nothing else"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id="integration-test-001",
             source_agent="test-agent",
         )
@@ -173,8 +171,6 @@ class TestLLMServiceIntegration:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Respond with 'hello' only"}],
-            max_tokens=20,
-            temperature=0.0,
             trace_id="integration-test-002",
         )
 
@@ -201,8 +197,6 @@ class TestLLMServiceIntegration:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say 'hi'"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id="integration-test-003",
         )
 
@@ -229,8 +223,6 @@ class TestLLMServiceIntegration:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Count from 1 to 3"}],
-            max_tokens=20,
-            temperature=0.0,
             stream=True,
             trace_id="integration-test-stream-001",
         )
@@ -264,8 +256,6 @@ class TestLLMServiceIntegration:
         openai_request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say 'openai'"}],
-            max_tokens=10,
-            temperature=0.0,
         )
         openai_response = await service.complete(openai_request)
         assert openai_response.provider == "openai"
@@ -274,8 +264,6 @@ class TestLLMServiceIntegration:
         anthropic_request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Say 'anthropic'"}],
-            max_tokens=10,
-            temperature=0.0,
         )
         anthropic_response = await service.complete(anthropic_request)
         assert anthropic_response.provider == "anthropic"
@@ -284,8 +272,6 @@ class TestLLMServiceIntegration:
         gemini_request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say 'gemini'"}],
-            max_tokens=10,
-            temperature=0.0,
         )
         gemini_response = await service.complete(gemini_request)
         assert gemini_response.provider == "gemini"

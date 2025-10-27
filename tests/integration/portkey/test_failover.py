@@ -130,8 +130,8 @@ def sample_request() -> LLMRequest:
     return LLMRequest(
         model="gpt-4.1",
         messages=[{"role": "user", "content": "Hello"}],
-        max_tokens=100,
-        temperature=0.7,
+
+
         model_requirements=ModelRequirements(
             capabilities=["text_generation", "chat_completion"],
         ),

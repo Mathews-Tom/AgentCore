@@ -44,8 +44,8 @@ def simple_request() -> LLMRequest:
     return LLMRequest(
         model="gpt-4.1-mini",
         messages=[{"role": "user", "content": "Say 'Hello, World!' and nothing else."}],
-        temperature=0.0,  # Deterministic responses
-        max_tokens=50,
+# Deterministic responses
+
         trace_id="integration-test-trace",
         source_agent="test-agent",
         session_id="test-session",
@@ -98,8 +98,8 @@ class TestLLMClientOpenAIIntegrationComplete:
                 {"role": "assistant", "content": "4"},
                 {"role": "user", "content": "What is that number multiplied by 3?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await openai_client.complete(request)
@@ -120,8 +120,8 @@ class TestLLMClientOpenAIIntegrationComplete:
             messages=[
                 {"role": "user", "content": "Generate a random number between 1 and 10."}
             ],
-            temperature=1.5,
-            max_tokens=50,
+
+
         )
 
         response = await openai_client.complete(request)
@@ -143,8 +143,8 @@ class TestLLMClientOpenAIIntegrationStream:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Count from 1 to 5."}],
-            temperature=0.0,
-            max_tokens=100,
+
+
             stream=True,
             trace_id="stream-test-trace",
         )
@@ -176,8 +176,8 @@ class TestLLMClientOpenAIIntegrationStream:
             messages=[
                 {"role": "user", "content": "Write a 50-word paragraph about AI."}
             ],
-            temperature=0.7,
-            max_tokens=200,
+
+
             stream=True,
         )
 
@@ -208,8 +208,8 @@ class TestLLMClientOpenAIIntegrationStream:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say 'yes'."}],
-            temperature=0.0,
-            max_tokens=10,
+
+
             stream=True,
         )
 
@@ -234,8 +234,8 @@ class TestLLMClientOpenAIIntegrationModels:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await openai_client.complete(request)
@@ -254,8 +254,8 @@ class TestLLMClientOpenAIIntegrationModels:
         request = LLMRequest(
             model="gpt-5",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await openai_client.complete(request)
@@ -277,8 +277,8 @@ class TestLLMClientOpenAIIntegrationA2AContext:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=50,
+
+
             trace_id="test-trace-123",
             source_agent="test-agent-456",
             session_id="test-session-789",
@@ -299,8 +299,8 @@ class TestLLMClientOpenAIIntegrationA2AContext:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await openai_client.complete(request)
@@ -336,8 +336,8 @@ class TestLLMClientOpenAIIntegrationPerformance:
             messages=[
                 {"role": "user", "content": "This is a test message for token counting."}
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await openai_client.complete(request)

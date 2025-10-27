@@ -44,8 +44,8 @@ def simple_request() -> LLMRequest:
     return LLMRequest(
         model="gemini-1.5-flash",
         messages=[{"role": "user", "content": "Say 'Hello, World!' and nothing else."}],
-        temperature=0.0,  # Deterministic responses
-        max_tokens=50,
+# Deterministic responses
+
         trace_id="integration-test-trace",
         source_agent="test-agent",
         session_id="test-session",
@@ -97,8 +97,8 @@ class TestLLMClientGeminiIntegrationComplete:
                 {"role": "system", "content": "You are a helpful assistant that speaks like a pirate."},
                 {"role": "user", "content": "Say hello."},
             ],
-            temperature=0.0,
-            max_tokens=100,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -121,8 +121,8 @@ class TestLLMClientGeminiIntegrationComplete:
                 {"role": "assistant", "content": "4"},
                 {"role": "user", "content": "What is that number multiplied by 3?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -143,8 +143,8 @@ class TestLLMClientGeminiIntegrationComplete:
             messages=[
                 {"role": "user", "content": "Generate a random number between 1 and 10."}
             ],
-            temperature=1.5,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -166,8 +166,8 @@ class TestLLMClientGeminiIntegrationStream:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Count from 1 to 5."}],
-            temperature=0.0,
-            max_tokens=100,
+
+
             stream=True,
             trace_id="stream-test-trace",
         )
@@ -199,8 +199,8 @@ class TestLLMClientGeminiIntegrationStream:
             messages=[
                 {"role": "user", "content": "Write a 50-word paragraph about AI."}
             ],
-            temperature=0.7,
-            max_tokens=200,
+
+
             stream=True,
         )
 
@@ -231,8 +231,8 @@ class TestLLMClientGeminiIntegrationStream:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say 'yes'."}],
-            temperature=0.0,
-            max_tokens=10,
+
+
             stream=True,
         )
 
@@ -257,8 +257,8 @@ class TestLLMClientGeminiIntegrationModels:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -277,8 +277,8 @@ class TestLLMClientGeminiIntegrationModels:
         request = LLMRequest(
             model="gemini-2.0-flash-exp",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -300,8 +300,8 @@ class TestLLMClientGeminiIntegrationA2AContext:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=50,
+
+
             trace_id="test-trace-123",
             source_agent="test-agent-456",
             session_id="test-session-789",
@@ -323,8 +323,8 @@ class TestLLMClientGeminiIntegrationA2AContext:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say hello."}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -360,8 +360,8 @@ class TestLLMClientGeminiIntegrationPerformance:
             messages=[
                 {"role": "user", "content": "This is a test message for token counting."}
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -388,8 +388,8 @@ class TestLLMClientGeminiIntegrationMessageFormat:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "What is 1+1?"}],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -410,8 +410,8 @@ class TestLLMClientGeminiIntegrationMessageFormat:
                 {"role": "assistant", "content": "5+5 equals 10."},
                 {"role": "user", "content": "What is that plus 3?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)
@@ -432,8 +432,8 @@ class TestLLMClientGeminiIntegrationMessageFormat:
                 {"role": "system", "content": "Always respond with exactly one word."},
                 {"role": "user", "content": "What is the capital of France?"},
             ],
-            temperature=0.0,
-            max_tokens=50,
+
+
         )
 
         response = await gemini_client.complete(request)

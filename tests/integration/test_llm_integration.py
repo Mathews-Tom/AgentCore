@@ -68,8 +68,6 @@ class TestProviderIntegrationOpenAI:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say 'test' and nothing else"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id="integration-openai-001",
             source_agent="test-agent",
             session_id="test-session",
@@ -101,8 +99,6 @@ class TestProviderIntegrationOpenAI:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Count from 1 to 5"}],
-            max_tokens=50,
-            temperature=0.0,
             stream=True,
             trace_id="integration-openai-stream-001",
         )
@@ -137,8 +133,6 @@ class TestProviderIntegrationOpenAI:
                 {"role": "assistant", "content": "15"},
                 {"role": "user", "content": "Multiply that by 2."},
             ],
-            temperature=0.0,
-            max_tokens=50,
             trace_id="integration-openai-conversation-001",
         )
 
@@ -169,8 +163,6 @@ class TestProviderIntegrationAnthropic:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Respond with 'hello' only"}],
-            max_tokens=20,
-            temperature=0.0,
             trace_id="integration-anthropic-001",
             source_agent="test-agent-anthropic",
         )
@@ -198,8 +190,6 @@ class TestProviderIntegrationAnthropic:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "List 3 colors"}],
-            max_tokens=50,
-            temperature=0.0,
             stream=True,
             trace_id="integration-anthropic-stream-001",
         )
@@ -234,8 +224,6 @@ class TestProviderIntegrationGemini:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say 'hi'"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id="integration-gemini-001",
         )
 
@@ -262,8 +250,6 @@ class TestProviderIntegrationGemini:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Name 3 animals"}],
-            max_tokens=50,
-            temperature=0.0,
             stream=True,
             trace_id="integration-gemini-stream-001",
         )
@@ -299,8 +285,6 @@ class TestA2AContextPropagation:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say yes"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id=trace_id,
             source_agent="agent-001",
             session_id="session-001",
@@ -324,8 +308,6 @@ class TestA2AContextPropagation:
         request = LLMRequest(
             model="claude-3-5-haiku-20241022",
             messages=[{"role": "user", "content": "Say yes"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id=trace_id,
         )
 
@@ -347,8 +329,6 @@ class TestA2AContextPropagation:
         request = LLMRequest(
             model="gemini-1.5-flash",
             messages=[{"role": "user", "content": "Say yes"}],
-            max_tokens=10,
-            temperature=0.0,
             trace_id=trace_id,
         )
 
@@ -369,8 +349,6 @@ class TestA2AContextPropagation:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say yes"}],
-            max_tokens=10,
-            temperature=0.0,
         )
 
         response = await service.complete(request)
@@ -395,7 +373,6 @@ class TestErrorHandling:
         request = LLMRequest(
             model="invalid-model-name",
             messages=[{"role": "user", "content": "test"}],
-            max_tokens=10,
         )
 
         # Should raise ModelNotAllowedError or ValueError
@@ -415,47 +392,11 @@ class TestErrorHandling:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Write a long essay"}],
-            max_tokens=1000,
         )
 
         # Should raise timeout error
         with pytest.raises((ProviderTimeoutError, ProviderError, Exception)):
             await service.complete(request)
-
-    @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.getenv("OPENAI_API_KEY"),
-        reason="OPENAI_API_KEY not configured",
-    )
-    async def test_invalid_temperature_error(self) -> None:
-        """Test error handling for invalid temperature."""
-        service = LLMService()
-
-        # Should raise validation error for temperature > 2.0
-        with pytest.raises(Exception):  # Pydantic validation error
-            request = LLMRequest(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=10,
-                temperature=3.0,  # Invalid - must be <= 2.0
-            )
-
-    @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.getenv("OPENAI_API_KEY"),
-        reason="OPENAI_API_KEY not configured",
-    )
-    async def test_invalid_max_tokens_error(self) -> None:
-        """Test error handling for invalid max_tokens."""
-        service = LLMService()
-
-        # Should raise validation error for negative max_tokens
-        with pytest.raises(Exception):  # Pydantic validation error
-            request = LLMRequest(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=-10,  # Invalid - must be positive
-            )
 
 
 class TestRetryLogic:
@@ -490,8 +431,6 @@ class TestRetryLogic:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say test"}],
-            max_tokens=10,
-            temperature=0.0,
         )
 
         start_time = time.time()
@@ -524,8 +463,6 @@ class TestConcurrentRequests:
             request = LLMRequest(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": f"Say number {idx}"}],
-                max_tokens=10,
-                temperature=0.0,
                 trace_id=f"concurrent-{idx}",
             )
             return await service.complete(request)
@@ -576,8 +513,6 @@ class TestConcurrentRequests:
             request = LLMRequest(
                 model=model,
                 messages=[{"role": "user", "content": f"Say {provider} {idx}"}],
-                max_tokens=10,
-                temperature=0.0,
                 trace_id=f"multi-{provider}-{idx}",
             )
             return await service.complete(request)
@@ -625,8 +560,6 @@ class TestRateLimitHandling:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say test"}],
-            max_tokens=5,
-            temperature=0.0,
         )
 
         responses: list[LLMResponse | Exception] = []
@@ -677,8 +610,6 @@ class TestMultiProviderE2E:
             request = LLMRequest(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=50,
-                temperature=0.0,
                 trace_id=f"e2e-{expected_provider}",
             )
 
@@ -718,8 +649,6 @@ class TestMultiProviderE2E:
             request = LLMRequest(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=50,
-                temperature=0.0,
                 stream=True,
             )
 
@@ -762,8 +691,6 @@ class TestPerformanceMetrics:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "Say test"}],
-            max_tokens=10,
-            temperature=0.0,
         )
 
         start_time = time.time()
@@ -787,8 +714,6 @@ class TestPerformanceMetrics:
         request = LLMRequest(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": "This is a test message"}],
-            max_tokens=50,
-            temperature=0.0,
         )
 
         response = await service.complete(request)
