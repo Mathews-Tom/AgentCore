@@ -19,7 +19,8 @@ Features:
 - A2A context propagation via extra_headers (trace_id, source_agent, session_id)
 - Token usage extraction and tracking
 - Comprehensive error handling with custom exceptions
-- Support for claude-3-5-sonnet, claude-3-5-haiku-20241022, claude-3-opus models
+- Support for claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001, claude-3-opus models
+- Legacy support for claude-3-5-sonnet, claude-3-5-haiku-20241022
 
 Example:
     ```python
@@ -196,12 +197,11 @@ class LLMClientAnthropic(LLMClient):
         # Retry loop with exponential backoff
         for attempt in range(self.max_retries):
             try:
-                # Build API call parameters
+                # Build API call parameters (no temperature or max_tokens per CLAUDE.md)
                 api_params: dict[str, any] = {
                     "model": request.model,
                     "messages": anthropic_messages,
-                    "temperature": request.temperature,
-                    "max_tokens": request.max_tokens or 4096,
+                    "max_tokens": 4096,  # Required by Anthropic API
                 }
 
                 # Only include system if there's content (Anthropic doesn't accept system=None)
@@ -335,12 +335,11 @@ class LLMClientAnthropic(LLMClient):
             extra_headers["X-Session-ID"] = request.session_id
 
         try:
-            # Build API call parameters
+            # Build API call parameters (no temperature or max_tokens per CLAUDE.md)
             api_params: dict[str, any] = {
                 "model": request.model,
                 "messages": anthropic_messages,
-                "temperature": request.temperature,
-                "max_tokens": request.max_tokens or 4096,
+                "max_tokens": 4096,  # Required by Anthropic API
                 "stream": True,
             }
 
