@@ -30,7 +30,7 @@ class ModelTier(str, Enum):
     """Model tier classification for runtime selection.
 
     Used by ModelSelector to choose appropriate models based on task requirements:
-    - FAST: Low latency, cost-effective models (e.g., gpt-4.1-mini, gemini-1.5-flash)
+    - FAST: Low latency, cost-effective models (e.g., gpt-4.1-mini, gemini-2.0-flash-exp)
     - BALANCED: Balance of quality and cost (e.g., claude-3-5-haiku)
     - PREMIUM: Highest quality models (e.g., gpt-5, claude-3-5-sonnet)
     """
@@ -126,12 +126,14 @@ class LLMRequest(BaseModel):
     This model abstracts provider-specific request formats into a single interface.
     It includes A2A protocol context fields for distributed tracing.
 
+    Per CLAUDE.md governance: temperature and max_tokens are not exposed.
+    Providers use their default values internally for consistent behavior.
+
     Attributes:
         model: Model identifier (must be in ALLOWED_MODELS)
         messages: Conversation messages (non-empty list)
-        temperature: Sampling temperature (0.0 to 2.0, default 0.7)
-        max_tokens: Maximum tokens to generate (positive integer or None)
         stream: Enable streaming response (default False)
+        reasoning_effort: Reasoning effort level for reasoning models (low/medium/high)
         trace_id: A2A trace ID for distributed tracing
         source_agent: Source agent ID for request tracking
         session_id: Session ID for conversation context
@@ -139,13 +141,11 @@ class LLMRequest(BaseModel):
 
     model: str = Field(..., description="Model identifier")
     messages: list[dict[str, str]] = Field(..., description="Conversation messages")
-    temperature: float = Field(
-        default=0.7, ge=0.0, le=2.0, description="Sampling temperature (0.0-2.0)"
-    )
-    max_tokens: int | None = Field(
-        default=None, gt=0, description="Maximum tokens to generate"
-    )
     stream: bool = Field(default=False, description="Enable streaming response")
+    reasoning_effort: str | None = Field(
+        default=None,
+        description="Reasoning effort level for reasoning models (low/medium/high)",
+    )
 
     # A2A Context fields for distributed tracing
     trace_id: str | None = Field(
@@ -158,42 +158,24 @@ class LLMRequest(BaseModel):
         default=None, description="Session ID for conversation context"
     )
 
-    @field_validator("temperature")
+    @field_validator("reasoning_effort")
     @classmethod
-    def validate_temperature(cls, v: float) -> float:
-        """Validate temperature is within valid range.
-
-        Temperature must be between 0.0 and 2.0 per provider specifications.
+    def validate_reasoning_effort(cls, v: str | None) -> str | None:
+        """Validate reasoning_effort is one of the allowed values.
 
         Args:
-            v: Temperature value to validate
+            v: reasoning_effort value to validate
 
         Returns:
-            Validated temperature value
+            Validated reasoning_effort value
 
         Raises:
-            ValueError: If temperature is outside valid range
+            ValueError: If reasoning_effort is not a valid value
         """
-        if not 0.0 <= v <= 2.0:
-            raise ValueError(f"Temperature must be between 0.0 and 2.0, got {v}")
-        return v
-
-    @field_validator("max_tokens")
-    @classmethod
-    def validate_max_tokens(cls, v: int | None) -> int | None:
-        """Validate max_tokens is positive if provided.
-
-        Args:
-            v: max_tokens value to validate
-
-        Returns:
-            Validated max_tokens value
-
-        Raises:
-            ValueError: If max_tokens is not positive
-        """
-        if v is not None and v <= 0:
-            raise ValueError(f"max_tokens must be positive, got {v}")
+        if v is not None and v not in ("low", "medium", "high"):
+            raise ValueError(
+                f"reasoning_effort must be 'low', 'medium', or 'high', got '{v}'"
+            )
         return v
 
 
