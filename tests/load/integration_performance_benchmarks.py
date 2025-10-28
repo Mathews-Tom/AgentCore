@@ -290,39 +290,38 @@ class TestResourceUtilization:
     @pytest.mark.benchmark
     async def test_memory_efficiency_under_load(self, webhook_manager, event_publisher):
         """Benchmark: Memory efficiency with 100K operations."""
+        perf = PerformanceBenchmark()
+        perf.start_measurement()
 
-        def run_operations():
-            async def operations():
-                # Create webhooks
-                webhooks = []
-                for i in range(1000):
-                    webhook = await webhook_manager.register(
-                        name=f"Webhook {i}",
-                        url=f"https://api.example.com/webhook-{i}",
-                        events=[WebhookEvent.TASK_COMPLETED])
-                    webhooks.append(webhook)
+        # Create webhooks
+        webhooks = []
+        for i in range(1000):
+            webhook = await webhook_manager.register(
+                name=f"Webhook {i}",
+                url=f"https://api.example.com/webhook-{i}",
+                events=[WebhookEvent.TASK_COMPLETED])
+            webhooks.append(webhook)
 
-                # Publish events
-                events = []
-                for i in range(10000):
-                    event = await event_publisher.publish(
-                        event_type=WebhookEvent.TASK_COMPLETED,
-                        data={"task_id": f"task-{i}"},
-                        source="benchmark")
-                    events.append(event)
+        # Publish events
+        events = []
+        for i in range(10000):
+            event = await event_publisher.publish(
+                event_type=WebhookEvent.TASK_COMPLETED,
+                data={"task_id": f"task-{i}"},
+                source="benchmark")
+            events.append(event)
 
-                return len(webhooks), len(events)
-
-            return asyncio.run(operations())
-
-        # Measure memory usage
-        mem_usage = memory_usage(run_operations, interval=0.1, max_usage=True)
+        metrics = perf.end_measurement()
 
         print(f"\n=== Memory Efficiency Test ===")
-        print(f"Peak Memory Usage: {mem_usage:.2f} MB")
+        print(f"Webhooks Created: {len(webhooks):,}")
+        print(f"Events Published: {len(events):,}")
+        print(f"Peak Memory Delta: {metrics['memory_delta_mb']:.2f} MB")
 
         # Assertions
-        assert mem_usage < 500  # Peak memory < 500 MB
+        assert len(webhooks) == 1000
+        assert len(events) == 10000
+        assert metrics["memory_delta_mb"] < 500  # Memory delta < 500 MB
 
     @pytest.mark.asyncio
     @pytest.mark.benchmark
