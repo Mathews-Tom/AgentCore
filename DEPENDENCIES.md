@@ -14,7 +14,7 @@ AgentCore uses **exact version pinning** (`==`) for critical LLM provider SDKs t
 |----------|---------|-------------|---------|
 | OpenAI | `1.54.0` | 2025-10-26 | Stable API, proven compatibility with streaming, function calling, and JSON mode |
 | Anthropic | `0.40.0` | 2025-10-26 | Last stable version before 0.50.0 breaking changes, supports Claude 3 models |
-| Google GenAI | `0.2.0` | 2025-10-26 | Stable API for Gemini models, minimal breaking changes expected |
+| Google GenAI | `0.8.3` | 2025-10-28 | Stable API with GenerativeModel support, required for current implementation |
 
 ### Version Selection Criteria
 
@@ -38,9 +38,10 @@ Pinned versions are chosen based on:
 - ✅ Supports Claude 3 family (Opus, Sonnet, Haiku)
 - ✅ Compatible with async operations and tool use
 
-#### Google GenAI 0.2.0
-- ⚠️ Newer versions (0.8.0+) have different async API patterns
-- ✅ Supports Gemini Pro and Gemini Pro Vision
+#### Google GenAI 0.8.3
+- ✅ Supports GenerativeModel API required by current implementation
+- ✅ Supports Gemini Pro, Gemini Pro Vision, and Gemini 2.0 Flash
+- ✅ Stable async API patterns with full async/await support
 - ⚠️ Limited function calling support compared to other providers
 
 ## Compatibility Matrix
@@ -51,17 +52,17 @@ Pinned versions are chosen based on:
 |-----|-------------|-------------|-------|
 | OpenAI 1.54.0 | ✅ | ✅ | Full support |
 | Anthropic 0.40.0 | ✅ | ✅ | Full support |
-| Google GenAI 0.2.0 | ✅ | ⚠️ | Limited testing on 3.13 |
+| Google GenAI 0.8.3 | ✅ | ✅ | Full support |
 
 ### Feature Compatibility
 
 | Feature | OpenAI | Anthropic | Google |
 |---------|--------|-----------|--------|
-| Streaming | ✅ 1.54.0+ | ✅ 0.40.0+ | ✅ 0.2.0+ |
-| Async Operations | ✅ 1.54.0+ | ✅ 0.40.0+ | ✅ 0.2.0+ |
+| Streaming | ✅ 1.54.0+ | ✅ 0.40.0+ | ✅ 0.8.3+ |
+| Async Operations | ✅ 1.54.0+ | ✅ 0.40.0+ | ✅ 0.8.3+ |
 | Function Calling | ✅ 1.54.0+ | ✅ 0.40.0+ | ⚠️ Limited |
 | JSON Mode | ✅ 1.54.0+ | ❌ | ❌ |
-| Vision Models | ✅ 1.54.0+ | ✅ 0.40.0+ | ✅ 0.2.0+ |
+| Vision Models | ✅ 1.54.0+ | ✅ 0.40.0+ | ✅ 0.8.3+ |
 
 ### Breaking Changes to Watch
 
@@ -74,8 +75,8 @@ Pinned versions are chosen based on:
 - `0.40.0`: Tool use API changes (minor)
 
 **Google GenAI SDK:**
-- `0.8.0`: Async API changes (breaking)
-- `0.2.0`: Initial stable release
+- `0.8.0`: Introduced GenerativeModel API and improved async patterns
+- `0.2.0`: Early release with limited API surface
 
 ## Upgrade Procedure
 
@@ -318,9 +319,10 @@ Solution:
 
 | Date | Provider | Old Version | New Version | Reason |
 |------|----------|-------------|-------------|--------|
+| 2025-10-28 | Google GenAI | ==0.2.0 | ==0.8.3 | Corrected to version required by GenerativeModel implementation |
 | 2025-10-26 | OpenAI | >=2.6.1 | ==1.54.0 | Initial pinning for stability |
 | 2025-10-26 | Anthropic | >=0.40.0 | ==0.40.0 | Initial pinning for stability |
-| 2025-10-26 | Google GenAI | >=0.8.0 | ==0.2.0 | Initial pinning for stability |
+| 2025-10-26 | Google GenAI | >=0.8.0 | ==0.2.0 | Incorrect version, reverted on 2025-10-28 |
 
 ## References
 
@@ -333,5 +335,5 @@ Solution:
 
 ---
 
-*Last Updated: 2025-10-26*
+*Last Updated: 2025-10-28*
 *Next Review: 2025-11-04*
