@@ -19,6 +19,22 @@ from agentcore.dspy_optimization.models import (
     PerformanceMetrics,
 )
 from agentcore.dspy_optimization.tracking import MLflowTracker, MLflowConfig
+from agentcore.dspy_optimization.security import (
+    ModelEncryption,
+    EncryptionConfig,
+    PrivacyManager,
+    PrivacyConfig,
+    AccessController,
+    AccessConfig,
+    SecurityRole,
+    SecurityPermission,
+    AuditLogger,
+    AuditConfig,
+    AuditEventType,
+    ComplianceValidator,
+    ComplianceConfig,
+    ComplianceStandard,
+)
 
 __all__ = [
     "MIPROv2Optimizer",
@@ -32,4 +48,18 @@ __all__ = [
     "PerformanceMetrics",
     "MLflowTracker",
     "MLflowConfig",
+    "ModelEncryption",
+    "EncryptionConfig",
+    "PrivacyManager",
+    "PrivacyConfig",
+    "AccessController",
+    "AccessConfig",
+    "SecurityRole",
+    "SecurityPermission",
+    "AuditLogger",
+    "AuditConfig",
+    "AuditEventType",
+    "ComplianceValidator",
+    "ComplianceConfig",
+    "ComplianceStandard",
 ]
