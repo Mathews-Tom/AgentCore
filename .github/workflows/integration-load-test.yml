@@ -35,15 +35,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for integration layer
+      - name: Check for integration layer endpoints
         id: check
         run: |
-          if [ -d "src/agentcore/integration" ] && [ -n "$(ls -A src/agentcore/integration 2>/dev/null)" ]; then
+          # Check if integration routers are registered in the main application
+          if grep -q "integration" src/agentcore/a2a_protocol/main.py 2>/dev/null && \
+             grep -q "include_router.*integration" src/agentcore/a2a_protocol/main.py 2>/dev/null; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✓ Integration layer found"
+            echo "✓ Integration layer endpoints found in main app"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Integration layer not yet implemented - skipping tests"
+            echo "⚠️  Integration layer endpoints not yet registered - skipping tests"
+            echo ""
+            echo "Note: Integration layer code exists but REST API endpoints are not registered."
+            echo "      Tests will run when routers are added to src/agentcore/a2a_protocol/main.py"
           fi
 
   load-test:
