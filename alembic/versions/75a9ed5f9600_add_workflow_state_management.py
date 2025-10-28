@@ -21,8 +21,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create WorkflowStatus enum
-    op.execute("CREATE TYPE workflowstatus AS ENUM ('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled')")
+    # Create WorkflowStatus enum (idempotent)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflowstatus') THEN
+                CREATE TYPE workflowstatus AS ENUM ('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled');
+            END IF;
+        END$$;
+    """)
 
     # Create workflow_executions table
     op.create_table(
@@ -120,5 +127,5 @@ def downgrade() -> None:
     op.drop_table('workflow_state_history')
     op.drop_table('workflow_executions')
 
-    # Drop enum type
-    op.execute('DROP TYPE workflowstatus')
+    # Drop enum type (idempotent)
+    op.execute('DROP TYPE IF EXISTS workflowstatus')

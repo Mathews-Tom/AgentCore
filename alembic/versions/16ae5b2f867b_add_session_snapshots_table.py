@@ -21,9 +21,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create enum types
-    op.execute("CREATE TYPE sessionstate AS ENUM ('active', 'paused', 'suspended', 'completed', 'failed', 'expired')")
-    op.execute("CREATE TYPE sessionpriority AS ENUM ('low', 'normal', 'high', 'critical')")
+    # Create enum types (idempotent)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sessionstate') THEN
+                CREATE TYPE sessionstate AS ENUM ('active', 'paused', 'suspended', 'completed', 'failed', 'expired');
+            END IF;
+        END$$;
+    """)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sessionpriority') THEN
+                CREATE TYPE sessionpriority AS ENUM ('low', 'normal', 'high', 'critical');
+            END IF;
+        END$$;
+    """)
 
     # Create session_snapshots table
     op.create_table(
