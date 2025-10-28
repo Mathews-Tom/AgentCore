@@ -191,6 +191,8 @@ jobs:
 
   performance-benchmarks:
     name: Run Performance Benchmarks
+    needs: check-integration-layer
+    if: needs.check-integration-layer.outputs.exists == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
