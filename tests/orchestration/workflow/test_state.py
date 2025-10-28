@@ -95,8 +95,7 @@ def test_update_node_with_result() -> None:
         execution.execution_id,
         "task1",
         NodeStatus.COMPLETED,
-        result=result,
-    )
+        result=result)
 
     state = manager.get_node_state(execution.execution_id, "task1")
     assert state is not None
@@ -157,8 +156,7 @@ def test_get_failed_nodes() -> None:
         execution.execution_id,
         "task1",
         NodeStatus.FAILED,
-        error_message="Task failed",
-    )
+        error_message="Task failed")
 
     failed = manager.get_failed_nodes(execution.execution_id)
     assert failed == {"task1"}

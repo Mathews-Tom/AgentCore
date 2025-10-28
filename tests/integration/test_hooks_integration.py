@@ -12,15 +12,13 @@ import pytest
 
 from agentcore.orchestration.hooks.integration import (
     HookEventIntegration,
-    hook_integration,
-)
+    hook_integration)
 from agentcore.orchestration.hooks.manager import HookManager
 from agentcore.orchestration.hooks.models import (
     HookConfig,
     HookEvent,
     HookExecutionMode,
-    HookTrigger,
-)
+    HookTrigger)
 from agentcore.a2a_protocol.models.events import Event, EventType, EventPriority
 
 
@@ -47,8 +45,7 @@ class TestHookIntegration:
             event_type=EventType.TASK_COMPLETED,
             source="test_agent",
             data={"task_id": "task-123", "result": "success"},
-            metadata={"session_id": "session-456"},
-        )
+            metadata={"session_id": "session-456"})
 
         hook_event = integration._convert_to_hook_event(
             a2a_event, HookTrigger.POST_TASK
@@ -72,8 +69,7 @@ class TestHookIntegration:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["test"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         # Trigger directly
@@ -81,8 +77,7 @@ class TestHookIntegration:
             trigger=HookTrigger.POST_TASK,
             source="test",
             data={"result": "success"},
-            task_id="task-123",
-        )
+            task_id="task-123")
 
         # Give async task time to execute
         await asyncio.sleep(0.1)
@@ -101,15 +96,13 @@ class TestRealHookExecution:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["Hello from hook"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={"task": "completed"},
-        )
+            data={"task": "completed"})
 
         executions = await manager.trigger_hooks(event)
 
@@ -131,15 +124,13 @@ class TestRealHookExecution:
                 trigger=HookTrigger.POST_TASK,
                 command="sh",
                 args=["-c", f"echo 'Hook executed' > {test_file}"],
-                execution_mode=HookExecutionMode.SYNC,
-            )
+                execution_mode=HookExecutionMode.SYNC)
             manager.register_hook(hook)
 
             event = HookEvent(
                 trigger=HookTrigger.POST_TASK,
                 source="test",
-                data={},
-            )
+                data={})
 
             executions = await manager.trigger_hooks(event)
 
@@ -160,8 +151,7 @@ class TestRealHookExecution:
             command="echo",
             args=["first"],
             priority=10,
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
 
         hook2 = HookConfig(
             name="medium_priority",
@@ -169,8 +159,7 @@ class TestRealHookExecution:
             command="echo",
             args=["second"],
             priority=50,
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
 
         hook3 = HookConfig(
             name="low_priority",
@@ -178,8 +167,7 @@ class TestRealHookExecution:
             command="echo",
             args=["third"],
             priority=100,
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
 
         manager.register_hook(hook3)  # Register out of order
         manager.register_hook(hook1)
@@ -188,8 +176,7 @@ class TestRealHookExecution:
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={},
-        )
+            data={})
 
         executions = await manager.trigger_hooks(event)
 
@@ -210,16 +197,14 @@ class TestRealHookExecution:
             command="echo",
             args=["filtered"],
             event_filters={"status": "success", "priority": "high"},
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         # Event that matches filter
         matching_event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={"status": "success", "priority": "high"},
-        )
+            data={"status": "success", "priority": "high"})
         executions1 = await manager.trigger_hooks(matching_event)
         assert len(executions1) == 1
 
@@ -227,8 +212,7 @@ class TestRealHookExecution:
         non_matching_event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={"status": "failed", "priority": "low"},
-        )
+            data={"status": "failed", "priority": "low"})
         executions2 = await manager.trigger_hooks(non_matching_event)
         assert len(executions2) == 0
 
@@ -244,15 +228,13 @@ class TestRealHookExecution:
             retry_enabled=True,
             max_retries=2,
             retry_delay_ms=100,
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={},
-        )
+            data={})
 
         executions = await manager.trigger_hooks(event)
 
@@ -272,15 +254,13 @@ class TestRealHookExecution:
             command="sleep",
             args=["10"],
             timeout_ms=200,  # 200ms timeout
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={},
-        )
+            data={})
 
         executions = await manager.trigger_hooks(event)
 
@@ -298,8 +278,7 @@ class TestRealHookExecution:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["context_test"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         event = HookEvent(
@@ -308,8 +287,7 @@ class TestRealHookExecution:
             data={},
             workflow_id="wf-123",
             task_id="task-456",
-            session_id="session-789",
-        )
+            session_id="session-789")
 
         executions = await manager.trigger_hooks(event)
 
@@ -329,15 +307,13 @@ class TestRealHookExecution:
             command="echo",
             args=["should_not_run"],
             enabled=False,  # Disabled
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={},
-        )
+            data={})
 
         executions = await manager.trigger_hooks(event)
 
@@ -354,8 +330,7 @@ class TestRealHookExecution:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["stats"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         # Execute hook multiple times
@@ -363,8 +338,7 @@ class TestRealHookExecution:
             event = HookEvent(
                 trigger=HookTrigger.POST_TASK,
                 source="test",
-                data={},
-            )
+                data={})
             await manager.trigger_hooks(event)
 
         stats = manager.get_statistics()
@@ -386,16 +360,14 @@ class TestRealHookExecution:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["history"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         # Execute hook
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={"test": "data"},
-        )
+            data={"test": "data"})
         await manager.trigger_hooks(event)
 
         # Get execution history
@@ -416,16 +388,14 @@ class TestRealHookExecution:
             trigger=HookTrigger.POST_TASK,
             command="echo",
             args=["cleanup"],
-            execution_mode=HookExecutionMode.SYNC,
-        )
+            execution_mode=HookExecutionMode.SYNC)
         manager.register_hook(hook)
 
         # Execute hook
         event = HookEvent(
             trigger=HookTrigger.POST_TASK,
             source="test",
-            data={},
-        )
+            data={})
         await manager.trigger_hooks(event)
 
         # Verify execution exists

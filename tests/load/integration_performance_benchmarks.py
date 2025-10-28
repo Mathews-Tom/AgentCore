@@ -26,8 +26,7 @@ from agentcore.integration.webhook import (
     WebhookConfig,
     WebhookEvent,
     WebhookManager,
-    WebhookRegistration,
-)
+    WebhookRegistration)
 
 
 class PerformanceBenchmark:
@@ -116,8 +115,7 @@ class TestWebhookManagerPerformance:
                 webhook = await webhook_manager.register(
                     name=f"Webhook {i}",
                     url=f"https://api.example.com/webhook-{i}",
-                    events=[WebhookEvent.TASK_COMPLETED],
-                )
+                    events=[WebhookEvent.TASK_COMPLETED])
                 webhooks.append(webhook)
             return webhooks
 
@@ -132,7 +130,7 @@ class TestWebhookManagerPerformance:
 
         print(f"\n=== Webhook Registration Performance ===")
         print(f"Webhooks Registered: {len(webhooks):,}")
-        print(f"Total Time: {duration:.2f}s")
+        print(f"Total Time: {duration:.2f}, s")
         print(f"Rate: {len(webhooks) / duration:.0f} webhooks/sec")
         print(f"Memory Delta: {metrics['memory_delta_mb']:.2f} MB")
         print(f"CPU Usage: {metrics['cpu_final_pct']:.1f}%")
@@ -151,8 +149,7 @@ class TestWebhookManagerPerformance:
             await webhook_manager.register(
                 name=f"Webhook {i}",
                 url=f"https://api.example.com/webhook-{i}",
-                events=[WebhookEvent.TASK_COMPLETED],
-            )
+                events=[WebhookEvent.TASK_COMPLETED])
 
         async def concurrent_lists():
             tasks = [webhook_manager.list() for _ in range(1000)]
@@ -169,7 +166,7 @@ class TestWebhookManagerPerformance:
 
         print(f"\n=== Concurrent List Performance ===")
         print(f"Concurrent Requests: {len(results):,}")
-        print(f"Total Time: {duration:.2f}s")
+        print(f"Total Time: {duration:.2f}, s")
         print(f"Rate: {len(results) / duration:.0f} req/sec")
         print(f"CPU Usage: {metrics['cpu_final_pct']:.1f}%")
 
@@ -192,8 +189,7 @@ class TestEventPublisherPerformance:
                 task = event_publisher.publish(
                     event_type=WebhookEvent.TASK_COMPLETED,
                     data={"task_id": f"task-{i}", "status": "completed"},
-                    source="benchmark",
-                )
+                    source="benchmark")
                 tasks.append(task)
 
             return await asyncio.gather(*tasks)
@@ -209,7 +205,7 @@ class TestEventPublisherPerformance:
 
         print(f"\n=== Event Publishing Performance ===")
         print(f"Events Published: {len(events):,}")
-        print(f"Total Time: {duration:.2f}s")
+        print(f"Total Time: {duration:.2f}, s")
         print(f"Rate: {len(events) / duration:.0f} events/sec")
         print(f"Memory Delta: {metrics['memory_delta_mb']:.2f} MB")
         print(f"Queue Size: {await event_publisher.get_queue_size()}")
@@ -229,15 +225,14 @@ class TestEventPublisherPerformance:
         for i in range(10000):
             sub = await event_publisher.subscribe(
                 webhook_id=uuid4(),
-                event_types=[WebhookEvent.TASK_COMPLETED],
-            )
+                event_types=[WebhookEvent.TASK_COMPLETED])
             subscriptions.append(sub)
 
         duration = time.time() - start_time
 
         print(f"\n=== Subscription Scalability ===")
         print(f"Subscriptions Created: {len(subscriptions):,}")
-        print(f"Total Time: {duration:.2f}s")
+        print(f"Total Time: {duration:.2f}, s")
         print(f"Rate: {len(subscriptions) / duration:.0f} subs/sec")
 
         # Assertions
@@ -256,15 +251,13 @@ class TestDeliveryServicePerformance:
             name="Benchmark Webhook",
             url="https://api.example.com/webhook",
             events=[WebhookEvent.TASK_COMPLETED],
-            secret="a" * 32,
-        )
+            secret="a" * 32)
 
         events = [
             EventPayload(
                 event_type=WebhookEvent.TASK_COMPLETED,
                 data={"task_id": f"task-{i}"},
-                source="benchmark",
-            )
+                source="benchmark")
             for i in range(5000)
         ]
 
@@ -281,7 +274,7 @@ class TestDeliveryServicePerformance:
 
         print(f"\n=== Delivery Scheduling Performance ===")
         print(f"Deliveries Scheduled: {len(deliveries):,}")
-        print(f"Total Time: {duration:.2f}s")
+        print(f"Total Time: {duration:.2f}, s")
         print(f"Rate: {len(deliveries) / duration:.0f} deliveries/sec")
         print(f"Memory Delta: {metrics['memory_delta_mb']:.2f} MB")
 
@@ -297,41 +290,38 @@ class TestResourceUtilization:
     @pytest.mark.benchmark
     async def test_memory_efficiency_under_load(self, webhook_manager, event_publisher):
         """Benchmark: Memory efficiency with 100K operations."""
+        perf = PerformanceBenchmark()
+        perf.start_measurement()
 
-        def run_operations():
-            async def operations():
-                # Create webhooks
-                webhooks = []
-                for i in range(1000):
-                    webhook = await webhook_manager.register(
-                        name=f"Webhook {i}",
-                        url=f"https://api.example.com/webhook-{i}",
-                        events=[WebhookEvent.TASK_COMPLETED],
-                    )
-                    webhooks.append(webhook)
+        # Create webhooks
+        webhooks = []
+        for i in range(1000):
+            webhook = await webhook_manager.register(
+                name=f"Webhook {i}",
+                url=f"https://api.example.com/webhook-{i}",
+                events=[WebhookEvent.TASK_COMPLETED])
+            webhooks.append(webhook)
 
-                # Publish events
-                events = []
-                for i in range(10000):
-                    event = await event_publisher.publish(
-                        event_type=WebhookEvent.TASK_COMPLETED,
-                        data={"task_id": f"task-{i}"},
-                        source="benchmark",
-                    )
-                    events.append(event)
+        # Publish events
+        events = []
+        for i in range(10000):
+            event = await event_publisher.publish(
+                event_type=WebhookEvent.TASK_COMPLETED,
+                data={"task_id": f"task-{i}"},
+                source="benchmark")
+            events.append(event)
 
-                return len(webhooks), len(events)
-
-            return asyncio.run(operations())
-
-        # Measure memory usage
-        mem_usage = memory_usage(run_operations, interval=0.1, max_usage=True)
+        metrics = perf.end_measurement()
 
         print(f"\n=== Memory Efficiency Test ===")
-        print(f"Peak Memory Usage: {mem_usage:.2f} MB")
+        print(f"Webhooks Created: {len(webhooks):,}")
+        print(f"Events Published: {len(events):,}")
+        print(f"Peak Memory Delta: {metrics['memory_delta_mb']:.2f} MB")
 
         # Assertions
-        assert mem_usage < 500  # Peak memory < 500 MB
+        assert len(webhooks) == 1000
+        assert len(events) == 10000
+        assert metrics["memory_delta_mb"] < 500  # Memory delta < 500 MB
 
     @pytest.mark.asyncio
     @pytest.mark.benchmark
@@ -348,8 +338,7 @@ class TestResourceUtilization:
             await webhook_manager.register(
                 name=f"Webhook {operation_count}",
                 url=f"https://api.example.com/webhook-{operation_count}",
-                events=[WebhookEvent.TASK_COMPLETED],
-            )
+                events=[WebhookEvent.TASK_COMPLETED])
             operation_count += 1
 
             # Brief yield to allow CPU measurement

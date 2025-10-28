@@ -9,8 +9,7 @@ import pytest
 from agentcore.integration.resilience.bulkhead import Bulkhead, BulkheadRegistry
 from agentcore.integration.resilience.exceptions import (
     BulkheadRejectedError,
-    ResilienceTimeoutError,
-)
+    ResilienceTimeoutError)
 from agentcore.integration.resilience.models import BulkheadConfig
 
 
@@ -24,8 +23,7 @@ class TestBulkhead:
             name="test_bulkhead",
             max_concurrent_requests=2,
             queue_size=2,
-            queue_timeout_seconds=1.0,
-        )
+            queue_timeout_seconds=1.0)
 
     @pytest.fixture
     async def bulkhead(self, config: BulkheadConfig) -> Bulkhead:
@@ -102,8 +100,7 @@ class TestBulkhead:
             name="test_timeout",
             max_concurrent_requests=1,
             queue_size=10,
-            queue_timeout_seconds=0.1,
-        )
+            queue_timeout_seconds=0.1)
         bh = Bulkhead(config)
 
         async def long_operation() -> str:

@@ -85,8 +85,7 @@ def test_cli_main_entry_point() -> None:
         [sys.executable, "-m", "agentcore_cli.main", "--help"],
         capture_output=True,
         text=True,
-        timeout=5,
-    )
+        timeout=5)
     # Should execute successfully and show help
     assert result.returncode == 0
     assert "AgentCore CLI" in result.stdout

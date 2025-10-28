@@ -22,13 +22,11 @@ from agentcore.a2a_protocol.models.events import (
     EventSubscribeResponse,
     EventSubscription,
     EventType,
-    WebSocketMessage,
-)
+    WebSocketMessage)
 from agentcore.a2a_protocol.services.event_manager import (
     EventManager,
     WebSocketConnection,
-    event_manager,
-)
+    event_manager)
 
 
 @pytest.fixture
@@ -44,8 +42,7 @@ def sample_event():
         event_type=EventType.AGENT_REGISTERED,
         source="test-agent",
         data={"status": "active"},
-        priority=EventPriority.NORMAL,
-    )
+        priority=EventPriority.NORMAL)
 
 
 @pytest.fixture
@@ -69,8 +66,7 @@ class TestEventPublishing:
         response = await manager.publish_event(
             event_type=EventType.AGENT_REGISTERED,
             source="test-agent",
-            data={"status": "active"},
-        )
+            data={"status": "active"})
 
         assert isinstance(response, EventPublishResponse)
         assert response.success is True
@@ -85,8 +81,7 @@ class TestEventPublishing:
             event_type=EventType.TASK_CREATED,
             source="test-source",
             data={"task_id": "123"},
-            priority=EventPriority.HIGH,
-        )
+            priority=EventPriority.HIGH)
 
         assert response.success is True
         event = manager._event_history[-1]
@@ -101,8 +96,7 @@ class TestEventPublishing:
             event_type=EventType.TASK_COMPLETED,
             source="test-source",
             data={"result": "success"},
-            correlation_id=correlation_id,
-        )
+            correlation_id=correlation_id)
 
         assert response.success is True
         event = manager._event_history[-1]
@@ -117,8 +111,7 @@ class TestEventPublishing:
             event_type=EventType.SYSTEM_STARTUP,
             source="system",
             data={},
-            metadata=metadata,
-        )
+            metadata=metadata)
 
         assert response.success is True
         event = manager._event_history[-1]
@@ -132,8 +125,7 @@ class TestEventPublishing:
         await manager.publish_event(
             event_type=EventType.MESSAGE_ROUTED,
             source="router",
-            data={"target": "agent-1"},
-        )
+            data={"target": "agent-1"})
 
         assert len(manager._event_history) == initial_count + 1
 
@@ -145,8 +137,7 @@ class TestEventPublishing:
         await manager.publish_event(
             event_type=EventType.AGENT_STATUS_CHANGED,
             source="agent-1",
-            data={"old_status": "active", "new_status": "idle"},
-        )
+            data={"old_status": "active", "new_status": "idle"})
 
         assert manager._event_stats["total_published"] == initial_published + 1
 
@@ -165,8 +156,7 @@ class TestEventPublishing:
         response = await manager.publish_event(
             event_type=EventType.TASK_STARTED,
             source="task-manager",
-            data={"task_id": "123"},
-        )
+            data={"task_id": "123"})
 
         assert response.subscribers_notified == 1
         mock_websocket.send_json.assert_called_once()
@@ -237,8 +227,7 @@ class TestSubscriptionManagement:
         """Test creating subscription successfully."""
         response = await manager.subscribe(
             subscriber_id="sub-1",
-            event_types=[EventType.AGENT_REGISTERED, EventType.AGENT_UNREGISTERED],
-        )
+            event_types=[EventType.AGENT_REGISTERED, EventType.AGENT_UNREGISTERED])
 
         assert isinstance(response, EventSubscribeResponse)
         assert response.success is True
@@ -266,8 +255,7 @@ class TestSubscriptionManagement:
         response = await manager.subscribe(
             subscriber_id="sub-1",
             event_types=[EventType.MESSAGE_DELIVERED],
-            ttl_seconds=ttl_seconds,
-        )
+            ttl_seconds=ttl_seconds)
 
         subscription = manager._subscriptions[response.subscription_id]
         assert subscription.expires_at is not None
@@ -278,8 +266,7 @@ class TestSubscriptionManagement:
         """Test subscription updates internal indexes."""
         response = await manager.subscribe(
             subscriber_id="sub-1",
-            event_types=[EventType.AGENT_REGISTERED, EventType.TASK_CREATED],
-        )
+            event_types=[EventType.AGENT_REGISTERED, EventType.TASK_CREATED])
 
         # Check by-type index
         assert (
@@ -516,8 +503,7 @@ class TestDeadLetterQueue:
         await manager._add_to_dead_letter_queue(
             event=sample_event,
             subscriber_id="sub-1",
-            failure_reason="No active connections",
-        )
+            failure_reason="No active connections")
 
         assert len(manager._dead_letter_queue) == 1
         assert manager._event_stats["total_failed"] == 1
@@ -548,8 +534,7 @@ class TestDeadLetterQueue:
             await manager._add_to_dead_letter_queue(
                 event=sample_event,
                 subscriber_id=f"sub-{i}",
-                failure_reason="Test failure",
-            )
+                failure_reason="Test failure")
 
         messages = manager.get_dead_letter_messages(limit=3)
         assert len(messages) == 3
@@ -708,8 +693,7 @@ class TestCleanupOperations:
         subscription = EventSubscription(
             subscriber_id="sub-1",
             event_types=[EventType.AGENT_REGISTERED],
-            expires_at=expired_time,
-        )
+            expires_at=expired_time)
 
         manager._subscriptions[subscription.subscription_id] = subscription
         manager._subscriptions_by_type[EventType.AGENT_REGISTERED].add(
@@ -789,8 +773,7 @@ class TestStatistics:
         # Create subscriptions for different types
         await manager.subscribe(
             subscriber_id="sub-1",
-            event_types=[EventType.AGENT_REGISTERED, EventType.TASK_CREATED],
-        )
+            event_types=[EventType.AGENT_REGISTERED, EventType.TASK_CREATED])
         await manager.subscribe(
             subscriber_id="sub-2", event_types=[EventType.AGENT_REGISTERED]
         )
@@ -865,14 +848,12 @@ class TestEventMatching:
         subscription = EventSubscription(
             subscriber_id="sub-1",
             event_types=[EventType.AGENT_STATUS_CHANGED],
-            filters={"new_status": "active"},
-        )
+            filters={"new_status": "active"})
 
         event = Event(
             event_type=EventType.AGENT_STATUS_CHANGED,
             source="agent-1",
-            data={"old_status": "idle", "new_status": "active"},
-        )
+            data={"old_status": "idle", "new_status": "active"})
 
         assert subscription.matches_event(event) is True
 
@@ -882,14 +863,12 @@ class TestEventMatching:
         subscription = EventSubscription(
             subscriber_id="sub-1",
             event_types=[EventType.AGENT_STATUS_CHANGED],
-            filters={"new_status": "active"},
-        )
+            filters={"new_status": "active"})
 
         event = Event(
             event_type=EventType.AGENT_STATUS_CHANGED,
             source="agent-1",
-            data={"old_status": "idle", "new_status": "error"},
-        )
+            data={"old_status": "idle", "new_status": "error"})
 
         assert subscription.matches_event(event) is False
 

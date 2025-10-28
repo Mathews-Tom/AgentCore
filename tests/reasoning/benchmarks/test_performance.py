@@ -29,8 +29,7 @@ from src.agentcore.reasoning.models.reasoning_models import BoundedContextConfig
 from src.agentcore.reasoning.services.llm_client import LLMClient, LLMClientConfig
 from src.agentcore.reasoning.services.reasoning_jsonrpc import (
     BoundedReasoningParams,
-    handle_bounded_reasoning,
-)
+    handle_bounded_reasoning)
 
 
 def create_mock_llm_client() -> LLMClient:
@@ -49,8 +48,7 @@ def create_mock_llm_client() -> LLMClient:
         max_tokens: int = 8192,
         temperature: float = 0.7,
         stop_sequences: list[str] | None = None,
-        model: str | None = None,
-    ) -> GenerationResult:
+        model: str | None = None) -> GenerationResult:
         # Simulate realistic LLM latency (100-200ms)
         await asyncio.sleep(0.15)
         # Return response proportional to max_tokens
@@ -62,8 +60,7 @@ def create_mock_llm_client() -> LLMClient:
             tokens_used=len(content) // 4,  # Approximate token count
             finish_reason="stop",
             model=model or "gpt-4.1",
-            stop_sequence_found=None,
-        )
+            stop_sequence_found=None)
 
     def mock_count_tokens(text: str) -> int:
         # Simple approximation: ~4 chars per token
@@ -99,9 +96,7 @@ def create_authenticated_request(
             trace_id="bench-trace-1",
             source_agent="benchmark-client",
             target_agent="reasoning-agent",
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        ),
-    )
+            timestamp=datetime.now(timezone.utc).isoformat()))
 
 
 @pytest.fixture
@@ -122,8 +117,7 @@ def mock_security_service(monkeypatch):
         token_type=TokenType.ACCESS,
         role=Role.ADMIN,
         permissions=[Permission.REASONING_EXECUTE],
-        exp=9999999999,
-    )
+        exp=9999999999)
 
     def mock_validate_token(token: str) -> TokenPayload:
         return mock_payload
@@ -148,8 +142,7 @@ async def test_benchmark_single_request_latency(mock_security_service, monkeypat
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     query = "Analyze the performance characteristics of distributed systems." * 50  # ~5K tokens
 
@@ -175,8 +168,7 @@ async def test_benchmark_concurrent_requests(mock_security_service, monkeypatch)
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     query = "What are the key principles of system design?" * 30  # ~3K tokens
 
@@ -204,8 +196,7 @@ async def test_benchmark_compute_savings_small_query(mock_security_service, monk
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     # 10K token query
     query = "Explain distributed consensus algorithms in detail." * 200
@@ -226,8 +217,7 @@ async def test_benchmark_compute_savings_medium_query(mock_security_service, mon
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     # 25K token query
     query = "Provide a comprehensive analysis of machine learning architectures." * 500
@@ -248,8 +238,7 @@ async def test_benchmark_compute_savings_large_query(mock_security_service, monk
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     # 50K token query
     query = "Write a detailed technical specification for a microservices architecture." * 1000
@@ -273,8 +262,7 @@ async def test_benchmark_memory_usage(mock_security_service, monkeypatch):
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     query = "Analyze system scalability patterns." * 100
 
@@ -305,8 +293,7 @@ async def test_benchmark_iteration_scaling(mock_security_service, monkeypatch):
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     query = "Explain distributed tracing in microservices." * 150
 
@@ -343,8 +330,7 @@ async def test_benchmark_token_throughput(mock_security_service, monkeypatch):
     mock_llm = create_mock_llm_client()
     monkeypatch.setattr(
         "src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient",
-        lambda config: mock_llm,
-    )
+        lambda config: mock_llm)
 
     query = "Describe cloud-native architecture patterns." * 200  # ~20K tokens
 

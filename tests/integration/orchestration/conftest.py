@@ -14,8 +14,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
-    create_async_engine,
-)
+    create_async_engine)
 from sqlalchemy.pool import StaticPool
 from testcontainers.redis import RedisContainer
 
@@ -23,8 +22,7 @@ from agentcore.a2a_protocol.database.connection import Base
 from agentcore.orchestration.state.models import (
     WorkflowExecutionDB,
     WorkflowStateDB,
-    WorkflowStateVersion,
-)
+    WorkflowStateVersion)
 from agentcore.orchestration.streams.client import RedisStreamsClient
 from agentcore.orchestration.streams.config import StreamConfig
 
@@ -40,8 +38,7 @@ async def test_db_engine() -> AsyncGenerator[AsyncEngine, None]:
         "sqlite+aiosqlite:///:memory:",
         echo=False,
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-    )
+        connect_args={"check_same_thread": False})
 
     # Drop and create all tables fresh for this test
     async with engine.begin() as conn:
@@ -56,8 +53,7 @@ async def test_db_engine() -> AsyncGenerator[AsyncEngine, None]:
 
 @pytest.fixture
 async def db_session_factory(
-    test_db_engine: AsyncEngine,
-) -> Callable[[], AsyncSession]:
+    test_db_engine: AsyncEngine) -> Callable[[], AsyncSession]:
     """
     Create database session factory for tests.
 
@@ -66,15 +62,13 @@ async def db_session_factory(
     session_factory = async_sessionmaker(
         test_db_engine,
         class_=AsyncSession,
-        expire_on_commit=False,
-    )
+        expire_on_commit=False)
     return session_factory
 
 
 @pytest.fixture
 async def db_session(
-    db_session_factory: Callable[[], AsyncSession],
-) -> AsyncGenerator[AsyncSession, None]:
+    db_session_factory: Callable[[], AsyncSession]) -> AsyncGenerator[AsyncSession, None]:
     """Create database session for individual tests."""
     async with db_session_factory() as session:
         yield session
@@ -89,8 +83,7 @@ def redis_container() -> RedisContainer:
         warnings.filterwarnings(
             "ignore",
             message="The @wait_container_is_ready decorator is deprecated",
-            category=DeprecationWarning,
-        )
+            category=DeprecationWarning)
         container = RedisContainer("redis:7-alpine")
         with container:
             yield container
@@ -98,8 +91,7 @@ def redis_container() -> RedisContainer:
 
 @pytest.fixture
 async def redis_client(
-    redis_container: RedisContainer,
-) -> AsyncGenerator[RedisStreamsClient, None]:
+    redis_container: RedisContainer) -> AsyncGenerator[RedisStreamsClient, None]:
     """Provide Redis Streams client connected to test container."""
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(6379)
@@ -108,8 +100,7 @@ async def redis_client(
     config = StreamConfig(
         stream_name="test:events",
         consumer_group_name="test-group",
-        dead_letter_stream="test:events:dlq",
-    )
+        dead_letter_stream="test:events:dlq")
 
     client = RedisStreamsClient(redis_url=redis_url, config=config)
     await client.connect()
@@ -131,5 +122,4 @@ def test_stream_config() -> StreamConfig:
         max_retries=3,
         retry_backoff_ms=50,
         enable_auto_claim=True,
-        auto_claim_idle_ms=5000,
-    )
+        auto_claim_idle_ms=5000)

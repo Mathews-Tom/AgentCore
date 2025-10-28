@@ -19,23 +19,20 @@ from agentcore.a2a_protocol.services.message_router import (
     MessageRouter,
     QueuedMessage,
     RoutingStrategy,
-    message_router,
-)
+    message_router)
 
 
 def create_test_envelope(
     message_id: str | None = None,
     source: str = "source",
-    destination: str | None = None,
-) -> MessageEnvelope:
+    destination: str | None = None) -> MessageEnvelope:
     """Helper to create valid test MessageEnvelope."""
     return MessageEnvelope(
         message_id=message_id or str(uuid4()),
         timestamp=datetime.now(UTC).isoformat(),
         source=source,
         destination=destination,
-        payload=JsonRpcRequest(jsonrpc="2.0", method="test.action", params={}, id=1),
-    )
+        payload=JsonRpcRequest(jsonrpc="2.0", method="test.action", params={}, id=1))
 
 
 @pytest.fixture
@@ -58,8 +55,7 @@ def mock_agent():
         AgentCapability,
         AgentEndpoint,
         AuthenticationType,
-        EndpointType,
-    )
+        EndpointType)
 
     return AgentCard(
         agent_id="agent-1",
@@ -73,8 +69,7 @@ def mock_agent():
         endpoints=[AgentEndpoint(url="http://agent-1.local", type=EndpointType.HTTP)],
         authentication=AgentAuthentication(
             type=AuthenticationType.NONE, required=False
-        ),
-    )
+        ))
 
 
 @pytest.fixture
@@ -84,8 +79,7 @@ def mock_session():
         session_id="session-1",
         name="Test Session",
         state=SessionState.ACTIVE,
-        owner_agent="agent-1",
-    )
+        owner_agent="agent-1")
 
 
 # ==================== Routing Tests ====================
@@ -205,8 +199,7 @@ class TestRouting:
         router,
         sample_envelope,
         mock_agent,
-        mock_session,
-    ):
+        mock_session):
         """Test routing with session context."""
         mock_sess_mgr.get_session = AsyncMock(return_value=mock_session)
         mock_sess_mgr.set_agent_state = AsyncMock(return_value=True)
@@ -569,8 +562,7 @@ class TestMessageQueuing:
             message_id="msg-1",
             envelope=envelope,
             target_agent_id="agent-1",
-            ttl_seconds=1,
-        )
+            ttl_seconds=1)
         queued_msg.expires_at = datetime.now(UTC) - timedelta(
             seconds=10
         )  # Already expired
@@ -591,8 +583,7 @@ class TestMessageQueuing:
         with patch.object(
             router,
             "_deliver_message",
-            AsyncMock(side_effect=Exception("Delivery failed")),
-        ):
+            AsyncMock(side_effect=Exception("Delivery failed"))):
             processed = await router.process_queued_messages("agent-1")
 
         # Message should be requeued
@@ -609,8 +600,7 @@ class TestMessageQueuing:
             message_id="msg-1",
             envelope=envelope,
             target_agent_id="agent-1",
-            ttl_seconds=1,
-        )
+            ttl_seconds=1)
         queued_msg.expires_at = datetime.now(UTC) - timedelta(seconds=10)
         router._message_queues["agent-1"].append(queued_msg)
 
@@ -632,8 +622,7 @@ class TestMessageQueuing:
             message_id="msg-1",
             envelope=envelope,
             target_agent_id="agent-1",
-            ttl_seconds=1,
-        )
+            ttl_seconds=1)
         queued_msg.expires_at = datetime.now(UTC) - timedelta(seconds=10)
         router._message_queues["agent-1"].append(queued_msg)
 
@@ -648,8 +637,7 @@ class TestMessageQueuing:
             message_id="msg-1",
             envelope=envelope,
             target_agent_id="agent-1",
-            ttl_seconds=1,
-        )
+            ttl_seconds=1)
         queued_msg.expires_at = datetime.now(UTC) - timedelta(seconds=10)
 
         assert queued_msg.is_expired() is True
@@ -862,8 +850,7 @@ class TestSessionContext:
             AgentCard,
             AgentEndpoint,
             AuthenticationType,
-            EndpointType,
-        )
+            EndpointType)
 
         # Create a real AgentCard instance (not mock)
         test_agent = AgentCard(
@@ -876,8 +863,7 @@ class TestSessionContext:
             ],
             authentication=AgentAuthentication(
                 type=AuthenticationType.NONE, required=False
-            ),
-        )
+            ))
 
         mock_session.participant_agents = ["agent-1"]
 
@@ -892,8 +878,7 @@ class TestSessionContext:
             result = await router.route_with_session(
                 sample_envelope,
                 session_id="session-1",
-                required_capabilities=["text-generation"],
-            )
+                required_capabilities=["text-generation"])
 
             assert result == "agent-1"
 
@@ -907,8 +892,7 @@ class TestSessionContext:
         router,
         sample_envelope,
         mock_agent,
-        mock_session,
-    ):
+        mock_session):
         """Test session routing adds new participant agent."""
         mock_session.participant_agents = []
 
@@ -923,8 +907,7 @@ class TestSessionContext:
         result = await router.route_with_session(
             sample_envelope,
             session_id="session-1",
-            required_capabilities=["new-capability"],
-        )
+            required_capabilities=["new-capability"])
 
         assert result == "agent-2"
         mock_sess_mgr.set_agent_state.assert_called_once()
@@ -946,8 +929,7 @@ class TestSessionContext:
             result = await router.route_with_session(
                 sample_envelope,
                 session_id="session-1",
-                required_capabilities=["impossible-capability"],
-            )
+                required_capabilities=["impossible-capability"])
 
             assert result is None
 

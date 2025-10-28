@@ -15,8 +15,7 @@ from agentcore.orchestration.patterns.circuit_breaker import (
     HealthMonitor,
     HealthStatus,
     RetryPolicy,
-    RetryStrategy,
-)
+    RetryStrategy)
 
 
 @pytest.fixture
@@ -36,8 +35,7 @@ def circuit_breaker(circuit_config: CircuitBreakerConfig) -> CircuitBreaker:
     """Create test circuit breaker."""
     return CircuitBreaker(
         service_name="test-service",
-        config=circuit_config,
-    )
+        config=circuit_config)
 
 
 @pytest.fixture
@@ -242,8 +240,7 @@ class TestRetryPolicy:
             strategy=RetryStrategy.EXPONENTIAL,
             initial_delay_seconds=1.0,
             multiplier=2.0,
-            jitter=False,
-        )
+            jitter=False)
 
         # First attempt
         delay = policy.calculate_delay()
@@ -265,8 +262,7 @@ class TestRetryPolicy:
             max_retries=3,
             strategy=RetryStrategy.LINEAR,
             initial_delay_seconds=1.0,
-            jitter=False,
-        )
+            jitter=False)
 
         # First attempt
         delay = policy.calculate_delay()
@@ -288,8 +284,7 @@ class TestRetryPolicy:
             max_retries=3,
             strategy=RetryStrategy.FIXED,
             initial_delay_seconds=1.0,
-            jitter=False,
-        )
+            jitter=False)
 
         for _ in range(3):
             delay = policy.calculate_delay()
@@ -300,8 +295,7 @@ class TestRetryPolicy:
         """Test immediate retry strategy."""
         policy = RetryPolicy(
             max_retries=3,
-            strategy=RetryStrategy.IMMEDIATE,
-        )
+            strategy=RetryStrategy.IMMEDIATE)
 
         delay = policy.calculate_delay()
         assert delay == 0.0
@@ -314,8 +308,7 @@ class TestRetryPolicy:
             initial_delay_seconds=1.0,
             max_delay_seconds=5.0,
             multiplier=2.0,
-            jitter=False,
-        )
+            jitter=False)
 
         # Go through multiple attempts
         for _ in range(5):
@@ -399,8 +392,7 @@ class TestHealthMonitor:
         """Test starting and stopping monitoring."""
         monitor = HealthMonitor(
             service_name="test-service",
-            check_interval_seconds=1,
-        )
+            check_interval_seconds=1)
 
         async def healthy_check():
             return {"status": "ok"}
@@ -468,8 +460,7 @@ class TestFaultToleranceCoordinator:
         """Test successful execution with retry."""
         policy = RetryPolicy(
             max_retries=2,
-            strategy=RetryStrategy.IMMEDIATE,
-        )
+            strategy=RetryStrategy.IMMEDIATE)
 
         async def success_func():
             return {"result": "success"}
@@ -488,8 +479,7 @@ class TestFaultToleranceCoordinator:
         """Test execution succeeds after retries."""
         policy = RetryPolicy(
             max_retries=3,
-            strategy=RetryStrategy.IMMEDIATE,
-        )
+            strategy=RetryStrategy.IMMEDIATE)
 
         attempt_count = {"count": 0}
 
@@ -513,8 +503,7 @@ class TestFaultToleranceCoordinator:
         """Test execution fails after retry exhaustion."""
         policy = RetryPolicy(
             max_retries=2,
-            strategy=RetryStrategy.IMMEDIATE,
-        )
+            strategy=RetryStrategy.IMMEDIATE)
 
         async def failing_func():
             raise ValueError("Persistent error")
@@ -549,8 +538,7 @@ class TestFaultToleranceCoordinator:
         """Test execution with circuit breaker and retry."""
         policy = RetryPolicy(
             max_retries=2,
-            strategy=RetryStrategy.IMMEDIATE,
-        )
+            strategy=RetryStrategy.IMMEDIATE)
 
         attempt_count = {"count": 0}
 

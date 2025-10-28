@@ -20,8 +20,7 @@ from src.agentcore.reasoning.services.metrics import (
     reasoning_iterations_total,
     reasoning_llm_failures_total,
     reasoning_requests_total,
-    reasoning_tokens_total,
-)
+    reasoning_tokens_total)
 
 
 def get_metric_value(metric, labels=None):
@@ -42,8 +41,7 @@ def test_record_reasoning_request_success():
         duration_seconds=2.5,
         total_tokens=5000,
         compute_savings_pct=45.5,
-        total_iterations=3,
-    )
+        total_iterations=3)
 
     # Verify counter incremented
     final_requests = get_metric_value(reasoning_requests_total, {"status": "success"})
@@ -61,8 +59,7 @@ def test_record_reasoning_request_error():
         duration_seconds=1.0,
         total_tokens=1000,
         compute_savings_pct=0.0,
-        total_iterations=1,
-    )
+        total_iterations=1)
 
     # Verify counter incremented
     final_requests = get_metric_value(reasoning_requests_total, {"status": "error"})
@@ -185,8 +182,7 @@ def test_histogram_observes_values():
         duration_seconds=5.5,
         total_tokens=10000,
         compute_savings_pct=50.0,
-        total_iterations=5,
-    )
+        total_iterations=5)
 
     # Verify histograms have recorded observations
     # Histograms store sum internally, just verify they're >= 0

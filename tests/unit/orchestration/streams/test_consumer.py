@@ -44,8 +44,7 @@ class TestStreamConsumer:
             count=10,
             block_ms=1000,
             enable_auto_claim=True,
-            auto_claim_idle_ms=30000,
-        )
+            auto_claim_idle_ms=30000)
 
     @pytest.fixture
     def consumer_group(self) -> ConsumerGroup:
@@ -65,8 +64,7 @@ class TestStreamConsumer:
         self,
         mock_client: AsyncMock,
         consumer_group: ConsumerGroup,
-        config: StreamConfig,
-    ) -> StreamConsumer:
+        config: StreamConfig) -> StreamConsumer:
         """Create stream consumer instance."""
         return StreamConsumer(mock_client, consumer_group, config)
 

@@ -62,8 +62,7 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -82,8 +81,7 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "wrongpassword",
-            },
-        )
+            })
 
         assert response.status_code == 401
         assert "Invalid username or password" in response.json()["detail"]
@@ -97,8 +95,7 @@ class TestAuthenticationEndpoints:
                 "grant_type": "client_credentials",
                 "client_id": "service",
                 "client_secret": "service123",
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -114,8 +111,7 @@ class TestAuthenticationEndpoints:
             json={
                 "grant_type": "password",
                 "password": "admin123",
-            },
-        )
+            })
 
         assert response.status_code == 400
 
@@ -128,8 +124,7 @@ class TestAuthenticationEndpoints:
                 "grant_type": "implicit",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
 
         assert response.status_code == 400
         assert "Unsupported grant type" in response.json()["detail"]
@@ -144,16 +139,14 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         assert login_response.status_code == 200
         refresh_token = login_response.json()["refresh_token"]
 
         # Refresh token
         refresh_response = await client.post(
             "/auth/refresh",
-            params={"refresh_token": refresh_token},
-        )
+            params={"refresh_token": refresh_token})
 
         assert refresh_response.status_code == 200
         data = refresh_response.json()
@@ -167,8 +160,7 @@ class TestAuthenticationEndpoints:
         """Test refresh with invalid token."""
         response = await client.post(
             "/auth/refresh",
-            params={"refresh_token": "invalid.token.here"},
-        )
+            params={"refresh_token": "invalid.token.here"})
 
         assert response.status_code == 401
 
@@ -182,15 +174,13 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         access_token = login_response.json()["access_token"]
 
         # Get current user
         response = await client.get(
             "/auth/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+            headers={"Authorization": f"Bearer {access_token}"})
 
         assert response.status_code == 200
         data = response.json()
@@ -211,8 +201,7 @@ class TestAuthenticationEndpoints:
         """Test getting current user with invalid token."""
         response = await client.get(
             "/auth/me",
-            headers={"Authorization": "Bearer invalid.token.here"},
-        )
+            headers={"Authorization": "Bearer invalid.token.here"})
 
         assert response.status_code == 401
 
@@ -226,15 +215,13 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         access_token = login_response.json()["access_token"]
 
         # Logout
         response = await client.post(
             "/auth/logout",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+            headers={"Authorization": f"Bearer {access_token}"})
 
         assert response.status_code == 200
         assert "Successfully logged out" in response.json()["message"]
@@ -242,8 +229,7 @@ class TestAuthenticationEndpoints:
         # Token should be invalid after logout
         response = await client.get(
             "/auth/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+            headers={"Authorization": f"Bearer {access_token}"})
         assert response.status_code == 401
 
     @pytest.mark.asyncio
@@ -256,15 +242,13 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         access_token = login_response.json()["access_token"]
 
         # Get sessions
         response = await client.get(
             "/auth/sessions",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+            headers={"Authorization": f"Bearer {access_token}"})
 
         assert response.status_code == 200
         data = response.json()
@@ -282,8 +266,7 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         token1 = login1.json()["access_token"]
 
         login2 = await client.post(
@@ -292,15 +275,13 @@ class TestAuthenticationEndpoints:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         token2 = login2.json()["access_token"]
 
         # Get sessions
         sessions_response = await client.get(
             "/auth/sessions",
-            headers={"Authorization": f"Bearer {token1}"},
-        )
+            headers={"Authorization": f"Bearer {token1}"})
         sessions = sessions_response.json()["sessions"]
         assert len(sessions) >= 2
 
@@ -308,8 +289,7 @@ class TestAuthenticationEndpoints:
         session_to_delete = sessions[0]["session_id"]
         delete_response = await client.delete(
             f"/auth/sessions/{session_to_delete}",
-            headers={"Authorization": f"Bearer {token1}"},
-        )
+            headers={"Authorization": f"Bearer {token1}"})
 
         assert delete_response.status_code == 200
 
@@ -323,8 +303,7 @@ class TestAuthenticationEndpoints:
                 "username": "admin",
                 "password": "admin123",
                 "scope": "read:agents write:tasks",
-            },
-        )
+            })
 
         assert response.status_code == 200
         data = response.json()
@@ -354,15 +333,13 @@ class TestAuthenticationSecurity:
                 "grant_type": "password",
                 "username": "admin",
                 "password": "admin123",
-            },
-        )
+            })
         access_token = response.json()["access_token"]
 
         # Get user info
         user_response = await client.get(
             "/auth/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+            headers={"Authorization": f"Bearer {access_token}"})
 
         assert user_response.status_code == 200
         roles = user_response.json()["roles"]
@@ -379,8 +356,7 @@ class TestAuthenticationSecurity:
                 "grant_type": "client_credentials",
                 "client_id": "service",
                 "client_secret": "service123",
-            },
-        )
+            })
 
         assert response.status_code == 200
         access_token = response.json()["access_token"]
@@ -388,8 +364,7 @@ class TestAuthenticationSecurity:
         # Verify service role
         user_response = await client.get(
             "/auth/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
+            headers={"Authorization": f"Bearer {access_token}"})
 
         assert user_response.status_code == 200
         roles = user_response.json()["roles"]
@@ -407,14 +382,12 @@ class TestAuthenticationSecurity:
                     "grant_type": "password",
                     "username": "admin",
                     "password": "admin123",
-                },
-            )
+                })
             tokens.append(response.json()["access_token"])
 
         # All tokens should be valid
         for token in tokens:
             response = await client.get(
                 "/auth/me",
-                headers={"Authorization": f"Bearer {token}"},
-            )
+                headers={"Authorization": f"Bearer {token}"})
             assert response.status_code == 200

@@ -9,16 +9,14 @@ from agentcore.agent_runtime.models.agent_config import (
     AgentConfig,
     AgentPhilosophy,
     ResourceLimits,
-    SecurityProfile,
-)
+    SecurityProfile)
 from agentcore.agent_runtime.models.agent_state import AgentExecutionState
 from agentcore.agent_runtime.services.performance_optimizer import (
     CacheEntry,
     ContainerPool,
     PerformanceCache,
     PerformanceOptimizer,
-    ResourcePredictor,
-)
+    ResourcePredictor)
 
 
 class TestCacheEntry:
@@ -260,8 +258,7 @@ class TestResourcePredictor:
                     "cpu_percent": 50.0,
                     "memory_usage_mb": 200.0,
                     "execution_time": 30.0,
-                },
-            )
+                })
 
         requirements = predictor.predict_requirements("react")
 
@@ -314,8 +311,7 @@ class TestPerformanceOptimizer:
         optimizer = PerformanceOptimizer(
             enable_caching=True,
             enable_pooling=True,
-            enable_gc_optimization=True,
-        )
+            enable_gc_optimization=True)
 
         assert optimizer._enable_caching is True
         assert optimizer._enable_pooling is True
@@ -342,16 +338,14 @@ class TestPerformanceOptimizer:
             agent_id="test-agent",
             philosophy=AgentPhilosophy.REACT,
             resource_limits=ResourceLimits(),
-            security_profile=SecurityProfile(),
-        )
+            security_profile=SecurityProfile())
 
         async def create_container() -> str:
             return "container-1"
 
         container_id, metrics = await optimizer.optimize_container_creation(
             config,
-            create_container,
-        )
+            create_container)
 
         assert container_id == "container-1"
         assert not metrics["warm_start"]
@@ -386,8 +380,7 @@ class TestPerformanceOptimizer:
             agent_id="test-agent",
             status="running",
             created_at=datetime.now(UTC),
-            last_updated=datetime.now(UTC),
-        )
+            last_updated=datetime.now(UTC))
 
         metrics = {
             "philosophy": "react",
@@ -408,8 +401,7 @@ class TestPerformanceOptimizer:
             agent_id="test-agent",
             philosophy=AgentPhilosophy.REACT,
             resource_limits=ResourceLimits(),
-            security_profile=SecurityProfile(),
-        )
+            security_profile=SecurityProfile())
 
         # Train with some data
         for _ in range(5):
@@ -419,8 +411,7 @@ class TestPerformanceOptimizer:
                     "cpu_percent": 50.0,
                     "memory_usage_mb": 200.0,
                     "execution_time": 30.0,
-                },
-            )
+                })
 
         requirements = optimizer.predict_resource_requirements(config)
 
@@ -452,8 +443,7 @@ class TestPerformanceOptimizer:
         """Test performance metrics reporting."""
         optimizer = PerformanceOptimizer(
             enable_caching=True,
-            enable_pooling=True,
-        )
+            enable_pooling=True)
 
         # Generate some activity
         optimizer._optimization_metrics["warm_starts"] = 10

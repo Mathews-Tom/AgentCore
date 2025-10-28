@@ -7,8 +7,7 @@ import pytest
 
 from agentcore.agent_runtime.models.agent_config import AgentConfig, AgentPhilosophy
 from agentcore.agent_runtime.models.agent_config import (
-    ResourceLimits as ConfigResourceLimits,
-)
+    ResourceLimits as ConfigResourceLimits)
 from agentcore.agent_runtime.models.agent_config import SecurityProfile
 from agentcore.agent_runtime.services.resource_manager import (
     AlertSeverity,
@@ -18,8 +17,7 @@ from agentcore.agent_runtime.services.resource_manager import (
     ResourceManager,
     ResourceMonitor,
     ResourceType,
-    ResourceUsage,
-)
+    ResourceUsage)
 
 
 class TestResourceUsage:
@@ -30,8 +28,7 @@ class TestResourceUsage:
         usage = ResourceUsage(
             cpu_percent=50.0,
             memory_percent=60.0,
-            memory_mb=1024.0,
-        )
+            memory_mb=1024.0)
 
         assert usage.cpu_percent == 50.0
         assert usage.memory_percent == 60.0
@@ -44,8 +41,7 @@ class TestResourceUsage:
         usage = ResourceUsage(
             cpu_percent=50.0,
             memory_percent=60.0,
-            timestamp=timestamp,
-        )
+            timestamp=timestamp)
 
         assert usage.timestamp == timestamp
 
@@ -62,8 +58,7 @@ class TestResourceAlert:
             message="CPU usage high",
             agent_id="test-agent",
             threshold=75.0,
-            current_value=80.0,
-        )
+            current_value=80.0)
 
         assert alert.alert_id == "test-alert-1"
         assert alert.resource_type == ResourceType.CPU
@@ -146,8 +141,7 @@ class TestResourceMonitor:
             AlertSeverity.WARNING,
             "Test alert",
             threshold=75.0,
-            current_value=80.0,
-        )
+            current_value=80.0)
 
         active_alerts = monitor.get_active_alerts()
         assert len(active_alerts) == 1
@@ -168,8 +162,7 @@ class TestResourceMonitor:
         monitor._trigger_alert(
             ResourceType.CPU,
             AlertSeverity.WARNING,
-            "Test alert",
-        )
+            "Test alert")
 
         alerts = monitor.get_active_alerts()
         assert len(alerts) == 1
@@ -206,8 +199,7 @@ class TestDynamicScaler:
         scaler = DynamicScaler(
             scale_up_threshold=75.0,
             scale_down_threshold=25.0,
-            cooldown_seconds=60,
-        )
+            cooldown_seconds=60)
 
         assert scaler._scale_up_threshold == 75.0
         assert scaler._scale_down_threshold == 25.0
@@ -276,8 +268,7 @@ class TestResourceManager:
         manager = ResourceManager(
             limits=ResourceLimits(max_cpu_percent=80.0),
             enable_monitoring=True,
-            enable_dynamic_scaling=True,
-        )
+            enable_dynamic_scaling=True)
 
         assert manager._limits.max_cpu_percent == 80.0
         assert manager._monitor is not None
@@ -304,10 +295,8 @@ class TestResourceManager:
             philosophy=AgentPhilosophy.REACT,
             resource_limits=ConfigResourceLimits(
                 max_memory_mb=512,
-                max_cpu_cores=1.0,
-            ),
-            security_profile=SecurityProfile(),
-        )
+                max_cpu_cores=1.0),
+            security_profile=SecurityProfile())
 
         allocation = manager.allocate_resources(config)
 
@@ -324,8 +313,7 @@ class TestResourceManager:
         usage = ResourceUsage(
             cpu_percent=50.0,
             memory_percent=60.0,
-            memory_mb=512.0,
-        )
+            memory_mb=512.0)
 
         manager.track_agent_usage("test-agent", usage)
 
@@ -372,8 +360,7 @@ class TestResourceManager:
             manager._monitor._trigger_alert(
                 ResourceType.CPU,
                 AlertSeverity.WARNING,
-                "Test alert",
-            )
+                "Test alert")
 
         alerts = manager.get_alerts()
         assert len(alerts) == 1
@@ -398,8 +385,7 @@ class TestResourceManager:
             manager._monitor._trigger_alert(
                 ResourceType.MEMORY,
                 AlertSeverity.CRITICAL,
-                "Test memory alert",
-            )
+                "Test memory alert")
 
         # Handler should have been called
         assert len(alerts_received) == 1
@@ -416,8 +402,7 @@ class TestResourceManager:
             agent_id="test-agent",
             philosophy=AgentPhilosophy.REACT,
             resource_limits=ConfigResourceLimits(),
-            security_profile=SecurityProfile(),
-        )
+            security_profile=SecurityProfile())
 
         allocation = manager.allocate_resources(config)
         assert "cpu_percent" in allocation
@@ -433,8 +418,7 @@ class TestResourceManager:
             agent_id="test-agent",
             philosophy=AgentPhilosophy.REACT,
             resource_limits=ConfigResourceLimits(),
-            security_profile=SecurityProfile(),
-        )
+            security_profile=SecurityProfile())
 
         allocation = manager.allocate_resources(config)
         assert "cpu_percent" in allocation
@@ -459,8 +443,7 @@ class TestResourceLimits:
         limits = ResourceLimits(
             max_cpu_percent=90.0,
             max_memory_percent=85.0,
-            alert_threshold_percent=80.0,
-        )
+            alert_threshold_percent=80.0)
 
         assert limits.max_cpu_percent == 90.0
         assert limits.max_memory_percent == 85.0

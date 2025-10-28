@@ -19,14 +19,12 @@ from agentcore.a2a_protocol.models.agent import (
     AgentEndpoint,
     AgentRegistrationRequest,
     AuthenticationType,
-    EndpointType,
-)
+    EndpointType)
 from agentcore.a2a_protocol.models.security import Permission, Role
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
 from agentcore.a2a_protocol.services.message_router import (
     MessageRouter,
-    RoutingStrategy,
-)
+    RoutingStrategy)
 from agentcore.a2a_protocol.services.security_service import security_service
 
 
@@ -78,13 +76,11 @@ class TestBCRSystemIntegration:
                 endpoints=[
                     AgentEndpoint(
                         url=f"https://{agent_data['id']}.com/api",
-                        type=EndpointType.HTTPS,
-                    )
+                        type=EndpointType.HTTPS)
                 ],
                 authentication=AgentAuthentication(type=AuthenticationType.JWT),
                 supports_bounded_reasoning=agent_data["reasoning"],
-                reasoning_config=agent_data["config"],
-            )
+                reasoning_config=agent_data["config"])
 
             await agent_manager.register_agent(
                 AgentRegistrationRequest(agent_card=agent, override_existing=False)
@@ -115,8 +111,7 @@ class TestBCRSystemIntegration:
             endpoints=[
                 AgentEndpoint(
                     url="https://test-reasoning.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.JWT),
             supports_bounded_reasoning=True,
@@ -124,8 +119,7 @@ class TestBCRSystemIntegration:
                 "max_iterations": 5,
                 "chunk_size": 8192,
                 "carryover_size": 4096,
-            },
-        )
+            })
 
         request = AgentRegistrationRequest(
             agent_card=new_agent, override_existing=False
@@ -153,8 +147,7 @@ class TestBCRSystemIntegration:
             endpoints=[
                 AgentEndpoint(
                     url="https://test-invalid.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.JWT),
             reasoning_config={"max_iterations": 100},  # > 50
@@ -250,13 +243,11 @@ class TestBCRSystemIntegration:
             endpoints=[
                 AgentEndpoint(
                     url="https://e2e-reasoning.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.JWT),
             supports_bounded_reasoning=True,
-            reasoning_config={"max_iterations": 7, "temperature": 0.6},
-        )
+            reasoning_config={"max_iterations": 7, "temperature": 0.6})
 
         registration_response = await agent_manager.register_agent(
             AgentRegistrationRequest(agent_card=new_agent, override_existing=False)
@@ -305,8 +296,7 @@ class TestBCRSystemIntegration:
             endpoints=[
                 AgentEndpoint(
                     url="https://tagged.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.JWT),
             supports_bounded_reasoning=True,
@@ -317,8 +307,7 @@ class TestBCRSystemIntegration:
                 "documentation_url": None,
                 "source_code_url": None,
                 "support_contact": None,
-            },
-        )
+            })
 
         await agent_manager.register_agent(
             AgentRegistrationRequest(
@@ -344,8 +333,7 @@ class TestBCRSystemIntegration:
             endpoints=[
                 AgentEndpoint(
                     url="https://boundary.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.JWT),
             reasoning_config={
@@ -353,8 +341,7 @@ class TestBCRSystemIntegration:
                 "chunk_size": 32768,
                 "carryover_size": 16384,
                 "temperature": 2.0,
-            },
-        )
+            })
 
         response = await agent_manager.register_agent(
             AgentRegistrationRequest(agent_card=valid_agent, override_existing=False)

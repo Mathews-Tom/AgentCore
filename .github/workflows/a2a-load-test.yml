@@ -1,0 +1,204 @@
+name: A2A Protocol Load Testing
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+    paths:
+      - 'src/agentcore/a2a_protocol/**'
+      - 'tests/load/locustfile.py'
+      - 'tests/load/http_load_test.py'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/agentcore/a2a_protocol/**'
+      - 'tests/load/**'
+  workflow_dispatch:
+    inputs:
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '100'
+      duration:
+        description: 'Test duration (e.g., 1m, 2m, 5m)'
+        required: false
+        default: '1m'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  a2a-load-test:
+    name: Run A2A Protocol Load Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: agentcore
+          POSTGRES_PASSWORD: agentcore
+          POSTGRES_DB: agentcore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://agentcore:agentcore@localhost:5432/agentcore_test
+
+      - name: Start AgentCore server
+        run: |
+          uv run uvicorn agentcore.a2a_protocol.main:app \
+            --host 0.0.0.0 \
+            --port 8001 \
+            &
+          sleep 10
+        env:
+          DATABASE_URL: postgresql://agentcore:agentcore@localhost:5432/agentcore_test
+          REDIS_URL: redis://localhost:6379
+          DEBUG: "false"
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8001/health > /dev/null; then
+              echo "✓ Server is ready"
+              exit 0
+            fi
+            echo "Waiting for server... ($i/30)"
+            sleep 2
+          done
+          echo "❌ Server failed to start"
+          exit 1
+
+      - name: Run A2A Protocol load tests
+        run: |
+          USERS=${{ github.event.inputs.users || '100' }}
+          RUN_TIME=${{ github.event.inputs.duration || '1m' }}
+
+          echo "=================================================="
+          echo "  A2A Protocol Load Test"
+          echo "=================================================="
+          echo "Configuration:"
+          echo "  Users: $USERS"
+          echo "  Duration: $RUN_TIME"
+          echo "  Host: http://localhost:8001"
+          echo ""
+
+          uv run locust \
+            -f tests/load/locustfile.py \
+            --headless \
+            --users "$USERS" \
+            --spawn-rate 10 \
+            --run-time "$RUN_TIME" \
+            --host http://localhost:8001 \
+            --html test-results/report.html \
+            --csv test-results/stats \
+            || true
+
+          echo ""
+          echo "✓ Load test complete"
+        env:
+          HOST: http://localhost:8001
+        continue-on-error: true
+
+      - name: Check test results
+        run: |
+          if [ -f "test-results/stats_stats.csv" ]; then
+            echo "Load test results found"
+            cat test-results/stats_stats.csv
+          else
+            echo "⚠️  No results file generated"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2a-load-test-results
+          path: test-results/
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            if (!fs.existsSync('test-results/stats_stats.csv')) {
+              console.log('No results file found');
+              return;
+            }
+
+            const stats = fs.readFileSync('test-results/stats_stats.csv', 'utf8');
+            const lines = stats.split('\n');
+            const lastLine = lines[lines.length - 2]; // -2 because last line is empty
+
+            if (!lastLine) {
+              console.log('No stats data found');
+              return;
+            }
+
+            const fields = lastLine.split(',');
+            const requestCount = fields[2] || 'N/A';
+            const failureCount = fields[3] || 'N/A';
+            const p95 = fields[7] || 'N/A';
+
+            const comment = `## A2A Protocol Load Test Results
+
+            **Test Configuration:**
+            - Users: ${{ github.event.inputs.users || '100' }}
+            - Duration: ${{ github.event.inputs.duration || '1m' }}
+
+            **Results:**
+            - Total Requests: ${requestCount}
+            - Failed Requests: ${failureCount}
+            - P95 Latency: ${p95}ms
+
+            [View detailed report in artifacts](${context.payload.pull_request.html_url}/checks)
+            `;
+
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Could not post comment:', error);
+            }

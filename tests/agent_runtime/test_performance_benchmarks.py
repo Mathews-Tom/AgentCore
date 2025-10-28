@@ -19,8 +19,7 @@ from agentcore.agent_runtime.models.agent_config import (
     AgentConfig,
     AgentPhilosophy,
     ResourceLimits,
-    SecurityProfile,
-)
+    SecurityProfile)
 from agentcore.agent_runtime.services.agent_lifecycle import AgentLifecycleManager
 from agentcore.agent_runtime.services.task_handler import TaskHandler
 
@@ -33,13 +32,11 @@ class TestConcurrentExecution:
     async def test_100_concurrent_agents(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test baseline concurrent execution with 100 agents."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs
         container_ids = [f"container-{i:03d}" for i in range(100)]
@@ -51,8 +48,7 @@ class TestConcurrentExecution:
                 agent_id=f"agent-{i:03d}",
                 name=f"Agent {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["compute"],
-            )
+                capabilities=["compute"])
             for i in range(100)
         ]
 
@@ -84,10 +80,10 @@ class TestConcurrentExecution:
         # Performance assertions
         assert (
             create_duration < 10.0
-        ), f"Creation of 100 agents took {create_duration:.2f}s (should be <10s)"
+        ), f"Creation of 100 agents took {create_duration:.2f}, s (should be <10s)"
         assert (
             total_duration < 15.0
-        ), f"Total startup took {total_duration:.2f}s (should be <15s)"
+        ), f"Total startup took {total_duration:.2f}, s (should be <15s)"
 
         # Cleanup
         cleanup_tasks = [
@@ -99,13 +95,11 @@ class TestConcurrentExecution:
     async def test_500_concurrent_agents(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test medium-scale concurrent execution with 500 agents."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs
         container_ids = [f"container-{i:03d}" for i in range(500)]
@@ -116,8 +110,7 @@ class TestConcurrentExecution:
                 agent_id=f"agent-{i:03d}",
                 name=f"Agent {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["compute"],
-            )
+                capabilities=["compute"])
             for i in range(500)
         ]
 
@@ -138,7 +131,7 @@ class TestConcurrentExecution:
         assert len(all_states) == 500
         assert (
             create_duration < 50.0
-        ), f"Creation of 500 agents took {create_duration:.2f}s"
+        ), f"Creation of 500 agents took {create_duration:.2f}, s"
 
         # Start in batches
         for i in range(0, 500, batch_size):
@@ -155,7 +148,7 @@ class TestConcurrentExecution:
 
         assert (
             total_duration < 75.0
-        ), f"Total startup of 500 agents took {total_duration:.2f}s"
+        ), f"Total startup of 500 agents took {total_duration:.2f}, s"
 
         # Cleanup (batch to avoid overwhelming)
         for i in range(0, 500, batch_size):
@@ -169,13 +162,11 @@ class TestConcurrentExecution:
     async def test_1000_concurrent_agents(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test target scale: 1000+ concurrent agent executions."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs
         container_ids = [f"container-{i:04d}" for i in range(1000)]
@@ -186,8 +177,7 @@ class TestConcurrentExecution:
                 agent_id=f"agent-{i:04d}",
                 name=f"Agent {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["compute"],
-            )
+                capabilities=["compute"])
             for i in range(1000)
         ]
 
@@ -208,7 +198,7 @@ class TestConcurrentExecution:
         assert len(all_states) == 1000
         assert (
             create_duration < 100.0
-        ), f"Creation of 1000 agents took {create_duration:.2f}s"
+        ), f"Creation of 1000 agents took {create_duration:.2f}, s"
 
         # Start in batches
         for i in range(0, 1000, batch_size):
@@ -226,7 +216,7 @@ class TestConcurrentExecution:
         # Acceptance criteria: 1000+ concurrent agents validated
         assert (
             total_duration < 150.0
-        ), f"Total startup of 1000 agents took {total_duration:.2f}s (target <150s)"
+        ), f"Total startup of 1000 agents took {total_duration:.2f}, s (target <150s)"
 
         # Cleanup in batches
         for i in range(0, 1000, batch_size):
@@ -245,20 +235,17 @@ class TestStartupPerformance:
     async def test_cold_start_latency(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test cold start completes within 500ms target."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         config = AgentConfig(
             agent_id="cold-start-agent",
             name="Cold Start Test",
             philosophy=AgentPhilosophy.REACT,
-            capabilities=["compute"],
-        )
+            capabilities=["compute"])
 
         # Measure cold start time
         start_time = time.perf_counter()
@@ -271,27 +258,24 @@ class TestStartupPerformance:
         # Acceptance criteria: <500ms cold start
         assert (
             cold_start_duration < 0.5
-        ), f"Cold start took {cold_start_duration*1000:.2f}ms (target <500ms)"
+        ), f"Cold start took {cold_start_duration*1000:.2f}, ms (target <500ms)"
 
         await lifecycle_manager.terminate_agent("cold-start-agent", cleanup=True)
 
     async def test_warm_start_latency(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test warm start completes within 100ms target."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         config = AgentConfig(
             agent_id="warm-start-agent",
             name="Warm Start Test",
             philosophy=AgentPhilosophy.REACT,
-            capabilities=["compute"],
-        )
+            capabilities=["compute"])
 
         # First start (cold)
         await lifecycle_manager.create_agent(config)
@@ -310,20 +294,18 @@ class TestStartupPerformance:
         # Acceptance criteria: <100ms warm start
         assert (
             warm_start_duration < 0.1
-        ), f"Warm start took {warm_start_duration*1000:.2f}ms (target <100ms)"
+        ), f"Warm start took {warm_start_duration*1000:.2f}, ms (target <100ms)"
 
         await lifecycle_manager.terminate_agent("warm-start-agent", cleanup=True)
 
     async def test_startup_latency_percentiles(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test startup latency distribution meets targets."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs
         container_ids = [f"container-{i:03d}" for i in range(100)]
@@ -337,8 +319,7 @@ class TestStartupPerformance:
                 agent_id=f"perf-agent-{i:03d}",
                 name=f"Performance Test {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["compute"],
-            )
+                capabilities=["compute"])
 
             start_time = time.perf_counter()
             await lifecycle_manager.create_agent(config)
@@ -356,13 +337,13 @@ class TestStartupPerformance:
         # Performance assertions
         assert (
             p50 < 0.3
-        ), f"P50 startup latency {p50*1000:.2f}ms (should be <300ms)"
+        ), f"P50 startup latency {p50*1000:.2f}, ms (should be <300ms)"
         assert (
             p95 < 0.5
-        ), f"P95 startup latency {p95*1000:.2f}ms (should be <500ms)"
+        ), f"P95 startup latency {p95*1000:.2f}, ms (should be <500ms)"
         assert (
             p99 < 1.0
-        ), f"P99 startup latency {p99*1000:.2f}ms (should be <1000ms)"
+        ), f"P99 startup latency {p99*1000:.2f}, ms (should be <1000ms)"
 
         # Cleanup
         for i in range(100):
@@ -400,7 +381,7 @@ class TestToolExecutionPerformance:
         # Acceptance criteria: <200ms p95 tool latency
         assert (
             p95 < 0.2
-        ), f"P95 tool execution latency {p95*1000:.2f}ms (target <200ms)"
+        ), f"P95 tool execution latency {p95*1000:.2f}, ms (target <200ms)"
 
     async def test_tool_concurrent_execution(self):
         """Test concurrent tool execution performance."""
@@ -424,7 +405,7 @@ class TestToolExecutionPerformance:
         assert execution_count == 50
 
         # Should complete much faster than sequential (50 * 0.05 = 2.5s)
-        assert duration < 0.5, f"Concurrent execution took {duration:.2f}s"
+        assert duration < 0.5, f"Concurrent execution took {duration:.2f}, s"
 
 
 @pytest.mark.asyncio
@@ -434,13 +415,11 @@ class TestLoadTesting:
     async def test_sustained_load(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test system behavior under sustained load."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs for 200 agents
         container_ids = [f"container-{i:03d}" for i in range(200)]
@@ -456,8 +435,7 @@ class TestLoadTesting:
                     agent_id=f"load-agent-{wave}-{i:02d}",
                     name=f"Load Test Agent {wave}-{i}",
                     philosophy=AgentPhilosophy.REACT,
-                    capabilities=["compute"],
-                )
+                    capabilities=["compute"])
                 for i in range(wave_size)
             ]
 
@@ -491,13 +469,11 @@ class TestLoadTesting:
     async def test_burst_load(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test system behavior under sudden burst load."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs
         container_ids = [f"container-{i:03d}" for i in range(300)]
@@ -508,8 +484,7 @@ class TestLoadTesting:
                 agent_id=f"burst-agent-{i:03d}",
                 name=f"Burst Agent {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["compute"],
-            )
+                capabilities=["compute"])
             for i in range(300)
         ]
 
@@ -537,7 +512,7 @@ class TestLoadTesting:
         assert len(all_states) == 300
         assert (
             burst_duration < 45.0
-        ), f"Burst load handling took {burst_duration:.2f}s"
+        ), f"Burst load handling took {burst_duration:.2f}, s"
 
         # Cleanup
         for i in range(0, 300, batch_size):
@@ -556,13 +531,11 @@ class TestScalability:
     async def test_linear_scaling(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test system scales linearly with agent count."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Test with 50, 100, 200 agents
         agent_counts = [50, 100, 200]
@@ -579,8 +552,7 @@ class TestScalability:
                     agent_id=f"scale-agent-{count}-{i:03d}",
                     name=f"Scale Test {i}",
                     philosophy=AgentPhilosophy.REACT,
-                    capabilities=["compute"],
-                )
+                    capabilities=["compute"])
                 for i in range(count)
             ]
 
@@ -626,21 +598,19 @@ class TestScalability:
         max_duration = max(durations)
         assert (
             max_duration < 5.0
-        ), f"Scalability issue: maximum duration {max_duration:.2f}s exceeds 5s threshold (durations: {durations})"
+        ), f"Scalability issue: maximum duration {max_duration:.2f}, s exceeds 5s threshold (durations: {durations})"
 
         # Log scaling for informational purposes
-        print(f"\nScaling test durations: 50={durations[0]:.4f}s, 100={durations[1]:.4f}s, 200={durations[2]:.4f}s")
+        print(f"\nScaling test durations: 50={durations[0]:.4f}, s, 100={durations[1]:.4f}, s, 200={durations[2]:.4f}, s")
 
     async def test_resource_efficiency(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test system maintains efficiency under load."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         # Configure container IDs
         container_ids = [f"container-{i:03d}" for i in range(100)]
@@ -651,8 +621,7 @@ class TestScalability:
                 agent_id=f"efficiency-agent-{i:03d}",
                 name=f"Efficiency Test {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["compute"],
-            )
+                capabilities=["compute"])
             for i in range(100)
         ]
 
@@ -691,18 +660,15 @@ class TestTaskExecutionPerformance:
     async def test_concurrent_task_execution(
         self,
         mock_container_manager,
-        mock_a2a_client,
-    ):
+        mock_a2a_client):
         """Test concurrent task execution across multiple agents."""
         lifecycle_manager = AgentLifecycleManager(
             container_manager=mock_container_manager,
-            a2a_client=mock_a2a_client,
-        )
+            a2a_client=mock_a2a_client)
 
         task_handler = TaskHandler(
             a2a_client=mock_a2a_client,
-            lifecycle_manager=lifecycle_manager,
-        )
+            lifecycle_manager=lifecycle_manager)
 
         # Create 20 agents
         container_ids = [f"container-{i:02d}" for i in range(20)]
@@ -713,8 +679,7 @@ class TestTaskExecutionPerformance:
                 agent_id=f"task-agent-{i:02d}",
                 name=f"Task Agent {i}",
                 philosophy=AgentPhilosophy.REACT,
-                capabilities=["task_execution"],
-            )
+                capabilities=["task_execution"])
             for i in range(20)
         ]
 
@@ -740,8 +705,7 @@ class TestTaskExecutionPerformance:
             task_handler.assign_task(
                 task_id=f"task-{i:02d}",
                 agent_id=s.agent_id,
-                task_data={**task_data, "task_id": f"task-{i:02d}"},
-            )
+                task_data={**task_data, "task_id": f"task-{i:02d}"})
             for i, s in enumerate(states)
         ]
 
@@ -753,7 +717,7 @@ class TestTaskExecutionPerformance:
         assert all(results), "Not all tasks were assigned successfully"
         assert (
             assignment_duration < 5.0
-        ), f"Task assignment took {assignment_duration:.2f}s"
+        ), f"Task assignment took {assignment_duration:.2f}, s"
 
         # Cleanup
         await task_handler.shutdown()

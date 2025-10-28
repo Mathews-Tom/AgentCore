@@ -10,8 +10,7 @@ from agentcore.integration.resilience.exceptions import ResilienceTimeoutError
 from agentcore.integration.resilience.models import TimeoutConfig
 from agentcore.integration.resilience.timeout import (
     TimeoutManager,
-    with_timeout_direct,
-)
+    with_timeout_direct)
 
 
 class TestTimeoutManager:
@@ -22,8 +21,7 @@ class TestTimeoutManager:
         """Create test configuration."""
         return TimeoutConfig(
             name="test_timeout",
-            timeout_seconds=0.5,
-        )
+            timeout_seconds=0.5)
 
     @pytest.fixture
     async def manager(self, config: TimeoutConfig) -> TimeoutManager:
@@ -86,8 +84,7 @@ class TestTimeoutManager:
         result = await with_timeout_direct(
             fast_operation,
             timeout_seconds=0.5,
-            operation_name="test_op",
-        )
+            operation_name="test_op")
         assert result == "success"
 
     async def test_with_timeout_direct_exceeds(self) -> None:
@@ -101,8 +98,7 @@ class TestTimeoutManager:
             await with_timeout_direct(
                 slow_operation,
                 timeout_seconds=0.5,
-                operation_name="test_op",
-            )
+                operation_name="test_op")
 
         assert exc_info.value.operation == "test_op"
         assert exc_info.value.timeout_seconds == 0.5

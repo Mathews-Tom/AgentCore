@@ -22,8 +22,7 @@ from agentcore.agent_runtime.models.sandbox import (
     ResourcePolicy,
     SandboxConfig,
     SandboxPermission,
-    SecurityViolationError,
-)
+    SecurityViolationError)
 from agentcore.agent_runtime.services.sandbox_service import SandboxService
 
 
@@ -50,8 +49,7 @@ async def sandbox_service(mock_audit_logger, temp_workspace):
     """Create sandbox service instance."""
     return SandboxService(
         audit_logger=mock_audit_logger,
-        workspace_root=temp_workspace,
-    )
+        workspace_root=temp_workspace)
 
 
 @pytest.fixture
@@ -66,11 +64,9 @@ def strict_sandbox_config():
             max_memory_mb=64,
             max_cpu_percent=25.0,
             max_processes=2,
-            max_file_descriptors=10,
-        ),
+            max_file_descriptors=10),
         strict_mode=True,
-        allow_network=False,
-    )
+        allow_network=False)
 
 
 @pytest.mark.asyncio
@@ -80,8 +76,7 @@ class TestContainerEscapePrevention:
     async def test_prevent_file_system_escape(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of filesystem escape attempts."""
         # Add resource policies to explicitly deny system paths
         strict_sandbox_config.resource_policies.extend([
@@ -89,14 +84,12 @@ class TestContainerEscapePrevention:
                 resource_pattern="/etc/*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ],
-                description="Deny access to /etc",
-            ),
+                description="Deny access to /etc"),
             ResourcePolicy(
                 resource_pattern="*../*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ, SandboxPermission.WRITE],
-                description="Deny path traversal attempts",
-            ),
+                description="Deny path traversal attempts"),
         ])
 
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -106,22 +99,19 @@ class TestContainerEscapePrevention:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.READ,
-                resource="../../etc/passwd",
-            )
+                resource="../../etc/passwd")
 
         # Attempt to access absolute paths outside workspace - blocked by policy
         with pytest.raises(SecurityViolationError):
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.READ,
-                resource="/etc/shadow",
-            )
+                resource="/etc/shadow")
 
     async def test_prevent_symlink_escape(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of symlink-based escape attempts."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -130,14 +120,12 @@ class TestContainerEscapePrevention:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.WRITE,
-                resource="/tmp/symlink -> /etc/passwd",
-            )
+                resource="/tmp/symlink -> /etc/passwd")
 
     async def test_prevent_proc_filesystem_access(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of /proc filesystem access."""
         # Add policy to deny /proc access
         strict_sandbox_config.resource_policies.append(
@@ -145,8 +133,7 @@ class TestContainerEscapePrevention:
                 resource_pattern="/proc/*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ],
-                description="Deny access to /proc",
-            )
+                description="Deny access to /proc")
         )
 
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -156,14 +143,12 @@ class TestContainerEscapePrevention:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.READ,
-                resource="/proc/self/environ",
-            )
+                resource="/proc/self/environ")
 
     async def test_prevent_device_access(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of device file access."""
         # Add policy to deny /dev access
         strict_sandbox_config.resource_policies.append(
@@ -171,8 +156,7 @@ class TestContainerEscapePrevention:
                 resource_pattern="/dev/*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ, SandboxPermission.WRITE],
-                description="Deny access to /dev",
-            )
+                description="Deny access to /dev")
         )
 
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -183,14 +167,12 @@ class TestContainerEscapePrevention:
                 await sandbox_service.check_permission(
                     sandbox_id=sandbox_id,
                     permission=SandboxPermission.READ,
-                    resource=device,
-                )
+                    resource=device)
 
     async def test_prevent_socket_creation(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of socket creation for IPC."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -199,8 +181,7 @@ class TestContainerEscapePrevention:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.NETWORK,
-                resource="unix:/tmp/socket",
-            )
+                resource="unix:/tmp/socket")
 
 
 @pytest.mark.asyncio
@@ -210,8 +191,7 @@ class TestResourceIsolation:
     async def test_network_isolation(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test network isolation enforcement."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -228,14 +208,12 @@ class TestResourceIsolation:
                 await sandbox_service.check_permission(
                     sandbox_id=sandbox_id,
                     permission=SandboxPermission.NETWORK,
-                    resource=resource,
-                )
+                    resource=resource)
 
     async def test_network_whitelist_enforcement(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test network whitelist enforcement."""
         strict_sandbox_config.allow_network = True
         strict_sandbox_config.allowed_hosts = ["api.example.com"]
@@ -247,8 +225,7 @@ class TestResourceIsolation:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.NETWORK,
-            resource="api.example.com",
-        )
+            resource="api.example.com")
         assert result is True
 
         # Non-whitelisted hosts should fail
@@ -256,14 +233,12 @@ class TestResourceIsolation:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.NETWORK,
-                resource="malicious.com",
-            )
+                resource="malicious.com")
 
     async def test_filesystem_isolation(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test filesystem isolation between sandboxes."""
         # Create two sandboxes with policies to enforce isolation
         config1 = strict_sandbox_config
@@ -279,10 +254,8 @@ class TestResourceIsolation:
                     resource_pattern="*/security-test-sandbox/*",
                     allowed_permissions=[],
                     denied_permissions=[SandboxPermission.READ, SandboxPermission.WRITE],
-                    description="Deny cross-sandbox access",
-                )
-            ],
-        )
+                    description="Deny cross-sandbox access")
+            ])
 
         sandbox1_id = await sandbox_service.create_sandbox(config1)
         sandbox2_id = await sandbox_service.create_sandbox(config2)
@@ -295,8 +268,7 @@ class TestResourceIsolation:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox2_id,
             permission=SandboxPermission.READ,
-            resource=str(workspace1 / "file.txt"),
-        )
+            resource=str(workspace1 / "file.txt"))
         # In strict mode with deny policy, should raise or return False
         # Depending on whether pattern matches
         assert result is False or isinstance(result, bool)
@@ -304,8 +276,7 @@ class TestResourceIsolation:
     async def test_process_isolation(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test process isolation and limits."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -325,14 +296,12 @@ result = 'spawned'
         with pytest.raises((SecurityViolationError, Exception)):
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
     async def test_memory_isolation(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test memory limit enforcement."""
         # Set very low memory limit
         strict_sandbox_config.execution_limits.max_memory_mb = 16
@@ -355,8 +324,7 @@ class TestSecurityPolicyEnforcement:
     async def test_strict_mode_enforcement(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test strict mode policy enforcement."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -365,14 +333,12 @@ class TestSecurityPolicyEnforcement:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.WRITE,
-                resource="/any/path",
-            )
+                resource="/any/path")
 
     async def test_permissive_mode_enforcement(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test permissive mode policy enforcement."""
         strict_sandbox_config.strict_mode = False
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -381,15 +347,13 @@ class TestSecurityPolicyEnforcement:
         result = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.WRITE,
-            resource="/any/path",
-        )
+            resource="/any/path")
         assert result is False
 
     async def test_resource_policy_precedence(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test resource policy precedence (deny over allow)."""
         # Test explicit deny policy takes precedence
         strict_sandbox_config.resource_policies.append(
@@ -397,8 +361,7 @@ class TestSecurityPolicyEnforcement:
                 resource_pattern="/data/secrets/*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.WRITE, SandboxPermission.READ],
-                description="Explicitly deny access to secrets",
-            )
+                description="Explicitly deny access to secrets")
         )
 
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -408,8 +371,7 @@ class TestSecurityPolicyEnforcement:
             result = await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.WRITE,
-                resource="/data/secrets/api_key.txt",
-            )
+                resource="/data/secrets/api_key.txt")
             # Should be denied
             assert result is False, "Explicit deny policy should block access"
         except SecurityViolationError:
@@ -420,8 +382,7 @@ class TestSecurityPolicyEnforcement:
         result2 = await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.READ,
-            resource="/data/public/file.txt",
-        )
+            resource="/data/public/file.txt")
         # Should be allowed due to global READ permission
         assert result2 is True
 
@@ -433,8 +394,7 @@ class TestPenetrationAttempts:
     async def test_code_injection_prevention(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of code injection attacks."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -449,14 +409,12 @@ result = 'injected'
         with pytest.raises(SecurityViolationError):
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=malicious_code,
-            )
+                code=malicious_code)
 
     async def test_import_hijacking_prevention(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of import hijacking."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -478,14 +436,12 @@ result = '{module} imported'
             with pytest.raises(SecurityViolationError):
                 await sandbox_service.execute_in_sandbox(
                     sandbox_id=sandbox_id,
-                    code=code,
-                )
+                    code=code)
 
     async def test_eval_exec_prevention(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of eval/exec abuse."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -498,14 +454,12 @@ result = 'evaled'
         with pytest.raises(SecurityViolationError):
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
     async def test_builtin_override_prevention(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of builtin function override."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -519,14 +473,12 @@ result = open('/etc/passwd')
         with pytest.raises(SecurityViolationError):
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
     async def test_file_descriptor_exhaustion_prevention(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of file descriptor exhaustion attacks."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -541,8 +493,7 @@ result = len(files)
         with pytest.raises((SecurityViolationError, Exception)):
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
 
 @pytest.mark.asyncio
@@ -552,8 +503,7 @@ class TestSecurityAuditTrails:
     async def test_audit_permission_granted(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test audit logging of granted permissions."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -561,8 +511,7 @@ class TestSecurityAuditTrails:
         await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.READ,
-            resource="/data/test.txt",
-        )
+            resource="/data/test.txt")
 
         # Verify audit log called
         sandbox_service._audit_logger.log_event.assert_called()
@@ -570,8 +519,7 @@ class TestSecurityAuditTrails:
     async def test_audit_permission_denied(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test audit logging of denied permissions."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -580,8 +528,7 @@ class TestSecurityAuditTrails:
             await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.WRITE,
-                resource="/etc/passwd",
-            )
+                resource="/etc/passwd")
         except SecurityViolationError:
             pass
 
@@ -591,8 +538,7 @@ class TestSecurityAuditTrails:
     async def test_audit_security_violation(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test audit logging of security violations."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -600,8 +546,7 @@ class TestSecurityAuditTrails:
         try:
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code="import os; os.system('ls')",
-            )
+                code="import os; os.system('ls')")
         except SecurityViolationError:
             pass
 
@@ -611,8 +556,7 @@ class TestSecurityAuditTrails:
     async def test_audit_resource_access(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test audit logging of resource access."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -620,8 +564,7 @@ class TestSecurityAuditTrails:
         await sandbox_service.check_permission(
             sandbox_id=sandbox_id,
             permission=SandboxPermission.EXECUTE,
-            resource="script.py",
-        )
+            resource="script.py")
 
         # Verify access logged
         assert sandbox_service._audit_logger.log_event.called
@@ -634,8 +577,7 @@ class TestExecutionLimits:
     async def test_cpu_limit_enforcement(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test CPU usage limit enforcement."""
         strict_sandbox_config.execution_limits.max_cpu_percent = 10.0
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -648,15 +590,13 @@ result = sum(range(1000000))
         # Should complete within CPU limits
         result = await sandbox_service.execute_in_sandbox(
             sandbox_id=sandbox_id,
-            code=code,
-        )
+            code=code)
         assert result == sum(range(1000000))
 
     async def test_execution_time_limit(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test execution time limit enforcement."""
         strict_sandbox_config.execution_limits.max_execution_time_seconds = 1
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -672,8 +612,7 @@ result = 'completed'
         with pytest.raises(Exception):  # Could be timeout or security violation
             await sandbox_service.execute_in_sandbox(
                 sandbox_id=sandbox_id,
-                code=code,
-            )
+                code=code)
 
 
 @pytest.mark.asyncio
@@ -683,8 +622,7 @@ class TestSecurityRegression:
     async def test_path_traversal_variations(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test various path traversal attack variations."""
         # Add policies to deny path traversal attempts
         traversal_patterns = [
@@ -701,8 +639,7 @@ class TestSecurityRegression:
                     resource_pattern=pattern,
                     allowed_permissions=[],
                     denied_permissions=[SandboxPermission.READ, SandboxPermission.WRITE],
-                    description=f"Deny path traversal: {pattern}",
-                )
+                    description=f"Deny path traversal: {pattern}")
             )
 
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -721,14 +658,12 @@ class TestSecurityRegression:
                 await sandbox_service.check_permission(
                     sandbox_id=sandbox_id,
                     permission=SandboxPermission.READ,
-                    resource=path,
-                )
+                    resource=path)
 
     async def test_null_byte_injection(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test null byte injection prevention."""
         # Add policy to deny /etc access
         strict_sandbox_config.resource_policies.extend([
@@ -736,14 +671,12 @@ class TestSecurityRegression:
                 resource_pattern="/etc/*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ],
-                description="Deny /etc access",
-            ),
+                description="Deny /etc access"),
             ResourcePolicy(
                 resource_pattern="*\x00*",
                 allowed_permissions=[],
                 denied_permissions=[SandboxPermission.READ, SandboxPermission.WRITE],
-                description="Deny null bytes",
-            ),
+                description="Deny null bytes"),
         ])
 
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
@@ -754,8 +687,7 @@ class TestSecurityRegression:
             result = await sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.READ,
-                resource="/tmp/allowed.txt\x00../../etc/passwd",
-            )
+                resource="/tmp/allowed.txt\x00../../etc/passwd")
             # If no exception, should at least be False
             assert result is False
         except (SecurityViolationError, ValueError):
@@ -765,8 +697,7 @@ class TestSecurityRegression:
     async def test_race_condition_prevention(
         self,
         sandbox_service,
-        strict_sandbox_config,
-    ):
+        strict_sandbox_config):
         """Test prevention of TOCTOU race conditions."""
         sandbox_id = await sandbox_service.create_sandbox(strict_sandbox_config)
 
@@ -775,8 +706,7 @@ class TestSecurityRegression:
             sandbox_service.check_permission(
                 sandbox_id=sandbox_id,
                 permission=SandboxPermission.READ,
-                resource=f"/data/file_{i}.txt",
-            )
+                resource=f"/data/file_{i}.txt")
             for i in range(10)
         ]
 

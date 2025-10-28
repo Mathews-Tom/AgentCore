@@ -27,8 +27,7 @@ def test_reasoning_method_registered_in_rpc_methods(client):
             "jsonrpc": "2.0",
             "method": "rpc.methods",
             "id": 1,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -54,8 +53,7 @@ def test_reasoning_method_callable(client):
                 "query": "Test query",
             },
             "id": 1,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -81,8 +79,7 @@ def test_reasoning_method_parameter_validation(client):
             "method": "reasoning.bounded_context",
             "params": {},  # Missing required query param
             "id": 1,
-        },
-    )
+        })
 
     assert response.status_code == 200
     data = response.json()

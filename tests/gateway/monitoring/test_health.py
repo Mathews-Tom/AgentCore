@@ -22,8 +22,7 @@ class TestHealthChecker:
                 "a2a_protocol": "http://localhost:8001",
                 "agent_runtime": "http://localhost:8002",
             },
-            check_timeout=2.0,
-        )
+            check_timeout=2.0)
         yield checker
         await checker.close()
 
@@ -199,8 +198,7 @@ class TestHealthChecker:
         checker = HealthChecker(
             redis_url=None,
             backend_services={},
-            check_timeout=2.0,
-        )
+            check_timeout=2.0)
 
         result = await checker.check_readiness()
 

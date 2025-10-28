@@ -42,7 +42,7 @@ Build production-grade multi-provider LLM client supporting OpenAI, Anthropic Cl
 
 **FR-1.1** The system SHALL support OpenAI GPT models (gpt-4.1, gpt-4.1-mini, gpt-5, gpt-5-mini)
 **FR-1.2** The system SHALL support Anthropic Claude models (claude-3-5-sonnet, claude-3-5-haiku, claude-3-opus)
-**FR-1.3** The system SHALL support Google Gemini models (gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash)
+**FR-1.3** The system SHALL support Google Gemini models (gemini-2.0-flash-exp, gemini-1.5-pro, gemini-2.0-flash-exp)
 **FR-1.4** The system SHALL automatically select the appropriate provider based on the requested model
 
 ### FR-2: Unified Interface
@@ -319,7 +319,7 @@ GOOGLE_API_KEY: str | None = None
 ALLOWED_MODELS: list[str] = [
     "gpt-4.1-mini", "gpt-5-mini",
     "claude-3-5-haiku-20241022",
-    "gemini-1.5-flash"
+    "gemini-2.0-flash-exp"
 ]
 
 LLM_DEFAULT_MODEL: str = "gpt-4.1-mini"

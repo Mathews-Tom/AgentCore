@@ -36,8 +36,7 @@ from datetime import datetime, timezone
 from agentcore.training.models import (
     Trajectory,
     TrajectoryStep,
-    TrainingQuery,
-)
+    TrainingQuery)
 
 
 @pytest.fixture
@@ -58,8 +57,7 @@ def sample_trajectories() -> list[Trajectory]:
                 action={"type": "generate", "content": f"result {i}"},
                 result={"success": True, "quality": 0.8 + (i * 0.01)},
                 timestamp=datetime.now(timezone.utc),
-                duration_ms=100 + i * 10,
-            )
+                duration_ms=100 + i * 10)
         ]
 
         trajectory = Trajectory(
@@ -68,8 +66,7 @@ def sample_trajectories() -> list[Trajectory]:
             query=f"Test query {i}",
             steps=steps,
             success=i >= 5,  # 50% success rate
-            execution_time_ms=100 + i * 10,
-        )
+            execution_time_ms=100 + i * 10)
 
         trajectories.append(trajectory)
 
@@ -82,8 +79,7 @@ def evaluation_queries() -> list[TrainingQuery]:
     return [
         TrainingQuery(
             query=f"Evaluation query {i}",
-            expected_outcome={"success": True, "accuracy": 0.9},
-        )
+            expected_outcome={"success": True, "accuracy": 0.9})
         for i in range(5)
     ]
 
@@ -95,8 +91,7 @@ class TestEvaluationFramework:
     async def test_evaluation_metrics_computation(
         self,
         evaluation_service: EvaluationService,
-        sample_trajectories: list[Trajectory],
-    ) -> None:
+        sample_trajectories: list[Trajectory]) -> None:
         """Test that evaluation metrics are correctly computed."""
         # Compute metrics
         metrics = await evaluation_service.compute_metrics(sample_trajectories)
@@ -123,8 +118,7 @@ class TestEvaluationFramework:
     async def test_baseline_comparison(
         self,
         evaluation_service: EvaluationService,
-        sample_trajectories: list[Trajectory],
-    ) -> None:
+        sample_trajectories: list[Trajectory]) -> None:
         """Test baseline comparison with statistical significance."""
         # Create baseline trajectories (lower performance)
         baseline_trajectories = []
@@ -135,8 +129,7 @@ class TestEvaluationFramework:
                     action={"type": "generate"},
                     result={"success": True},
                     timestamp=datetime.now(timezone.utc),
-                    duration_ms=200,
-                )
+                    duration_ms=200)
             ]
 
             trajectory = Trajectory(
@@ -145,15 +138,13 @@ class TestEvaluationFramework:
                 query=f"Query {i}",
                 steps=steps,
                 success=i >= 7,  # 30% success rate (worse than 50%)
-                execution_time_ms=200,
-            )
+                execution_time_ms=200)
             baseline_trajectories.append(trajectory)
 
         # Compute baseline comparison
         comparison = await evaluation_service.compare_to_baseline(
             current_trajectories=sample_trajectories,
-            baseline_trajectories=baseline_trajectories,
-        )
+            baseline_trajectories=baseline_trajectories)
 
         # Verify comparison structure
         assert isinstance(comparison, BaselineComparison)
@@ -173,8 +164,7 @@ class TestEvaluationFramework:
     async def test_held_out_validation(
         self,
         evaluation_service: EvaluationService,
-        evaluation_queries: list[TrainingQuery],
-    ) -> None:
+        evaluation_queries: list[TrainingQuery]) -> None:
         """Test held-out validation dataset evaluation."""
         # Create mock agent for evaluation
         async def mock_agent_execute(query: str) -> Trajectory:
@@ -185,8 +175,7 @@ class TestEvaluationFramework:
                     action={"type": "answer", "content": f"Response to {query}"},
                     result={"success": True},
                     timestamp=datetime.now(timezone.utc),
-                    duration_ms=150,
-                )
+                    duration_ms=150)
             ]
 
             return Trajectory(
@@ -195,14 +184,12 @@ class TestEvaluationFramework:
                 query=query,
                 steps=steps,
                 success=True,
-                execution_time_ms=150,
-            )
+                execution_time_ms=150)
 
         # Run held-out evaluation
         results = await evaluation_service.evaluate_on_queries(
             agent_fn=mock_agent_execute,
-            queries=evaluation_queries,
-        )
+            queries=evaluation_queries)
 
         # Verify results
         assert len(results) == len(evaluation_queries)
@@ -214,8 +201,7 @@ class TestEvaluationFramework:
         self,
         evaluation_service: EvaluationService,
         sample_trajectories: list[Trajectory],
-        evaluation_queries: list[TrainingQuery],
-    ) -> None:
+        evaluation_queries: list[TrainingQuery]) -> None:
         """Test evaluation integration with training job workflow."""
         job_id = uuid4()
 
@@ -231,8 +217,7 @@ class TestEvaluationFramework:
                     action={"type": "execute"},
                     result={"success": True},
                     timestamp=datetime.now(timezone.utc),
-                    duration_ms=100,
-                )
+                    duration_ms=100)
             ]
 
             return Trajectory(
@@ -241,14 +226,12 @@ class TestEvaluationFramework:
                 query=query,
                 steps=steps,
                 success=True,
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
 
         # Evaluate on held-out queries
         eval_results = await evaluation_service.evaluate_on_queries(
             agent_fn=mock_agent_execute,
-            queries=evaluation_queries,
-        )
+            queries=evaluation_queries)
 
         # Compute final metrics
         eval_metrics = await evaluation_service.compute_metrics(eval_results)
@@ -263,8 +246,7 @@ class TestEvaluationFramework:
     @pytest.mark.asyncio
     async def test_evaluation_metrics_edge_cases(
         self,
-        evaluation_service: EvaluationService,
-    ) -> None:
+        evaluation_service: EvaluationService) -> None:
         """Test evaluation metrics with edge cases."""
         # Empty trajectories
         with pytest.raises((ValueError, ZeroDivisionError)):
@@ -282,12 +264,10 @@ class TestEvaluationFramework:
                         action={},
                         result={},
                         timestamp=datetime.now(timezone.utc),
-                        duration_ms=100,
-                    )
+                        duration_ms=100)
                 ],
                 success=True,
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
         ]
 
         metrics = await evaluation_service.compute_metrics(single_trajectory)
@@ -300,8 +280,7 @@ class TestEvaluationFramework:
                 agent_id="test",
                 query="test",
                 steps=[],
-                success=False,
-            )
+                success=False)
             for _ in range(3)
         ]
 
@@ -311,8 +290,7 @@ class TestEvaluationFramework:
     @pytest.mark.asyncio
     async def test_statistical_significance_calculation(
         self,
-        evaluation_service: EvaluationService,
-    ) -> None:
+        evaluation_service: EvaluationService) -> None:
         """Test statistical significance calculation in baseline comparison."""
         # Create two sets of trajectories with clear performance difference
         high_performance = [
@@ -326,12 +304,10 @@ class TestEvaluationFramework:
                         action={},
                         result={},
                         timestamp=datetime.now(timezone.utc),
-                        duration_ms=100,
-                    )
+                        duration_ms=100)
                 ],
                 success=True,
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
             for i in range(20)
         ]
 
@@ -346,20 +322,17 @@ class TestEvaluationFramework:
                         action={},
                         result={},
                         timestamp=datetime.now(timezone.utc),
-                        duration_ms=100,
-                    )
+                        duration_ms=100)
                 ],
                 success=i >= 15,  # Only 25% success rate
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
             for i in range(20)
         ]
 
         # Compare
         comparison = await evaluation_service.compare_to_baseline(
             current_trajectories=high_performance,
-            baseline_trajectories=low_performance,
-        )
+            baseline_trajectories=low_performance)
 
         # With 100% vs 25% success rate, should be statistically significant
         assert comparison.success_rate_improvement == 0.75
@@ -370,8 +343,7 @@ class TestEvaluationFramework:
     async def test_evaluation_duration_tracking(
         self,
         evaluation_service: EvaluationService,
-        evaluation_queries: list[TrainingQuery],
-    ) -> None:
+        evaluation_queries: list[TrainingQuery]) -> None:
         """Test that evaluation duration is tracked."""
         async def mock_agent_execute(query: str) -> Trajectory:
             """Mock agent with known duration."""
@@ -381,8 +353,7 @@ class TestEvaluationFramework:
                 query=query,
                 steps=[],
                 success=True,
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
 
         # Run evaluation
         import time
@@ -390,8 +361,7 @@ class TestEvaluationFramework:
 
         await evaluation_service.evaluate_on_queries(
             agent_fn=mock_agent_execute,
-            queries=evaluation_queries,
-        )
+            queries=evaluation_queries)
 
         end_time = time.time()
         duration_ms = (end_time - start_time) * 1000
@@ -404,8 +374,7 @@ class TestEvaluationFramework:
     @pytest.mark.asyncio
     async def test_evaluation_with_partial_failures(
         self,
-        evaluation_service: EvaluationService,
-    ) -> None:
+        evaluation_service: EvaluationService) -> None:
         """Test evaluation handles partial failures correctly."""
         # Create mixed success/failure trajectories
         mixed_trajectories = []
@@ -421,12 +390,10 @@ class TestEvaluationFramework:
                         action={},
                         result={"success": i % 3 == 0},  # Every 3rd succeeds
                         timestamp=datetime.now(timezone.utc),
-                        duration_ms=100,
-                    )
+                        duration_ms=100)
                 ],
                 success=i % 3 == 0,
-                execution_time_ms=100,
-            )
+                execution_time_ms=100)
             mixed_trajectories.append(trajectory)
 
         # Compute metrics

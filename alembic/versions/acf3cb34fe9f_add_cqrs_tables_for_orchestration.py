@@ -33,9 +33,10 @@ def upgrade() -> None:
         sa.Column('event_metadata', sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint('event_id'),
     )
-    op.create_index('idx_aggregate_version', 'orchestration_events', ['aggregate_id', 'version'], unique=True)
-    op.create_index('idx_event_timestamp', 'orchestration_events', ['timestamp'])
-    op.create_index('idx_event_type_timestamp', 'orchestration_events', ['event_type', 'timestamp'])
+    # Create indexes with IF NOT EXISTS for idempotence
+    op.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_aggregate_version ON orchestration_events (aggregate_id, version)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_event_timestamp ON orchestration_events (timestamp)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_event_type_timestamp ON orchestration_events (event_type, timestamp)')
     op.create_index(op.f('ix_orchestration_events_aggregate_id'), 'orchestration_events', ['aggregate_id'])
     op.create_index(op.f('ix_orchestration_events_aggregate_type'), 'orchestration_events', ['aggregate_type'])
     op.create_index(op.f('ix_orchestration_events_event_type'), 'orchestration_events', ['event_type'])
@@ -51,7 +52,7 @@ def upgrade() -> None:
         sa.Column('snapshot_metadata', sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint('aggregate_id', 'version'),
     )
-    op.create_index('idx_snapshot_timestamp', 'orchestration_snapshots', ['timestamp'])
+    op.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_timestamp ON orchestration_snapshots (timestamp)')
     op.create_index(op.f('ix_orchestration_snapshots_aggregate_type'), 'orchestration_snapshots', ['aggregate_type'])
 
     # Create workflow_read_model table
@@ -74,8 +75,8 @@ def upgrade() -> None:
         sa.Column('average_execution_time_ms', sa.Float(), nullable=True),
         sa.PrimaryKeyConstraint('workflow_id'),
     )
-    op.create_index('idx_workflow_status_created', 'workflow_read_model', ['status', 'created_at'])
-    op.create_index('idx_workflow_pattern_status', 'workflow_read_model', ['orchestration_pattern', 'status'])
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_status_created ON workflow_read_model (status, created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_pattern_status ON workflow_read_model (orchestration_pattern, status)')
     op.create_index(op.f('ix_workflow_read_model_created_by'), 'workflow_read_model', ['created_by'])
     op.create_index(op.f('ix_workflow_read_model_orchestration_pattern'), 'workflow_read_model', ['orchestration_pattern'])
     op.create_index(op.f('ix_workflow_read_model_status'), 'workflow_read_model', ['status'])
@@ -105,9 +106,9 @@ def upgrade() -> None:
         sa.Column('failed_task_id', sa.String(length=36), nullable=True),
         sa.PrimaryKeyConstraint('execution_id'),
     )
-    op.create_index('idx_execution_workflow_status', 'execution_read_model', ['workflow_id', 'status'])
-    op.create_index('idx_execution_started_at', 'execution_read_model', ['started_at'])
-    op.create_index('idx_execution_workflow_started', 'execution_read_model', ['workflow_id', 'started_at'])
+    op.execute('CREATE INDEX IF NOT EXISTS idx_execution_workflow_status ON execution_read_model (workflow_id, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_execution_started_at ON execution_read_model (started_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_execution_workflow_started ON execution_read_model (workflow_id, started_at)')
     op.create_index(op.f('ix_execution_read_model_status'), 'execution_read_model', ['status'])
     op.create_index(op.f('ix_execution_read_model_workflow_id'), 'execution_read_model', ['workflow_id'])
 
@@ -126,9 +127,9 @@ def upgrade() -> None:
         sa.Column('average_task_time_ms', sa.Float(), nullable=True),
         sa.PrimaryKeyConstraint('workflow_id', 'agent_id', 'agent_role'),
     )
-    op.create_index('idx_assignment_agent_active', 'agent_assignment_read_model', ['agent_id', 'is_active'])
-    op.create_index('idx_assignment_workflow_active', 'agent_assignment_read_model', ['workflow_id', 'is_active'])
-    op.create_index('idx_assignment_role', 'agent_assignment_read_model', ['agent_role'])
+    op.execute('CREATE INDEX IF NOT EXISTS idx_assignment_agent_active ON agent_assignment_read_model (agent_id, is_active)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_assignment_workflow_active ON agent_assignment_read_model (workflow_id, is_active)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_assignment_role ON agent_assignment_read_model (agent_role)')
     op.create_index(op.f('ix_agent_assignment_read_model_is_active'), 'agent_assignment_read_model', ['is_active'])
 
     # Create task_read_model table
@@ -153,10 +154,11 @@ def upgrade() -> None:
         sa.Column('error_type', sa.String(length=255), nullable=True),
         sa.PrimaryKeyConstraint('task_id'),
     )
-    op.create_index('idx_task_workflow_status', 'task_read_model', ['workflow_id', 'status'])
-    op.create_index('idx_task_execution_status', 'task_read_model', ['execution_id', 'status'])
-    op.create_index('idx_task_agent_status', 'task_read_model', ['agent_id', 'status'])
-    op.create_index('idx_task_started_at', 'task_read_model', ['started_at'])
+    # Create indexes with IF NOT EXISTS for idempotence
+    op.execute('CREATE INDEX IF NOT EXISTS idx_task_workflow_status ON task_read_model (workflow_id, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_task_execution_status ON task_read_model (execution_id, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_task_agent_status ON task_read_model (agent_id, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_task_started_at ON task_read_model (started_at)')
     op.create_index(op.f('ix_task_read_model_agent_id'), 'task_read_model', ['agent_id'])
     op.create_index(op.f('ix_task_read_model_execution_id'), 'task_read_model', ['execution_id'])
     op.create_index(op.f('ix_task_read_model_status'), 'task_read_model', ['status'])
@@ -183,7 +185,7 @@ def upgrade() -> None:
         sa.Column('computed_at', sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint('workflow_id', 'execution_id'),
     )
-    op.create_index('idx_metrics_workflow', 'workflow_metrics_read_model', ['workflow_id', 'computed_at'])
+    op.execute('CREATE INDEX IF NOT EXISTS idx_metrics_workflow ON workflow_metrics_read_model (workflow_id, computed_at)')
     op.create_index(op.f('ix_workflow_metrics_read_model_computed_at'), 'workflow_metrics_read_model', ['computed_at'])
 
 

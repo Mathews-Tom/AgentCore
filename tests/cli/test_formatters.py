@@ -22,8 +22,7 @@ from agentcore_cli.formatters import (
     format_success,
     format_table,
     format_tree,
-    format_warning,
-)
+    format_warning)
 
 
 class TestColorDetection:
@@ -583,8 +582,7 @@ class TestIntegration:
             title="Test Agents",
             timestamps=True,
             limit=3,
-            force_color=False,
-        )
+            force_color=False)
 
         # Should have title
         assert "Test Agents" in result

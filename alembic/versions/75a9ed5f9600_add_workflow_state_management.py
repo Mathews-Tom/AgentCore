@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
 
 
@@ -21,8 +22,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create WorkflowStatus enum
-    op.execute("CREATE TYPE workflowstatus AS ENUM ('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled')")
+    # Create WorkflowStatus enum (idempotent)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'workflowstatus') THEN
+                CREATE TYPE workflowstatus AS ENUM ('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled');
+            END IF;
+        END$$;
+    """)
 
     # Create workflow_executions table
     op.create_table(
@@ -32,7 +40,7 @@ def upgrade() -> None:
         sa.Column('workflow_name', sa.String(255), nullable=False),
         sa.Column('workflow_version', sa.String(50), nullable=False, server_default='1.0'),
         sa.Column('orchestration_pattern', sa.String(50), nullable=False, index=True),
-        sa.Column('status', sa.Enum('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled', name='workflowstatus', create_type=False), nullable=False, server_default='pending', index=True),
+        sa.Column('status', postgresql.ENUM('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled', name='workflowstatus', create_type=False), nullable=False, server_default='pending', index=True),
         sa.Column('workflow_definition', JSONB, nullable=False),
         sa.Column('execution_state', JSONB, nullable=False, server_default='{}'),
         sa.Column('allocated_agents', JSONB, nullable=False, server_default='{}'),
@@ -55,24 +63,23 @@ def upgrade() -> None:
         sa.Column('compensation_errors', sa.JSON, nullable=False, server_default='[]'),
         sa.Column('input_data', JSONB, nullable=True),
         sa.Column('output_data', JSONB, nullable=True),
-        sa.Column('tags', sa.JSON, nullable=False, server_default='[]'),
+        sa.Column('tags', JSONB, nullable=False, server_default='[]'),
         sa.Column('workflow_metadata', JSONB, nullable=False, server_default='{}'),
     )
 
-    # Create indexes for workflow_executions
-    op.create_index('idx_workflow_status_created', 'workflow_executions', ['status', 'created_at'])
-    op.create_index('idx_workflow_name_status', 'workflow_executions', ['workflow_name', 'status'])
-    op.create_index('idx_workflow_pattern', 'workflow_executions', ['orchestration_pattern'])
-    op.create_index('idx_workflow_execution_state', 'workflow_executions', ['execution_state'], postgresql_using='gin')
-    op.create_index('idx_workflow_task_states', 'workflow_executions', ['task_states'], postgresql_using='gin')
-    op.create_index('idx_workflow_metadata', 'workflow_executions', ['workflow_metadata'], postgresql_using='gin')
-    op.create_index('idx_workflow_tags', 'workflow_executions', ['tags'], postgresql_using='gin')
-    op.create_index(
-        'idx_workflow_completed_performance',
-        'workflow_executions',
-        ['status', 'duration_seconds'],
-        postgresql_where=sa.text("status IN ('completed', 'failed', 'compensated')")
-    )
+    # Create indexes for workflow_executions (idempotent)
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_status_created ON workflow_executions (status, created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_name_status ON workflow_executions (workflow_name, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_pattern ON workflow_executions (orchestration_pattern)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_execution_state ON workflow_executions USING gin (execution_state)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_task_states ON workflow_executions USING gin (task_states)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_metadata ON workflow_executions USING gin (workflow_metadata)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_workflow_tags ON workflow_executions USING gin (tags)')
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_workflow_completed_performance
+        ON workflow_executions (status, duration_seconds)
+        WHERE status IN ('completed', 'failed', 'compensated')
+    """)
 
     # Create workflow_state_history table
     op.create_table(
@@ -89,10 +96,10 @@ def upgrade() -> None:
         sa.Column('state_metadata', JSONB, nullable=False, server_default='{}'),
     )
 
-    # Create indexes for workflow_state_history
-    op.create_index('idx_state_execution_version', 'workflow_state_history', ['execution_id', 'version'], unique=True)
-    op.create_index('idx_state_type_created', 'workflow_state_history', ['state_type', 'created_at'])
-    op.create_index('idx_state_snapshot', 'workflow_state_history', ['state_snapshot'], postgresql_using='gin')
+    # Create indexes for workflow_state_history (idempotent)
+    op.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_state_execution_version ON workflow_state_history (execution_id, version)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_state_type_created ON workflow_state_history (state_type, created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS idx_state_snapshot ON workflow_state_history USING gin (state_snapshot)')
 
     # Create workflow_state_versions table
     op.create_table(
@@ -109,8 +116,8 @@ def upgrade() -> None:
         sa.Column('applied_to_executions', sa.JSON, nullable=False, server_default='[]'),
     )
 
-    # Create indexes for workflow_state_versions
-    op.create_index('idx_version_type_active', 'workflow_state_versions', ['workflow_type', 'is_active'])
+    # Create indexes for workflow_state_versions (idempotent)
+    op.execute('CREATE INDEX IF NOT EXISTS idx_version_type_active ON workflow_state_versions (workflow_type, is_active)')
 
 
 def downgrade() -> None:
@@ -120,5 +127,5 @@ def downgrade() -> None:
     op.drop_table('workflow_state_history')
     op.drop_table('workflow_executions')
 
-    # Drop enum type
-    op.execute('DROP TYPE workflowstatus')
+    # Drop enum type (idempotent)
+    op.execute('DROP TYPE IF EXISTS workflowstatus')

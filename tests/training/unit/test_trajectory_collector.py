@@ -22,8 +22,7 @@ def agent_config():
     return AgentConfig(
         agent_id="test-agent-123",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
 
 @pytest.fixture
@@ -68,8 +67,7 @@ def collector(agent_config, mock_engine):
         engine=mock_engine,
         max_concurrent=8,
         max_steps_per_trajectory=20,
-        timeout_seconds=5.0,
-    )
+        timeout_seconds=5.0)
 
 
 @pytest.mark.asyncio
@@ -80,8 +78,7 @@ async def test_collector_initialization(agent_config, mock_engine):
         engine=mock_engine,
         max_concurrent=4,
         max_steps_per_trajectory=10,
-        timeout_seconds=30.0,
-    )
+        timeout_seconds=30.0)
 
     assert collector.agent_config == agent_config
     assert collector.engine == mock_engine
@@ -99,8 +96,7 @@ async def test_collect_single_trajectory(collector):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query=query,
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     assert len(trajectories) == 1
     trajectory = trajectories[0]
@@ -124,8 +120,7 @@ async def test_collect_multiple_trajectories_parallel(collector):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query=query,
-        n_trajectories=n_trajectories,
-    )
+        n_trajectories=n_trajectories)
 
     assert len(trajectories) == n_trajectories
 
@@ -165,15 +160,13 @@ async def test_collect_trajectories_with_failures(agent_config):
     collector = TrajectoryCollector(
         agent_config=agent_config,
         engine=engine,
-        max_concurrent=8,
-    )
+        max_concurrent=8)
 
     job_id = uuid4()
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query="Test query",
-        n_trajectories=4,
-    )
+        n_trajectories=4)
 
     # Should get 2 successful trajectories (odd indices: 1, 3)
     assert len(trajectories) == 2
@@ -204,8 +197,7 @@ async def test_collect_trajectories_timeout(agent_config):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query="Test query",
-        n_trajectories=2,
-    )
+        n_trajectories=2)
 
     # All should timeout
     assert len(trajectories) == 0
@@ -245,15 +237,13 @@ async def test_collect_trajectories_concurrency_limit(agent_config):
     collector = TrajectoryCollector(
         agent_config=agent_config,
         engine=engine,
-        max_concurrent=max_concurrent,
-    )
+        max_concurrent=max_concurrent)
 
     job_id = uuid4()
     await collector.collect_trajectories(
         job_id=job_id,
         query="Test query",
-        n_trajectories=10,
-    )
+        n_trajectories=10)
 
     # Max concurrent should not exceed limit
     assert concurrent_count["max"] <= max_concurrent
@@ -268,8 +258,7 @@ async def test_trajectory_step_extraction(collector):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query=query,
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     trajectory = trajectories[0]
     steps = trajectory.steps
@@ -309,15 +298,13 @@ async def test_trajectory_success_determination(agent_config):
 
     collector = TrajectoryCollector(
         agent_config=agent_config,
-        engine=engine,
-    )
+        engine=engine)
 
     job_id = uuid4()
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query="Test",
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     assert trajectories[0].success is True
 
@@ -334,8 +321,7 @@ async def test_trajectory_success_determination(agent_config):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query="Test",
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     assert trajectories[0].success is False
 
@@ -349,8 +335,7 @@ async def test_execution_time_tracking(collector):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query=query,
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     trajectory = trajectories[0]
 
@@ -378,15 +363,13 @@ async def test_collect_trajectories_empty_steps(agent_config):
 
     collector = TrajectoryCollector(
         agent_config=agent_config,
-        engine=engine,
-    )
+        engine=engine)
 
     job_id = uuid4()
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query="Test",
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     assert len(trajectories) == 1
     assert len(trajectories[0].steps) == 0
@@ -402,8 +385,7 @@ async def test_trajectory_fields_populated(collector):
     trajectories = await collector.collect_trajectories(
         job_id=job_id,
         query=query,
-        n_trajectories=1,
-    )
+        n_trajectories=1)
 
     trajectory = trajectories[0]
 

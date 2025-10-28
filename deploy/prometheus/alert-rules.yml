@@ -1,4 +1,86 @@
 groups:
+  - name: llm_governance_alerts
+    interval: 30s
+    rules:
+      # Model Governance Violation Alert - High Rate
+      - alert: HighModelGovernanceViolationRate
+        expr: |
+          sum(rate(llm_governance_violations_total[1h])) > 10
+        for: 5m
+        labels:
+          severity: critical
+          component: llm-service
+          security: true
+          compliance: true
+        annotations:
+          summary: "High rate of model governance violations detected"
+          description: "Model governance violations: {{ $value }}/hour (threshold: 10/hour)"
+          runbook: "Check audit logs for unauthorized model access attempts. Review ALLOWED_MODELS configuration and agent permissions."
+          dashboard: "https://grafana/d/llm-governance"
+
+      # Model Governance Violation Alert - Per Agent
+      - alert: HighModelGovernanceViolationsPerAgent
+        expr: |
+          sum by (source_agent) (rate(llm_governance_violations_total[1h])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: llm-service
+          security: true
+          compliance: true
+        annotations:
+          summary: "High rate of model governance violations from agent {{ $labels.source_agent }}"
+          description: "Agent {{ $labels.source_agent }} violations: {{ $value }}/hour (threshold: 5/hour)"
+          runbook: "Investigate agent {{ $labels.source_agent }} for misconfiguration or unauthorized activity."
+          dashboard: "https://grafana/d/llm-governance"
+
+      # Model Governance Violation Alert - Per Model
+      - alert: HighModelGovernanceViolationsPerModel
+        expr: |
+          sum by (model) (rate(llm_governance_violations_total[1h])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: llm-service
+          security: true
+          compliance: true
+        annotations:
+          summary: "High rate of governance violations for model {{ $labels.model }}"
+          description: "Model {{ $labels.model }} violation attempts: {{ $value }}/hour (threshold: 5/hour)"
+          runbook: "Review if model {{ $labels.model }} should be added to ALLOWED_MODELS configuration."
+          dashboard: "https://grafana/d/llm-governance"
+
+      # Governance Violation Spike
+      - alert: ModelGovernanceViolationSpike
+        expr: |
+          (rate(llm_governance_violations_total[5m])
+          / rate(llm_governance_violations_total[1h])) > 3
+        for: 2m
+        labels:
+          severity: critical
+          component: llm-service
+          security: true
+          compliance: true
+        annotations:
+          summary: "Spike in model governance violations detected"
+          description: "Current violation rate is {{ $value }}x the hourly average"
+          runbook: "Potential security incident or configuration issue. Investigate immediately."
+          dashboard: "https://grafana/d/llm-governance"
+
+      # Missing API Key Error
+      - alert: MissingAPIKeyError
+        expr: |
+          sum(increase(llm_governance_violations_total{violation_type="missing_api_key"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: llm-service
+        annotations:
+          summary: "LLM provider API key missing"
+          description: "API key not configured for provider. Check environment variables."
+          runbook: "Verify OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY are set correctly."
+          dashboard: "https://grafana/d/llm-governance"
+
   - name: gateway_alerts
     interval: 30s
     rules:

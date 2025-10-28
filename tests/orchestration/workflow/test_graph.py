@@ -7,13 +7,11 @@ import pytest
 from orchestration.workflow.graph import (
     CycleDetectedError,
     InvalidGraphError,
-    WorkflowGraph,
-)
+    WorkflowGraph)
 from orchestration.workflow.models import (
     EdgeType,
     TaskNode,
-    WorkflowDefinition,
-)
+    WorkflowDefinition)
 
 
 def test_empty_graph() -> None:
@@ -212,8 +210,7 @@ def test_from_definition() -> None:
 
     definition = WorkflowDefinition(
         name="test_workflow",
-        nodes=[node1, node2],
-    )
+        nodes=[node1, node2])
 
     graph = WorkflowGraph.from_definition(definition)
 

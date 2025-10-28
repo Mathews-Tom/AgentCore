@@ -31,8 +31,7 @@ async def test_end_to_end_training_job() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)  # Minimum 100 queries required
     ]
 
@@ -42,15 +41,13 @@ async def test_end_to_end_training_job() -> None:
         n_trajectories_per_query=8,
         learning_rate=0.0001,
         max_budget_usd="5.00",
-        checkpoint_interval=2,
-    )
+        checkpoint_interval=2)
 
     # Act - Create job
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     assert job.job_id is not None
     assert job.agent_id == agent_id
@@ -89,8 +86,7 @@ async def test_end_to_end_with_checkpoint_creation() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Checkpoint test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
@@ -104,8 +100,7 @@ async def test_end_to_end_with_checkpoint_creation() -> None:
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -139,22 +134,19 @@ async def test_end_to_end_job_cancellation() -> None:
     training_queries = [
         TrainingQuery(
             query=f"Cancel test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
     config = GRPOConfig(
         n_iterations=100,  # Long-running job
-        batch_size=16,
-    )
+        batch_size=16)
 
     # Act
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=training_queries,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
 

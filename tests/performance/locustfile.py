@@ -106,7 +106,7 @@ class OrchestrationUser(HttpUser):
                 latency_ms = (time.time() - start_time) * 1000
                 if latency_ms > 100:
                     response.failure(
-                        f"Coordination latency {latency_ms:.1f}ms exceeds 100ms target"
+                        f"Coordination latency {latency_ms:.1f}, ms exceeds 100ms target"
                     )
                 else:
                     response.success()

@@ -13,8 +13,7 @@ from agentcore.integration.security.audit_logger import (
     AuditAction,
     AuditEvent,
     AuditLogger,
-    AuditOutcome,
-)
+    AuditOutcome)
 
 
 class TestAuditLogger:
@@ -36,8 +35,7 @@ class TestAuditLogger:
             resource="cred-001",
             outcome=AuditOutcome.SUCCESS,
             ip_address="192.168.1.1",
-            details={"purpose": "test"},
-        )
+            details={"purpose": "test"})
 
         assert event.user_id == "user-123"
         assert event.service_name == "test-service"
@@ -58,8 +56,7 @@ class TestAuditLogger:
             service_name="test",
             action=AuditAction.DATA_READ,
             resource="data-001",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Event should have hash
         assert event.event_hash is not None
@@ -79,8 +76,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Log second event
         event2 = logger.log_event(
@@ -88,8 +84,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_WRITE,
             resource="resource-2",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # First event should have no previous hash
         assert event1.previous_hash is None
@@ -108,8 +103,7 @@ class TestAuditLogger:
                 service_name="service",
                 action=AuditAction.DATA_READ,
                 resource=f"resource-{i}",
-                outcome=AuditOutcome.SUCCESS,
-            )
+                outcome=AuditOutcome.SUCCESS)
 
         # Verify chain
         assert logger.verify_chain()
@@ -124,16 +118,14 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         event2 = logger.log_event(
             user_id="user-2",
             service_name="service",
             action=AuditAction.DATA_WRITE,
             resource="resource-2",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Tamper with event
         event1.user_id = "tampered-user"
@@ -152,8 +144,7 @@ class TestAuditLogger:
                 service_name="service",
                 action=AuditAction.DATA_READ,
                 resource=f"resource-{i}",
-                outcome=AuditOutcome.SUCCESS,
-            )
+                outcome=AuditOutcome.SUCCESS)
 
         events = logger.get_events()
         assert len(events) == 3
@@ -168,22 +159,19 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         logger.log_event(
             user_id="user-2",
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-2",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         logger.log_event(
             user_id="user-1",
             service_name="service",
             action=AuditAction.DATA_WRITE,
             resource="resource-3",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Filter by user
         events = logger.get_events(user_id="user-1")
@@ -200,15 +188,13 @@ class TestAuditLogger:
             service_name="service-1",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         logger.log_event(
             user_id="user",
             service_name="service-2",
             action=AuditAction.DATA_READ,
             resource="resource-2",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Filter by service
         events = logger.get_events(service_name="service-1")
@@ -225,15 +211,13 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         logger.log_event(
             user_id="user",
             service_name="service",
             action=AuditAction.DATA_WRITE,
             resource="resource-2",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Filter by action
         events = logger.get_events(action=AuditAction.DATA_READ)
@@ -250,15 +234,13 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         logger.log_event(
             user_id="user",
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-2",
-            outcome=AuditOutcome.FAILURE,
-        )
+            outcome=AuditOutcome.FAILURE)
 
         # Filter by outcome
         events = logger.get_events(outcome=AuditOutcome.FAILURE)
@@ -277,8 +259,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="past",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         past_event.timestamp = now - timedelta(hours=2)
 
         # Log current event
@@ -287,14 +268,12 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="current",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Filter by time range
         events = logger.get_events(
             start_time=now - timedelta(hours=1),
-            end_time=now + timedelta(hours=1),
-        )
+            end_time=now + timedelta(hours=1))
 
         # Should only get current event
         assert len(events) == 1
@@ -311,8 +290,7 @@ class TestAuditLogger:
                 service_name="service",
                 action=AuditAction.DATA_READ,
                 resource=f"resource-{i}",
-                outcome=AuditOutcome.SUCCESS,
-            )
+                outcome=AuditOutcome.SUCCESS)
 
         # Get with limit
         events = logger.get_events(limit=5)
@@ -329,8 +307,7 @@ class TestAuditLogger:
                 service_name="service",
                 action=AuditAction.DATA_READ,
                 resource=f"resource-{i}",
-                outcome=AuditOutcome.SUCCESS,
-            )
+                outcome=AuditOutcome.SUCCESS)
 
         events = logger.get_events()
 
@@ -348,15 +325,13 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.AUTHENTICATION_FAILURE,
             resource="login",
-            outcome=AuditOutcome.FAILURE,
-        )
+            outcome=AuditOutcome.FAILURE)
         logger.log_event(
             user_id="user",
             service_name="service",
             action=AuditAction.AUTHORIZATION_FAILURE,
             resource="admin",
-            outcome=AuditOutcome.DENIED,
-        )
+            outcome=AuditOutcome.DENIED)
 
         # Log non-security event
         logger.log_event(
@@ -364,8 +339,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="data",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Get security events
         security_events = logger.get_security_events()
@@ -390,15 +364,13 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-1",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         logger.log_event(
             user_id="other-user",
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource-2",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Get user activity
         activity = logger.get_user_activity("target-user")
@@ -415,8 +387,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Export
         json_str = logger.export_events()
@@ -436,8 +407,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="old",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
         old_event.timestamp = now - timedelta(days=31)
 
         # Log recent event
@@ -446,8 +416,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="recent",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Cleanup
         removed = logger.cleanup_old_events()
@@ -464,8 +433,7 @@ class TestAuditLogger:
         """Test SIEM integration configuration."""
         logger = AuditLogger(
             enable_siem=True,
-            siem_endpoint="https://siem.example.com/events",
-        )
+            siem_endpoint="https://siem.example.com/events")
 
         # Log event (should forward to SIEM)
         event = logger.log_event(
@@ -473,8 +441,7 @@ class TestAuditLogger:
             service_name="service",
             action=AuditAction.DATA_READ,
             resource="resource",
-            outcome=AuditOutcome.SUCCESS,
-        )
+            outcome=AuditOutcome.SUCCESS)
 
         # Event should be logged
         assert event is not None
@@ -489,8 +456,7 @@ class TestAuditLogger:
             action=AuditAction.DATA_READ,
             resource="resource",
             outcome=AuditOutcome.ERROR,
-            error_message="Database connection failed",
-        )
+            error_message="Database connection failed")
 
         assert event.error_message == "Database connection failed"
 
@@ -504,7 +470,6 @@ class TestAuditLogger:
             action=AuditAction.DATA_READ,
             resource="resource",
             outcome=AuditOutcome.SUCCESS,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        )
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
 
         assert event.user_agent == "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"

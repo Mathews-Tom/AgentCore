@@ -17,8 +17,7 @@ from agentcore.orchestration.patterns.supervisor import (
     LoadBalancingStrategy,
     SupervisorConfig,
     SupervisorCoordinator,
-    WorkerStatus,
-)
+    WorkerStatus)
 
 
 class TestSupervisorCoordinator:
@@ -33,16 +32,14 @@ class TestSupervisorCoordinator:
             worker_timeout_seconds=30,
             task_timeout_seconds=300,
             enable_auto_recovery=True,
-            max_task_retries=3,
-        )
+            max_task_retries=3)
 
     @pytest.fixture
     def supervisor(self, config: SupervisorConfig) -> SupervisorCoordinator:
         """Create supervisor coordinator instance."""
         return SupervisorCoordinator(
             supervisor_id="test-supervisor",
-            config=config,
-        )
+            config=config)
 
     @pytest.mark.asyncio
     async def test_register_worker(self, supervisor: SupervisorCoordinator) -> None:
@@ -50,8 +47,7 @@ class TestSupervisorCoordinator:
         # Register a worker
         await supervisor.register_worker(
             worker_id="worker-1",
-            capabilities=["task_a", "task_b"],
-        )
+            capabilities=["task_a", "task_b"])
 
         # Verify worker is registered
         workers = await supervisor.get_worker_states()
@@ -82,8 +78,7 @@ class TestSupervisorCoordinator:
         await supervisor.submit_task(
             task_id=task_id,
             task_type="test_task",
-            input_data={"key": "value"},
-        )
+            input_data={"key": "value"})
 
         # Small delay for async assignment
         await asyncio.sleep(0.1)
@@ -107,8 +102,7 @@ class TestSupervisorCoordinator:
         await supervisor.handle_task_completion(
             task_id=task_id,
             worker_id="worker-1",
-            result_data={"result": "success"},
-        )
+            result_data={"result": "success"})
 
         # Verify task is completed
         status = await supervisor.get_supervisor_status()
@@ -136,8 +130,7 @@ class TestSupervisorCoordinator:
             task_id=task_id,
             worker_id="worker-1",
             error_message="Test error",
-            error_type="TestError",
-        )
+            error_type="TestError")
 
         # Verify task is retried (back in pending or reassigned)
         status = await supervisor.get_supervisor_status()
@@ -160,8 +153,7 @@ class TestSupervisorCoordinator:
                 task_id=task_id,
                 worker_id="worker-1",
                 error_message="Test error",
-                error_type="TestError",
-            )
+                error_type="TestError")
             await asyncio.sleep(0.05)
 
         # Verify task is permanently failed
@@ -251,8 +243,7 @@ class TestSupervisorCoordinator:
         """Test worker timeout detection and recovery."""
         config = SupervisorConfig(
             worker_timeout_seconds=1,  # Short timeout for testing
-            enable_auto_recovery=True,
-        )
+            enable_auto_recovery=True)
         supervisor = SupervisorCoordinator("test-supervisor", config)
 
         # Register worker

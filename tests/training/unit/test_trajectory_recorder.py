@@ -20,8 +20,7 @@ def agent_config():
     return AgentConfig(
         agent_id="test-agent-456",
         philosophy="react",
-        model_config={"provider": "test", "model": "test-model"},
-    )
+        model_config={"provider": "test", "model": "test-model"})
 
 
 @pytest.fixture
@@ -82,8 +81,7 @@ async def test_execute_with_recording(recorder):
     input_data = {"goal": "What is 40 + 2?", "max_iterations": 10}
     state = AgentExecutionState(
         agent_id="test-agent-456",
-        status="running",
-    )
+        status="running")
 
     result, steps = await recorder.execute_with_recording(input_data, state)
 

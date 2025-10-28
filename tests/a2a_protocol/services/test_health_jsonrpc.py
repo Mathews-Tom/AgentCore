@@ -30,8 +30,7 @@ class TestCheckAgent:
             jsonrpc="2.0",
             method="health.check_agent",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_agent(request)
 
@@ -52,8 +51,7 @@ class TestCheckAgent:
             jsonrpc="2.0",
             method="health.check_agent",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_agent(request)
 
@@ -68,8 +66,7 @@ class TestCheckAgent:
             jsonrpc="2.0",
             method="health.check_agent",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_check_agent(request)
@@ -95,8 +92,7 @@ class TestCheckAll:
             jsonrpc="2.0",
             method="health.check_all",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_all(request)
 
@@ -117,8 +113,7 @@ class TestCheckAll:
             jsonrpc="2.0",
             method="health.check_all",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_check_all(request)
 
@@ -145,8 +140,7 @@ class TestHealthHistory:
             jsonrpc="2.0",
             method="health.get_history",
             params={"agent_id": "agent-123", "limit": 10},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_history(request)
 
@@ -166,8 +160,7 @@ class TestHealthHistory:
             jsonrpc="2.0",
             method="health.get_history",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_history(request)
 
@@ -182,8 +175,7 @@ class TestHealthHistory:
             jsonrpc="2.0",
             method="health.get_history",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_get_history(request)
@@ -205,8 +197,7 @@ class TestUnhealthyAgents:
             jsonrpc="2.0",
             method="health.get_unhealthy",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_unhealthy(request)
 
@@ -226,8 +217,7 @@ class TestUnhealthyAgents:
             jsonrpc="2.0",
             method="health.get_unhealthy",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_unhealthy(request)
 
@@ -255,8 +245,7 @@ class TestHealthStats:
             jsonrpc="2.0",
             method="health.get_stats",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_stats(request)
 
@@ -287,8 +276,7 @@ class TestDiscoveryFindAgents:
             max_load=10,
             last_seen=datetime.now(UTC),
             created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+            updated_at=datetime.now(UTC))
         agent2 = AgentDB(
             id="agent-2",
             name="Agent 2",
@@ -301,8 +289,7 @@ class TestDiscoveryFindAgents:
             max_load=10,
             last_seen=datetime.now(UTC),
             created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+            updated_at=datetime.now(UTC))
 
         mock_session.return_value.__aenter__.return_value = Mock()
         mock_repo.get_all = AsyncMock(return_value=[agent1, agent2])
@@ -311,8 +298,7 @@ class TestDiscoveryFindAgents:
             jsonrpc="2.0",
             method="discovery.find_agents",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_find_agents(request)
 
@@ -339,8 +325,7 @@ class TestDiscoveryFindAgents:
             max_load=10,
             last_seen=datetime.now(UTC),
             created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+            updated_at=datetime.now(UTC))
 
         mock_session.return_value.__aenter__.return_value = Mock()
         mock_repo.get_by_capabilities = AsyncMock(return_value=[agent])
@@ -349,8 +334,7 @@ class TestDiscoveryFindAgents:
             jsonrpc="2.0",
             method="discovery.find_agents",
             params={"capabilities": ["capability-1"], "status": "active"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_find_agents(request)
 
@@ -380,8 +364,7 @@ class TestDiscoveryGetAgent:
             max_load=10,
             last_seen=datetime.now(UTC),
             created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+            updated_at=datetime.now(UTC))
 
         mock_session.return_value.__aenter__.return_value = Mock()
         mock_repo.get_by_id = AsyncMock(return_value=agent)
@@ -390,8 +373,7 @@ class TestDiscoveryGetAgent:
             jsonrpc="2.0",
             method="discovery.get_agent",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_agent(request)
 
@@ -414,8 +396,7 @@ class TestDiscoveryGetAgent:
             jsonrpc="2.0",
             method="discovery.get_agent",
             params={"agent_id": "nonexistent"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Agent not found"):
             await handle_get_agent(request)
@@ -429,8 +410,7 @@ class TestDiscoveryGetAgent:
             jsonrpc="2.0",
             method="discovery.get_agent",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_get_agent(request)
@@ -445,8 +425,7 @@ class TestDiscoveryListCapabilities:
     async def test_list_capabilities(self, mock_repo, mock_session):
         """Test listing all capabilities."""
         from agentcore.a2a_protocol.services.health_jsonrpc import (
-            handle_list_capabilities,
-        )
+            handle_list_capabilities)
 
         agent1 = AgentDB(
             id="agent-1",
@@ -460,8 +439,7 @@ class TestDiscoveryListCapabilities:
             max_load=10,
             last_seen=datetime.now(UTC),
             created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+            updated_at=datetime.now(UTC))
         agent2 = AgentDB(
             id="agent-2",
             name="Agent 2",
@@ -474,8 +452,7 @@ class TestDiscoveryListCapabilities:
             max_load=10,
             last_seen=datetime.now(UTC),
             created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+            updated_at=datetime.now(UTC))
 
         mock_session.return_value.__aenter__.return_value = Mock()
         mock_repo.get_all = AsyncMock(return_value=[agent1, agent2])
@@ -484,8 +461,7 @@ class TestDiscoveryListCapabilities:
             jsonrpc="2.0",
             method="discovery.list_capabilities",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_list_capabilities(request)
 
@@ -501,8 +477,7 @@ class TestDiscoveryListCapabilities:
     async def test_list_capabilities_empty(self, mock_repo, mock_session):
         """Test listing capabilities when no agents exist."""
         from agentcore.a2a_protocol.services.health_jsonrpc import (
-            handle_list_capabilities,
-        )
+            handle_list_capabilities)
 
         mock_session.return_value.__aenter__.return_value = Mock()
         mock_repo.get_all = AsyncMock(return_value=[])
@@ -511,8 +486,7 @@ class TestDiscoveryListCapabilities:
             jsonrpc="2.0",
             method="discovery.list_capabilities",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_list_capabilities(request)
 

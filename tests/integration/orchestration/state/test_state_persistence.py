@@ -22,12 +22,10 @@ from agentcore.orchestration.state.models import (
     WorkflowStateDB,
     WorkflowStateVersion,
     WorkflowStatus,
-    Base,
-)
+    Base)
 from agentcore.orchestration.state.repository import (
     WorkflowStateRepository,
-    WorkflowVersionRepository,
-)
+    WorkflowVersionRepository)
 
 # Check if PostgreSQL testing is enabled
 USE_POSTGRES = os.getenv("USE_POSTGRES", "0") == "1"
@@ -77,8 +75,7 @@ async def db_engine(postgres_container=None):
         engine = create_async_engine(
             "sqlite+aiosqlite:///:memory:",
             connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
+            poolclass=StaticPool)
 
     # Create tables
     async with engine.begin() as conn:
@@ -120,8 +117,7 @@ class TestWorkflowStateRepository:
             workflow_version="1.0",
             input_data={"input": "value"},
             tags=["test"],
-            metadata={"meta": "data"},
-        )
+            metadata={"meta": "data"})
 
         assert execution.execution_id == execution_id
         assert execution.workflow_id == workflow_id
@@ -146,8 +142,7 @@ class TestWorkflowStateRepository:
             workflow_id=workflow_id,
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await db_session.commit()
 
@@ -176,8 +171,7 @@ class TestWorkflowStateRepository:
             workflow_name="workflow1",
             orchestration_pattern="saga",
             workflow_definition={"steps": []},
-            tags=["test", "priority"],
-        )
+            tags=["test", "priority"])
 
         exec2 = await WorkflowStateRepository.create_execution(
             session=db_session,
@@ -186,8 +180,7 @@ class TestWorkflowStateRepository:
             workflow_name="workflow2",
             orchestration_pattern="supervisor",
             workflow_definition={"steps": []},
-            tags=["test"],
-        )
+            tags=["test"])
 
         await db_session.commit()
 
@@ -225,8 +218,7 @@ class TestWorkflowStateRepository:
             workflow_id=str(uuid4()),
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await db_session.commit()
 
@@ -234,8 +226,7 @@ class TestWorkflowStateRepository:
         execution = await WorkflowStateRepository.update_execution_status(
             session=db_session,
             execution_id=execution_id,
-            status=WorkflowStatus.EXECUTING,
-        )
+            status=WorkflowStatus.EXECUTING)
 
         assert execution is not None
         assert execution.status == WorkflowStatus.EXECUTING
@@ -247,8 +238,7 @@ class TestWorkflowStateRepository:
         execution = await WorkflowStateRepository.update_execution_status(
             session=db_session,
             execution_id=execution_id,
-            status=WorkflowStatus.COMPLETED,
-        )
+            status=WorkflowStatus.COMPLETED)
 
         assert execution.status == WorkflowStatus.COMPLETED
         assert execution.completed_at is not None
@@ -267,8 +257,7 @@ class TestWorkflowStateRepository:
             workflow_id=str(uuid4()),
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await db_session.commit()
 
@@ -286,8 +275,7 @@ class TestWorkflowStateRepository:
             execution_state=new_state,
             allocated_agents=allocated_agents,
             task_states=task_states,
-            create_snapshot=True,
-        )
+            create_snapshot=True)
 
         assert execution is not None
         assert execution.execution_state == new_state
@@ -309,8 +297,7 @@ class TestWorkflowStateRepository:
             workflow_id=str(uuid4()),
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await db_session.commit()
 
@@ -320,8 +307,7 @@ class TestWorkflowStateRepository:
         execution = await WorkflowStateRepository.create_checkpoint(
             session=db_session,
             execution_id=execution_id,
-            checkpoint_data=checkpoint_data,
-        )
+            checkpoint_data=checkpoint_data)
 
         assert execution is not None
         assert execution.checkpoint_data == checkpoint_data
@@ -334,8 +320,7 @@ class TestWorkflowStateRepository:
         execution = await WorkflowStateRepository.create_checkpoint(
             session=db_session,
             execution_id=execution_id,
-            checkpoint_data={"step": 10},
-        )
+            checkpoint_data={"step": 10})
 
         assert execution.checkpoint_count == 2
 
@@ -351,8 +336,7 @@ class TestWorkflowStateRepository:
             workflow_id=str(uuid4()),
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await db_session.commit()
 
@@ -362,16 +346,14 @@ class TestWorkflowStateRepository:
             execution_id=execution_id,
             state_type="event",
             state_snapshot={"state": "v1"},
-            change_reason="initial",
-        )
+            change_reason="initial")
 
         await WorkflowStateRepository.create_state_snapshot(
             session=db_session,
             execution_id=execution_id,
             state_type="checkpoint",
             state_snapshot={"state": "v2"},
-            change_reason="checkpoint",
-        )
+            change_reason="checkpoint")
 
         await db_session.commit()
 
@@ -413,15 +395,13 @@ class TestWorkflowStateRepository:
             workflow_id=str(uuid4()),
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await WorkflowStateRepository.create_state_snapshot(
             session=db_session,
             execution_id=execution_id,
             state_type="event",
-            state_snapshot={"state": "data"},
-        )
+            state_snapshot={"state": "data"})
 
         await db_session.commit()
 
@@ -459,8 +439,7 @@ class TestWorkflowStateRepository:
             workflow_id=workflow_id,
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await WorkflowStateRepository.update_execution_status(
             db_session, exec1.execution_id, WorkflowStatus.EXECUTING
@@ -475,8 +454,7 @@ class TestWorkflowStateRepository:
             workflow_id=workflow_id,
             workflow_name="test_workflow",
             orchestration_pattern="saga",
-            workflow_definition={"steps": []},
-        )
+            workflow_definition={"steps": []})
 
         await WorkflowStateRepository.update_execution_status(
             db_session, exec2.execution_id, WorkflowStatus.EXECUTING
@@ -490,8 +468,7 @@ class TestWorkflowStateRepository:
             db_session,
             exec1.execution_id,
             execution_state={},
-            task_states={"task1": {"status": "completed"}},
-        )
+            task_states={"task1": {"status": "completed"}})
 
         await db_session.commit()
 
@@ -525,8 +502,7 @@ class TestWorkflowVersionRepository:
             workflow_type="saga",
             state_schema={"type": "object", "properties": {}},
             description="Initial version",
-            migration_script="-- No migration needed",
-        )
+            migration_script="-- No migration needed")
 
         assert version.version_id == version_id
         assert version.schema_version == 1
@@ -543,16 +519,14 @@ class TestWorkflowVersionRepository:
             version_id=str(uuid4()),
             schema_version=1,
             workflow_type="saga",
-            state_schema={"version": 1},
-        )
+            state_schema={"version": 1})
 
         await WorkflowVersionRepository.create_version(
             session=db_session,
             version_id=str(uuid4()),
             schema_version=2,
             workflow_type="saga",
-            state_schema={"version": 2},
-        )
+            state_schema={"version": 2})
 
         await db_session.commit()
 
@@ -575,8 +549,7 @@ class TestWorkflowVersionRepository:
             version_id=version_id,
             schema_version=1,
             workflow_type="saga",
-            state_schema={"version": 1},
-        )
+            state_schema={"version": 1})
 
         await db_session.commit()
 

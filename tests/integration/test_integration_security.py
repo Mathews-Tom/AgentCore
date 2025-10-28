@@ -25,8 +25,7 @@ from agentcore.integration.webhook import (
     WebhookEvent,
     WebhookManager,
     WebhookValidationError,
-    WebhookValidator,
-)
+    WebhookValidator)
 
 
 class TestWebhookSignatureVerification:
@@ -126,8 +125,7 @@ class TestSecretManagement:
             manager.register(
                 name="Test Webhook",
                 url="https://api.example.com/webhook",
-                events=[WebhookEvent.TASK_COMPLETED],
-            )
+                events=[WebhookEvent.TASK_COMPLETED])
         )
 
         # Verify auto-generated secret is strong
@@ -152,8 +150,7 @@ class TestSecretManagement:
                 name="Test Webhook",
                 url="https://api.example.com/webhook",
                 events=[WebhookEvent.TASK_COMPLETED],
-                secret="my_super_secret_key_1234567890123",
-            )
+                secret="my_super_secret_key_1234567890123")
         )
 
         # Check that secret is not in logs
@@ -278,15 +275,13 @@ class TestAuthorizationAndAccessControl:
             name="Tenant 1 Webhook",
             url="https://api.example.com/webhook1",
             events=[WebhookEvent.TASK_COMPLETED],
-            tenant_id="tenant-1",
-        )
+            tenant_id="tenant-1")
 
         webhook2 = await manager.register(
             name="Tenant 2 Webhook",
             url="https://api.example.com/webhook2",
             events=[WebhookEvent.TASK_COMPLETED],
-            tenant_id="tenant-2",
-        )
+            tenant_id="tenant-2")
 
         # List webhooks for tenant 1
         tenant1_webhooks = await manager.list(tenant_id="tenant-1")
@@ -313,20 +308,17 @@ class TestAuthorizationAndAccessControl:
         await publisher.subscribe(
             webhook_id1,
             [WebhookEvent.TASK_COMPLETED],
-            tenant_id="tenant-1",
-        )
+            tenant_id="tenant-1")
 
         await publisher.subscribe(
             webhook_id2,
             [WebhookEvent.TASK_COMPLETED],
-            tenant_id="tenant-2",
-        )
+            tenant_id="tenant-2")
 
         # Get subscribers for tenant 1 event
         subscribers = await publisher.get_subscribers(
             WebhookEvent.TASK_COMPLETED,
-            tenant_id="tenant-1",
-        )
+            tenant_id="tenant-1")
 
         # Only tenant 1 webhook should be in subscribers
         assert webhook_id1 in subscribers
@@ -345,8 +337,7 @@ class TestSecurityHeaders:
             DeliveryService,
             EventPayload,
             WebhookConfig,
-            WebhookRegistration,
-        )
+            WebhookRegistration)
 
         config = WebhookConfig()
         service = DeliveryService(config=config)
@@ -355,14 +346,12 @@ class TestSecurityHeaders:
             name="Test Webhook",
             url="https://api.example.com/webhook",
             events=[WebhookEvent.TASK_COMPLETED],
-            secret="a" * 32,
-        )
+            secret="a" * 32)
 
         event = EventPayload(
             event_type=WebhookEvent.TASK_COMPLETED,
             data={"task_id": "123"},
-            source="test",
-        )
+            source="test")
 
         # Prepare headers
         headers = service._prepare_headers(webhook, event)
@@ -391,8 +380,7 @@ class TestSecretsLeakage:
             validator.verify_signature(
                 secret,
                 {"test": "data"},
-                "sha256=wrong_signature",
-            )
+                "sha256=wrong_signature")
         except SignatureVerificationError as e:
             # Error message should not contain the secret
             assert secret not in str(e)

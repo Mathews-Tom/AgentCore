@@ -17,21 +17,18 @@ from agentcore.orchestration.cqrs.commands import (
     CommandResult,
     ExecuteHandoffCommand,
     InitiateHandoffCommand,
-    RollbackHandoffCommand,
-)
+    RollbackHandoffCommand)
 from agentcore.orchestration.cqrs.events import (
     EventType,
     HandoffCompletedEvent,
     HandoffFailedEvent,
     HandoffInitiatedEvent,
-    HandoffRolledBackEvent,
-)
+    HandoffRolledBackEvent)
 from agentcore.orchestration.patterns.handoff import (
     HandoffConfig,
     HandoffCoordinator,
     HandoffStatus,
-    InputValidationGate,
-)
+    InputValidationGate)
 
 
 class MockHandoffCommandHandler:
@@ -52,22 +49,19 @@ class MockHandoffCommandHandler:
                 source_agent_id=command.source_agent_id,
                 target_agent_id=command.target_agent_id,
                 task_data=command.task_data,
-                metadata=command.handoff_metadata,
-            )
+                metadata=command.handoff_metadata)
 
             return CommandResult(
                 command_id=command.command_id,
                 success=True,
                 aggregate_id=handoff_id,
-                events_produced=[handoff_id],
-            )
+                events_produced=[handoff_id])
         except Exception as e:
             return CommandResult(
                 command_id=command.command_id,
                 success=False,
                 error_message=str(e),
-                error_type=type(e).__name__,
-            )
+                error_type=type(e).__name__)
 
     async def handle_execute(self, command: ExecuteHandoffCommand) -> CommandResult:
         """Handle execute handoff command."""
@@ -77,36 +71,31 @@ class MockHandoffCommandHandler:
             return CommandResult(
                 command_id=command.command_id,
                 success=success,
-                aggregate_id=command.handoff_id,
-            )
+                aggregate_id=command.handoff_id)
         except Exception as e:
             return CommandResult(
                 command_id=command.command_id,
                 success=False,
                 error_message=str(e),
-                error_type=type(e).__name__,
-            )
+                error_type=type(e).__name__)
 
     async def handle_rollback(self, command: RollbackHandoffCommand) -> CommandResult:
         """Handle rollback handoff command."""
         try:
             success = await self.coordinator.rollback_handoff(
                 handoff_id=command.handoff_id,
-                reason=command.reason,
-            )
+                reason=command.reason)
 
             return CommandResult(
                 command_id=command.command_id,
                 success=success,
-                aggregate_id=command.handoff_id,
-            )
+                aggregate_id=command.handoff_id)
         except Exception as e:
             return CommandResult(
                 command_id=command.command_id,
                 success=False,
                 error_message=str(e),
-                error_type=type(e).__name__,
-            )
+                error_type=type(e).__name__)
 
 
 class TestHandoffIntegration:
@@ -118,12 +107,10 @@ class TestHandoffIntegration:
         config = HandoffConfig(
             enable_quality_gates=True,
             enable_rollback=True,
-            preserve_history=True,
-        )
+            preserve_history=True)
         return HandoffCoordinator(
             coordinator_id="test-integration-coordinator",
-            config=config,
-        )
+            config=config)
 
     @pytest.mark.asyncio
     async def test_initiate_handoff_command(
@@ -139,8 +126,7 @@ class TestHandoffIntegration:
             source_agent_id="agent-1",
             target_agent_id="agent-2",
             task_data={"test": "data"},
-            handoff_metadata={"priority": "high"},
-        )
+            handoff_metadata={"priority": "high"})
 
         result = await handler.handle_initiate(command)
 
@@ -167,8 +153,7 @@ class TestHandoffIntegration:
             task_type="integration_test",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={},
-        )
+            task_data={})
 
         init_result = await handler.handle_initiate(init_command)
         handoff_id = init_result.aggregate_id
@@ -198,8 +183,7 @@ class TestHandoffIntegration:
             task_type="integration_test",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"original": "data"},
-        )
+            task_data={"original": "data"})
 
         init_result = await handler.handle_initiate(init_command)
         handoff_id = init_result.aggregate_id
@@ -210,8 +194,7 @@ class TestHandoffIntegration:
         # Rollback
         rollback_command = RollbackHandoffCommand(
             handoff_id=handoff_id,
-            reason="Integration test rollback",
-        )
+            reason="Integration test rollback")
 
         rollback_result = await handler.handle_rollback(rollback_command)
 
@@ -239,8 +222,7 @@ class TestHandoffIntegration:
             task_type="user_action",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"user_id": "123", "action": "approve"},
-        )
+            task_data={"user_id": "123", "action": "approve"})
 
         init_result = await handler.handle_initiate(init_command)
         handoff_id = init_result.aggregate_id
@@ -284,8 +266,7 @@ class TestHandoffIntegration:
             task_type="sequential_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"step": 1},
-        )
+            task_data={"step": 1})
 
         result_1 = await handler.handle_initiate(init_cmd_1)
         handoff_id_1 = result_1.aggregate_id
@@ -304,8 +285,7 @@ class TestHandoffIntegration:
             task_type="sequential_task",
             source_agent_id="agent-2",
             target_agent_id="agent-3",
-            task_data={"step": 2},
-        )
+            task_data={"step": 2})
 
         result_2 = await handler.handle_initiate(init_cmd_2)
         handoff_id_2 = result_2.aggregate_id
@@ -337,8 +317,7 @@ class TestHandoffIntegration:
                 task_type=f"concurrent_task_{i}",
                 source_agent_id=f"agent-{i}",
                 target_agent_id=f"agent-{i+1}",
-                task_data={"index": i},
-            )
+                task_data={"index": i})
 
             result = await handler.handle_initiate(init_command)
             handoff_ids.append(result.aggregate_id)
@@ -383,16 +362,14 @@ class TestHandoffIntegration:
             task_type="test",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={},
-        )
+            task_data={})
 
         init_result = await handler.handle_initiate(init_command)
         handoff_id = init_result.aggregate_id
 
         rollback_command = RollbackHandoffCommand(
             handoff_id=handoff_id,
-            reason="Test",
-        )
+            reason="Test")
 
         rollback_result = await handler.handle_rollback(rollback_command)
 
@@ -415,8 +392,7 @@ class TestHandoffIntegration:
             task_type="event_test",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={},
-        )
+            task_data={})
 
         init_result = await handler.handle_initiate(init_command)
         handoff_id = init_result.aggregate_id
@@ -435,8 +411,7 @@ class TestHandoffIntegration:
             task_id=task_id,
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_type="event_test",
-        )
+            task_type="event_test")
 
         assert initiated_event.event_type == EventType.HANDOFF_INITIATED
         assert initiated_event.handoff_id == handoff_id
@@ -448,8 +423,7 @@ class TestHandoffIntegration:
             task_id=task_id,
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            handoff_chain=["agent-1", "agent-2"],
-        )
+            handoff_chain=["agent-1", "agent-2"])
 
         assert completed_event.event_type == EventType.HANDOFF_COMPLETED
         assert len(completed_event.handoff_chain) == 2

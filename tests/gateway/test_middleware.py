@@ -17,8 +17,7 @@ from gateway.middleware.metrics import (
     metrics_middleware,
     REQUEST_COUNT,
     REQUEST_DURATION,
-    ACTIVE_REQUESTS,
-)
+    ACTIVE_REQUESTS)
 
 
 @pytest.fixture

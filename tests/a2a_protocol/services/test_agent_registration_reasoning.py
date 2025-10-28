@@ -10,8 +10,7 @@ from agentcore.a2a_protocol.models.agent import (
     AgentEndpoint,
     AgentRegistrationRequest,
     AuthenticationType,
-    EndpointType,
-)
+    EndpointType)
 from agentcore.a2a_protocol.services.agent_manager import AgentManager
 
 
@@ -31,11 +30,9 @@ class TestAgentRegistrationReasoningValidation:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
-            authentication=AgentAuthentication(type=AuthenticationType.NONE),
-        )
+            authentication=AgentAuthentication(type=AuthenticationType.NONE))
 
     async def test_register_agent_without_reasoning(
         self, agent_manager: AgentManager, basic_agent_card: AgentCard
@@ -43,8 +40,7 @@ class TestAgentRegistrationReasoningValidation:
         """Test registering agent without reasoning capabilities."""
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         response = await agent_manager.register_agent(request)
 
@@ -65,8 +61,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         response = await agent_manager.register_agent(request)
 
@@ -90,8 +85,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         response = await agent_manager.register_agent(request)
 
@@ -114,8 +108,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         response = await agent_manager.register_agent(request)
 
@@ -133,8 +126,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="max_iterations must be between 1 and 50"
@@ -149,8 +141,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="max_iterations must be between 1 and 50"
@@ -165,8 +156,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="chunk_size must be between 1024 and 32768"
@@ -181,8 +171,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="chunk_size must be between 1024 and 32768"
@@ -197,8 +186,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="carryover_size must be between 512 and 16384"
@@ -213,8 +201,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="carryover_size must be between 512 and 16384"
@@ -229,8 +216,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="temperature must be between 0.0 and 2.0"
@@ -245,8 +231,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="temperature must be between 0.0 and 2.0"
@@ -264,8 +249,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(
             ValueError, match="carryover_size must be less than chunk_size"
@@ -280,8 +264,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(ValueError, match="max_iterations must be an integer"):
             await agent_manager.register_agent(request)
@@ -294,8 +277,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         with pytest.raises(ValueError, match="temperature must be a number"):
             await agent_manager.register_agent(request)
@@ -313,8 +295,7 @@ class TestAgentRegistrationReasoningValidation:
 
         request = AgentRegistrationRequest(
             agent_card=basic_agent_card,
-            override_existing=False,
-        )
+            override_existing=False)
 
         response = await agent_manager.register_agent(request)
 
@@ -326,8 +307,7 @@ class TestAgentRegistrationReasoningValidation:
             endpoints=[
                 AgentEndpoint(
                     url="https://example.com/api",
-                    type=EndpointType.HTTPS,
-                )
+                    type=EndpointType.HTTPS)
             ],
             authentication=AgentAuthentication(type=AuthenticationType.NONE),
             reasoning_config={
@@ -335,13 +315,11 @@ class TestAgentRegistrationReasoningValidation:
                 "chunk_size": 32768,
                 "carryover_size": 16384,
                 "temperature": 2.0,
-            },
-        )
+            })
 
         request2 = AgentRegistrationRequest(
             agent_card=basic_agent_card2,
-            override_existing=False,
-        )
+            override_existing=False)
 
         response2 = await agent_manager.register_agent(request2)
 

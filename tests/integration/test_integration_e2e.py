@@ -63,8 +63,7 @@ class MockLLMProvider:
                 "total_tokens": 30,
             },
             cost=0.001,
-            latency_ms=self.latency_ms,
-        )
+            latency_ms=self.latency_ms)
 
 
 @pytest_asyncio.fixture
@@ -82,8 +81,7 @@ async def cache_service() -> CacheService:
         l1_max_size=100,
         l2_enabled=True,
         mode=CacheMode.EXACT,
-        stats_enabled=True,
-    )
+        stats_enabled=True)
 
     service = CacheService(config=config)
     await service.connect()
@@ -108,8 +106,7 @@ class TestEndToEndIntegration:
         self,
         mock_provider: MockLLMProvider,
         cache_service: CacheService,
-        cost_tracker: CostTracker,
-    ) -> None:
+        cost_tracker: CostTracker) -> None:
         """Test complete LLM request workflow with caching and cost tracking.
 
         Validates:
@@ -121,11 +118,7 @@ class TestEndToEndIntegration:
         # Create request
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Hello"}],
-            temperature=0.7,
-            max_tokens=100,
-            context={"agent_id": "test-agent"},
-        )
+            messages=[{"role": "user", "content": "Hello"}], context={"agent_id": "test-agent"})
 
         # First request: Cache miss → Provider call
         cached_response, cache_level = await cache_service.get(request)
@@ -144,8 +137,7 @@ class TestEndToEndIntegration:
             provider=provider_response.provider,
             model=provider_response.model,
             cost=provider_response.cost,
-            tokens=provider_response.usage["total_tokens"],
-        )
+            tokens=provider_response.usage["total_tokens"])
 
         # Second request: Cache hit → No provider call
         initial_request_count = mock_provider.request_count
@@ -166,8 +158,7 @@ class TestEndToEndIntegration:
     @pytest.mark.asyncio
     async def test_provider_failover_with_fallback(
         self,
-        cache_service: CacheService,
-    ) -> None:
+        cache_service: CacheService) -> None:
         """Test provider failover when primary fails.
 
         Validates:
@@ -184,9 +175,7 @@ class TestEndToEndIntegration:
 
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Test failover"}],
-            temperature=0.7,
-        )
+            messages=[{"role": "user", "content": "Test failover"}])
 
         # Try primary (will fail)
         with pytest.raises(Exception, match="primary unavailable"):
@@ -209,8 +198,7 @@ class TestEndToEndIntegration:
     async def test_multi_provider_cost_optimization(
         self,
         cache_service: CacheService,
-        cost_tracker: CostTracker,
-    ) -> None:
+        cost_tracker: CostTracker) -> None:
         """Test cost optimization across multiple providers.
 
         Validates:
@@ -228,8 +216,7 @@ class TestEndToEndIntegration:
 
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Cost optimization test"}],
-        )
+            messages=[{"role": "user", "content": "Cost optimization test"}])
 
         # Use cheap provider
         cheap_response = await cheap_provider.complete(request)
@@ -239,8 +226,7 @@ class TestEndToEndIntegration:
             provider="cheap",
             model=request.model,
             cost=cheap_cost,
-            tokens=30,
-        )
+            tokens=30)
 
         await cache_service.set(request, cheap_response)
 
@@ -262,8 +248,7 @@ class TestEndToEndIntegration:
     async def test_concurrent_request_handling(
         self,
         mock_provider: MockLLMProvider,
-        cache_service: CacheService,
-    ) -> None:
+        cache_service: CacheService) -> None:
         """Test concurrent request handling with caching.
 
         Validates:
@@ -277,9 +262,7 @@ class TestEndToEndIntegration:
         requests = [
             LLMRequest(
                 model="gpt-4",
-                messages=[{"role": "user", "content": f"Request {i}"}],
-                temperature=0.7,
-            )
+                messages=[{"role": "user", "content": f"Request {i}"}])
             for i in range(10)
         ]
 
@@ -315,8 +298,7 @@ class TestEndToEndIntegration:
         self,
         mock_provider: MockLLMProvider,
         cache_service: CacheService,
-        cost_tracker: CostTracker,
-    ) -> None:
+        cost_tracker: CostTracker) -> None:
         """Test performance monitoring and metrics collection.
 
         Validates:
@@ -327,8 +309,7 @@ class TestEndToEndIntegration:
         """
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Metrics test"}],
-        )
+            messages=[{"role": "user", "content": "Metrics test"}])
 
         # Generate requests for metrics
         for i in range(20):
@@ -336,8 +317,7 @@ class TestEndToEndIntegration:
             if i % 2 == 0:
                 req = LLMRequest(
                     model="gpt-4",
-                    messages=[{"role": "user", "content": f"Unique {i}"}],
-                )
+                    messages=[{"role": "user", "content": f"Unique {i}"}])
             else:
                 req = request  # Reuse request (cache hit)
 
@@ -353,8 +333,7 @@ class TestEndToEndIntegration:
                     provider=response.provider,
                     model=response.model,
                     cost=response.cost,
-                    tokens=response.usage["total_tokens"],
-                )
+                    tokens=response.usage["total_tokens"])
 
         # Verify metrics
         cache_stats = cache_service.get_stats()
@@ -379,8 +358,7 @@ class TestMockProviderBehavior:
         """Test basic mock provider completion."""
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Test"}],
-        )
+            messages=[{"role": "user", "content": "Test"}])
 
         response = await mock_provider.complete(request)
 
@@ -398,8 +376,7 @@ class TestMockProviderBehavior:
 
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Test failure"}],
-        )
+            messages=[{"role": "user", "content": "Test failure"}])
 
         with pytest.raises(Exception, match="failing-provider unavailable"):
             await provider.complete(request)
@@ -411,8 +388,7 @@ class TestMockProviderBehavior:
         """Test mock provider request counting."""
         request = LLMRequest(
             model="gpt-4",
-            messages=[{"role": "user", "content": "Count test"}],
-        )
+            messages=[{"role": "user", "content": "Count test"}])
 
         assert mock_provider.request_count == 0
 

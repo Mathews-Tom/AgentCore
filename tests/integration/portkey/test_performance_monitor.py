@@ -87,8 +87,8 @@ def sample_request_metrics() -> RequestMetrics:
         workflow_id="test-workflow",
         agent_id="test-agent",
         session_id="test-session",
-        temperature=0.7,
-        max_tokens=1000,
+
+
         stream=False,
         tags={"env": "test"},
         metadata={"test": "data"},

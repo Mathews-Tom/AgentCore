@@ -13,21 +13,18 @@ from agentcore.orchestration.chaos.models import (
     ExperimentStatus,
     FaultConfig,
     FaultType,
-    RecoveryStatus,
-)
+    RecoveryStatus)
 from agentcore.orchestration.chaos.orchestrator import ChaosOrchestrator
 from agentcore.orchestration.patterns.circuit_breaker import (
     CircuitBreakerConfig,
     FaultToleranceCoordinator,
     RetryPolicy,
-    RetryStrategy,
-)
+    RetryStrategy)
 from agentcore.orchestration.patterns.saga import (
     SagaConfig,
     SagaDefinition,
     SagaOrchestrator,
-    SagaStep,
-)
+    SagaStep)
 
 
 @pytest.fixture
@@ -45,14 +42,12 @@ def saga_orchestrator() -> SagaOrchestrator:
 @pytest.fixture
 def chaos_orchestrator(
     fault_tolerance_coordinator: FaultToleranceCoordinator,
-    saga_orchestrator: SagaOrchestrator,
-) -> ChaosOrchestrator:
+    saga_orchestrator: SagaOrchestrator) -> ChaosOrchestrator:
     """Create chaos orchestrator with dependencies."""
     return ChaosOrchestrator(
         "chaos_test",
         fault_tolerance_coordinator=fault_tolerance_coordinator,
-        saga_orchestrator=saga_orchestrator,
-    )
+        saga_orchestrator=saga_orchestrator)
 
 
 class TestChaosEngineeringIntegration:
@@ -62,17 +57,14 @@ class TestChaosEngineeringIntegration:
     async def test_network_latency_with_circuit_breaker(
         self,
         chaos_orchestrator: ChaosOrchestrator,
-        fault_tolerance_coordinator: FaultToleranceCoordinator,
-    ) -> None:
+        fault_tolerance_coordinator: FaultToleranceCoordinator) -> None:
         """Test network latency with circuit breaker protection."""
         # Register circuit breaker
         breaker = fault_tolerance_coordinator.register_circuit_breaker(
             "test_service",
             CircuitBreakerConfig(
                 failure_threshold=3,
-                timeout_seconds=10,
-            ),
-        )
+                timeout_seconds=10))
 
         # Create scenario
         scenario = ChaosScenario(
@@ -83,12 +75,10 @@ class TestChaosEngineeringIntegration:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="test_service",
                     latency_ms=500,
-                    duration_seconds=2.0,
-                )
+                    duration_seconds=2.0)
             ],
             max_recovery_time_seconds=30.0,
-            validate_circuit_breaker=True,
-        )
+            validate_circuit_breaker=True)
 
         # Run experiment
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
@@ -107,15 +97,13 @@ class TestChaosEngineeringIntegration:
     async def test_service_crash_with_retry(
         self,
         chaos_orchestrator: ChaosOrchestrator,
-        fault_tolerance_coordinator: FaultToleranceCoordinator,
-    ) -> None:
+        fault_tolerance_coordinator: FaultToleranceCoordinator) -> None:
         """Test service crash with retry mechanism."""
         # Create retry policy
         retry_policy = RetryPolicy(
             max_retries=3,
             strategy=RetryStrategy.EXPONENTIAL,
-            initial_delay_seconds=0.1,
-        )
+            initial_delay_seconds=0.1)
 
         # Create scenario
         scenario = ChaosScenario(
@@ -125,12 +113,10 @@ class TestChaosEngineeringIntegration:
                 FaultConfig(
                     fault_type=FaultType.SERVICE_CRASH,
                     target_service="test_service",
-                    duration_seconds=1.0,
-                )
+                    duration_seconds=1.0)
             ],
             max_recovery_time_seconds=20.0,
-            validate_retry_mechanism=True,
-        )
+            validate_retry_mechanism=True)
 
         # Run experiment
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
@@ -145,8 +131,7 @@ class TestChaosEngineeringIntegration:
     async def test_timeout_with_saga_compensation(
         self,
         chaos_orchestrator: ChaosOrchestrator,
-        saga_orchestrator: SagaOrchestrator,
-    ) -> None:
+        saga_orchestrator: SagaOrchestrator) -> None:
         """Test timeout triggers saga compensation."""
         # Register saga definition
         saga = SagaDefinition(
@@ -155,8 +140,7 @@ class TestChaosEngineeringIntegration:
             steps=[
                 SagaStep(name="step1", order=1),
                 SagaStep(name="step2", order=2),
-            ],
-        )
+            ])
         saga_orchestrator.register_saga(saga)
 
         # Create scenario
@@ -168,12 +152,10 @@ class TestChaosEngineeringIntegration:
                     fault_type=FaultType.TIMEOUT,
                     target_service="test_service",
                     duration_seconds=1.0,
-                    intensity=1.0,
-                )
+                    intensity=1.0)
             ],
             max_recovery_time_seconds=15.0,
-            validate_saga_compensation=True,
-        )
+            validate_saga_compensation=True)
 
         # Run experiment
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
@@ -188,15 +170,13 @@ class TestChaosEngineeringIntegration:
     async def test_multiple_faults_resilience(
         self,
         chaos_orchestrator: ChaosOrchestrator,
-        fault_tolerance_coordinator: FaultToleranceCoordinator,
-    ) -> None:
+        fault_tolerance_coordinator: FaultToleranceCoordinator) -> None:
         """Test resilience against multiple concurrent faults."""
         # Register circuit breakers for multiple services
         for i in range(3):
             fault_tolerance_coordinator.register_circuit_breaker(
                 f"service{i}",
-                CircuitBreakerConfig(failure_threshold=5),
-            )
+                CircuitBreakerConfig(failure_threshold=5))
 
         # Create complex scenario
         scenario = ChaosScenario(
@@ -207,27 +187,23 @@ class TestChaosEngineeringIntegration:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="service0",
                     latency_ms=200,
-                    duration_seconds=1.5,
-                ),
+                    duration_seconds=1.5),
                 FaultConfig(
                     fault_type=FaultType.SERVICE_CRASH,
                     target_service="service1",
                     duration_seconds=1.0,
-                    delay_before_fault_seconds=0.5,
-                ),
+                    delay_before_fault_seconds=0.5),
                 FaultConfig(
                     fault_type=FaultType.TIMEOUT,
                     target_service="service2",
                     duration_seconds=1.0,
                     intensity=1.0,
-                    delay_before_fault_seconds=1.0,
-                ),
+                    delay_before_fault_seconds=1.0),
             ],
             max_recovery_time_seconds=30.0,
             min_availability_percentage=95.0,
             validate_circuit_breaker=True,
-            validate_retry_mechanism=True,
-        )
+            validate_retry_mechanism=True)
 
         # Run experiment
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
@@ -260,8 +236,7 @@ class TestChaosEngineeringIntegration:
                         fault_type=FaultType.NETWORK_LATENCY,
                         target_service="benchmark_service",
                         latency_ms=300,
-                        duration_seconds=1.0,
-                    )
+                        duration_seconds=1.0)
                 ],
                 max_recovery_time_seconds=20.0,
                 validate_circuit_breaker=False,  # Don't validate circuit breaker
@@ -273,8 +248,7 @@ class TestChaosEngineeringIntegration:
                     FaultConfig(
                         fault_type=FaultType.SERVICE_CRASH,
                         target_service="benchmark_service",
-                        duration_seconds=1.0,
-                    )
+                        duration_seconds=1.0)
                 ],
                 max_recovery_time_seconds=20.0,
                 validate_circuit_breaker=False,  # Don't validate circuit breaker
@@ -287,8 +261,7 @@ class TestChaosEngineeringIntegration:
                         fault_type=FaultType.TIMEOUT,
                         target_service="benchmark_service",
                         duration_seconds=1.0,
-                        intensity=1.0,
-                    )
+                        intensity=1.0)
                 ],
                 max_recovery_time_seconds=20.0,
                 validate_circuit_breaker=False,  # Don't validate circuit breaker
@@ -334,12 +307,10 @@ class TestChaosEngineeringIntegration:
                     fault_type=FaultType.NETWORK_PACKET_LOSS,
                     target_service="test_service",
                     packet_loss_rate=0.5,  # 50% packet loss
-                    duration_seconds=2.0,
-                )
+                    duration_seconds=2.0)
             ],
             max_recovery_time_seconds=25.0,
-            validate_retry_mechanism=True,
-        )
+            validate_retry_mechanism=True)
 
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
         result = await chaos_orchestrator.run_experiment(experiment_id)
@@ -360,13 +331,11 @@ class TestChaosEngineeringIntegration:
                 FaultConfig(
                     fault_type=FaultType.NETWORK_PARTITION,
                     target_service="test_service",
-                    duration_seconds=1.5,
-                )
+                    duration_seconds=1.5)
             ],
             max_recovery_time_seconds=30.0,
             validate_circuit_breaker=True,
-            validate_retry_mechanism=True,
-        )
+            validate_retry_mechanism=True)
 
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
         result = await chaos_orchestrator.run_experiment(experiment_id)
@@ -379,15 +348,13 @@ class TestChaosEngineeringIntegration:
     async def test_cascading_failures(
         self,
         chaos_orchestrator: ChaosOrchestrator,
-        fault_tolerance_coordinator: FaultToleranceCoordinator,
-    ) -> None:
+        fault_tolerance_coordinator: FaultToleranceCoordinator) -> None:
         """Test resilience against cascading failures."""
         # Register circuit breakers to prevent cascade
         for i in range(5):
             fault_tolerance_coordinator.register_circuit_breaker(
                 f"cascade_service{i}",
-                CircuitBreakerConfig(failure_threshold=2, timeout_seconds=5),
-            )
+                CircuitBreakerConfig(failure_threshold=2, timeout_seconds=5))
 
         # Create cascading failure scenario
         scenario = ChaosScenario(
@@ -398,13 +365,11 @@ class TestChaosEngineeringIntegration:
                     fault_type=FaultType.SERVICE_CRASH,
                     target_service=f"cascade_service{i}",
                     duration_seconds=0.5,
-                    delay_before_fault_seconds=i * 0.2,
-                )
+                    delay_before_fault_seconds=i * 0.2)
                 for i in range(5)
             ],
             max_recovery_time_seconds=40.0,
-            validate_circuit_breaker=True,
-        )
+            validate_circuit_breaker=True)
 
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
         result = await chaos_orchestrator.run_experiment(experiment_id)
@@ -429,10 +394,8 @@ class TestChaosEngineeringIntegration:
                     fault_type=FaultType.NETWORK_LATENCY,
                     target_service="perf_service",
                     latency_ms=500,
-                    duration_seconds=2.0,
-                )
-            ],
-        )
+                    duration_seconds=2.0)
+            ])
 
         experiment_id = await chaos_orchestrator.create_experiment(scenario)
         result = await chaos_orchestrator.run_experiment(experiment_id)
@@ -466,10 +429,8 @@ class TestChaosEngineeringIntegration:
                         fault_type=FaultType.NETWORK_LATENCY,
                         target_service="slo_service",
                         latency_ms=100,
-                        duration_seconds=0.5,
-                    )
-                ],
-            )
+                        duration_seconds=0.5)
+                ])
 
             experiment_id = await chaos_orchestrator.create_experiment(scenario)
             result = await chaos_orchestrator.run_experiment(experiment_id)

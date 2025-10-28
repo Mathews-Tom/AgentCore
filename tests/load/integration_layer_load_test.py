@@ -68,8 +68,7 @@ class IntegrationLayerTaskSet(TaskSet):
             "/api/v1/integration/llm/complete",
             json=SAMPLE_LLM_REQUEST,
             headers={"Content-Type": "application/json"},
-            name="LLM Provider Request",
-        )
+            name="LLM Provider Request")
 
         latency = (time.time() - start_time) * 1000  # ms
         self.latencies.append(latency)
@@ -89,8 +88,7 @@ class IntegrationLayerTaskSet(TaskSet):
             "/api/v1/integration/webhooks",
             json=webhook_data,
             headers={"Content-Type": "application/json"},
-            name="Webhook Registration",
-        )
+            name="Webhook Registration")
 
         if response.status_code == 201:
             data = response.json()
@@ -106,16 +104,14 @@ class IntegrationLayerTaskSet(TaskSet):
             "/api/v1/integration/events/publish",
             json=event_data,
             headers={"Content-Type": "application/json"},
-            name="Event Publishing",
-        )
+            name="Event Publishing")
 
     @task(5)
     def test_webhook_list(self):
         """Test webhook listing (5% of load)."""
         self.client.get(
             "/api/v1/integration/webhooks",
-            name="Webhook List",
-        )
+            name="Webhook List")
 
     @task(3)
     def test_webhook_stats(self):
@@ -123,8 +119,7 @@ class IntegrationLayerTaskSet(TaskSet):
         if self.webhook_id:
             self.client.get(
                 f"/api/v1/integration/webhooks/{self.webhook_id}/stats",
-                name="Webhook Stats",
-            )
+                name="Webhook Stats")
 
     @task(2)
     def test_storage_upload(self):
@@ -138,8 +133,7 @@ class IntegrationLayerTaskSet(TaskSet):
         self.client.post(
             "/api/v1/integration/storage/upload",
             json=file_data,
-            name="Storage Upload",
-        )
+            name="Storage Upload")
 
     def on_stop(self):
         """Cleanup and report statistics."""
@@ -151,8 +145,8 @@ class IntegrationLayerTaskSet(TaskSet):
             print(f"Total Requests: {self.request_count}")
             print(f"Errors: {self.error_count}")
             print(f"Error Rate: {self.error_count / self.request_count * 100:.2f}%")
-            print(f"Avg Latency: {avg_latency:.2f}ms")
-            print(f"P95 Latency: {p95_latency:.2f}ms")
+            print(f"Avg Latency: {avg_latency:.2f}, ms")
+            print(f"P95 Latency: {p95_latency:.2f}, ms")
 
 
 class IntegrationLayerUser(HttpUser):
@@ -184,8 +178,7 @@ def on_request(
     response_length,
     exception,
     context,
-    **kwargs,
-):
+    **kwargs):
     """Track request performance metrics."""
     request_latencies.append(response_time)
 
@@ -218,12 +211,12 @@ def on_test_stop(environment, **kwargs):
     print(f"Failed Requests:       {request_counts['failure']:,}")
     print(f"Success Rate:          {success_rate:.2f}%")
     print(f"\nLatency Statistics:")
-    print(f"  P50 (Median):        {p50:.2f}ms")
-    print(f"  P95:                 {p95:.2f}ms")
-    print(f"  P99:                 {p99:.2f}ms")
-    print(f"  Min:                 {min(request_latencies):.2f}ms")
-    print(f"  Max:                 {max(request_latencies):.2f}ms")
-    print(f"  Average:             {sum(request_latencies) / len(request_latencies):.2f}ms")
+    print(f"  P50 (Median):        {p50:.2f}, ms")
+    print(f"  P95:                 {p95:.2f}, ms")
+    print(f"  P99:                 {p99:.2f}, ms")
+    print(f"  Min:                 {min(request_latencies):.2f}, ms")
+    print(f"  Max:                 {max(request_latencies):.2f}, ms")
+    print(f"  Average:             {sum(request_latencies) / len(request_latencies):.2f}, ms")
 
     # Performance targets validation
     print(f"\n{'=' * 60}")
@@ -245,11 +238,11 @@ def on_test_stop(environment, **kwargs):
 
     # Target: <100ms P95 latency
     if p95 < 100:
-        print(f"P95 Latency:           {p95:.2f}ms")
+        print(f"P95 Latency:           {p95:.2f}, ms")
         print("  ✅ Target met: <100ms P95 latency")
     else:
-        print(f"P95 Latency:           {p95:.2f}ms")
-        print(f"  ❌ Target not met: {p95:.2f}ms > 100ms")
+        print(f"P95 Latency:           {p95:.2f}, ms")
+        print(f"  ❌ Target not met: {p95:.2f}, ms > 100ms")
         targets_met = False
 
     # Target: 99.9% success rate

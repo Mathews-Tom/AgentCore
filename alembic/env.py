@@ -19,6 +19,7 @@ os.environ['ALEMBIC_RUNNING'] = '1'
 # Import Base and models for autogenerate support
 from agentcore.a2a_protocol.database.connection import Base, get_database_url
 from agentcore.a2a_protocol.database import models  # noqa: F401 - Ensure models are loaded
+from agentcore.training import database_models  # noqa: F401 - Ensure training models are loaded
 
 # Suppress automatic enum creation from table events during Alembic runs
 # Migrations will explicitly create enums using postgresql.ENUM().create()

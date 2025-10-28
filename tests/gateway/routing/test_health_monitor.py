@@ -20,8 +20,7 @@ def health_config() -> HealthCheckConfig:
         interval_seconds=1,
         timeout_seconds=2.0,
         healthy_threshold=2,
-        unhealthy_threshold=2,
-    )
+        unhealthy_threshold=2)
 
 
 @pytest.fixture
@@ -30,8 +29,7 @@ def sample_service() -> ServiceEndpoint:
     return ServiceEndpoint(
         service_id="test-svc",
         name="Test Service",
-        base_url=HttpUrl("http://localhost:8001"),
-    )
+        base_url=HttpUrl("http://localhost:8001"))
 
 
 @pytest.mark.asyncio
@@ -46,8 +44,7 @@ async def test_is_healthy() -> None:
     monitor._health_status["test-svc"] = ServiceHealth(
         service_id="test-svc",
         status=ServiceStatus.HEALTHY,
-        last_check=datetime.now(timezone.utc),
-    )
+        last_check=datetime.now(timezone.utc))
 
     assert await monitor.is_healthy("test-svc")
 
@@ -62,8 +59,7 @@ async def test_get_all_health() -> None:
         monitor._health_status[f"svc-{i}"] = ServiceHealth(
             service_id=f"svc-{i}",
             status=ServiceStatus.HEALTHY,
-            last_check=datetime.now(timezone.utc),
-        )
+            last_check=datetime.now(timezone.utc))
 
     all_health = await monitor.get_all_health()
     assert len(all_health) == 3
@@ -98,8 +94,7 @@ async def test_shutdown() -> None:
         monitor._health_status[service_id] = ServiceHealth(
             service_id=service_id,
             status=ServiceStatus.HEALTHY,
-            last_check=datetime.now(timezone.utc),
-        )
+            last_check=datetime.now(timezone.utc))
         # Create dummy task
         monitor._monitor_tasks[service_id] = asyncio.create_task(asyncio.sleep(100))
 
@@ -116,8 +111,7 @@ async def test_update_health_success() -> None:
     monitor._health_status["test-svc"] = ServiceHealth(
         service_id="test-svc",
         status=ServiceStatus.UNKNOWN,
-        last_check=datetime.now(timezone.utc),
-    )
+        last_check=datetime.now(timezone.utc))
 
     # Update with successful checks
     for _ in range(3):
@@ -139,8 +133,7 @@ async def test_update_health_failure() -> None:
     monitor._health_status["test-svc"] = ServiceHealth(
         service_id="test-svc",
         status=ServiceStatus.UNKNOWN,
-        last_check=datetime.now(timezone.utc),
-    )
+        last_check=datetime.now(timezone.utc))
 
     # Update with failed checks
     for _ in range(3):

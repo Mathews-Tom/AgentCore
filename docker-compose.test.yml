@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_USER: agentcore
+      POSTGRES_PASSWORD: agentcore
+      POSTGRES_DB: agentcore_test
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentcore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://agentcore:agentcore@postgres:5432/agentcore_test
+      REDIS_URL: redis://redis:6379
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+        echo '🧪 Running migration tests...' &&
+        uv run alembic upgrade head &&
+        echo '✅ First migration run successful' &&
+        echo '🔄 Testing idempotency...' &&
+        uv run alembic upgrade head &&
+        echo '✅ Idempotency test passed' &&
+        echo '🧪 Running test suite...' &&
+        uv run pytest tests/ -v -x --tb=short &&
+        echo '🎉 All tests passed!'
+      "

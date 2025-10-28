@@ -13,17 +13,12 @@ from agentcore.a2a_protocol.database.connection import get_session
 from agentcore.training.database_models import (
     PolicyCheckpointDB,
     TrainingJobDB,
-    TrajectoryDB,
-)
+    TrajectoryDB)
 from agentcore.training.models import GRPOConfig, TrainingQuery
 from agentcore.training.repositories import (
     CheckpointRepository,
     TrainingJobRepository,
-    TrajectoryRepository,
-)
-
-# Skip all tests - training tables not migrated
-pytestmark = pytest.mark.skip(reason="Training tables not migrated - feature inactive")
+    TrajectoryRepository)
 
 
 @pytest.mark.asyncio
@@ -43,8 +38,7 @@ async def test_training_job_crud_operations(init_test_db) -> None:
         config=config,
         training_data=queries,
         total_iterations=100,
-        budget_usd=Decimal("50.00"),
-    )
+        budget_usd=Decimal("50.00"))
 
     async with get_session() as session:
         # Create
@@ -72,8 +66,7 @@ async def test_training_job_crud_operations(init_test_db) -> None:
             session,
             job_id,
             TrainingJobStatus.RUNNING,
-            started_at=datetime.now(UTC),
-        )
+            started_at=datetime.now(UTC))
         await session.commit()
 
     async with get_session() as session:
@@ -107,8 +100,7 @@ async def test_trajectory_crud_operations(init_test_db) -> None:
         config=config,
         training_data=queries,
         total_iterations=100,
-        budget_usd=Decimal("50.00"),
-    )
+        budget_usd=Decimal("50.00"))
 
     async with get_session() as session:
         job_db = await TrainingJobRepository.create(session, job)
@@ -121,8 +113,7 @@ async def test_trajectory_crud_operations(init_test_db) -> None:
         action={"type": "tool_call"},
         result={"output": "success"},
         timestamp=datetime.now(UTC),
-        duration_ms=100,
-    )
+        duration_ms=100)
 
     trajectory = Trajectory(
         job_id=job_id,
@@ -131,8 +122,7 @@ async def test_trajectory_crud_operations(init_test_db) -> None:
         steps=[step],
         reward=0.85,
         success=True,
-        execution_time_ms=100,
-    )
+        execution_time_ms=100)
 
     async with get_session() as session:
         traj_db = await TrajectoryRepository.create(session, trajectory)
@@ -173,8 +163,7 @@ async def test_checkpoint_crud_operations(init_test_db) -> None:
         config=config,
         training_data=queries,
         total_iterations=100,
-        budget_usd=Decimal("50.00"),
-    )
+        budget_usd=Decimal("50.00"))
 
     async with get_session() as session:
         job_db = await TrainingJobRepository.create(session, job)
@@ -188,8 +177,7 @@ async def test_checkpoint_crud_operations(init_test_db) -> None:
         iteration=10,
         policy_data={"prompt": "You are helpful"},
         validation_score=0.85,
-        metrics={"accuracy": 0.9},
-    )
+        metrics={"accuracy": 0.9})
 
     async with get_session() as session:
         cp_db = await CheckpointRepository.create(session, checkpoint)
@@ -226,16 +214,14 @@ async def test_foreign_key_cascade_delete(init_test_db) -> None:
         PolicyCheckpoint,
         TrainingJob,
         Trajectory,
-        TrajectoryStep,
-    )
+        TrajectoryStep)
 
     job = TrainingJob(
         agent_id="test-agent-cascade",
         config=config,
         training_data=queries,
         total_iterations=100,
-        budget_usd=Decimal("50.00"),
-    )
+        budget_usd=Decimal("50.00"))
 
     async with get_session() as session:
         job_db = await TrainingJobRepository.create(session, job)
@@ -248,14 +234,12 @@ async def test_foreign_key_cascade_delete(init_test_db) -> None:
         action={},
         result={},
         timestamp=datetime.now(UTC),
-        duration_ms=10,
-    )
+        duration_ms=10)
     trajectory = Trajectory(
         job_id=job_id,
         agent_id="test-agent-cascade",
         query="Test",
-        steps=[step],
-    )
+        steps=[step])
 
     async with get_session() as session:
         traj_db = await TrajectoryRepository.create(session, trajectory)
@@ -267,8 +251,7 @@ async def test_foreign_key_cascade_delete(init_test_db) -> None:
         agent_id="test-agent-cascade",
         job_id=job_id,
         iteration=5,
-        validation_score=0.75,
-    )
+        validation_score=0.75)
 
     async with get_session() as session:
         cp_db = await CheckpointRepository.create(session, checkpoint)

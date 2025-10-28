@@ -32,8 +32,7 @@ class TestEventBus:
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
             payload={"task_id": "task-456"},
-            source="test-service",
-        )
+            source="test-service")
 
         assert event.event_id is not None
         assert event.event_type == EventType.TASK_CREATED
@@ -52,15 +51,13 @@ class TestEventBus:
         # Subscribe to topic
         subscription_id = event_bus.subscribe(
             handler=handler,
-            topics={"agent.123"},
-        )
+            topics={"agent.123"})
 
         # Publish event
         event = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
-            payload={"task_id": "task-456"},
-        )
+            payload={"task_id": "task-456"})
         await event_bus.publish(event)
 
         # Wait for event processing
@@ -84,20 +81,17 @@ class TestEventBus:
         # Subscribe to event type
         subscription_id = event_bus.subscribe(
             handler=handler,
-            event_types={EventType.TASK_CREATED},
-        )
+            event_types={EventType.TASK_CREATED})
 
         # Publish events with different event types
         event1 = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
-            payload={"task_id": "task-1"},
-        )
+            payload={"task_id": "task-1"})
         event2 = EventMessage.create(
             event_type=EventType.TASK_COMPLETED,
             topic="agent.123",
-            payload={"task_id": "task-2"},
-        )
+            payload={"task_id": "task-2"})
 
         await event_bus.publish(event1)
         await event_bus.publish(event2)
@@ -131,8 +125,7 @@ class TestEventBus:
         event = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
-            payload={"task_id": "task-456"},
-        )
+            payload={"task_id": "task-456"})
         await event_bus.publish(event)
 
         # Wait for event processing
@@ -158,15 +151,13 @@ class TestEventBus:
         # Subscribe
         subscription_id = event_bus.subscribe(
             handler=handler,
-            topics={"agent.123"},
-        )
+            topics={"agent.123"})
 
         # Publish first event
         event1 = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
-            payload={"task_id": "task-1"},
-        )
+            payload={"task_id": "task-1"})
         await event_bus.publish(event1)
 
         # Wait for processing
@@ -180,8 +171,7 @@ class TestEventBus:
         event2 = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
-            payload={"task_id": "task-2"},
-        )
+            payload={"task_id": "task-2"})
         await event_bus.publish(event2)
 
         # Wait for processing
@@ -201,20 +191,17 @@ class TestEventBus:
         # Subscribe to specific topic
         subscription_id = event_bus.subscribe(
             handler=handler,
-            topics={"agent.123"},
-        )
+            topics={"agent.123"})
 
         # Publish events to different topics
         event1 = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.123",
-            payload={"task_id": "task-1"},
-        )
+            payload={"task_id": "task-1"})
         event2 = EventMessage.create(
             event_type=EventType.TASK_CREATED,
             topic="agent.456",
-            payload={"task_id": "task-2"},
-        )
+            payload={"task_id": "task-2"})
 
         await event_bus.publish(event1)
         await event_bus.publish(event2)
@@ -247,8 +234,7 @@ class TestEventBus:
             topic="agent.123",
             payload={"task_id": "task-456"},
             source="test-service",
-            metadata={"key": "value"},
-        )
+            metadata={"key": "value"})
 
         event_dict = event.to_dict()
 

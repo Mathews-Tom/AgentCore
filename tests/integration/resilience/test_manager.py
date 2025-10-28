@@ -9,14 +9,12 @@ import pytest
 from agentcore.integration.resilience.exceptions import CircuitBreakerOpenError
 from agentcore.integration.resilience.manager import (
     ResilienceManager,
-    ResilienceRegistry,
-)
+    ResilienceRegistry)
 from agentcore.integration.resilience.models import (
     BulkheadConfig,
     CircuitBreakerConfig,
     ResilienceConfig,
-    TimeoutConfig,
-)
+    TimeoutConfig)
 
 
 class TestResilienceManager:
@@ -30,20 +28,16 @@ class TestResilienceManager:
                 name="test_circuit",
                 failure_threshold=3,
                 success_threshold=2,
-                timeout_seconds=1.0,
-            ),
+                timeout_seconds=1.0),
             bulkhead=BulkheadConfig(
                 name="test_bulkhead",
                 max_concurrent_requests=2,
                 queue_size=2,
-                queue_timeout_seconds=1.0,
-            ),
+                queue_timeout_seconds=1.0),
             timeout=TimeoutConfig(
                 name="test_timeout",
-                timeout_seconds=1.0,
-            ),
-            enable_fallback=False,
-        )
+                timeout_seconds=1.0),
+            enable_fallback=False)
 
     @pytest.fixture
     async def manager(
@@ -92,9 +86,7 @@ class TestResilienceManager:
             bulkhead=BulkheadConfig(
                 name="test_only_bulkhead",
                 max_concurrent_requests=2,
-                queue_size=2,
-            ),
-        )
+                queue_size=2))
 
         manager = ResilienceManager(config)
         await manager.initialize()
@@ -136,10 +128,8 @@ class TestResilienceManager:
         config = ResilienceConfig(
             circuit_breaker=CircuitBreakerConfig(
                 name="test_fallback_circuit",
-                failure_threshold=2,
-            ),
-            enable_fallback=True,
-        )
+                failure_threshold=2),
+            enable_fallback=True)
 
         manager = ResilienceManager(config, fallback_handler)
         await manager.initialize()
@@ -160,9 +150,7 @@ class TestResilienceManager:
         config = ResilienceConfig(
             circuit_breaker=CircuitBreakerConfig(
                 name="test_cb_only",
-                failure_threshold=2,
-            ),
-        )
+                failure_threshold=2))
 
         manager = ResilienceManager(config)
         await manager.initialize()
@@ -178,9 +166,7 @@ class TestResilienceManager:
         config = ResilienceConfig(
             bulkhead=BulkheadConfig(
                 name="test_bh_only",
-                max_concurrent_requests=2,
-            ),
-        )
+                max_concurrent_requests=2))
 
         manager = ResilienceManager(config)
         await manager.initialize()
@@ -196,9 +182,7 @@ class TestResilienceManager:
         config = ResilienceConfig(
             timeout=TimeoutConfig(
                 name="test_timeout_only",
-                timeout_seconds=1.0,
-            ),
-        )
+                timeout_seconds=1.0))
 
         manager = ResilienceManager(config)
         await manager.initialize()
@@ -216,9 +200,7 @@ class TestResilienceManager:
         config = ResilienceConfig(
             timeout=TimeoutConfig(
                 name="test_context_timeout",
-                timeout_seconds=1.0,
-            ),
-        )
+                timeout_seconds=1.0))
 
         async def operation() -> str:
             return "success"
@@ -236,8 +218,7 @@ class TestResilienceRegistry:
         registry = ResilienceRegistry()
 
         config = ResilienceConfig(
-            circuit_breaker=CircuitBreakerConfig(name="test_register"),
-        )
+            circuit_breaker=CircuitBreakerConfig(name="test_register"))
 
         manager = registry.register("test_mgr", config)
         assert manager is not None
@@ -251,8 +232,7 @@ class TestResilienceRegistry:
         registry = ResilienceRegistry()
 
         config = ResilienceConfig(
-            circuit_breaker=CircuitBreakerConfig(name="test_get"),
-        )
+            circuit_breaker=CircuitBreakerConfig(name="test_get"))
 
         registry.register("test_get_mgr", config)
 
@@ -264,8 +244,7 @@ class TestResilienceRegistry:
         registry = ResilienceRegistry()
 
         config = ResilienceConfig(
-            circuit_breaker=CircuitBreakerConfig(name="test_remove"),
-        )
+            circuit_breaker=CircuitBreakerConfig(name="test_remove"))
 
         registry.register("test_remove_mgr", config)
         registry.remove("test_remove_mgr")
@@ -279,8 +258,7 @@ class TestResilienceRegistry:
 
         for i in range(3):
             config = ResilienceConfig(
-                circuit_breaker=CircuitBreakerConfig(name=f"test_{i}"),
-            )
+                circuit_breaker=CircuitBreakerConfig(name=f"test_{i}"))
             registry.register(f"mgr_{i}", config)
 
         managers = registry.get_all()

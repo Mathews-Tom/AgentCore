@@ -169,10 +169,10 @@ def on_test_stop(environment, **kwargs) -> None:
     print(f"Total Requests: {stats.num_requests:,}")
     print(f"Failed Requests: {stats.num_failures:,}")
     print(f"Requests Per Second: {stats.total_rps:,.2f}")
-    print(f"Average Response Time: {stats.avg_response_time:.2f}ms")
-    print(f"Median Response Time: {stats.median_response_time:.2f}ms")
-    print(f"95th Percentile: {stats.get_response_time_percentile(0.95):.2f}ms")
-    print(f"99th Percentile: {stats.get_response_time_percentile(0.99):.2f}ms")
+    print(f"Average Response Time: {stats.avg_response_time:.2f}, ms")
+    print(f"Median Response Time: {stats.median_response_time:.2f}, ms")
+    print(f"95th Percentile: {stats.get_response_time_percentile(0.95):.2f}, ms")
+    print(f"99th Percentile: {stats.get_response_time_percentile(0.99):.2f}, ms")
     print(f"{'='*70}")
 
     # Check if target RPS achieved

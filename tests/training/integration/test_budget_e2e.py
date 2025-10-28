@@ -8,49 +8,46 @@ Tests the complete budget enforcement workflow including:
 - Cost estimation and warnings
 - Budget alerts at thresholds
 
-NOTE: These tests are currently skipped as they were written based on spec
-but don't match the actual implementation. The actual implementation uses:
-- BudgetEnforcer (not BudgetTracker)
-- BudgetStatus enum (not BudgetWarningLevel)
-- Synchronous methods (not async)
-- No BudgetExceededError exception
-
-TODO: Update these tests to match the actual implementation in:
-- src/agentcore/training/utils/budget.py (BudgetEnforcer class)
+Updated to match actual BudgetEnforcer implementation (synchronous).
 """
 
 from __future__ import annotations
 
-import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="Integration tests don't match actual implementation - need to be rewritten"
-)
-
 from uuid import uuid4
 from decimal import Decimal
 
-# NOTE: These imports will fail - kept for reference
-# from agentcore.training.utils.budget import (
-#     BudgetTracker,
-#     BudgetExceededError,
-#     BudgetWarningLevel,
-# )
+import pytest
+
+from agentcore.training.utils.budget import (
+    BudgetEnforcer,
+    BudgetStatus)
 from agentcore.training.models import (
     TrainingJob,
-    GRPOConfig,
-)
+    GRPOConfig)
 
 
 @pytest.fixture
-def budget_tracker():
-    """Create budget tracker instance."""
-    return BudgetTracker()
+def budget_enforcer():
+    """Create budget enforcer instance."""
+    return BudgetEnforcer(
+        max_budget_usd=Decimal("10.00"),
+        warning_threshold_75=0.75,
+        warning_threshold_90=0.90)
 
 
 @pytest.fixture
 def training_job_with_budget() -> TrainingJob:
     """Create training job with budget configuration."""
+    # Create minimal training data (100 items required)
+    from agentcore.training.models import TrainingQuery
+
+    training_data = [
+        TrainingQuery(
+            query=f"Test query {i}",
+            expected_outcome={"result": "success"})
+        for i in range(100)
+    ]
+
     return TrainingJob(
         job_id=uuid4(),
         agent_id="test_agent",
@@ -58,385 +55,166 @@ def training_job_with_budget() -> TrainingJob:
             n_iterations=100,
             batch_size=16,
             n_trajectories_per_query=8,
-            max_budget_usd=Decimal("10.00"),
-        ),
-        training_data=[],
-        status="queued",
-    )
+            max_budget_usd=Decimal("10.00")),
+        training_data=training_data,
+        total_iterations=100,
+        budget_usd=Decimal("10.00"),
+        status="queued")
 
 
 class TestBudgetEnforcement:
     """Integration tests for budget enforcement."""
 
-    @pytest.mark.asyncio
-    async def test_budget_tracking_basic(
+    def test_budget_tracking_basic(
         self,
-        budget_tracker: BudgetTracker,
-        training_job_with_budget: TrainingJob,
-    ) -> None:
+        budget_enforcer: BudgetEnforcer) -> None:
         """Test basic budget tracking functionality."""
-        job_id = training_job_with_budget.job_id
-        budget_limit = training_job_with_budget.config.max_budget_usd
-
-        # Initialize budget tracking
-        await budget_tracker.initialize_job(job_id, budget_limit)
-
         # Track some costs
-        await budget_tracker.add_cost(job_id, Decimal("1.50"))
-        await budget_tracker.add_cost(job_id, Decimal("2.25"))
-
-        # Get current spend
-        current_spend = await budget_tracker.get_current_spend(job_id)
+        budget_enforcer.add_cost(Decimal("1.50"))
+        budget_enforcer.add_cost(Decimal("2.25"))
 
         # Verify total
-        assert current_spend == Decimal("3.75")
+        assert budget_enforcer.current_cost_usd == Decimal("3.75")
 
         # Get remaining budget
-        remaining = await budget_tracker.get_remaining_budget(job_id)
-        assert remaining == budget_limit - current_spend
+        remaining = budget_enforcer.get_remaining_budget()
         assert remaining == Decimal("6.25")
 
-    @pytest.mark.asyncio
-    async def test_budget_exceeded_error(
+    def test_budget_status_ok(
         self,
-        budget_tracker: BudgetTracker,
-        training_job_with_budget: TrainingJob,
-    ) -> None:
-        """Test that budget exceeded error is raised when limit is reached."""
-        job_id = training_job_with_budget.job_id
-        budget_limit = Decimal("5.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test budget status returns OK when under 75% threshold."""
+        # Add cost under 75%
+        budget_enforcer.add_cost(Decimal("5.00"))  # 50% of $10
 
-        # Initialize with low budget
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        status = budget_enforcer.get_status()
+        assert status["status"] == BudgetStatus.OK.value
+        assert status["is_exceeded"] is False
 
-        # Add costs within budget
-        await budget_tracker.add_cost(job_id, Decimal("2.00"))
-        await budget_tracker.add_cost(job_id, Decimal("2.50"))
-
-        # Verify within budget
-        assert await budget_tracker.is_within_budget(job_id) is True
-
-        # Attempt to exceed budget should raise error
-        with pytest.raises(BudgetExceededError) as exc_info:
-            await budget_tracker.add_cost(job_id, Decimal("1.00"))
-
-        error = exc_info.value
-        assert error.job_id == job_id
-        assert error.current_spend > budget_limit
-        assert error.budget_limit == budget_limit
-
-    @pytest.mark.asyncio
-    async def test_budget_warning_thresholds(
+    def test_budget_status_warning_75(
         self,
-        budget_tracker: BudgetTracker,
-        training_job_with_budget: TrainingJob,
-    ) -> None:
-        """Test budget warning levels at 75% and 90% thresholds."""
-        job_id = training_job_with_budget.job_id
-        budget_limit = Decimal("10.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test budget status returns WARNING_75 at 75% threshold."""
+        # Add cost at 75%
+        budget_enforcer.add_cost(Decimal("7.50"))  # 75% of $10
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        status = budget_enforcer.get_status()
+        assert status["status"] == BudgetStatus.WARNING_75.value
+        assert status["is_exceeded"] is False
 
-        # No warning initially
-        warning = await budget_tracker.check_warning_level(job_id)
-        assert warning is None
-
-        # Add costs to 74% (no warning yet)
-        await budget_tracker.add_cost(job_id, Decimal("7.40"))
-        warning = await budget_tracker.check_warning_level(job_id)
-        assert warning is None
-
-        # Add cost to push to 75% (warning threshold)
-        await budget_tracker.add_cost(job_id, Decimal("0.10"))
-        warning = await budget_tracker.check_warning_level(job_id)
-        assert warning == BudgetWarningLevel.WARN_75
-
-        # Add cost to push to 90% (critical threshold)
-        await budget_tracker.add_cost(job_id, Decimal("1.50"))
-        warning = await budget_tracker.check_warning_level(job_id)
-        assert warning == BudgetWarningLevel.WARN_90
-
-    @pytest.mark.asyncio
-    async def test_training_job_cancellation_on_budget_exceed(
+    def test_budget_status_warning_90(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test that training job is cancelled when budget is exceeded."""
-        job_id = uuid4()
-        budget_limit = Decimal("3.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test budget status returns WARNING_90 at 90% threshold."""
+        # Add cost at 90%
+        budget_enforcer.add_cost(Decimal("9.00"))  # 90% of $10
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        status = budget_enforcer.get_status()
+        assert status["status"] == BudgetStatus.WARNING_90.value
+        assert status["is_exceeded"] is False
 
-        # Simulate training iterations with cost accumulation
-        iteration_costs = [
-            Decimal("0.50"),
-            Decimal("0.60"),
-            Decimal("0.55"),
-            Decimal("0.65"),
-            Decimal("0.70"),  # This should trigger budget exceeded
-        ]
-
-        exceeded = False
-        iterations_completed = 0
-
-        for cost in iteration_costs:
-            try:
-                # Check budget before iteration
-                if not await budget_tracker.is_within_budget(job_id):
-                    exceeded = True
-                    break
-
-                # Simulate iteration cost
-                await budget_tracker.add_cost(job_id, cost)
-                iterations_completed += 1
-
-            except BudgetExceededError:
-                exceeded = True
-                break
-
-        # Verify job was stopped before completing all iterations
-        assert exceeded is True
-        assert iterations_completed < len(iteration_costs)
-
-        # Verify final spend is below or at budget
-        final_spend = await budget_tracker.get_current_spend(job_id)
-        assert final_spend <= budget_limit
-
-    @pytest.mark.asyncio
-    async def test_cost_estimation(
+    def test_budget_status_exceeded(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test cost estimation for remaining iterations."""
-        job_id = uuid4()
-        budget_limit = Decimal("20.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test budget status returns EXCEEDED when over limit."""
+        # Exceed budget
+        budget_enforcer.add_cost(Decimal("10.50"))  # 105% of $10
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        status = budget_enforcer.get_status()
+        assert status["status"] == BudgetStatus.EXCEEDED.value
+        assert status["is_exceeded"] is True
 
-        # Track costs for first few iterations
-        iteration_costs = [
-            Decimal("0.45"),
-            Decimal("0.50"),
-            Decimal("0.48"),
-            Decimal("0.52"),
-        ]
-
-        for cost in iteration_costs:
-            await budget_tracker.add_cost(job_id, cost)
-
-        # Estimate cost for remaining iterations
-        total_iterations = 100
-        completed_iterations = len(iteration_costs)
-        remaining_iterations = total_iterations - completed_iterations
-
-        estimated_cost = await budget_tracker.estimate_remaining_cost(
-            job_id=job_id,
-            remaining_iterations=remaining_iterations,
-        )
-
-        # Verify estimation is reasonable
-        # Average cost per iteration ~0.49, so 96 iterations ~47
-        assert Decimal("40.00") < estimated_cost < Decimal("55.00")
-
-        # Verify total estimated cost doesn't exceed budget
-        current_spend = await budget_tracker.get_current_spend(job_id)
-        total_estimated = current_spend + estimated_cost
-
-        # Check if we should warn about potential budget exceed
-        will_exceed = total_estimated > budget_limit
-        if will_exceed:
-            # This is expected in this test case
-            assert total_estimated > budget_limit
-
-    @pytest.mark.asyncio
-    async def test_multiple_job_budget_tracking(
+    def test_check_budget_available_ok(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test tracking multiple jobs simultaneously."""
-        job1_id = uuid4()
-        job2_id = uuid4()
-        job3_id = uuid4()
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test checking if budget is available for operation."""
+        # Current: $0, Available: $10
+        available, status = budget_enforcer.check_budget_available(Decimal("5.00"))
 
-        # Initialize multiple jobs with different budgets
-        await budget_tracker.initialize_job(job1_id, Decimal("10.00"))
-        await budget_tracker.initialize_job(job2_id, Decimal("5.00"))
-        await budget_tracker.initialize_job(job3_id, Decimal("15.00"))
+        assert available is True
+        assert status == BudgetStatus.OK
 
-        # Add costs to each job
-        await budget_tracker.add_cost(job1_id, Decimal("3.00"))
-        await budget_tracker.add_cost(job2_id, Decimal("2.00"))
-        await budget_tracker.add_cost(job3_id, Decimal("8.00"))
-
-        # Verify independent tracking
-        assert await budget_tracker.get_current_spend(job1_id) == Decimal("3.00")
-        assert await budget_tracker.get_current_spend(job2_id) == Decimal("2.00")
-        assert await budget_tracker.get_current_spend(job3_id) == Decimal("8.00")
-
-        # Add more costs
-        await budget_tracker.add_cost(job1_id, Decimal("2.50"))
-        await budget_tracker.add_cost(job3_id, Decimal("3.00"))
-
-        # Verify updated totals
-        assert await budget_tracker.get_current_spend(job1_id) == Decimal("5.50")
-        assert await budget_tracker.get_current_spend(job2_id) == Decimal("2.00")
-        assert await budget_tracker.get_current_spend(job3_id) == Decimal("11.00")
-
-        # Verify budget status for each
-        assert await budget_tracker.is_within_budget(job1_id) is True
-        assert await budget_tracker.is_within_budget(job2_id) is True
-        assert await budget_tracker.is_within_budget(job3_id) is True
-
-    @pytest.mark.asyncio
-    async def test_budget_enforcement_with_batch_processing(
+    def test_check_budget_available_at_warning_75(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test budget enforcement when processing batches of trajectories."""
-        job_id = uuid4()
-        budget_limit = Decimal("5.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test budget check at 75% warning threshold."""
+        # Use up 70%
+        budget_enforcer.add_cost(Decimal("7.00"))
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        # Check if we can add more
+        available, status = budget_enforcer.check_budget_available(Decimal("0.50"))
 
-        # Simulate batch processing (8 trajectories per iteration)
-        batch_size = 8
-        cost_per_trajectory = Decimal("0.15")
+        assert available is True
+        assert status == BudgetStatus.WARNING_75
 
-        iterations_completed = 0
-        max_iterations = 10
-
-        for iteration in range(max_iterations):
-            # Check budget before batch
-            if not await budget_tracker.is_within_budget(job_id):
-                break
-
-            # Calculate batch cost
-            batch_cost = cost_per_trajectory * batch_size
-
-            # Check if batch would exceed budget
-            current_spend = await budget_tracker.get_current_spend(job_id)
-            if current_spend + batch_cost > budget_limit:
-                # Partial batch or stop
-                remaining_budget = budget_limit - current_spend
-                partial_trajectories = int(remaining_budget / cost_per_trajectory)
-
-                if partial_trajectories > 0:
-                    partial_cost = cost_per_trajectory * partial_trajectories
-                    await budget_tracker.add_cost(job_id, partial_cost)
-
-                break
-
-            # Add full batch cost
-            try:
-                await budget_tracker.add_cost(job_id, batch_cost)
-                iterations_completed += 1
-            except BudgetExceededError:
-                break
-
-        # Verify stopped before max iterations due to budget
-        assert iterations_completed < max_iterations
-
-        # Verify final spend is at or very close to budget
-        final_spend = await budget_tracker.get_current_spend(job_id)
-        assert final_spend <= budget_limit
-        assert final_spend >= budget_limit * Decimal("0.95")  # At least 95% used
-
-    @pytest.mark.asyncio
-    async def test_budget_reset_and_cleanup(
+    def test_check_budget_available_exceeded(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test budget tracking cleanup after job completion."""
-        job_id = uuid4()
-        budget_limit = Decimal("10.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test budget check when operation would exceed limit."""
+        # Use up $9
+        budget_enforcer.add_cost(Decimal("9.00"))
 
-        # Initialize and use budget
-        await budget_tracker.initialize_job(job_id, budget_limit)
-        await budget_tracker.add_cost(job_id, Decimal("5.00"))
+        # Check if we can add $2 (would exceed $10 limit)
+        available, status = budget_enforcer.check_budget_available(Decimal("2.00"))
 
-        # Verify tracking exists
-        assert await budget_tracker.get_current_spend(job_id) == Decimal("5.00")
+        assert available is False
+        assert status == BudgetStatus.EXCEEDED
 
-        # Cleanup job
-        await budget_tracker.cleanup_job(job_id)
-
-        # Verify tracking is removed
-        with pytest.raises(KeyError):
-            await budget_tracker.get_current_spend(job_id)
-
-    @pytest.mark.asyncio
-    async def test_concurrent_cost_additions(
+    def test_get_utilization_percentage(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test that concurrent cost additions are handled correctly."""
-        import asyncio
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test getting budget utilization percentage."""
+        # Add 30% of budget
+        budget_enforcer.add_cost(Decimal("3.00"))
 
-        job_id = uuid4()
-        budget_limit = Decimal("10.00")
+        percentage = budget_enforcer.get_utilization_percentage()
+        assert percentage == 30.0
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
-
-        # Add costs concurrently
-        async def add_small_cost():
-            await budget_tracker.add_cost(job_id, Decimal("0.10"))
-
-        # Run 50 concurrent additions (total $5.00)
-        await asyncio.gather(*[add_small_cost() for _ in range(50)])
-
-        # Verify total is correct (no race conditions)
-        total = await budget_tracker.get_current_spend(job_id)
-        assert total == Decimal("5.00")
-
-    @pytest.mark.asyncio
-    async def test_budget_enforcement_precision(
+    def test_reset_budget(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test that budget enforcement handles decimal precision correctly."""
-        job_id = uuid4()
-        budget_limit = Decimal("1.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test resetting budget to zero."""
+        # Add some costs
+        budget_enforcer.add_cost(Decimal("5.00"))
+        assert budget_enforcer.current_cost_usd == Decimal("5.00")
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        # Reset
+        budget_enforcer.reset()
 
-        # Add precise costs
-        await budget_tracker.add_cost(job_id, Decimal("0.333333"))
-        await budget_tracker.add_cost(job_id, Decimal("0.333333"))
-        await budget_tracker.add_cost(job_id, Decimal("0.333333"))
+        # Verify reset
+        assert budget_enforcer.current_cost_usd == Decimal("0.00")
+        status = budget_enforcer.get_status()
+        assert status["status"] == BudgetStatus.OK.value
+        assert status["is_exceeded"] is False
 
-        # Total should be 0.999999, still under budget
-        assert await budget_tracker.is_within_budget(job_id) is True
-
-        # One more small cost should exceed
-        with pytest.raises(BudgetExceededError):
-            await budget_tracker.add_cost(job_id, Decimal("0.01"))
-
-    @pytest.mark.asyncio
-    async def test_zero_budget_job(
+    def test_multiple_small_costs_accumulate(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test handling of job with zero budget (free tier or testing)."""
-        job_id = uuid4()
-        budget_limit = Decimal("0.00")
+        budget_enforcer: BudgetEnforcer) -> None:
+        """Test that multiple small costs accumulate correctly."""
+        # Add many small costs
+        for _ in range(10):
+            budget_enforcer.add_cost(Decimal("0.50"))
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        # Total should be $5.00
+        assert budget_enforcer.current_cost_usd == Decimal("5.00")
+        assert budget_enforcer.get_remaining_budget() == Decimal("5.00")
 
-        # Any cost should immediately exceed
-        with pytest.raises(BudgetExceededError):
-            await budget_tracker.add_cost(job_id, Decimal("0.01"))
-
-    @pytest.mark.asyncio
-    async def test_negative_cost_rejection(
+    def test_budget_enforcer_with_training_job(
         self,
-        budget_tracker: BudgetTracker,
-    ) -> None:
-        """Test that negative costs are rejected."""
-        job_id = uuid4()
-        budget_limit = Decimal("10.00")
+        training_job_with_budget: TrainingJob) -> None:
+        """Test budget enforcer integration with training job config."""
+        # Create enforcer from job config
+        enforcer = BudgetEnforcer(
+            max_budget_usd=training_job_with_budget.config.max_budget_usd)
 
-        await budget_tracker.initialize_job(job_id, budget_limit)
+        # Simulate training costs
+        enforcer.add_cost(Decimal("2.50"))  # First iteration
+        enforcer.add_cost(Decimal("3.00"))  # Second iteration
 
-        # Negative cost should raise error
-        with pytest.raises(ValueError):
-            await budget_tracker.add_cost(job_id, Decimal("-1.00"))
+        # Check status
+        status = enforcer.get_status()
+        assert status["status"] == BudgetStatus.OK.value
+        assert status["is_exceeded"] is False
+
+        # Verify we haven't exceeded job budget
+        assert enforcer.current_cost_usd <= training_job_with_budget.config.max_budget_usd

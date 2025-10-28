@@ -75,14 +75,12 @@ class TestProviderModels:
                 ProviderCapability.TEXT_GENERATION,
                 ProviderCapability.CHAT_COMPLETION,
             ],
-            max_tokens=4096,
             context_window=8192,
             supports_streaming=True,
             data_residency=[DataResidency.US_EAST, DataResidency.EU_WEST],
         )
         assert len(capabilities.capabilities) == 2
         assert ProviderCapability.TEXT_GENERATION in capabilities.capabilities
-        assert capabilities.max_tokens == 4096
         assert capabilities.supports_streaming is True
         assert DataResidency.US_EAST in capabilities.data_residency
 
@@ -111,7 +109,6 @@ class TestProviderModels:
                     ProviderCapability.TEXT_GENERATION,
                     ProviderCapability.CHAT_COMPLETION,
                 ],
-                max_tokens=4096,
                 context_window=8192,
             ),
             pricing=ProviderPricing(
@@ -147,7 +144,6 @@ class TestProviderRegistry:
                     ProviderCapability.TEXT_GENERATION,
                     ProviderCapability.CHAT_COMPLETION,
                 ],
-                max_tokens=4096,
             ),
             pricing=ProviderPricing(
                 input_token_price=0.003,

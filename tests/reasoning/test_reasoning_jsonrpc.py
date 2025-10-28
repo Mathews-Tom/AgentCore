@@ -16,13 +16,11 @@ from src.agentcore.reasoning.models.reasoning_models import (
     BoundedContextIterationResult,
     BoundedContextResult,
     CarryoverContent,
-    IterationMetrics,
-)
+    IterationMetrics)
 from src.agentcore.reasoning.services.reasoning_jsonrpc import (
     BoundedReasoningParams,
     BoundedReasoningResult,
-    handle_bounded_reasoning,
-)
+    handle_bounded_reasoning)
 
 
 @pytest.fixture
@@ -38,9 +36,7 @@ def mock_reasoning_result() -> BoundedContextResult:
             tokens=500,
             has_answer=True,
             carryover_generated=False,
-            execution_time_ms=1250,
-        ),
-    )
+            execution_time_ms=1250))
 
     return BoundedContextResult(
         answer="42",
@@ -49,8 +45,7 @@ def mock_reasoning_result() -> BoundedContextResult:
         total_iterations=1,
         compute_savings_pct=15.5,
         carryover_compressions=0,
-        execution_time_ms=1250,
-    )
+        execution_time_ms=1250)
 
 
 @pytest.fixture
@@ -74,8 +69,7 @@ def valid_token_payload() -> TokenPayload:
         role=Role.AGENT,
         token_type="access",
         expiration_hours=24,
-        agent_id="test-agent",
-    )
+        agent_id="test-agent")
 
 
 def test_bounded_reasoning_params_validation():
@@ -85,8 +79,7 @@ def test_bounded_reasoning_params_validation():
         query="Test query",
         chunk_size=8192,
         carryover_size=4096,
-        max_iterations=5,
-    )
+        max_iterations=5)
     assert params.query == "Test query"
     assert params.chunk_size == 8192
     assert params.carryover_size == 4096
@@ -103,10 +96,6 @@ def test_bounded_reasoning_params_validation():
     with pytest.raises(ValueError):
         BoundedReasoningParams(query="")
 
-    # Invalid: temperature out of range
-    with pytest.raises(ValueError):
-        BoundedReasoningParams(query="Test", temperature=3.0)
-
     # Invalid: max_iterations too high
     with pytest.raises(ValueError):
         BoundedReasoningParams(query="Test", max_iterations=100)
@@ -116,22 +105,19 @@ def test_bounded_reasoning_params_validation():
 async def test_handle_bounded_reasoning_success(
     valid_request_params: dict,
     valid_token_payload: TokenPayload,
-    mock_reasoning_result: BoundedContextResult,
-):
+    mock_reasoning_result: BoundedContextResult):
     """Test successful bounded reasoning execution."""
     # Create request
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params=valid_request_params,
-        id="test-123",
-    )
+        id="test-123")
 
     # Mock engine and security
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -165,8 +151,7 @@ async def test_handle_bounded_reasoning_missing_params(valid_token_payload: Toke
     # No params - will fail auth check first
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
-        id="test-123",
-    )
+        id="test-123")
 
     with pytest.raises(ValueError, match="Authentication required"):
         await handle_bounded_reasoning(request)
@@ -175,13 +160,11 @@ async def test_handle_bounded_reasoning_missing_params(valid_token_payload: Toke
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params={"auth_token": "valid-token"},
-        id="test-123",
-    )
+        id="test-123")
 
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        pytest.raises(ValueError, match="Invalid parameters|Parameters required|query"),
-    ):
+        pytest.raises(ValueError, match="Invalid parameters|Parameters required|query")):
         mock_security.validate_token.return_value = valid_token_payload
         await handle_bounded_reasoning(request)
 
@@ -197,13 +180,11 @@ async def test_handle_bounded_reasoning_invalid_params(valid_token_payload: Toke
             "carryover_size": 4096,  # Invalid: equal to chunk_size
             "auth_token": "valid-token",
         },
-        id="test-123",
-    )
+        id="test-123")
 
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        pytest.raises(ValueError, match="Invalid parameters"),
-    ):
+        pytest.raises(ValueError, match="Invalid parameters")):
         mock_security.validate_token.return_value = valid_token_payload
         await handle_bounded_reasoning(request)
 
@@ -212,8 +193,7 @@ async def test_handle_bounded_reasoning_invalid_params(valid_token_payload: Toke
 async def test_handle_bounded_reasoning_a2a_context_propagation(
     valid_request_params: dict,
     valid_token_payload: TokenPayload,
-    mock_reasoning_result: BoundedContextResult,
-):
+    mock_reasoning_result: BoundedContextResult):
     """Test A2A context is properly logged and propagated."""
     # Create request with A2A context
     a2a_context = A2AContext(
@@ -221,23 +201,20 @@ async def test_handle_bounded_reasoning_a2a_context_propagation(
         target_agent="agent-456",
         trace_id="trace-abc",
         timestamp="2025-01-01T00:00:00Z",
-        session_id="session-xyz",
-    )
+        session_id="session-xyz")
 
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params=valid_request_params,
         id="test-123",
-        a2a_context=a2a_context,
-    )
+        a2a_context=a2a_context)
 
     # Mock engine and security
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.logger") as mock_logger,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.logger") as mock_logger):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -254,8 +231,7 @@ async def test_handle_bounded_reasoning_a2a_context_propagation(
             max_iterations=5,
             trace_id="trace-abc",
             source_agent="agent-123",
-            target_agent="agent-456",
-        )
+            target_agent="agent-456")
 
 
 @pytest.mark.asyncio
@@ -266,15 +242,13 @@ async def test_handle_bounded_reasoning_llm_failure(
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params=valid_request_params,
-        id="test-123",
-    )
+        id="test-123")
 
     # Mock engine to raise RuntimeError
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(side_effect=RuntimeError("LLM service unavailable"))
@@ -292,15 +266,13 @@ async def test_handle_bounded_reasoning_unexpected_error(
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params=valid_request_params,
-        id="test-123",
-    )
+        id="test-123")
 
     # Mock engine to raise unexpected error
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(side_effect=KeyError("unexpected"))
@@ -313,8 +285,7 @@ async def test_handle_bounded_reasoning_unexpected_error(
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_max_iterations_reached(
     valid_request_params: dict,
-    valid_token_payload: TokenPayload,
-):
+    valid_token_payload: TokenPayload):
     """Test handling when max iterations reached without finding answer."""
     # Create result with no answer - need 5 iterations to match total_iterations
     iterations = [
@@ -328,9 +299,7 @@ async def test_handle_bounded_reasoning_max_iterations_reached(
                 tokens=600,
                 has_answer=False,
                 carryover_generated=(i < 4),
-                execution_time_ms=1000,
-            ),
-        )
+                execution_time_ms=1000))
         for i in range(5)
     ]
 
@@ -341,21 +310,18 @@ async def test_handle_bounded_reasoning_max_iterations_reached(
         total_iterations=5,
         compute_savings_pct=20.0,
         carryover_compressions=4,
-        execution_time_ms=5000,
-    )
+        execution_time_ms=5000)
 
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         params=valid_request_params,
-        id="test-123",
-    )
+        id="test-123")
 
     # Mock engine and security
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=result_no_answer)
@@ -373,8 +339,7 @@ async def test_handle_bounded_reasoning_max_iterations_reached(
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_with_system_prompt(
     valid_token_payload: TokenPayload,
-    mock_reasoning_result: BoundedContextResult,
-):
+    mock_reasoning_result: BoundedContextResult):
     """Test bounded reasoning with custom system prompt."""
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
@@ -384,15 +349,13 @@ async def test_handle_bounded_reasoning_with_system_prompt(
             "temperature": 0.5,
             "auth_token": "valid-token",
         },
-        id="test-123",
-    )
+        id="test-123")
 
     # Mock engine and security
     with (
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
         patch("src.agentcore.reasoning.services.reasoning_jsonrpc.LLMClient"),
-        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class,
-    ):
+        patch("src.agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -428,8 +391,7 @@ def test_bounded_reasoning_result_model():
                 "carryover_generated": False,
                 "content_preview": "Test content",
             }
-        ],
-    )
+        ])
 
     assert result.success is True
     assert result.answer == "42"

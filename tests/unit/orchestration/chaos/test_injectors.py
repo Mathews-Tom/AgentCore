@@ -10,8 +10,7 @@ from agentcore.orchestration.chaos.injectors import (
     ExceptionInjector,
     NetworkFaultInjector,
     ServiceCrashInjector,
-    TimeoutInjector,
-)
+    TimeoutInjector)
 from agentcore.orchestration.chaos.models import FaultConfig, FaultType
 
 
@@ -31,8 +30,7 @@ class TestNetworkFaultInjector:
         config = FaultConfig(
             fault_type=FaultType.NETWORK_LATENCY,
             target_service="test_service",
-            latency_ms=100,
-        )
+            latency_ms=100)
 
         result = await injector.inject(config)
 
@@ -52,8 +50,7 @@ class TestNetworkFaultInjector:
         config = FaultConfig(
             fault_type=FaultType.NETWORK_PACKET_LOSS,
             target_service="test_service",
-            packet_loss_rate=0.5,
-        )
+            packet_loss_rate=0.5)
 
         result = await injector.inject(config)
 
@@ -70,8 +67,7 @@ class TestNetworkFaultInjector:
         """Test network partition injection."""
         config = FaultConfig(
             fault_type=FaultType.NETWORK_PARTITION,
-            target_service="test_service",
-        )
+            target_service="test_service")
 
         result = await injector.inject(config)
 
@@ -88,8 +84,7 @@ class TestNetworkFaultInjector:
         config = FaultConfig(
             fault_type=FaultType.NETWORK_LATENCY,
             target_service="test_service",
-            latency_ms=100,
-        )
+            latency_ms=100)
 
         result = await injector.inject(config)
         injection_id = result.injection_id
@@ -110,8 +105,7 @@ class TestNetworkFaultInjector:
         config = FaultConfig(
             fault_type=FaultType.NETWORK_LATENCY,
             target_service="test_service",
-            latency_ms=100,
-        )
+            latency_ms=100)
 
         await injector.inject(config)
 
@@ -166,8 +160,7 @@ class TestServiceCrashInjector:
         """Test service crash injection."""
         config = FaultConfig(
             fault_type=FaultType.SERVICE_CRASH,
-            target_service="test_service",
-        )
+            target_service="test_service")
 
         result = await injector.inject(config)
 
@@ -184,8 +177,7 @@ class TestServiceCrashInjector:
         config = FaultConfig(
             fault_type=FaultType.SERVICE_HANG,
             target_service="test_service",
-            hang_duration_seconds=0.5,
-        )
+            hang_duration_seconds=0.5)
 
         result = await injector.inject(config)
 
@@ -199,8 +191,7 @@ class TestServiceCrashInjector:
         """Test applying service effects with crash."""
         config = FaultConfig(
             fault_type=FaultType.SERVICE_CRASH,
-            target_service="test_service",
-        )
+            target_service="test_service")
 
         await injector.inject(config)
 
@@ -219,8 +210,7 @@ class TestServiceCrashInjector:
         config = FaultConfig(
             fault_type=FaultType.SERVICE_HANG,
             target_service="test_service",
-            hang_duration_seconds=0.2,
-        )
+            hang_duration_seconds=0.2)
 
         await injector.inject(config)
 
@@ -253,8 +243,7 @@ class TestTimeoutInjector:
             fault_type=FaultType.TIMEOUT,
             target_service="test_service",
             duration_seconds=10.0,
-            intensity=1.0,
-        )
+            intensity=1.0)
 
         result = await injector.inject(config)
 
@@ -271,8 +260,7 @@ class TestTimeoutInjector:
             fault_type=FaultType.TIMEOUT,
             target_service="test_service",
             duration_seconds=1.0,
-            intensity=1.0,
-        )
+            intensity=1.0)
 
         await injector.inject(config)
 
@@ -310,8 +298,7 @@ class TestExceptionInjector:
             fault_type=FaultType.EXCEPTION,
             target_service="test_service",
             exception_type="ValueError",
-            exception_rate=1.0,
-        )
+            exception_rate=1.0)
 
         result = await injector.inject(config)
 
@@ -328,8 +315,7 @@ class TestExceptionInjector:
             fault_type=FaultType.EXCEPTION,
             target_service="test_service",
             exception_type="ValueError",
-            exception_rate=1.0,
-        )
+            exception_rate=1.0)
 
         await injector.inject(config)
 
@@ -346,8 +332,7 @@ class TestExceptionInjector:
             fault_type=FaultType.EXCEPTION,
             target_service="test_service",
             exception_type="RuntimeError",
-            exception_rate=1.0,
-        )
+            exception_rate=1.0)
 
         await injector.inject(config)
 

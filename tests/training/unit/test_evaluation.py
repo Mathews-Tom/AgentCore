@@ -24,8 +24,7 @@ def training_queries() -> list[TrainingQuery]:
     return [
         TrainingQuery(
             query=f"Test query {i}",
-            expected_outcome={"result": "success"},
-        )
+            expected_outcome={"result": "success"})
         for i in range(100)
     ]
 
@@ -45,23 +44,20 @@ def successful_trajectory() -> Trajectory:
                 action={"type": "tool_call", "tool": "search"},
                 result={"data": "result"},
                 timestamp=datetime.now(timezone.utc),
-                duration_ms=100,
-            ),
+                duration_ms=100),
             TrajectoryStep(
                 state={"context": "after_search"},
                 action={"type": "response", "content": "Final answer"},
                 result={"status": "success"},
                 timestamp=datetime.now(timezone.utc),
-                duration_ms=50,
-            ),
+                duration_ms=50),
         ],
         reward=1.0,
         normalized_reward=0.8,
         advantage=0.5,
         execution_time_ms=150,
         success=True,
-        created_at=datetime.now(timezone.utc),
-    )
+        created_at=datetime.now(timezone.utc))
 
 
 @pytest.fixture
@@ -79,16 +75,14 @@ def failed_trajectory() -> Trajectory:
                 action={"type": "tool_call", "tool": "search"},
                 result={"error": "Tool failed"},
                 timestamp=datetime.now(timezone.utc),
-                duration_ms=100,
-            ),
+                duration_ms=100),
         ],
         reward=0.0,
         normalized_reward=-0.5,
         advantage=-0.3,
         execution_time_ms=100,
         success=False,
-        created_at=datetime.now(timezone.utc),
-    )
+        created_at=datetime.now(timezone.utc))
 
 
 @pytest.fixture
@@ -102,8 +96,7 @@ def evaluation_framework() -> EvaluationFramework:
 
 def test_split_training_data(
     training_queries: list[TrainingQuery],
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test training data split into train and eval sets."""
     train, eval_queries = evaluation_framework.split_training_data(training_queries, held_out_ratio=0.2)
 
@@ -117,8 +110,7 @@ def test_split_training_data(
 
 def test_split_training_data_invalid_ratio(
     training_queries: list[TrainingQuery],
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test split with invalid held_out_ratio raises ValueError."""
     with pytest.raises(ValueError, match="held_out_ratio must be between 0 and 1"):
         evaluation_framework.split_training_data(training_queries, held_out_ratio=1.5)
@@ -128,8 +120,7 @@ def test_split_training_data_invalid_ratio(
 
 
 def test_split_training_data_too_small(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test split with too few queries raises ValueError."""
     small_dataset = [
         TrainingQuery(query="Query 1", expected_outcome={"result": "success"}),
@@ -142,8 +133,7 @@ def test_split_training_data_too_small(
 
 def test_split_training_data_custom_ratio(
     training_queries: list[TrainingQuery],
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test split with custom held_out_ratio."""
     train, eval_queries = evaluation_framework.split_training_data(training_queries, held_out_ratio=0.3)
 
@@ -156,8 +146,7 @@ def test_split_training_data_custom_ratio(
 
 def test_compute_metrics_successful_trajectories(
     evaluation_framework: EvaluationFramework,
-    successful_trajectory: Trajectory,
-) -> None:
+    successful_trajectory: Trajectory) -> None:
     """Test metrics computation for successful trajectories."""
     trajectories = [successful_trajectory] * 10
 
@@ -173,8 +162,7 @@ def test_compute_metrics_successful_trajectories(
 def test_compute_metrics_mixed_trajectories(
     evaluation_framework: EvaluationFramework,
     successful_trajectory: Trajectory,
-    failed_trajectory: Trajectory,
-) -> None:
+    failed_trajectory: Trajectory) -> None:
     """Test metrics computation for mixed success/failure."""
     trajectories = [successful_trajectory] * 7 + [failed_trajectory] * 3
 
@@ -187,16 +175,14 @@ def test_compute_metrics_mixed_trajectories(
 
 
 def test_compute_metrics_empty_trajectories(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test metrics computation with empty trajectory list raises ValueError."""
     with pytest.raises(ValueError, match="Cannot compute metrics from empty trajectory list"):
         evaluation_framework.compute_metrics([])
 
 
 def test_compute_metrics_no_tool_usage(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test metrics computation when no trajectories use tools."""
     trajectory = Trajectory(
         trajectory_id=uuid4(),
@@ -209,13 +195,11 @@ def test_compute_metrics_no_tool_usage(
                 action={"type": "response", "content": "Answer"},
                 result={"status": "success"},
                 timestamp=datetime.now(timezone.utc),
-                duration_ms=50,
-            ),
+                duration_ms=50),
         ],
         reward=1.0,
         success=True,
-        created_at=datetime.now(timezone.utc),
-    )
+        created_at=datetime.now(timezone.utc))
 
     metrics = evaluation_framework.compute_metrics([trajectory])
 
@@ -224,8 +208,7 @@ def test_compute_metrics_no_tool_usage(
 
 def test_metrics_to_dict(
     evaluation_framework: EvaluationFramework,
-    successful_trajectory: Trajectory,
-) -> None:
+    successful_trajectory: Trajectory) -> None:
     """Test EvaluationMetrics to_dict conversion."""
     metrics = evaluation_framework.compute_metrics([successful_trajectory])
 
@@ -243,8 +226,7 @@ def test_metrics_to_dict(
 
 
 def test_compare_with_baseline_significant_improvement(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test baseline comparison with significant improvement."""
     # Baseline: low rewards
     baseline_trajectories = [
@@ -256,8 +238,7 @@ def test_compare_with_baseline_significant_improvement(
             steps=[],
             reward=0.2 + i * 0.01,
             success=False,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for i in range(50)
     ]
 
@@ -271,16 +252,14 @@ def test_compare_with_baseline_significant_improvement(
             steps=[],
             reward=0.8 + i * 0.01,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for i in range(50)
     ]
 
     test_result = evaluation_framework.compare_with_baseline(
         baseline_trajectories,
         trained_trajectories,
-        metric_key="reward",
-    )
+        metric_key="reward")
 
     assert test_result.is_significant  # p < 0.05
     assert test_result.trained_mean > test_result.baseline_mean
@@ -288,8 +267,7 @@ def test_compare_with_baseline_significant_improvement(
 
 
 def test_compare_with_baseline_no_difference(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test baseline comparison with no significant difference."""
     # Identical distributions
     baseline_trajectories = [
@@ -301,8 +279,7 @@ def test_compare_with_baseline_no_difference(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for _ in range(50)
     ]
 
@@ -315,16 +292,14 @@ def test_compare_with_baseline_no_difference(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for _ in range(50)
     ]
 
     test_result = evaluation_framework.compare_with_baseline(
         baseline_trajectories,
         trained_trajectories,
-        metric_key="reward",
-    )
+        metric_key="reward")
 
     # With identical values, t-test will have NaN or p-value = 1.0
     # Check that no improvement detected
@@ -332,8 +307,7 @@ def test_compare_with_baseline_no_difference(
 
 
 def test_compare_with_baseline_empty_trajectories(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test baseline comparison with empty trajectories raises ValueError."""
     trajectories = [
         Trajectory(
@@ -344,8 +318,7 @@ def test_compare_with_baseline_empty_trajectories(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
     ]
 
     with pytest.raises(ValueError, match="Both baseline and trained trajectories required"):
@@ -356,8 +329,7 @@ def test_compare_with_baseline_empty_trajectories(
 
 
 def test_compare_with_baseline_different_metrics(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test baseline comparison for different metric types."""
     baseline_trajectories = [
         Trajectory(
@@ -367,12 +339,10 @@ def test_compare_with_baseline_different_metrics(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100,
-            )] * 5,  # 5 steps
+                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 5,  # 5 steps
             reward=0.3,
             success=False,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for _ in range(30)
     ]
 
@@ -384,12 +354,10 @@ def test_compare_with_baseline_different_metrics(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100,
-            )] * 3,  # 3 steps (more efficient)
+                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 3,  # 3 steps (more efficient)
             reward=0.8,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for _ in range(30)
     ]
 
@@ -413,8 +381,7 @@ def test_compare_with_baseline_different_metrics(
 
 
 def test_compare_with_baseline_invalid_metric(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test baseline comparison with invalid metric_key raises ValueError."""
     trajectories = [
         Trajectory(
@@ -425,8 +392,7 @@ def test_compare_with_baseline_invalid_metric(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
     ]
 
     with pytest.raises(ValueError, match="Unknown metric_key"):
@@ -439,8 +405,7 @@ def test_compare_with_baseline_invalid_metric(
 
 
 def test_should_evaluate_at_interval(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test should_evaluate returns True at evaluation intervals."""
     assert not evaluation_framework.should_evaluate(0)  # Not at iteration 0
     assert not evaluation_framework.should_evaluate(5)
@@ -463,8 +428,7 @@ def test_should_evaluate_custom_interval() -> None:
 
 
 def test_run_evaluation(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test complete evaluation workflow."""
     eval_queries = [
         TrainingQuery(query=f"Eval query {i}", expected_outcome={"result": "success"})
@@ -479,12 +443,10 @@ def test_run_evaluation(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100,
-            )] * 4,
+                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 4,
             reward=0.3,
             success=False,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for _ in range(20)
     ]
 
@@ -496,20 +458,17 @@ def test_run_evaluation(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100,
-            )] * 3,
+                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 3,
             reward=0.8,
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for _ in range(20)
     ]
 
     result = evaluation_framework.run_evaluation(
         eval_queries,
         baseline_trajectories,
-        trained_trajectories,
-    )
+        trained_trajectories)
 
     # Assert structure
     assert "baseline_metrics" in result
@@ -532,8 +491,7 @@ def test_run_evaluation(
 
 
 def test_run_evaluation_marginal_improvement(
-    evaluation_framework: EvaluationFramework,
-) -> None:
+    evaluation_framework: EvaluationFramework) -> None:
     """Test evaluation with marginal (non-significant) improvement."""
     eval_queries = [
         TrainingQuery(query=f"Eval query {i}", expected_outcome={"result": "success"})
@@ -550,8 +508,7 @@ def test_run_evaluation_marginal_improvement(
             steps=[],
             reward=0.48 + i * 0.001,  # ~0.48-0.50
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for i in range(20)
     ]
 
@@ -564,16 +521,14 @@ def test_run_evaluation_marginal_improvement(
             steps=[],
             reward=0.50 + i * 0.001,  # ~0.50-0.52
             success=True,
-            created_at=datetime.now(timezone.utc),
-        )
+            created_at=datetime.now(timezone.utc))
         for i in range(20)
     ]
 
     result = evaluation_framework.run_evaluation(
         eval_queries,
         baseline_trajectories,
-        trained_trajectories,
-    )
+        trained_trajectories)
 
     # May or may not be significant depending on variance
     # Just verify structure is correct

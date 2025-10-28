@@ -8,8 +8,7 @@ from agentcore.gateway.load_balancer import (
     LoadBalancer,
     RandomStrategy,
     RoundRobinStrategy,
-    WeightedRoundRobinStrategy,
-)
+    WeightedRoundRobinStrategy)
 from agentcore.gateway.models import LoadBalancingAlgorithm, RoutingMetrics, ServiceEndpoint
 
 
@@ -21,20 +20,17 @@ def sample_services() -> list[ServiceEndpoint]:
             service_id="svc-1",
             name="Service 1",
             base_url=HttpUrl("http://localhost:8001"),
-            weight=1,
-        ),
+            weight=1),
         ServiceEndpoint(
             service_id="svc-2",
             name="Service 2",
             base_url=HttpUrl("http://localhost:8002"),
-            weight=2,
-        ),
+            weight=2),
         ServiceEndpoint(
             service_id="svc-3",
             name="Service 3",
             base_url=HttpUrl("http://localhost:8003"),
-            weight=3,
-        ),
+            weight=3),
     ]
 
 
@@ -123,8 +119,7 @@ async def test_load_balancer_round_robin() -> None:
         ServiceEndpoint(
             service_id=f"svc-{i}",
             name=f"Service {i}",
-            base_url=HttpUrl(f"http://localhost:800{i}"),
-        )
+            base_url=HttpUrl(f"http://localhost:800{i}"))
         for i in range(3)
     ]
 
@@ -147,14 +142,12 @@ async def test_load_balancer_filters_disabled() -> None:
             service_id="enabled",
             name="Enabled",
             base_url=HttpUrl("http://localhost:8001"),
-            enabled=True,
-        ),
+            enabled=True),
         ServiceEndpoint(
             service_id="disabled",
             name="Disabled",
             base_url=HttpUrl("http://localhost:8002"),
-            enabled=False,
-        ),
+            enabled=False),
     ]
 
     selected = await lb.select_service(services)

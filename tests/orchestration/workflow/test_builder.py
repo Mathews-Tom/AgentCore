@@ -84,8 +84,7 @@ def test_builder_with_coordination() -> None:
         .set_coordination(
             coordination_type="hybrid",
             event_driven_events=["status_update"],
-            max_parallel_tasks=5,
-        )
+            max_parallel_tasks=5)
         .build()
     )
 

@@ -19,13 +19,11 @@ from agentcore.integration.portkey.cache_models import (
     CacheConfig,
     CacheMode,
     CacheStats,
-    EvictionPolicy,
-)
+    EvictionPolicy)
 from agentcore.integration.portkey.cache_service import CacheService
 from agentcore.integration.portkey.models import (
     LLMRequest,
-    LLMResponse,
-)
+    LLMResponse)
 
 
 @pytest_asyncio.fixture
@@ -40,8 +38,7 @@ async def cache_service() -> CacheService:
         l2_enabled=True,
         l2_ttl_seconds=86400,
         mode=CacheMode.EXACT,
-        stats_enabled=True,
-    )
+        stats_enabled=True)
 
     service = CacheService(config=config)
     await service.connect()
@@ -62,8 +59,7 @@ async def semantic_cache_service() -> CacheService:
         l1_max_size=100,
         l2_enabled=True,
         mode=CacheMode.SEMANTIC,
-        stats_enabled=True,
-    )
+        stats_enabled=True)
 
     service = CacheService(config=config)
     await service.connect()
@@ -79,24 +75,18 @@ def create_llm_request(
     prompt: str = "Hello, world!",
     model: str = "gpt-4",
     temperature: float = 0.7,
-    max_tokens: int = 100,
-) -> LLMRequest:
+    max_tokens: int = 100) -> LLMRequest:
     """Create LLM request for testing."""
     return LLMRequest(
         model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=temperature,
-        max_tokens=max_tokens,
-        context={"selected_provider": "openai"},
-    )
+        messages=[{"role": "user", "content": prompt}], context={"selected_provider": "openai"})
 
 
 def create_llm_response(
     request: LLMRequest,
     content: str = "Hello! How can I help you?",
     response_id: str = "test-response-1",
-    cost: float = 0.001,
-) -> LLMResponse:
+    cost: float = 0.001) -> LLMResponse:
     """Create LLM response for testing."""
     return LLMResponse(
         id=response_id,
@@ -109,8 +99,7 @@ def create_llm_response(
             "total_tokens": 30,
         },
         cost=cost,
-        latency_ms=100,
-    )
+        latency_ms=100)
 
 
 class TestCacheBasicOperations:
@@ -330,8 +319,7 @@ class TestDistributedCacheManagement:
             enabled=True,
             l1_enabled=False,  # Disable L1 to force L2 lookup
             l2_enabled=True,
-            stats_enabled=True,
-        )
+            stats_enabled=True)
         new_service = CacheService(config=config)
         await new_service.connect()
 
@@ -465,8 +453,7 @@ class TestCacheInvalidationStrategies:
             l1_enabled=True,
             l1_ttl_seconds=1,  # 1 second TTL
             l2_enabled=False,
-            stats_enabled=True,
-        )
+            stats_enabled=True)
 
         service = CacheService(config=config)
 

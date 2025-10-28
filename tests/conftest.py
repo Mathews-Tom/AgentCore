@@ -7,7 +7,7 @@ import sys
 from prometheus_client import REGISTRY
 
 # Configure pytest plugins at top level
-pytest_plugins = ('pytest_asyncio',)
+pytest_plugins = ('pytest_asyncio')
 
 # Global metrics cache that persists across module reloads
 _GLOBAL_GATEWAY_METRICS_CACHE: dict = {}

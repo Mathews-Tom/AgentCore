@@ -19,9 +19,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ### Create enum types first ###
-    op.execute("CREATE TYPE agentstatus AS ENUM ('active', 'inactive', 'maintenance', 'error')")
-    op.execute("CREATE TYPE taskstatus AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled')")
+    # ### Create enum types first (idempotent) ###
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'agentstatus') THEN
+                CREATE TYPE agentstatus AS ENUM ('active', 'inactive', 'maintenance', 'error');
+            END IF;
+        END$$;
+    """)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'taskstatus') THEN
+                CREATE TYPE taskstatus AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled');
+            END IF;
+        END$$;
+    """)
 
     # ### Create agents table ###
     op.create_table(

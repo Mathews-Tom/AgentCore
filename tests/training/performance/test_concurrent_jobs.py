@@ -19,12 +19,10 @@ from agentcore.training.job_manager import TrainingJobManager
 from agentcore.training.models import (
     GRPOConfig,
     TrainingJobStatus,
-    TrainingQuery,
-)
+    TrainingQuery)
 from agentcore.training.scheduler import (
     JobPriority,
-    TrainingJobScheduler,
-)
+    TrainingJobScheduler)
 
 
 @pytest.fixture
@@ -72,8 +70,7 @@ def sample_config():
         group_size=4,  # Small group for faster execution
         learning_rate=0.0001,
         max_budget_usd=Decimal("10.0"),
-        checkpoint_interval=10,
-    )
+        checkpoint_interval=10)
 
 
 @pytest.fixture
@@ -82,8 +79,7 @@ def sample_training_data():
     return [
         TrainingQuery(
             query=f"Test query {i}",
-            expected_outcome={"output": f"Test output {i}"},
-        )
+            expected_outcome={"output": f"Test output {i}"})
         for i in range(100)
     ]
 
@@ -101,8 +97,7 @@ async def test_concurrent_jobs_p2_priority(
         job = await job_manager.create_job(
             agent_id=f"test-agent-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         jobs.append(job)
 
     # Enqueue all jobs with P2 priority
@@ -138,7 +133,7 @@ async def test_concurrent_jobs_p2_priority(
         elapsed = asyncio.get_event_loop().time() - start_time
         if elapsed > timeout:
             pytest.fail(
-                f"Timeout: Only {completed_count}/{num_jobs} jobs completed in {timeout}s"
+                f"Timeout: Only {completed_count}/{num_jobs} jobs completed in {timeout}, s"
             )
 
         await asyncio.sleep(1)
@@ -164,20 +159,17 @@ async def test_priority_ordering(
     job_p2 = await job_manager.create_job(
         agent_id="test-agent-p2",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     job_p1 = await job_manager.create_job(
         agent_id="test-agent-p1",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     job_p0 = await job_manager.create_job(
         agent_id="test-agent-p0",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # Enqueue in reverse priority order (P2, P1, P0)
     await scheduler.enqueue_job(job_p2, priority=JobPriority.P2)
@@ -263,8 +255,7 @@ async def test_scheduler_health_check(scheduler, job_manager, sample_config, sam
         job = await job_manager.create_job(
             agent_id=f"test-agent-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         await scheduler.enqueue_job(job, priority=JobPriority.P1)
 
     # Start workers
@@ -298,8 +289,7 @@ async def test_queue_fifo_within_priority(
         job = await job_manager.create_job(
             agent_id=f"test-agent-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         jobs.append(job)
 
         # Enqueue with P1 priority
@@ -327,8 +317,7 @@ async def test_mixed_priority_concurrent_execution(
         job = await job_manager.create_job(
             agent_id=f"test-agent-p0-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         jobs_p0.append(job)
         await scheduler.enqueue_job(job, priority=JobPriority.P0)
 
@@ -336,8 +325,7 @@ async def test_mixed_priority_concurrent_execution(
         job = await job_manager.create_job(
             agent_id=f"test-agent-p1-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         jobs_p1.append(job)
         await scheduler.enqueue_job(job, priority=JobPriority.P1)
 
@@ -345,8 +333,7 @@ async def test_mixed_priority_concurrent_execution(
         job = await job_manager.create_job(
             agent_id=f"test-agent-p2-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         jobs_p2.append(job)
         await scheduler.enqueue_job(job, priority=JobPriority.P2)
 
@@ -402,8 +389,7 @@ async def test_high_load_150_concurrent_jobs(
         job = await job_manager.create_job(
             agent_id=f"test-agent-{i}",
             training_data=sample_training_data,
-            config=sample_config,
-        )
+            config=sample_config)
         jobs.append(job)
 
         # Mix priorities
@@ -450,8 +436,8 @@ async def test_high_load_150_concurrent_jobs(
     print(f"\nHigh Load Test Results:")
     print(f"  Total jobs: {num_jobs}")
     print(f"  Workers: 20")
-    print(f"  Total time: {total_time:.2f}s")
-    print(f"  Avg time per job: {avg_time_per_job:.2f}s")
+    print(f"  Total time: {total_time:.2f}, s")
+    print(f"  Avg time per job: {avg_time_per_job:.2f}, s")
 
     # Stop workers
     await scheduler.stop_worker_pool()

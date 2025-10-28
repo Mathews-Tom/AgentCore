@@ -13,8 +13,7 @@ from agentcore_cli.exceptions import (
     AuthenticationError,
     ConnectionError,
     JsonRpcError,
-    TimeoutError,
-)
+    TimeoutError)
 
 
 class TestAgentCoreClient:
@@ -37,8 +36,7 @@ class TestAgentCoreClient:
             timeout=60,
             retries=5,
             verify_ssl=False,
-            auth_token="test-token",
-        )
+            auth_token="test-token")
 
         assert client.api_url == "https://api.example.com/api/v1/jsonrpc"
         assert client.timeout == 60
@@ -91,8 +89,7 @@ class TestAgentCoreClient:
 
         client = AgentCoreClient(
             "http://localhost:8001",
-            auth_token="test-token-123",
-        )
+            auth_token="test-token-123")
         client.call("agent.list")
 
         # Verify authorization header

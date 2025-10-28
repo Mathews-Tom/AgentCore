@@ -41,8 +41,7 @@ class TestRouteMessage:
                     },
                 }
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_route_message(request)
 
@@ -77,8 +76,7 @@ class TestRouteMessage:
                 },
                 "required_capabilities": ["capability-1"],
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_route_message(request)
 
@@ -113,8 +111,7 @@ class TestRouteMessage:
                 "strategy": "round_robin",
                 "priority": "high",
             },
-            id="1",
-        )
+            id="1")
 
         result = await handle_route_message(request)
 
@@ -130,8 +127,7 @@ class TestRouteMessage:
             jsonrpc="2.0",
             method="route.message",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameters required"):
             await handle_route_message(request)
@@ -145,8 +141,7 @@ class TestRouteMessage:
             jsonrpc="2.0",
             method="route.message",
             params={"strategy": "capability_match"},
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Missing required parameter: envelope"):
             await handle_route_message(request)
@@ -167,8 +162,7 @@ class TestProcessQueue:
             jsonrpc="2.0",
             method="route.process_queue",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_process_queue(request)
 
@@ -188,8 +182,7 @@ class TestProcessQueue:
             jsonrpc="2.0",
             method="route.process_queue",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_process_queue(request)
 
@@ -204,8 +197,7 @@ class TestProcessQueue:
             jsonrpc="2.0",
             method="route.process_queue",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_process_queue(request)
@@ -219,8 +211,7 @@ class TestQueueInfo:
     async def test_get_queue_info_success(self, mock_router):
         """Test getting queue information."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_get_queue_info,
-        )
+            handle_get_queue_info)
 
         queue_info = {
             "agent_id": "agent-123",
@@ -234,8 +225,7 @@ class TestQueueInfo:
             jsonrpc="2.0",
             method="route.get_queue_info",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_queue_info(request)
 
@@ -247,8 +237,7 @@ class TestQueueInfo:
     async def test_get_queue_info_empty(self, mock_router):
         """Test getting queue info when queue is empty."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_get_queue_info,
-        )
+            handle_get_queue_info)
 
         queue_info = {
             "agent_id": "agent-123",
@@ -260,8 +249,7 @@ class TestQueueInfo:
             jsonrpc="2.0",
             method="route.get_queue_info",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_queue_info(request)
 
@@ -271,15 +259,13 @@ class TestQueueInfo:
     async def test_get_queue_info_missing_params(self):
         """Test getting queue info with missing parameters."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_get_queue_info,
-        )
+            handle_get_queue_info)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="route.get_queue_info",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_get_queue_info(request)
@@ -293,8 +279,7 @@ class TestRoutingStats:
     async def test_get_routing_stats(self, mock_router):
         """Test getting routing statistics."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_get_routing_stats,
-        )
+            handle_get_routing_stats)
 
         stats = {
             "total_messages_routed": 1000,
@@ -307,8 +292,7 @@ class TestRoutingStats:
             jsonrpc="2.0",
             method="route.get_stats",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_get_routing_stats(request)
 
@@ -325,8 +309,7 @@ class TestCleanupExpired:
     async def test_cleanup_expired_messages(self, mock_router):
         """Test cleaning up expired messages."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_cleanup_expired,
-        )
+            handle_cleanup_expired)
 
         mock_router.cleanup_expired_messages = AsyncMock(return_value=10)
 
@@ -334,8 +317,7 @@ class TestCleanupExpired:
             jsonrpc="2.0",
             method="route.cleanup_expired",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_cleanup_expired(request)
 
@@ -347,8 +329,7 @@ class TestCleanupExpired:
     async def test_cleanup_expired_no_messages(self, mock_router):
         """Test cleanup when no expired messages."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_cleanup_expired,
-        )
+            handle_cleanup_expired)
 
         mock_router.cleanup_expired_messages = AsyncMock(return_value=0)
 
@@ -356,8 +337,7 @@ class TestCleanupExpired:
             jsonrpc="2.0",
             method="route.cleanup_expired",
             params={},
-            id="1",
-        )
+            id="1")
 
         result = await handle_cleanup_expired(request)
 
@@ -372,8 +352,7 @@ class TestCircuitBreaker:
     async def test_record_failure(self, mock_router):
         """Test recording agent failure."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_record_failure,
-        )
+            handle_record_failure)
 
         mock_router.record_agent_failure = Mock()
 
@@ -381,8 +360,7 @@ class TestCircuitBreaker:
             jsonrpc="2.0",
             method="route.record_failure",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_record_failure(request)
 
@@ -394,15 +372,13 @@ class TestCircuitBreaker:
     async def test_record_failure_missing_params(self):
         """Test recording failure with missing parameters."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_record_failure,
-        )
+            handle_record_failure)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="route.record_failure",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_record_failure(request)
@@ -412,8 +388,7 @@ class TestCircuitBreaker:
     async def test_record_success(self, mock_router):
         """Test recording agent success."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_record_success,
-        )
+            handle_record_success)
 
         mock_router.record_agent_success = Mock()
 
@@ -421,8 +396,7 @@ class TestCircuitBreaker:
             jsonrpc="2.0",
             method="route.record_success",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_record_success(request)
 
@@ -434,15 +408,13 @@ class TestCircuitBreaker:
     async def test_record_success_missing_params(self):
         """Test recording success with missing parameters."""
         from agentcore.a2a_protocol.services.routing_jsonrpc import (
-            handle_record_success,
-        )
+            handle_record_success)
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
             method="route.record_success",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_record_success(request)
@@ -459,8 +431,7 @@ class TestCircuitBreaker:
             jsonrpc="2.0",
             method="route.decrease_load",
             params={"agent_id": "agent-123"},
-            id="1",
-        )
+            id="1")
 
         result = await handle_decrease_load(request)
 
@@ -477,8 +448,7 @@ class TestCircuitBreaker:
             jsonrpc="2.0",
             method="route.decrease_load",
             params=None,
-            id="1",
-        )
+            id="1")
 
         with pytest.raises(ValueError, match="Parameter required: agent_id"):
             await handle_decrease_load(request)

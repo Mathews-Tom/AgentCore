@@ -33,8 +33,7 @@ from agentcore.integration.storage import (
     StorageMetadata,
     StorageObject,
     StorageProvider,
-    UploadResult,
-)
+    UploadResult)
 
 
 # Mock S3 Adapter for testing
@@ -65,8 +64,7 @@ class MockS3Adapter(S3Adapter):
         key: str,
         content: bytes,
         metadata: StorageMetadata | None = None,
-        access_control: AccessControl | None = None,
-    ) -> UploadResult:
+        access_control: AccessControl | None = None) -> UploadResult:
         """Mock file upload."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -94,15 +92,13 @@ class MockS3Adapter(S3Adapter):
             version_id="v1",
             size=len(content),
             upload_time_ms=upload_time_ms,
-            url=f"https://{self.config.bucket_name}.s3.amazonaws.com/{key}",
-        )
+            url=f"https://{self.config.bucket_name}.s3.amazonaws.com/{key}")
 
     async def download_file(
         self,
         key: str,
         version_id: str | None = None,
-        byte_range: tuple[int, int] | None = None,
-    ) -> DownloadResult:
+        byte_range: tuple[int, int] | None = None) -> DownloadResult:
         """Mock file download."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -128,14 +124,12 @@ class MockS3Adapter(S3Adapter):
             version_id=obj["version_id"],
             etag=obj["etag"],
             size=len(content),
-            download_time_ms=download_time_ms,
-        )
+            download_time_ms=download_time_ms)
 
     async def delete_file(
         self,
         key: str,
-        version_id: str | None = None,
-    ) -> bool:
+        version_id: str | None = None) -> bool:
         """Mock file deletion."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -148,8 +142,7 @@ class MockS3Adapter(S3Adapter):
     async def list_files(
         self,
         prefix: str | None = None,
-        max_results: int = 1000,
-    ) -> list[StorageObject]:
+        max_results: int = 1000) -> list[StorageObject]:
         """Mock file listing."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -164,8 +157,7 @@ class MockS3Adapter(S3Adapter):
                     last_modified=datetime.now(timezone.utc),
                     metadata=obj["metadata"],
                     version_id=obj["version_id"],
-                    storage_class="STANDARD",
-                )
+                    storage_class="STANDARD")
                 objects.append(storage_obj)
 
                 if len(objects) >= max_results:
@@ -176,8 +168,7 @@ class MockS3Adapter(S3Adapter):
     async def get_metadata(
         self,
         key: str,
-        version_id: str | None = None,
-    ) -> StorageObject:
+        version_id: str | None = None) -> StorageObject:
         """Mock metadata retrieval."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -194,15 +185,13 @@ class MockS3Adapter(S3Adapter):
             last_modified=datetime.now(timezone.utc),
             metadata=obj["metadata"],
             version_id=obj["version_id"],
-            storage_class="STANDARD",
-        )
+            storage_class="STANDARD")
 
     async def update_metadata(
         self,
         key: str,
         metadata: StorageMetadata,
-        version_id: str | None = None,
-    ) -> bool:
+        version_id: str | None = None) -> bool:
         """Mock metadata update."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -217,8 +206,7 @@ class MockS3Adapter(S3Adapter):
         self,
         key: str,
         expiry_seconds: int = 3600,
-        method: str = "GET",
-    ) -> str:
+        method: str = "GET") -> str:
         """Mock signed URL generation."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -229,8 +217,7 @@ class MockS3Adapter(S3Adapter):
         self,
         source_key: str,
         destination_key: str,
-        source_version_id: str | None = None,
-    ) -> UploadResult:
+        source_version_id: str | None = None) -> UploadResult:
         """Mock file copy."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -259,8 +246,7 @@ class MockS3Adapter(S3Adapter):
             version_id="v2",
             size=source["size"],
             upload_time_ms=upload_time_ms,
-            url=None,
-        )
+            url=None)
 
     async def upload_file_streaming(
         self,
@@ -268,8 +254,7 @@ class MockS3Adapter(S3Adapter):
         content: AsyncIterator[bytes],
         size: int,
         metadata: StorageMetadata | None = None,
-        access_control: AccessControl | None = None,
-    ) -> UploadResult:
+        access_control: AccessControl | None = None) -> UploadResult:
         """Mock streaming upload."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -286,8 +271,7 @@ class MockS3Adapter(S3Adapter):
         self,
         key: str,
         version_id: str | None = None,
-        byte_range: tuple[int, int] | None = None,
-    ) -> AsyncIterator[bytes]:
+        byte_range: tuple[int, int] | None = None) -> AsyncIterator[bytes]:
         """Mock streaming download."""
         if not self._connected:
             raise RuntimeError("S3 not connected. Call connect() first.")
@@ -320,8 +304,7 @@ def s3_config() -> StorageConfig:
         timeout=300,
         max_retries=3,
         enable_versioning=True,
-        enable_encryption=True,
-    )
+        enable_encryption=True)
 
 
 @pytest_asyncio.fixture
@@ -369,8 +352,7 @@ class TestStorageConfigValidation:
                 bucket_name="test",
                 timeout=4000,  # Exceeds max of 3600
                 access_key="key",
-                secret_key=SecretStr("secret"),
-            )
+                secret_key=SecretStr("secret"))
 
 
 class TestStorageAdapterBasics:
@@ -411,14 +393,12 @@ class TestFileUploadDownload:
         content = b"Hello, World!"
         metadata = StorageMetadata(
             content_type="text/plain",
-            custom_metadata={"author": "test"},
-        )
+            custom_metadata={"author": "test"})
 
         result = await s3_adapter.upload_file(
             key="test.txt",
             content=content,
-            metadata=metadata,
-        )
+            metadata=metadata)
 
         assert result.key == "test.txt"
         assert result.size == len(content)
@@ -457,8 +437,7 @@ class TestFileUploadDownload:
         # Download bytes 2-5
         result = await s3_adapter.download_file(
             "range-test.txt",
-            byte_range=(2, 5),
-        )
+            byte_range=(2, 5))
 
         assert result.content == b"2345"
         assert result.size == 4
@@ -519,14 +498,12 @@ class TestMetadataManagement:
             custom_metadata={
                 "project": "test",
                 "version": "1.0",
-            },
-        )
+            })
 
         await s3_adapter.upload_file(
             key="data.json",
             content=b'{"key": "value"}',
-            metadata=metadata,
-        )
+            metadata=metadata)
 
         # Retrieve metadata
         obj = await s3_adapter.get_metadata("data.json")
@@ -544,20 +521,17 @@ class TestMetadataManagement:
         # Upload file
         await s3_adapter.upload_file(
             key="update-meta.txt",
-            content=b"content",
-        )
+            content=b"content")
 
         # Update metadata
         new_metadata = StorageMetadata(
             content_type="text/html",
             cache_control="no-cache",
-            custom_metadata={"updated": "true"},
-        )
+            custom_metadata={"updated": "true"})
 
         result = await s3_adapter.update_metadata(
             "update-meta.txt",
-            new_metadata,
-        )
+            new_metadata)
 
         assert result is True
 
@@ -577,14 +551,12 @@ class TestAccessControl:
         """Test uploading file with access control."""
         access_control = AccessControl(
             access_level=AccessLevel.PUBLIC_READ,
-            signed_url_expiry=7200,
-        )
+            signed_url_expiry=7200)
 
         result = await s3_adapter.upload_file(
             key="public-file.txt",
             content=b"public content",
-            access_control=access_control,
-        )
+            access_control=access_control)
 
         assert result.url is not None
         assert "test-bucket" in result.url
@@ -596,14 +568,12 @@ class TestAccessControl:
         """Test signed URL generation."""
         await s3_adapter.upload_file(
             key="signed-test.txt",
-            content=b"content",
-        )
+            content=b"content")
 
         url = await s3_adapter.generate_signed_url(
             "signed-test.txt",
             expiry_seconds=3600,
-            method="GET",
-        )
+            method="GET")
 
         assert url is not None
         assert "signed=true" in url
@@ -620,8 +590,7 @@ class TestFileOperations:
         """Test deleting file from storage."""
         await s3_adapter.upload_file(
             key="delete-test.txt",
-            content=b"to be deleted",
-        )
+            content=b"to be deleted")
 
         # Verify file exists
         obj = await s3_adapter.get_metadata("delete-test.txt")
@@ -644,14 +613,12 @@ class TestFileOperations:
 
         await s3_adapter.upload_file(
             key="source.txt",
-            content=content,
-        )
+            content=content)
 
         # Copy file
         result = await s3_adapter.copy_file(
             source_key="source.txt",
-            destination_key="destination.txt",
-        )
+            destination_key="destination.txt")
 
         assert result.key == "destination.txt"
         assert result.size == len(content)
@@ -705,15 +672,13 @@ class TestVersioning:
         """Test versioning is tracked on uploads."""
         result1 = await s3_adapter.upload_file(
             key="versioned.txt",
-            content=b"version 1",
-        )
+            content=b"version 1")
 
         assert result1.version_id is not None
 
         result2 = await s3_adapter.upload_file(
             key="versioned.txt",
-            content=b"version 2",
-        )
+            content=b"version 2")
 
         assert result2.version_id is not None
 
@@ -733,8 +698,7 @@ class TestStorageFactory:
         config = StorageConfig(
             provider=StorageProvider.AZURE_BLOB,
             bucket_name="test-container",
-            connection_string=SecretStr("DefaultEndpointsProtocol=https;AccountName=test"),
-        )
+            connection_string=SecretStr("DefaultEndpointsProtocol=https;AccountName=test"))
 
         adapter = StorageFactory.create(config)
 
@@ -746,8 +710,7 @@ class TestStorageFactory:
         config = StorageConfig(
             provider=StorageProvider.GCS,
             bucket_name="test-bucket",
-            credentials_file="/path/to/credentials.json",
-        )
+            credentials_file="/path/to/credentials.json")
 
         adapter = StorageFactory.create(config)
 

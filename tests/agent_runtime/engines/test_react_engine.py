@@ -23,8 +23,7 @@ def tool_registry() -> ToolRegistry:
         tool_id="calculator",
         name="calculator",
         description="Basic calculator",
-        parameters={"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}},
-    )
+        parameters={"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}})
     registry.register_tool(calculator_def, calculator)
 
     return registry
@@ -35,8 +34,7 @@ def agent_config() -> AgentConfig:
     """Create test agent configuration."""
     return AgentConfig(
         agent_id="react-test-agent",
-        philosophy=AgentPhilosophy.REACT,
-    )
+        philosophy=AgentPhilosophy.REACT)
 
 
 @pytest.fixture
@@ -44,8 +42,7 @@ def agent_state() -> AgentExecutionState:
     """Create test agent state."""
     return AgentExecutionState(
         agent_id="react-test-agent",
-        status="running",
-    )
+        status="running")
 
 
 @pytest.fixture
@@ -73,8 +70,7 @@ async def test_react_engine_cleanup(react_engine: ReActEngine) -> None:
 @pytest.mark.asyncio
 async def test_react_execution_simple_goal(
     react_engine: ReActEngine,
-    agent_state: AgentExecutionState,
-) -> None:
+    agent_state: AgentExecutionState) -> None:
     """Test ReAct execution with simple goal."""
     await react_engine.initialize()
 
@@ -94,8 +90,7 @@ async def test_react_execution_simple_goal(
 @pytest.mark.asyncio
 async def test_react_execution_steps(
     react_engine: ReActEngine,
-    agent_state: AgentExecutionState,
-) -> None:
+    agent_state: AgentExecutionState) -> None:
     """Test ReAct execution generates correct step types."""
     await react_engine.initialize()
 
@@ -118,8 +113,7 @@ async def test_react_execution_steps(
 @pytest.mark.asyncio
 async def test_react_max_iterations(
     react_engine: ReActEngine,
-    agent_state: AgentExecutionState,
-) -> None:
+    agent_state: AgentExecutionState) -> None:
     """Test ReAct respects max iterations."""
     await react_engine.initialize()
 
@@ -182,8 +176,7 @@ async def test_react_extract_final_answer(react_engine: ReActEngine) -> None:
 @pytest.mark.asyncio
 async def test_react_execution_with_time_tool(
     react_engine: ReActEngine,
-    agent_state: AgentExecutionState,
-) -> None:
+    agent_state: AgentExecutionState) -> None:
     """Test ReAct execution with time tool."""
     await react_engine.initialize()
 

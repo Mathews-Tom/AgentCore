@@ -14,8 +14,7 @@ from agentcore_cli.main import app
 from agentcore_cli.services.exceptions import (
     ValidationError,
     SessionNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 @pytest.fixture
@@ -43,8 +42,7 @@ class TestSessionCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -52,8 +50,7 @@ class TestSessionCreateCommand:
                     "create",
                     "--name",
                     "analysis-session",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0, f"Command failed: {result.output}"
@@ -66,8 +63,7 @@ class TestSessionCreateCommand:
         # Verify service was called correctly
         mock_session_service.create.assert_called_once_with(
             name="analysis-session",
-            context=None,
-        )
+            context=None)
 
     def test_create_with_context(
         self, runner: CliRunner, mock_session_service: Mock
@@ -79,8 +75,7 @@ class TestSessionCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -90,8 +85,7 @@ class TestSessionCreateCommand:
                     "test-session",
                     "--context",
                     '{"user": "alice", "project": "foo"}',
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -103,8 +97,7 @@ class TestSessionCreateCommand:
         # Verify service was called correctly
         mock_session_service.create.assert_called_once_with(
             name="test-session",
-            context={"user": "alice", "project": "foo"},
-        )
+            context={"user": "alice", "project": "foo"})
 
     def test_create_json_output(
         self, runner: CliRunner, mock_session_service: Mock
@@ -116,8 +109,7 @@ class TestSessionCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -126,8 +118,7 @@ class TestSessionCreateCommand:
                     "--name",
                     "my-session",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -150,8 +141,7 @@ class TestSessionCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -159,8 +149,7 @@ class TestSessionCreateCommand:
                     "create",
                     "--name",
                     "",
-                ],
-            )
+                ])
 
         # Verify exit code (2 = validation error)
         assert result.exit_code == 2
@@ -181,8 +170,7 @@ class TestSessionCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -190,8 +178,7 @@ class TestSessionCreateCommand:
                     "create",
                     "--name",
                     "test-session",
-                ],
-            )
+                ])
 
         # Verify exit code (1 = operation error)
         assert result.exit_code == 1
@@ -207,8 +194,7 @@ class TestSessionCreateCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -218,8 +204,7 @@ class TestSessionCreateCommand:
                     "test-session",
                     "--context",
                     "invalid-json",
-                ],
-            )
+                ])
 
         # Verify exit code (2 = validation error)
         assert result.exit_code == 2
@@ -254,8 +239,7 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(app, ["session", "list"])
 
         # Verify exit code
@@ -271,8 +255,7 @@ class TestSessionListCommand:
         mock_session_service.list_sessions.assert_called_once_with(
             state=None,
             limit=100,
-            offset=0,
-        )
+            offset=0)
 
     def test_list_with_state_filter(
         self, runner: CliRunner, mock_session_service: Mock
@@ -291,8 +274,7 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -300,8 +282,7 @@ class TestSessionListCommand:
                     "list",
                     "--state",
                     "active",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -310,8 +291,7 @@ class TestSessionListCommand:
         mock_session_service.list_sessions.assert_called_once_with(
             state="active",
             limit=100,
-            offset=0,
-        )
+            offset=0)
 
     def test_list_with_limit(
         self, runner: CliRunner, mock_session_service: Mock
@@ -323,8 +303,7 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -332,8 +311,7 @@ class TestSessionListCommand:
                     "list",
                     "--limit",
                     "10",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -342,8 +320,7 @@ class TestSessionListCommand:
         mock_session_service.list_sessions.assert_called_once_with(
             state=None,
             limit=10,
-            offset=0,
-        )
+            offset=0)
 
     def test_list_with_pagination(
         self, runner: CliRunner, mock_session_service: Mock
@@ -355,8 +332,7 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -366,8 +342,7 @@ class TestSessionListCommand:
                     "10",
                     "--offset",
                     "20",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -376,8 +351,7 @@ class TestSessionListCommand:
         mock_session_service.list_sessions.assert_called_once_with(
             state=None,
             limit=10,
-            offset=20,
-        )
+            offset=20)
 
     def test_list_json_output(
         self, runner: CliRunner, mock_session_service: Mock
@@ -396,16 +370,14 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "list",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -426,8 +398,7 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(app, ["session", "list"])
 
         # Verify exit code
@@ -448,15 +419,13 @@ class TestSessionListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "list",
-                ],
-            )
+                ])
 
         # Verify exit code (2 = validation error)
         assert result.exit_code == 2
@@ -485,16 +454,14 @@ class TestSessionInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "info",
                     "session-001",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -523,8 +490,7 @@ class TestSessionInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -532,8 +498,7 @@ class TestSessionInfoCommand:
                     "info",
                     "session-001",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -556,16 +521,14 @@ class TestSessionInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "info",
                     "session-999",
-                ],
-            )
+                ])
 
         # Verify exit code (1 = error)
         assert result.exit_code == 1
@@ -586,16 +549,14 @@ class TestSessionInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "info",
                     "",
-                ],
-            )
+                ])
 
         # Verify exit code (2 = validation error)
         assert result.exit_code == 2
@@ -617,16 +578,14 @@ class TestSessionDeleteCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "delete",
                     "session-001",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -638,8 +597,7 @@ class TestSessionDeleteCommand:
         # Verify service was called correctly
         mock_session_service.delete.assert_called_once_with(
             "session-001",
-            force=False,
-        )
+            force=False)
 
     def test_delete_with_force(
         self, runner: CliRunner, mock_session_service: Mock
@@ -651,8 +609,7 @@ class TestSessionDeleteCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -660,8 +617,7 @@ class TestSessionDeleteCommand:
                     "delete",
                     "session-001",
                     "--force",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -669,8 +625,7 @@ class TestSessionDeleteCommand:
         # Verify service was called with force=True
         mock_session_service.delete.assert_called_once_with(
             "session-001",
-            force=True,
-        )
+            force=True)
 
     def test_delete_json_output(
         self, runner: CliRunner, mock_session_service: Mock
@@ -682,8 +637,7 @@ class TestSessionDeleteCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -691,8 +645,7 @@ class TestSessionDeleteCommand:
                     "delete",
                     "session-001",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -715,16 +668,14 @@ class TestSessionDeleteCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "delete",
                     "session-999",
-                ],
-            )
+                ])
 
         # Verify exit code (1 = error)
         assert result.exit_code == 1
@@ -743,16 +694,14 @@ class TestSessionDeleteCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "delete",
                     "session-001",
-                ],
-            )
+                ])
 
         # Verify exit code (1 = error)
         assert result.exit_code == 1
@@ -777,16 +726,14 @@ class TestSessionRestoreCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "restore",
                     "session-001",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -810,8 +757,7 @@ class TestSessionRestoreCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
@@ -819,8 +765,7 @@ class TestSessionRestoreCommand:
                     "restore",
                     "session-001",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -841,16 +786,14 @@ class TestSessionRestoreCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "restore",
                     "session-001",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -871,16 +814,14 @@ class TestSessionRestoreCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "restore",
                     "session-999",
-                ],
-            )
+                ])
 
         # Verify exit code (1 = error)
         assert result.exit_code == 1
@@ -901,16 +842,14 @@ class TestSessionRestoreCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service,
-        ):
+            return_value=mock_session_service):
             result = runner.invoke(
                 app,
                 [
                     "session",
                     "restore",
                     "",
-                ],
-            )
+                ])
 
         # Verify exit code (2 = validation error)
         assert result.exit_code == 2

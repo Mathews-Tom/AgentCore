@@ -14,8 +14,7 @@ from agentcore_cli.main import app
 from agentcore_cli.services.exceptions import (
     ValidationError,
     AgentNotFoundError,
-    OperationError,
-)
+    OperationError)
 
 
 @pytest.fixture
@@ -43,8 +42,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -54,8 +52,7 @@ class TestAgentRegisterCommand:
                     "test-agent",
                     "--capabilities",
                     "python,analysis",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0, f"Command failed: {result.output}"
@@ -70,8 +67,7 @@ class TestAgentRegisterCommand:
             name="test-agent",
             capabilities=["python", "analysis"],
             endpoint_url=None,
-            cost_per_request=0.01,
-        )
+            cost_per_request=0.01)
 
     def test_register_with_custom_cost(
         self, runner: CliRunner, mock_agent_service: Mock
@@ -83,8 +79,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -96,8 +91,7 @@ class TestAgentRegisterCommand:
                     "python",
                     "--cost-per-request",
                     "0.05",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -107,8 +101,7 @@ class TestAgentRegisterCommand:
             name="expensive-agent",
             capabilities=["python"],
             endpoint_url=None,
-            cost_per_request=0.05,
-        )
+            cost_per_request=0.05)
 
     def test_register_json_output(
         self, runner: CliRunner, mock_agent_service: Mock
@@ -120,8 +113,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -132,8 +124,7 @@ class TestAgentRegisterCommand:
                     "--capabilities",
                     "python,testing",
                     "--json",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -158,8 +149,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -169,8 +159,7 @@ class TestAgentRegisterCommand:
                     "",
                     "--capabilities",
                     "python",
-                ],
-            )
+                ])
 
         # Verify exit code (2 for validation error)
         assert result.exit_code == 2
@@ -191,8 +180,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -202,8 +190,7 @@ class TestAgentRegisterCommand:
                     "test-agent",
                     "--capabilities",
                     "python",
-                ],
-            )
+                ])
 
         # Verify exit code (1 for operation error)
         assert result.exit_code == 1
@@ -222,8 +209,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -233,8 +219,7 @@ class TestAgentRegisterCommand:
                     "multi-cap-agent",
                     "--capabilities",
                     "python, analysis, testing, execution",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0
@@ -244,8 +229,7 @@ class TestAgentRegisterCommand:
             name="multi-cap-agent",
             capabilities=["python", "analysis", "testing", "execution"],
             endpoint_url=None,
-            cost_per_request=0.01,
-        )
+            cost_per_request=0.01)
 
     def test_register_whitespace_handling(
         self, runner: CliRunner, mock_agent_service: Mock
@@ -260,8 +244,7 @@ class TestAgentRegisterCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app,
                 [
@@ -271,8 +254,7 @@ class TestAgentRegisterCommand:
                     "whitespace-test-agent",
                     "--capabilities",
                     " python , testing , analysis ",
-                ],
-            )
+                ])
 
         # Verify exit code
         assert result.exit_code == 0, f"Command failed: {result.output}"
@@ -282,8 +264,7 @@ class TestAgentRegisterCommand:
             name="whitespace-test-agent",
             capabilities=["python", "testing", "analysis"],
             endpoint_url=None,
-            cost_per_request=0.01,
-        )
+            cost_per_request=0.01)
 
 
 class TestAgentListCommand:
@@ -312,8 +293,7 @@ class TestAgentListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "list"])
 
         # Verify exit code
@@ -342,8 +322,7 @@ class TestAgentListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "list", "--status", "active"])
 
         # Verify exit code
@@ -364,8 +343,7 @@ class TestAgentListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "list"])
 
         # Verify exit code
@@ -390,8 +368,7 @@ class TestAgentListCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "list", "--limit", "2"])
 
         # Verify exit code
@@ -400,8 +377,7 @@ class TestAgentListCommand:
         # Verify service was called with limit parameter
         mock_agent_service.list_agents.assert_called_once_with(
             status=None,
-            limit=2,
-        )
+            limit=2)
 
 
 class TestAgentInfoCommand:
@@ -423,8 +399,7 @@ class TestAgentInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "info", "agent-001"])
 
         # Verify exit code
@@ -447,8 +422,7 @@ class TestAgentInfoCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "info", "agent-999"])
 
         # Verify exit code
@@ -471,8 +445,7 @@ class TestAgentRemoveCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "remove", "agent-001", "--yes"])
 
         # Verify exit code
@@ -495,8 +468,7 @@ class TestAgentRemoveCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(app, ["agent", "remove", "agent-001", "--force", "--yes"])
 
         # Verify exit code
@@ -526,8 +498,7 @@ class TestAgentSearchCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app, ["agent", "search", "--capability", "python"]
             )
@@ -554,8 +525,7 @@ class TestAgentSearchCommand:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             result = runner.invoke(
                 app, ["agent", "search", "--capability", "nonexistent"]
             )
@@ -590,8 +560,7 @@ class TestJSONRPCCompliance:
         # Patch the container to return mock service
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_service,
-        ):
+            return_value=mock_service):
             result = runner.invoke(
                 app,
                 [
@@ -601,8 +570,7 @@ class TestJSONRPCCompliance:
                     "test-agent",
                     "--capabilities",
                     "python,analysis",
-                ],
-            )
+                ])
 
         # Verify command succeeded
         assert result.exit_code == 0
@@ -684,8 +652,7 @@ class TestIntegrationFlow:
 
         with patch(
             "agentcore_cli.commands.agent.get_agent_service",
-            return_value=mock_agent_service,
-        ):
+            return_value=mock_agent_service):
             # Register
             result = runner.invoke(
                 app,
@@ -696,8 +663,7 @@ class TestIntegrationFlow:
                     "lifecycle-agent",
                     "--capabilities",
                     "python",
-                ],
-            )
+                ])
             assert result.exit_code == 0
 
             # Info

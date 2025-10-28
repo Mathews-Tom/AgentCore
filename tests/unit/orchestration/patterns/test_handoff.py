@@ -21,8 +21,7 @@ from agentcore.orchestration.patterns.handoff import (
     HandoffStatus,
     InputValidationGate,
     OutputValidationGate,
-    ValidationResult,
-)
+    ValidationResult)
 
 
 class TestHandoffContext:
@@ -36,8 +35,7 @@ class TestHandoffContext:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"key": "value"},
-        )
+            task_data={"key": "value"})
 
         assert context.task_id == task_id
         assert context.source_agent_id == "agent-1"
@@ -54,8 +52,7 @@ class TestHandoffContext:
             source_agent_id="agent-2",
             target_agent_id="agent-3",
             task_data={},
-            handoff_chain=["agent-1", "agent-2"],
-        )
+            handoff_chain=["agent-1", "agent-2"])
 
         assert len(context.handoff_chain) == 2
         assert context.handoff_chain[0] == "agent-1"
@@ -70,8 +67,7 @@ class TestHandoffContext:
             source_agent_id="agent-1",
             target_agent_id="agent-2",
             task_data=task_data.copy(),
-            previous_state=task_data.copy(),
-        )
+            previous_state=task_data.copy())
 
         assert context.previous_state is not None
         assert context.previous_state["status"] == "in_progress"
@@ -90,8 +86,7 @@ class TestInputValidationGate:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"name": "Alice", "age": 30},
-        )
+            task_data={"name": "Alice", "age": 30})
 
         result = await gate.validate(context)
 
@@ -108,8 +103,7 @@ class TestInputValidationGate:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"name": "Alice"},
-        )
+            task_data={"name": "Alice"})
 
         result = await gate.validate(context)
 
@@ -121,8 +115,7 @@ class TestInputValidationGate:
         """Test custom field validators."""
         gate = InputValidationGate(
             required_fields=["age"],
-            field_validators={"age": lambda x: x >= 18},
-        )
+            field_validators={"age": lambda x: x >= 18})
 
         # Valid age
         context = HandoffContext(
@@ -130,8 +123,7 @@ class TestInputValidationGate:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"age": 25},
-        )
+            task_data={"age": 25})
 
         result = await gate.validate(context)
         assert result.valid is True
@@ -161,8 +153,7 @@ class TestOutputValidationGate:
                     "field2": "value2",
                     "field3": "value3",
                 }
-            },
-        )
+            })
 
         result = await gate.validate(context)
 
@@ -179,8 +170,7 @@ class TestOutputValidationGate:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={},
-        )
+            task_data={})
 
         result = await gate.validate(context)
 
@@ -204,8 +194,7 @@ class TestOutputValidationGate:
                     "field3": "",
                     "field4": None,
                 }
-            },
-        )
+            })
 
         result = await gate.validate(context)
 
@@ -229,8 +218,7 @@ class TestCapabilityGate:
             task_data={},
             metadata={
                 "target_capabilities": ["capability_a", "capability_b", "capability_c"]
-            },
-        )
+            })
 
         result = await gate.validate(context)
 
@@ -247,8 +235,7 @@ class TestCapabilityGate:
             source_agent_id="agent-1",
             target_agent_id="agent-2",
             task_data={},
-            metadata={"target_capabilities": ["capability_a"]},
-        )
+            metadata={"target_capabilities": ["capability_a"]})
 
         result = await gate.validate(context)
 
@@ -267,16 +254,14 @@ class TestHandoffCoordinator:
             enable_rollback=True,
             validation_timeout_seconds=30,
             handoff_timeout_seconds=60,
-            preserve_history=True,
-        )
+            preserve_history=True)
 
     @pytest.fixture
     def coordinator(self, config: HandoffConfig) -> HandoffCoordinator:
         """Create handoff coordinator instance."""
         return HandoffCoordinator(
             coordinator_id="test-coordinator",
-            config=config,
-        )
+            config=config)
 
     @pytest.mark.asyncio
     async def test_initiate_handoff(self, coordinator: HandoffCoordinator) -> None:
@@ -288,8 +273,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"key": "value"},
-        )
+            task_data={"key": "value"})
 
         assert isinstance(handoff_id, UUID)
 
@@ -317,8 +301,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"key": "value"},
-        )
+            task_data={"key": "value"})
 
         # Execute handoff
         success = await coordinator.execute_handoff(handoff_id)
@@ -351,8 +334,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"name": "Alice"},
-        )
+            task_data={"name": "Alice"})
 
         # Execute handoff
         success = await coordinator.execute_handoff(handoff_id)
@@ -377,8 +359,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"name": "Alice"},
-        )
+            task_data={"name": "Alice"})
 
         # Execute handoff
         success = await coordinator.execute_handoff(handoff_id)
@@ -398,8 +379,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data=original_data.copy(),
-        )
+            task_data=original_data.copy())
 
         # Execute handoff
         coordinator.config.enable_quality_gates = False
@@ -436,8 +416,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={"key": "value"},
-        )
+            task_data={"key": "value"})
 
         # Attempt rollback
         with pytest.raises(ValueError, match="Rollback is disabled"):
@@ -456,8 +435,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={},
-        )
+            task_data={})
         await coordinator.execute_handoff(handoff_id_1)
 
         # Get chain
@@ -525,8 +503,7 @@ class TestHandoffCoordinator:
                 task_type="test_task",
                 source_agent_id=f"agent-{i}",
                 target_agent_id=f"agent-{i+1}",
-                task_data={},
-            )
+                task_data={})
             handoff_ids.append(handoff_id)
 
         # Execute all handoffs
@@ -553,8 +530,7 @@ class TestHandoffCoordinator:
             task_type="test_task",
             source_agent_id="agent-1",
             target_agent_id="agent-2",
-            task_data={},
-        )
+            task_data={})
 
         await coordinator.execute_handoff(handoff_id)
 

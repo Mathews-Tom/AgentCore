@@ -24,8 +24,7 @@ class TestRedisStreamsClient:
         """Create test configuration."""
         return StreamConfig(
             stream_name="test:events",
-            consumer_group_name="test-group",
-        )
+            consumer_group_name="test-group")
 
     @pytest.fixture
     def mock_redis(self) -> AsyncMock:
@@ -81,8 +80,7 @@ class TestRedisStreamsClient:
 
             client = RedisStreamsClient(
                 cluster_urls=["redis://node1:6379", "redis://node2:6379"],
-                config=config,
-            )
+                config=config)
             await client.connect()
 
             # Verify cluster connection

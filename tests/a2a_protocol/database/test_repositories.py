@@ -15,14 +15,12 @@ from agentcore.a2a_protocol.database.models import (
     AgentDB,
     AgentHealthMetricDB,
     SessionSnapshotDB,
-    TaskDB,
-)
+    TaskDB)
 from agentcore.a2a_protocol.database.repositories import (
     AgentRepository,
     HealthMetricRepository,
     SessionRepository,
-    TaskRepository,
-)
+    TaskRepository)
 from agentcore.a2a_protocol.models.agent import (
     AgentAuthentication,
     AgentCapability,
@@ -30,14 +28,12 @@ from agentcore.a2a_protocol.models.agent import (
     AgentEndpoint,
     AgentStatus,
     AuthenticationType,
-    EndpointType,
-)
+    EndpointType)
 from agentcore.a2a_protocol.models.session import (
     SessionContext,
     SessionPriority,
     SessionSnapshot,
-    SessionState,
-)
+    SessionState)
 from agentcore.a2a_protocol.models.task import TaskDefinition, TaskPriority, TaskStatus
 
 # ==================== AgentRepository Tests ====================
@@ -59,8 +55,7 @@ async def test_agent_repository_create():
         endpoints=[AgentEndpoint(url="http://test.local", type=EndpointType.HTTP)],
         authentication=AgentAuthentication(
             type=AuthenticationType.NONE, required=False
-        ),
-    )
+        ))
 
     agent_db = await AgentRepository.create(mock_session, agent_card)
 
@@ -327,8 +322,7 @@ async def test_task_repository_create():
         title="Test Task",
         description="Test Description",
         priority=TaskPriority.NORMAL,
-        parameters={"key": "value"},
-    )
+        parameters={"key": "value"})
 
     task_db = await TaskRepository.create(mock_session, task_def)
 
@@ -510,8 +504,7 @@ async def test_health_metric_repository_record_health_check():
         response_time_ms=50.0,
         status_code=200,
         cpu_percent=25.5,
-        memory_mb=512.0,
-    )
+        memory_mb=512.0)
 
     assert metric.agent_id == "test-agent"
     assert metric.is_healthy is True
@@ -535,8 +528,7 @@ async def test_health_metric_repository_record_unhealthy_check():
         agent_id="test-agent",
         is_healthy=False,
         status_code=500,
-        error_message="Connection timeout",
-    )
+        error_message="Connection timeout")
 
     assert metric.is_healthy is False
     assert metric.error_message == "Connection timeout"
@@ -614,8 +606,7 @@ async def test_session_repository_create():
         participant_agents=["agent-1", "agent-2"],
         context=SessionContext(),
         timeout_seconds=3600,
-        max_idle_seconds=300,
-    )
+        max_idle_seconds=300)
 
     session_db = await SessionRepository.create(mock_session, snapshot)
 
@@ -659,8 +650,7 @@ async def test_session_repository_update():
         priority=SessionPriority.HIGH,
         owner_agent="agent-1",
         participant_agents=[],
-        context=SessionContext(),
-    )
+        context=SessionContext())
 
     success = await SessionRepository.update(mock_session, snapshot)
 
@@ -729,8 +719,7 @@ async def test_session_repository_list_expired():
         SessionSnapshotDB(
             session_id="session-1",
             state=SessionState.ACTIVE,
-            expires_at=datetime.now(UTC) - timedelta(hours=1),
-        ),
+            expires_at=datetime.now(UTC) - timedelta(hours=1)),
     ]
 
     mock_scalars = MagicMock()
@@ -752,8 +741,7 @@ async def test_session_repository_list_idle():
         SessionSnapshotDB(
             session_id="session-1",
             state=SessionState.ACTIVE,
-            updated_at=datetime.now(UTC) - timedelta(minutes=10),
-        ),
+            updated_at=datetime.now(UTC) - timedelta(minutes=10)),
     ]
 
     mock_scalars = MagicMock()
@@ -803,8 +791,7 @@ async def test_session_repository_to_snapshot():
         tags=["test"],
         session_metadata={"meta": "data"},
         checkpoint_interval_seconds=60,
-        checkpoint_count=5,
-    )
+        checkpoint_count=5)
 
     snapshot = SessionRepository.to_snapshot(session_db)
 

@@ -142,7 +142,7 @@ def on_test_stop(environment, **kwargs) -> None:
     print(f"Failed Requests: {stats.num_failures:,}")
     print(f"Successful Burst Requests: {burst_stats['successful_burst_requests']:,}")
     print(f"Rate Limited Requests: {burst_stats['rate_limited']:,}")
-    print(f"Average Response Time: {stats.avg_response_time:.2f}ms")
+    print(f"Average Response Time: {stats.avg_response_time:.2f}, ms")
     print(f"Peak RPS: {stats.max_requests_per_second:,.2f}")
 
     # Check rate limiting behavior

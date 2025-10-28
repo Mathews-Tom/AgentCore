@@ -21,8 +21,7 @@ def sample_service() -> ServiceEndpoint:
         name="Test Service",
         base_url=HttpUrl("http://localhost:8001"),
         priority=100,
-        weight=1,
-    )
+        weight=1)
 
 
 @pytest.mark.asyncio
@@ -58,8 +57,7 @@ async def test_list_services(service_registry: ServiceRegistry) -> None:
         service = ServiceEndpoint(
             service_id=f"service-{i}",
             name=f"Service {i}",
-            base_url=HttpUrl(f"http://localhost:800{i}"),
-        )
+            base_url=HttpUrl(f"http://localhost:800{i}"))
         await service_registry.register(service)
 
     services = await service_registry.list_services()
@@ -74,14 +72,12 @@ async def test_list_enabled_only(service_registry: ServiceRegistry) -> None:
         service_id="enabled",
         name="Enabled",
         base_url=HttpUrl("http://localhost:8001"),
-        enabled=True,
-    )
+        enabled=True)
     disabled = ServiceEndpoint(
         service_id="disabled",
         name="Disabled",
         base_url=HttpUrl("http://localhost:8002"),
-        enabled=False,
-    )
+        enabled=False)
 
     await service_registry.register(enabled)
     await service_registry.register(disabled)
@@ -112,8 +108,7 @@ async def test_update_service(
 
 @pytest.mark.asyncio
 async def test_update_nonexistent_service(
-    service_registry: ServiceRegistry,
-) -> None:
+    service_registry: ServiceRegistry) -> None:
     """Test updating nonexistent service."""
     result = await service_registry.update_service("nonexistent", {"priority": 100})
     assert result is None
@@ -132,8 +127,7 @@ async def test_get_services_by_name(service_registry: ServiceRegistry) -> None:
         service = ServiceEndpoint(
             service_id=service_id,
             name=name,
-            base_url=HttpUrl("http://localhost:8000"),
-        )
+            base_url=HttpUrl("http://localhost:8000"))
         await service_registry.register(service)
 
     api_services = await service_registry.get_services_by_name("api")
@@ -151,8 +145,7 @@ async def test_registry_length(service_registry: ServiceRegistry) -> None:
     service = ServiceEndpoint(
         service_id="test",
         name="Test",
-        base_url=HttpUrl("http://localhost:8000"),
-    )
+        base_url=HttpUrl("http://localhost:8000"))
     await service_registry.register(service)
 
     assert len(service_registry) == 1

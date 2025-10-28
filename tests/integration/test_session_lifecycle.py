@@ -16,8 +16,7 @@ from agentcore.a2a_protocol.models.session import (
     SessionPriority,
     SessionQuery,
     SessionSnapshot,
-    SessionState,
-)
+    SessionState)
 from agentcore.a2a_protocol.services.session_manager import session_manager
 
 
@@ -35,8 +34,7 @@ class TestSessionLifecycle:
             timeout_seconds=3600,
             max_idle_seconds=300,
             tags=["test", "integration"],
-            initial_context={"workflow": "test", "step": 1},
-        )
+            initial_context={"workflow": "test", "step": 1})
 
         response = await session_manager.create_session(request)
 
@@ -62,8 +60,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Get Test Session",
-            owner_agent="test-agent-002",
-        )
+            owner_agent="test-agent-002")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -84,8 +81,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Pause Resume Test",
-            owner_agent="test-agent-003",
-        )
+            owner_agent="test-agent-003")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -111,8 +107,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Suspend Test",
-            owner_agent="test-agent-004",
-        )
+            owner_agent="test-agent-004")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -138,8 +133,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Complete Test",
-            owner_agent="test-agent-005",
-        )
+            owner_agent="test-agent-005")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -160,8 +154,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Fail Test",
-            owner_agent="test-agent-006",
-        )
+            owner_agent="test-agent-006")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -185,8 +178,7 @@ class TestSessionLifecycle:
         request = SessionCreateRequest(
             name="Context Test",
             owner_agent="test-agent-007",
-            initial_context={"key1": "value1"},
-        )
+            initial_context={"key1": "value1"})
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -208,8 +200,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Agent State Test",
-            owner_agent="test-agent-008",
-        )
+            owner_agent="test-agent-008")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -237,8 +228,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Resources Test",
-            owner_agent="test-agent-009",
-        )
+            owner_agent="test-agent-009")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -265,8 +255,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Events Test",
-            owner_agent="test-agent-010",
-        )
+            owner_agent="test-agent-010")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -295,8 +284,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Checkpoint Test",
-            owner_agent="test-agent-011",
-        )
+            owner_agent="test-agent-011")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -329,8 +317,7 @@ class TestSessionLifecycle:
                 name=f"Query Test Session {i}",
                 owner_agent="test-agent-012",
                 priority=SessionPriority.HIGH if i < 2 else SessionPriority.NORMAL,
-                tags=["query-test", f"batch-{i // 2}"],
-            )
+                tags=["query-test", f"batch-{i // 2}"])
             response = await session_manager.create_session(request)
             sessions_created.append(response.session_id)
 
@@ -364,8 +351,7 @@ class TestSessionLifecycle:
         request = SessionCreateRequest(
             name="Export Import Test",
             owner_agent="test-agent-013",
-            initial_context={"export": "test"},
-        )
+            initial_context={"export": "test"})
         response = await session_manager.create_session(request)
         original_session_id = response.session_id
 
@@ -404,8 +390,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Soft Delete Test",
-            owner_agent="test-agent-014",
-        )
+            owner_agent="test-agent-014")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -430,8 +415,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="Hard Delete Test",
-            owner_agent="test-agent-015",
-        )
+            owner_agent="test-agent-015")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 
@@ -448,8 +432,7 @@ class TestSessionLifecycle:
         # Create session
         request = SessionCreateRequest(
             name="State Transition Test",
-            owner_agent="test-agent-016",
-        )
+            owner_agent="test-agent-016")
         response = await session_manager.create_session(request)
         session_id = response.session_id
 

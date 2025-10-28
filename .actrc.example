@@ -1,0 +1,16 @@
+# act configuration for local GitHub Actions testing
+
+# Use full Ubuntu image with more tools installed
+-P ubuntu-latest=catthehacker/ubuntu:full-latest
+
+# Reuse containers for faster iterations
+--reuse
+
+# Show verbose output
+-v
+
+# Use specific platform
+--platform linux/amd64
+
+# Bind workspace to allow file changes
+--bind

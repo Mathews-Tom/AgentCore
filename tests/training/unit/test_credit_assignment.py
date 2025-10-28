@@ -23,8 +23,7 @@ def create_test_trajectory(num_steps: int, final_reward: float) -> Trajectory:
             action={"type": f"action_{i}"},
             result={"output": f"result_{i}"},
             timestamp=datetime.now(timezone.utc),
-            duration_ms=100,
-        )
+            duration_ms=100)
         for i in range(num_steps)
     ]
 
@@ -37,8 +36,7 @@ def create_test_trajectory(num_steps: int, final_reward: float) -> Trajectory:
         normalized_reward=0.0,
         advantage=0.0,
         execution_time_ms=1000,
-        success=True,
-    )
+        success=True)
 
 
 # Test CreditAssignmentConfig

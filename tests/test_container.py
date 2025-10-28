@@ -19,8 +19,7 @@ from agentcore_cli.container import (
     get_workflow_service,
     set_override,
     clear_overrides,
-    reset_container,
-)
+    reset_container)
 from agentcore_cli.transport.http import HttpTransport
 from agentcore_cli.protocol.jsonrpc import JsonRpcClient
 from agentcore_cli.services.agent import AgentService
@@ -46,8 +45,7 @@ class TestApiConfig:
             url="https://api.example.com",
             timeout=60,
             retries=5,
-            verify_ssl=False,
-        )
+            verify_ssl=False)
         assert config.url == "https://api.example.com"
         assert config.timeout == 60
         assert config.retries == 5
@@ -131,8 +129,7 @@ class TestConfig:
                 "AGENTCORE_AUTH_TYPE": "jwt",
                 "AGENTCORE_AUTH_TOKEN": "test-token",
             },
-            clear=False,
-        ):
+            clear=False):
             config = Config()
             assert config.api.url == "https://custom.example.com"
             assert config.api.timeout == 60
@@ -208,8 +205,7 @@ class TestGetTransport:
                 "AGENTCORE_API_TIMEOUT": "45",
                 "AGENTCORE_API_RETRIES": "2",
             },
-            clear=False,
-        ):
+            clear=False):
             reset_container()  # Clear cache
             transport = get_transport()
             assert transport.base_url == "https://test.example.com"
@@ -255,8 +251,7 @@ class TestGetJsonRpcClient:
                 "AGENTCORE_AUTH_TYPE": "jwt",
                 "AGENTCORE_AUTH_TOKEN": "test-jwt-token",
             },
-            clear=False,
-        ):
+            clear=False):
             reset_container()  # Clear cache
             client = get_jsonrpc_client()
             assert client.auth_token == "test-jwt-token"
@@ -269,8 +264,7 @@ class TestGetJsonRpcClient:
                 "AGENTCORE_AUTH_TYPE": "api_key",
                 "AGENTCORE_AUTH_TOKEN": "test-api-key",
             },
-            clear=False,
-        ):
+            clear=False):
             reset_container()  # Clear cache
             client = get_jsonrpc_client()
             # API key auth is not JWT, so token should be None
@@ -474,8 +468,7 @@ class TestDependencyWiring:
             {
                 "AGENTCORE_API_URL": "https://wiring-test.com",
             },
-            clear=False,
-        ):
+            clear=False):
             reset_container()
             transport = get_transport()
             assert transport.base_url == "https://wiring-test.com"
@@ -495,8 +488,7 @@ class TestDependencyWiring:
                 "AGENTCORE_AUTH_TYPE": "jwt",
                 "AGENTCORE_AUTH_TOKEN": "wiring-test-token",
             },
-            clear=False,
-        ):
+            clear=False):
             reset_container()
             client = get_jsonrpc_client()
             assert client.auth_token == "wiring-test-token"

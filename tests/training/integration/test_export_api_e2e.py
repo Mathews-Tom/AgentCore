@@ -28,8 +28,7 @@ from datetime import datetime, timezone
 
 from agentcore.training.models import (
     Trajectory,
-    TrajectoryStep,
-)
+    TrajectoryStep)
 
 
 @pytest.fixture
@@ -44,8 +43,7 @@ def sample_trajectories_for_export() -> list[Trajectory]:
                 action={"type": "action", "value": j},
                 result={"success": True},
                 timestamp=datetime.now(timezone.utc),
-                duration_ms=100 + j,
-            )
+                duration_ms=100 + j)
             for j in range(3)
         ]
 
@@ -56,8 +54,7 @@ def sample_trajectories_for_export() -> list[Trajectory]:
             steps=steps,
             success=i % 3 != 0,  # ~67% success rate
             reward=0.1 + (i * 0.005),  # Rewards from 0.1 to 0.85
-            execution_time_ms=300 + i * 10,
-        )
+            execution_time_ms=300 + i * 10)
 
         trajectories.append(trajectory)
 
@@ -70,8 +67,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_basic_trajectory_export(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test basic trajectory export without filters."""
         from agentcore.training.export import ExportService
 
@@ -87,8 +83,7 @@ class TestExportAPI:
         exported = await export_service.export_trajectories(
             job_id=job_id,
             limit=100,
-            offset=0,
-        )
+            offset=0)
 
         # Verify export
         assert len(exported["trajectories"]) == 50
@@ -98,8 +93,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_with_success_filter(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test export with success_only filter."""
         from agentcore.training.export import ExportService
 
@@ -113,8 +107,7 @@ class TestExportAPI:
         exported = await export_service.export_trajectories(
             job_id=job_id,
             success_only=True,
-            limit=100,
-        )
+            limit=100)
 
         # Verify all exported are successful
         assert all(t["success"] for t in exported["trajectories"])
@@ -126,8 +119,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_with_reward_threshold(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test export with minimum reward threshold."""
         from agentcore.training.export import ExportService
 
@@ -140,8 +132,7 @@ class TestExportAPI:
         exported = await export_service.export_trajectories(
             job_id=job_id,
             min_reward=0.5,
-            limit=200,
-        )
+            limit=200)
 
         # Verify all meet threshold
         assert all(t["reward"] >= 0.5 for t in exported["trajectories"])
@@ -153,8 +144,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_pagination(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test pagination support in export."""
         from agentcore.training.export import ExportService
 
@@ -168,8 +158,7 @@ class TestExportAPI:
         page1 = await export_service.export_trajectories(
             job_id=job_id,
             limit=50,
-            offset=0,
-        )
+            offset=0)
 
         assert len(page1["trajectories"]) == 50
         assert page1["total_count"] == 150
@@ -179,8 +168,7 @@ class TestExportAPI:
         page2 = await export_service.export_trajectories(
             job_id=job_id,
             limit=50,
-            offset=50,
-        )
+            offset=50)
 
         assert len(page2["trajectories"]) == 50
         assert page2["has_more"] is True
@@ -189,8 +177,7 @@ class TestExportAPI:
         page3 = await export_service.export_trajectories(
             job_id=job_id,
             limit=50,
-            offset=100,
-        )
+            offset=100)
 
         assert len(page3["trajectories"]) == 50
         assert page3["has_more"] is False
@@ -207,8 +194,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_size_limit_enforcement(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test that export size limits are enforced (max 10,000)."""
         from agentcore.training.export import ExportService
 
@@ -227,16 +213,14 @@ class TestExportAPI:
         # Valid limit should work
         exported = await export_service.export_trajectories(
             job_id=job_id,
-            limit=10000,
-        )
+            limit=10000)
 
         assert len(exported["trajectories"]) <= 10000
 
     @pytest.mark.asyncio
     async def test_export_combined_filters(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test export with multiple filters combined."""
         from agentcore.training.export import ExportService
 
@@ -250,8 +234,7 @@ class TestExportAPI:
             job_id=job_id,
             success_only=True,
             min_reward=0.4,
-            limit=100,
-        )
+            limit=100)
 
         # Verify all meet both criteria
         for trajectory in exported["trajectories"]:
@@ -261,8 +244,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_json_format(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test that export JSON format is correct."""
         from agentcore.training.export import ExportService
 
@@ -299,8 +281,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_authorization(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test that export requires data:export permission."""
         from agentcore.training.export import ExportService
 
@@ -317,8 +298,7 @@ class TestExportAPI:
             await export_service.export_trajectories(
                 job_id=job_id,
                 limit=10,
-                user=MockUser(),
-            )
+                user=MockUser())
 
         # With permission should work
         class AuthorizedUser:
@@ -327,8 +307,7 @@ class TestExportAPI:
         exported = await export_service.export_trajectories(
             job_id=job_id,
             limit=10,
-            user=AuthorizedUser(),
-        )
+            user=AuthorizedUser())
 
         assert len(exported["trajectories"]) > 0
 
@@ -361,14 +340,12 @@ class TestExportAPI:
         with pytest.raises(KeyError, match="Job not found"):
             await export_service.export_trajectories(
                 job_id=nonexistent_job_id,
-                limit=10,
-            )
+                limit=10)
 
     @pytest.mark.asyncio
     async def test_export_performance_with_large_dataset(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test export performance with large trajectory dataset."""
         from agentcore.training.export import ExportService
         import time
@@ -384,8 +361,7 @@ class TestExportAPI:
 
         exported = await export_service.export_trajectories(
             job_id=job_id,
-            limit=100,
-        )
+            limit=100)
 
         end_time = time.time()
         duration = end_time - start_time
@@ -397,8 +373,7 @@ class TestExportAPI:
     @pytest.mark.asyncio
     async def test_export_offset_beyond_total(
         self,
-        sample_trajectories_for_export: list[Trajectory],
-    ) -> None:
+        sample_trajectories_for_export: list[Trajectory]) -> None:
         """Test export with offset beyond total count."""
         from agentcore.training.export import ExportService
 

@@ -10,12 +10,10 @@ import pytest
 
 from agentcore.training.job_manager import TrainingJobManager
 from agentcore.training.models import (
-    GRPOConfig as GRPOConfigModel,
-)
+    GRPOConfig as GRPOConfigModel)
 from agentcore.training.models import (
     TrainingJobStatus,
-    TrainingQuery,
-)
+    TrainingQuery)
 
 
 @pytest.fixture
@@ -31,8 +29,7 @@ def sample_config():
         n_iterations=10,
         learning_rate=0.0001,
         max_budget_usd=Decimal("10.00"),
-        checkpoint_interval=5,
-    )
+        checkpoint_interval=5)
 
 
 @pytest.fixture
@@ -41,8 +38,7 @@ def sample_training_data():
     return [
         TrainingQuery(
             query=f"Test query {i}",
-            expected_outcome={"success": True, "result": "test"},
-        )
+            expected_outcome={"success": True, "result": "test"})
         for i in range(100)
     ]
 
@@ -64,8 +60,7 @@ async def test_create_job(job_manager, sample_config, sample_training_data):
     job = await job_manager.create_job(
         agent_id=agent_id,
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     assert job.agent_id == agent_id
     assert job.status == TrainingJobStatus.QUEUED
@@ -84,8 +79,7 @@ async def test_start_job(job_manager, sample_config, sample_training_data):
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     assert job.status == TrainingJobStatus.QUEUED
 
@@ -119,8 +113,7 @@ async def test_start_job_invalid_state(job_manager, sample_config, sample_traini
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # Start once
     await job_manager.start_job(job.job_id)
@@ -145,14 +138,12 @@ async def test_cancel_job(job_manager, sample_config, sample_training_data):
         n_iterations=1000,
         learning_rate=0.0001,
         max_budget_usd=Decimal("10.00"),
-        checkpoint_interval=100,
-    )
+        checkpoint_interval=100)
 
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
 
@@ -190,8 +181,7 @@ async def test_cancel_job_invalid_state(job_manager, sample_config, sample_train
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # Job is QUEUED, not RUNNING
     with pytest.raises(ValueError, match="not running"):
@@ -204,8 +194,7 @@ async def test_get_job_status(job_manager, sample_config, sample_training_data):
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     status = job_manager.get_job_status(job.job_id)
 
@@ -236,14 +225,12 @@ async def test_list_jobs(job_manager, sample_config, sample_training_data):
     job1 = await job_manager.create_job(
         agent_id="agent-1",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     job2 = await job_manager.create_job(
         agent_id="agent-2",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # List all jobs
     all_jobs = job_manager.list_jobs()
@@ -273,8 +260,7 @@ async def test_get_job(job_manager, sample_config, sample_training_data):
     created_job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     retrieved_job = job_manager.get_job(created_job.job_id)
 
@@ -298,8 +284,7 @@ async def test_wait_for_job(job_manager, sample_config, sample_training_data):
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     await job_manager.start_job(job.job_id)
 
@@ -316,8 +301,7 @@ async def test_wait_for_job_not_active(job_manager, sample_config, sample_traini
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # Job is QUEUED, not started
     # Should return immediately without error
@@ -330,8 +314,7 @@ async def test_job_execution_updates_metrics(job_manager, sample_config, sample_
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -362,8 +345,7 @@ async def test_job_execution_creates_checkpoints(
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=config,
-    )
+        config=config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -385,8 +367,7 @@ async def test_job_execution_progress_tracking(
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -403,8 +384,7 @@ async def test_job_execution_simulated_trajectories(
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     await job_manager.start_job(job.job_id)
     await job_manager.wait_for_job(job.job_id)
@@ -422,14 +402,12 @@ async def test_multiple_concurrent_jobs(job_manager, sample_config, sample_train
     job1 = await job_manager.create_job(
         agent_id="agent-1",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     job2 = await job_manager.create_job(
         agent_id="agent-2",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # Start both jobs
     await job_manager.start_job(job1.job_id)
@@ -438,8 +416,7 @@ async def test_multiple_concurrent_jobs(job_manager, sample_config, sample_train
     # Wait for both to complete
     await asyncio.gather(
         job_manager.wait_for_job(job1.job_id),
-        job_manager.wait_for_job(job2.job_id),
-    )
+        job_manager.wait_for_job(job2.job_id))
 
     # Both should be completed
     assert job1.status == TrainingJobStatus.COMPLETED
@@ -452,8 +429,7 @@ async def test_job_status_percent_complete(job_manager, sample_config, sample_tr
     job = await job_manager.create_job(
         agent_id="test-agent",
         training_data=sample_training_data,
-        config=sample_config,
-    )
+        config=sample_config)
 
     # Initially 0%
     status = job_manager.get_job_status(job.job_id)

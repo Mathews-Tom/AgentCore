@@ -117,6 +117,50 @@ class Settings(BaseSettings):
         default=True, description="Enable input sanitization for reasoning queries"
     )
 
+    # LLM Service Configuration
+    ALLOWED_MODELS: list[str] = Field(
+        default=[
+            "gpt-4.1-mini",
+            "gpt-5-mini",
+            "claude-3-5-haiku-20241022",
+            "gemini-2.0-flash-exp",
+        ],
+        description="List of allowed LLM models for the service",
+    )
+    LLM_DEFAULT_MODEL: str = Field(
+        default="gpt-4.1-mini", description="Default LLM model to use"
+    )
+
+    OPENAI_API_KEY: str | None = Field(
+        default=None, description="OpenAI API key for GPT models"
+    )
+    ANTHROPIC_API_KEY: str | None = Field(
+        default=None, description="Anthropic API key for Claude models"
+    )
+    GEMINI_API_KEY: str | None = Field(
+        default=None, description="Google Gemini API key"
+    )
+
+    LLM_REQUEST_TIMEOUT: float = Field(
+        default=60.0, gt=0, description="LLM request timeout in seconds (must be >0)"
+    )
+    LLM_MAX_RETRIES: int = Field(
+        default=3, ge=0, description="Maximum retry attempts for LLM requests (>=0)"
+    )
+    LLM_RETRY_EXPONENTIAL_BASE: float = Field(
+        default=2.0,
+        gt=1,
+        description="Exponential backoff base for retry delays (must be >1)",
+    )
+    LLM_MAX_RETRY_DELAY: float = Field(
+        default=32.0,
+        gt=0,
+        description="Maximum retry delay in seconds for rate limit backoff (must be >0)",
+    )
+    LLM_RATE_LIMIT_QUEUE_SIZE: int = Field(
+        default=100, ge=0, description="Maximum queue size for rate-limited requests (>=0)"
+    )
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

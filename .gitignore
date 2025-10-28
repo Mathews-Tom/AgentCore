@@ -219,3 +219,8 @@ __marimo__/
 .sage/
 .docs/
 *-coverage.json
+
+# Local testing configuration
+.actrc
+.secrets
+.env.test

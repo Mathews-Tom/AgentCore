@@ -20,8 +20,7 @@ from agentcore.agent_runtime.models.plugin import (
     PluginType,
     PluginValidationError,
     PluginValidationResult,
-    PluginVersionConflictError,
-)
+    PluginVersionConflictError)
 from agentcore.agent_runtime.services.audit_logger import AuditLogger
 from agentcore.agent_runtime.services.plugin_loader import PluginLoader
 from agentcore.agent_runtime.services.plugin_registry import PluginRegistry
@@ -41,8 +40,7 @@ class TestPluginModels:
             description="A test plugin",
             author="Test Author",
             plugin_type=PluginType.TOOL,
-            entry_point="test_plugin.main",
-        )
+            entry_point="test_plugin.main")
 
         assert metadata.plugin_id == "com.example.test"
         assert metadata.name == "Test Plugin"
@@ -60,8 +58,7 @@ class TestPluginModels:
                 description="Test",
                 author="Test",
                 plugin_type=PluginType.TOOL,
-                entry_point="test",
-            )
+                entry_point="test")
 
     def test_plugin_config_creation(self):
         """Test creating plugin configuration."""
@@ -70,8 +67,7 @@ class TestPluginModels:
             enabled=True,
             auto_load=True,
             priority=100,
-            config={"key": "value"},
-        )
+            config={"key": "value"})
 
         assert config.plugin_id == "com.example.test"
         assert config.enabled is True
@@ -87,15 +83,13 @@ class TestPluginModels:
             description="Test",
             author="Test",
             plugin_type=PluginType.TOOL,
-            entry_point="test",
-        )
+            entry_point="test")
         config = PluginConfig(plugin_id="com.example.test")
 
         state = PluginState(
             plugin_id="com.example.test",
             metadata=metadata,
-            config=config,
-        )
+            config=config)
 
         assert state.status == PluginStatus.UNLOADED
         assert state.usage_count == 0
@@ -168,8 +162,7 @@ class TestPluginVersionManager:
             plugin_type=PluginType.TOOL,
             entry_point="test",
             min_runtime_version="1.0.0",
-            max_runtime_version="2.0.0",
-        )
+            max_runtime_version="2.0.0")
 
         is_compatible, reason = manager.check_runtime_compatibility(metadata)
         assert is_compatible is True
@@ -196,15 +189,12 @@ class TestPluginVersionManager:
                 PluginDependency(
                     plugin_id="com.example.dep1",
                     version_constraint=">=1.0.0",
-                    optional=False,
-                ),
+                    optional=False),
                 PluginDependency(
                     plugin_id="com.example.dep2",
                     version_constraint="^1.0.0",
-                    optional=True,
-                ),
-            ],
-        )
+                    optional=True),
+            ])
 
         # All dependencies satisfied
         available = {
@@ -265,8 +255,7 @@ class TestPluginValidator:
         return PluginValidator(
             max_file_size_mb=10,
             enable_code_scanning=True,
-            enable_checksum_validation=False,
-        )
+            enable_checksum_validation=False)
 
     def test_structure_validation(self, temp_plugin_dir, validator):
         """Test plugin structure validation."""
@@ -289,8 +278,7 @@ class TestPluginValidator:
             description="Test",
             author="Test",
             plugin_type=PluginType.TOOL,
-            entry_point="test.main",
-        )
+            entry_point="test.main")
 
         errors = validator._validate_metadata(metadata)
         assert len(errors) == 0
@@ -310,8 +298,7 @@ class TestPluginValidator:
             description="Test",
             author="Test",
             plugin_type=PluginType.TOOL,
-            entry_point="test",
-        )
+            entry_point="test")
 
         # Create safe Python file
         safe_code = """
@@ -352,9 +339,7 @@ def dangerous():
             entry_point="test",
             permissions=PluginPermissions(
                 filesystem_write=["/*"],
-                network_hosts=["*"],
-            ),
-        )
+                network_hosts=["*"]))
 
         warnings = await validator._validate_permissions(metadata)
         assert len(warnings) > 0
@@ -383,14 +368,12 @@ class TestPluginLoader:
         return PluginLoader(
             plugin_directory=temp_plugin_dir,
             validator=validator,
-            enable_auto_load=False,
-        )
+            enable_auto_load=False)
 
     def _create_test_plugin(
         self,
         plugin_dir: Path,
-        plugin_id: str = "com.example.test",
-    ):
+        plugin_id: str = "com.example.test"):
         """Create a minimal test plugin."""
         plugin_path = plugin_dir / plugin_id
         plugin_path.mkdir(parents=True, exist_ok=True)
@@ -448,8 +431,7 @@ class Plugin:
 
         state = await loader.load_plugin(
             plugin_id=plugin_id,
-            validate=False,
-        )
+            validate=False)
 
         assert state.plugin_id == plugin_id
         assert state.status == PluginStatus.LOADED
@@ -460,8 +442,7 @@ class Plugin:
         with pytest.raises(PluginLoadError, match="not found"):
             await loader.load_plugin(
                 plugin_id="com.example.nonexistent",
-                validate=False,
-            )
+                validate=False)
 
     async def test_unload_plugin(self, temp_plugin_dir, loader):
         """Test unloading a plugin."""
@@ -532,8 +513,7 @@ def test_plugin_models_serialization():
         description="Test",
         author="Test",
         plugin_type=PluginType.TOOL,
-        entry_point="test",
-    )
+        entry_point="test")
 
     # Should serialize without errors
     json_str = metadata.model_dump_json()

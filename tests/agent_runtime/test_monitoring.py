@@ -16,19 +16,16 @@ from agentcore.agent_runtime.services.alerting_service import (
     AlertRule,
     AlertSeverity,
     AlertState,
-    NotificationChannel,
-)
+    NotificationChannel)
 from agentcore.agent_runtime.services.distributed_tracing import (
     DistributedTracer,
     Span,
     SpanKind,
     SpanStatus,
-    TraceContext,
-)
+    TraceContext)
 from agentcore.agent_runtime.services.metrics_collector import (
     MetricsCollector,
-    MetricType,
-)
+    MetricType)
 
 
 class TestMetricsCollector:
@@ -76,8 +73,7 @@ class TestMetricsCollector:
             agent_id="test-agent",
             philosophy=AgentPhilosophy.REACT,
             cpu_percent=45.5,
-            memory_mb=256.0,
-        )
+            memory_mb=256.0)
 
         # Verify gauges were set
         assert collector.agent_cpu_usage._metrics is not None
@@ -89,15 +85,13 @@ class TestMetricsCollector:
         collector.record_container_creation(
             philosophy=AgentPhilosophy.REACT,
             duration_seconds=0.05,
-            warm_start=True,
-        )
+            warm_start=True)
 
         # Cold start
         collector.record_container_creation(
             philosophy=AgentPhilosophy.CHAIN_OF_THOUGHT,
             duration_seconds=0.5,
-            warm_start=False,
-        )
+            warm_start=False)
 
         # Verify metrics were recorded
         assert collector.warm_starts._metrics is not None
@@ -108,15 +102,13 @@ class TestMetricsCollector:
         collector.record_tool_execution(
             tool_id="calculator",
             duration_seconds=0.1,
-            status="success",
-        )
+            status="success")
 
         collector.record_tool_execution(
             tool_id="api_call",
             duration_seconds=0.5,
             status="error",
-            error_type="timeout",
-        )
+            error_type="timeout")
 
         # Verify metrics were recorded
         assert collector.tool_executions._metrics is not None
@@ -141,8 +133,7 @@ class TestMetricsCollector:
             name="test_counter",
             metric_type=MetricType.COUNTER,
             description="Test counter metric",
-            labels=["label1"],
-        )
+            labels=["label1"])
 
         assert metric is not None
         retrieved = collector.get_custom_metric("test_counter")
@@ -153,8 +144,7 @@ class TestMetricsCollector:
         collector.update_system_resources(
             cpu_percent=50.0,
             memory_percent=60.0,
-            memory_available_mb=1024.0,
-        )
+            memory_available_mb=1024.0)
 
         snapshot = collector.snapshot_metrics()
 
@@ -315,8 +305,7 @@ class TestAlertingService:
             condition=lambda ctx: ctx.get("value", 0) > 10,
             severity=AlertSeverity.WARNING,
             title_template="Test alert",
-            description_template="Value is {value}",
-        )
+            description_template="Value is {value}")
 
         alerting.register_rule(rule)
         assert "test_rule" in alerting._rules
@@ -328,8 +317,7 @@ class TestAlertingService:
             metric_name="cpu_percent",
             threshold=80.0,
             comparison="gt",
-            severity=AlertSeverity.CRITICAL,
-        )
+            severity=AlertSeverity.CRITICAL)
 
         assert rule is not None
         assert rule.name == "cpu_threshold"
@@ -344,16 +332,14 @@ class TestAlertingService:
             condition=lambda ctx: True,
             severity=AlertSeverity.WARNING,
             title_template="Test alert",
-            description_template="This is a test",
-        )
+            description_template="This is a test")
         alerting.register_rule(rule)
 
         # Trigger alert
         alert = await alerting.trigger_alert(
             rule_name="test_rule",
             title="Test alert",
-            description="This is a test",
-        )
+            description="This is a test")
 
         assert alert is not None
         assert alert.state == AlertState.ACTIVE
@@ -368,15 +354,13 @@ class TestAlertingService:
             condition=lambda ctx: True,
             severity=AlertSeverity.INFO,
             title_template="Test",
-            description_template="Test",
-        )
+            description_template="Test")
         alerting.register_rule(rule)
 
         alert = await alerting.trigger_alert(
             rule_name="test_rule",
             title="Test",
-            description="Test",
-        )
+            description="Test")
 
         # Acknowledge
         success = await alerting.acknowledge_alert(alert.alert_id, "test_user")
@@ -393,15 +377,13 @@ class TestAlertingService:
             condition=lambda ctx: True,
             severity=AlertSeverity.INFO,
             title_template="Test",
-            description_template="Test",
-        )
+            description_template="Test")
         alerting.register_rule(rule)
 
         alert = await alerting.trigger_alert(
             rule_name="test_rule",
             title="Test",
-            description="Test",
-        )
+            description="Test")
 
         # Resolve
         success = await alerting.resolve_alert(alert.alert_id, "Fixed")
@@ -419,8 +401,7 @@ class TestAlertingService:
             condition=lambda ctx: ctx.get("cpu", 0) > 80,
             severity=AlertSeverity.CRITICAL,
             title_template="High CPU",
-            description_template="CPU is {cpu}%",
-        )
+            description_template="CPU is {cpu}%")
         alerting.register_rule(rule)
 
         # Evaluate with high CPU
@@ -437,15 +418,13 @@ class TestAlertingService:
             rule_name="rule1",
             severity=AlertSeverity.WARNING,
             title="Alert 1",
-            description="Test",
-        )
+            description="Test")
         alert2 = Alert(
             alert_id="2",
             rule_name="rule2",
             severity=AlertSeverity.CRITICAL,
             title="Alert 2",
-            description="Test",
-        )
+            description="Test")
 
         alerting._alerts["1"] = alert1
         alerting._alerts["2"] = alert2
@@ -467,8 +446,7 @@ class TestAlertingService:
             rule_name="rule1",
             severity=AlertSeverity.INFO,
             title="Old alert",
-            description="Test",
-        )
+            description="Test")
         alert1.created_at = datetime.now(UTC) - timedelta(hours=48)
 
         alert2 = Alert(
@@ -476,8 +454,7 @@ class TestAlertingService:
             rule_name="rule2",
             severity=AlertSeverity.WARNING,
             title="Recent alert",
-            description="Test",
-        )
+            description="Test")
 
         alerting._alert_history.extend([alert1, alert2])
 
@@ -534,8 +511,7 @@ async def test_monitoring_integration() -> None:
         metric_name="duration",
         threshold=5.0,
         comparison="gt",
-        severity=AlertSeverity.WARNING,
-    )
+        severity=AlertSeverity.WARNING)
 
     # Evaluate with normal execution
     alerts = await alerting.evaluate_rules({"duration": 0.01})

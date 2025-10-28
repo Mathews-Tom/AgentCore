@@ -25,8 +25,7 @@ def grpo_config():
         learning_rate=0.0001,
         gradient_clip_value=1.0,
         advantage_threshold=0.0,
-        enable_gradient_clipping=True,
-    )
+        enable_gradient_clipping=True)
 
 
 @pytest.fixture
@@ -48,8 +47,7 @@ def sample_trajectories():
                 action={"step_type": "tool_call"},
                 result={},
                 timestamp=now,
-                duration_ms=100,
-            )
+                duration_ms=100)
         ]
 
         # Alternate success/failure
@@ -60,8 +58,7 @@ def sample_trajectories():
             agent_id="test-agent",
             query=f"query {i}",
             steps=steps,
-            success=success,
-        )
+            success=success)
         trajectories.append(trajectory)
 
     return trajectories
@@ -141,11 +138,9 @@ def test_policy_gradient_formula(reward_engine):
                 action={"step_type": "tool_call"},
                 result={},
                 timestamp=now,
-                duration_ms=100,
-            )
+                duration_ms=100)
         ],
-        success=True,
-    )
+        success=True)
 
     bad_traj = Trajectory(
         job_id=uuid4(),
@@ -157,11 +152,9 @@ def test_policy_gradient_formula(reward_engine):
                 action={"step_type": "think"},
                 result={},
                 timestamp=now,
-                duration_ms=50,
-            )
+                duration_ms=50)
         ],
-        success=False,
-    )
+        success=False)
 
     trajectories = [good_traj, bad_traj]
     log_probs = [-0.5, -0.3]
@@ -274,8 +267,7 @@ def test_convergence_detection():
             loss=0.1 + i * 0.001,  # Very small variance
             avg_reward=0.9,
             std_reward=0.1,
-            positive_count=4,
-        )
+            positive_count=4)
 
     assert metrics.is_converged(window=10, threshold=0.01) is True
 
@@ -309,8 +301,7 @@ def test_should_continue_training_convergence(grpo_trainer):
             loss=0.5 + i * 0.1,  # High variance
             avg_reward=0.8,
             std_reward=0.1,
-            positive_count=3,
-        )
+            positive_count=3)
 
     # Should continue (not converged)
     assert (
@@ -324,8 +315,7 @@ def test_should_continue_training_convergence(grpo_trainer):
             loss=0.1 + i * 0.0001,  # Very low variance
             avg_reward=0.9,
             std_reward=0.1,
-            positive_count=4,
-        )
+            positive_count=4)
 
     # Should stop (converged)
     assert (
@@ -389,11 +379,9 @@ def test_no_positive_advantages(reward_engine):
                     action={"step_type": "think"},
                     result={},
                     timestamp=now,
-                    duration_ms=50,
-                )
+                    duration_ms=50)
             ],
-            success=False,
-        )
+            success=False)
         for _ in range(3)
     ]
 
@@ -425,11 +413,9 @@ def test_advantage_threshold_filtering(reward_engine):
                     action={"step_type": "tool_call"},
                     result={},
                     timestamp=now,
-                    duration_ms=100,
-                )
+                    duration_ms=100)
             ],
-            success=True,
-        )
+            success=True)
         for _ in range(3)
     ]
 

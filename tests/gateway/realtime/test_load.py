@@ -96,8 +96,7 @@ class TestConnectionLoad:
             # Subscribe handler
             subscription_id = bus.subscribe(
                 handler=handler,
-                event_types={EventType.TASK_CREATED, EventType.TASK_COMPLETED},
-            )
+                event_types={EventType.TASK_CREATED, EventType.TASK_COMPLETED})
 
             # Publish 10,000 events
             start_time = time.time()
@@ -107,8 +106,7 @@ class TestConnectionLoad:
                 event = EventMessage.create(
                     event_type=EventType.TASK_CREATED if i % 2 == 0 else EventType.TASK_COMPLETED,
                     topic=f"agent.{i % 100}",
-                    payload={"task_id": f"task-{i}"},
-                )
+                    payload={"task_id": f"task-{i}"})
                 await bus.publish(event)
                 event_ids.append(event.event_id)
 
@@ -156,8 +154,7 @@ class TestConnectionLoad:
 
                 subscription_id = bus.subscribe(
                     handler=handler,
-                    topics={f"topic.{i}"},
-                )
+                    topics={f"topic.{i}"})
                 handlers.append(received_events)
                 subscription_ids.append(subscription_id)
 
@@ -173,8 +170,7 @@ class TestConnectionLoad:
                 event = EventMessage.create(
                     event_type=EventType.TASK_CREATED,
                     topic=f"topic.{i}",
-                    payload={"task_id": f"task-{i}"},
-                )
+                    payload={"task_id": f"task-{i}"})
                 await bus.publish(event)
 
             publish_end_time = time.time()
@@ -222,8 +218,7 @@ class TestConnectionLoad:
                 pool.add_connection(
                     connection_id=conn_id,
                     connection_type=ConnectionType.WEBSOCKET,
-                    client_id=f"client-{i}",
-                )
+                    client_id=f"client-{i}")
                 connections_data.append(conn_id)
 
             # Check stats
@@ -258,8 +253,7 @@ class TestConnectionLoad:
                 conn_info = pool.add_connection(
                     connection_id=conn_id,
                     connection_type=ConnectionType.WEBSOCKET,
-                    client_id=f"client-{i}",
-                )
+                    client_id=f"client-{i}")
                 assert conn_info is not None
 
                 # Immediately remove
@@ -302,16 +296,14 @@ class TestRealtimePerformance:
 
             subscription_id = bus.subscribe(
                 handler=handler,
-                event_types={EventType.TASK_CREATED},
-            )
+                event_types={EventType.TASK_CREATED})
 
             # Send 100 events and measure latency
             for i in range(100):
                 event = EventMessage.create(
                     event_type=EventType.TASK_CREATED,
                     topic="test",
-                    payload={"task_id": f"task-{i}"},
-                )
+                    payload={"task_id": f"task-{i}"})
                 await bus.publish(event)
 
             # Wait for processing

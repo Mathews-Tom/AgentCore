@@ -22,8 +22,7 @@ def sample_service() -> ServiceEndpoint:
     return ServiceEndpoint(
         service_id="backend-1",
         name="Backend Service 1",
-        base_url=HttpUrl("http://localhost:8001"),
-    )
+        base_url=HttpUrl("http://localhost:8001"))
 
 
 @pytest.mark.asyncio
@@ -56,8 +55,7 @@ async def test_route_request_no_services(backend_router: BackendRouter) -> None:
     with pytest.raises(RuntimeError, match="No healthy backend services"):
         await backend_router.route_request(
             method="GET",
-            path="/test",
-        )
+            path="/test")
 
 
 @pytest.mark.asyncio
@@ -86,16 +84,14 @@ async def test_proxy_request(
         mock_response = httpx.Response(
             200,
             json={"result": "success"},
-            headers={"content-type": "application/json"},
-        )
+            headers={"content-type": "application/json"})
         mock_request.return_value = mock_response
 
         status, headers, body = await backend_router._proxy_request(
             service=sample_service,
             method="POST",
             path="/api/test",
-            json_data={"test": "data"},
-        )
+            json_data={"test": "data"})
 
         assert status == 200
         assert b"success" in body
