@@ -17,6 +17,11 @@ This directory contains documentation for developers working on AgentCore.
   - How workflows were fixed to skip non-existent features
   - New A2A protocol load testing workflow
 
+- **[INTEGRATION_ENDPOINTS_ISSUE.md](INTEGRATION_ENDPOINTS_ISSUE.md)** - Integration endpoints not registered
+  - Why tests still failed after directory check fix
+  - Difference between code existence and endpoint registration
+  - How to enable tests by registering routers
+
 - **[MIGRATION_FIXES_SUMMARY.md](MIGRATION_FIXES_SUMMARY.md)** - Database migration idempotency fixes
   - Enum creation issues (5 enums fixed)
   - Index creation idempotency (12 indexes fixed)
