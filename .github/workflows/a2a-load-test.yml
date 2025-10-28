@@ -23,6 +23,11 @@ on:
         required: false
         default: '1m'
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   a2a-load-test:
     name: Run A2A Protocol Load Tests

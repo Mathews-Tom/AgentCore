@@ -25,6 +25,11 @@ on:
         required: false
         default: '2m'
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   check-integration-layer:
     name: Check if Integration Layer exists
