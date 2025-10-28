@@ -11,9 +11,9 @@ on:
     paths:
       - 'src/agentcore/integration/**'
       - 'tests/load/integration_**'
-  schedule:
-    # Run nightly at 2 AM UTC
-    - cron: '0 2 * * *'
+  # Disabled schedule until integration layer is implemented
+  # schedule:
+  #   - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       users:
@@ -26,8 +26,30 @@ on:
         default: '2m'
 
 jobs:
+  check-integration-layer:
+    name: Check if Integration Layer exists
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for integration layer
+        id: check
+        run: |
+          if [ -d "src/agentcore/integration" ] && [ -n "$(ls -A src/agentcore/integration 2>/dev/null)" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✓ Integration layer found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Integration layer not yet implemented - skipping tests"
+          fi
+
   load-test:
     name: Run Load Tests
+    needs: check-integration-layer
+    if: needs.check-integration-layer.outputs.exists == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
