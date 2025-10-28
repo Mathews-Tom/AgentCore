@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
 
 
@@ -39,7 +40,7 @@ def upgrade() -> None:
         sa.Column('workflow_name', sa.String(255), nullable=False),
         sa.Column('workflow_version', sa.String(50), nullable=False, server_default='1.0'),
         sa.Column('orchestration_pattern', sa.String(50), nullable=False, index=True),
-        sa.Column('status', sa.Enum('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled', name='workflowstatus', create_type=False), nullable=False, server_default='pending', index=True),
+        sa.Column('status', postgresql.ENUM('pending', 'planning', 'executing', 'paused', 'completed', 'failed', 'compensating', 'compensated', 'compensation_failed', 'cancelled', name='workflowstatus', create_type=False), nullable=False, server_default='pending', index=True),
         sa.Column('workflow_definition', JSONB, nullable=False),
         sa.Column('execution_state', JSONB, nullable=False, server_default='{}'),
         sa.Column('allocated_agents', JSONB, nullable=False, server_default='{}'),
