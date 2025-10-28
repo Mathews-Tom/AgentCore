@@ -18,6 +18,7 @@ from agentcore.dspy_optimization.models import (
     OptimizationConstraints,
     PerformanceMetrics,
 )
+from agentcore.dspy_optimization.tracking import MLflowTracker, MLflowConfig
 
 __all__ = [
     "MIPROv2Optimizer",
@@ -29,4 +30,6 @@ __all__ = [
     "OptimizationObjective",
     "OptimizationConstraints",
     "PerformanceMetrics",
+    "MLflowTracker",
+    "MLflowConfig",
 ]

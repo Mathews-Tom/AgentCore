@@ -21,6 +21,10 @@ from agentcore.dspy_optimization.models import (
     OptimizationStatus,
     PerformanceMetrics,
 )
+from agentcore.dspy_optimization.tracking.mlflow_tracker import (
+    MLflowTracker,
+    MLflowConfig,
+)
 
 
 class OptimizationPipeline:
@@ -31,18 +35,30 @@ class OptimizationPipeline:
     and best optimization selection based on objectives.
     """
 
-    def __init__(self, llm: dspy.LM | None = None) -> None:
+    def __init__(
+        self,
+        llm: dspy.LM | None = None,
+        mlflow_config: MLflowConfig | None = None,
+        enable_tracking: bool = True,
+    ) -> None:
         """
         Initialize optimization pipeline
 
         Args:
             llm: DSPy language model for optimization
+            mlflow_config: MLflow configuration for experiment tracking
+            enable_tracking: Enable MLflow tracking (default: True)
         """
         self.llm = llm or dspy.LM("openai/gpt-4.1-mini")
         self.optimizers: dict[str, BaseOptimizer] = {
             "miprov2": MIPROv2Optimizer(llm=self.llm),
             "gepa": GEPAOptimizer(llm=self.llm),
         }
+        self.enable_tracking = enable_tracking
+        self.tracker: MLflowTracker | None = None
+
+        if self.enable_tracking:
+            self.tracker = MLflowTracker(config=mlflow_config)
 
     async def run_optimization(
         self,
@@ -64,15 +80,45 @@ class OptimizationPipeline:
         # Validate request
         self._validate_request(request)
 
-        # Run optimizations with requested algorithms
-        results = await self._run_algorithms(
-            request, baseline_metrics, training_data
-        )
+        # Start MLflow tracking run
+        run_id = None
+        if self.tracker:
+            run_id = await self.tracker.start_run(request)
+            await self.tracker.log_baseline_metrics(baseline_metrics)
+            await self.tracker.log_training_data(training_data)
 
-        # Select best result
-        best_result = self._select_best_result(results, request)
+        best_result = None
+        try:
+            # Run optimizations with requested algorithms
+            results = await self._run_algorithms(
+                request, baseline_metrics, training_data
+            )
 
-        return best_result
+            # Select best result
+            best_result = self._select_best_result(results, request)
+
+            # Log result to MLflow
+            if self.tracker:
+                await self.tracker.log_result(best_result)
+
+                # Log model artifact if optimization succeeded
+                if best_result.status == OptimizationStatus.COMPLETED:
+                    # Model artifact logging will be handled by individual optimizers
+                    pass
+
+            return best_result
+
+        except Exception as e:
+            # Log failure to MLflow
+            if self.tracker:
+                await self.tracker.end_run(status="FAILED")
+            raise
+
+        finally:
+            # End MLflow run
+            if self.tracker and best_result:
+                status = "FINISHED" if best_result.status == OptimizationStatus.COMPLETED else "FAILED"
+                await self.tracker.end_run(status=status)
 
     async def _run_algorithms(
         self,
