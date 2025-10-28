@@ -11,8 +11,9 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-export DATABASE_URL="${DATABASE_URL:-postgresql://agentcore:agentcore@localhost:5432/agentcore_test}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://agentcore:password@localhost:5432/agentcore_test}"
 export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
+PGPASSWORD="${PGPASSWORD:-password}"
 
 # Check if PostgreSQL is running
 echo -e "\n${YELLOW}Checking PostgreSQL...${NC}"
@@ -31,19 +32,24 @@ echo -e "${GREEN}✅ PostgreSQL is running${NC}"
 
 # Check if Redis is running
 echo -e "\n${YELLOW}Checking Redis...${NC}"
-if ! redis-cli -h localhost -p 6379 ping > /dev/null 2>&1; then
+if redis-cli -h localhost -p 6379 ping > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Redis is running${NC}"
+elif docker exec agentcore-redis-1 redis-cli ping > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Redis is running (via Docker)${NC}"
+elif nc -z localhost 6379 > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Redis is running (port check)${NC}"
+else
     echo -e "${RED}❌ Redis is not running on localhost:6379${NC}"
     echo ""
     echo "Start it with:"
     echo "  docker run -d --name redis-test -p 6379:6379 redis:7"
     exit 1
 fi
-echo -e "${GREEN}✅ Redis is running${NC}"
 
 # Drop and recreate test database
 echo -e "\n${YELLOW}Recreating test database...${NC}"
-PGPASSWORD=agentcore psql -h localhost -U agentcore -d postgres -c "DROP DATABASE IF EXISTS agentcore_test;" 2>/dev/null || true
-PGPASSWORD=agentcore psql -h localhost -U agentcore -d postgres -c "CREATE DATABASE agentcore_test;" 2>/dev/null || true
+PGPASSWORD=$PGPASSWORD psql -h localhost -U agentcore -d postgres -c "DROP DATABASE IF EXISTS agentcore_test;" 2>/dev/null || true
+PGPASSWORD=$PGPASSWORD psql -h localhost -U agentcore -d postgres -c "CREATE DATABASE agentcore_test;" 2>/dev/null || true
 echo -e "${GREEN}✅ Database recreated${NC}"
 
 # Run migrations
@@ -62,7 +68,7 @@ echo "Current revision: $CURRENT_REV"
 
 # Check enum types exist
 echo -e "\n${YELLOW}Verifying enum types...${NC}"
-ENUM_TYPES=$(PGPASSWORD=agentcore psql -h localhost -U agentcore -d agentcore_test -t -c "SELECT typname FROM pg_type WHERE typtype = 'e' ORDER BY typname;")
+ENUM_TYPES=$(PGPASSWORD=$PGPASSWORD psql -h localhost -U agentcore -d agentcore_test -t -c "SELECT typname FROM pg_type WHERE typtype = 'e' ORDER BY typname;")
 echo "Found enum types:"
 echo "$ENUM_TYPES"
 
