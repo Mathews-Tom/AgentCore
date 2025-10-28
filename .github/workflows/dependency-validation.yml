@@ -44,7 +44,7 @@ jobs:
           # Define expected pinned versions
           EXPECTED_OPENAI="openai==1.54.0"
           EXPECTED_ANTHROPIC="anthropic==0.40.0"
-          EXPECTED_GOOGLE="google-generativeai==0.2.0"
+          EXPECTED_GOOGLE="google-generativeai==0.8.3"
 
           # Check pyproject.toml contains exact pins
           if ! grep -q '"openai==1.54.0"' pyproject.toml; then
@@ -61,8 +61,8 @@ jobs:
             exit 1
           fi
 
-          if ! grep -q '"google-generativeai==0.2.0"' pyproject.toml; then
-            echo "❌ ERROR: Google GenAI SDK must be pinned to exactly 0.2.0"
+          if ! grep -q '"google-generativeai==0.8.3"' pyproject.toml; then
+            echo "❌ ERROR: Google GenAI SDK must be pinned to exactly 0.8.3"
             echo "Expected: $EXPECTED_GOOGLE"
             echo "Found: $(grep 'google-generativeai' pyproject.toml | grep -o '"google-generativeai[^"]*"')"
             exit 1
@@ -83,7 +83,7 @@ jobs:
 
           echo "OpenAI: $INSTALLED_OPENAI (expected: 1.54.0)"
           echo "Anthropic: $INSTALLED_ANTHROPIC (expected: 0.40.0)"
-          echo "Google GenAI: $INSTALLED_GOOGLE (expected: 0.2.0)"
+          echo "Google GenAI: $INSTALLED_GOOGLE (expected: 0.8.3)"
 
           ERRORS=0
 
@@ -97,7 +97,7 @@ jobs:
             ERRORS=$((ERRORS + 1))
           fi
 
-          if [ "$INSTALLED_GOOGLE" != "0.2.0" ]; then
+          if [ "$INSTALLED_GOOGLE" != "0.8.3" ]; then
             echo "❌ ERROR: Google GenAI version mismatch"
             ERRORS=$((ERRORS + 1))
           fi
