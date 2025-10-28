@@ -78,6 +78,8 @@ dependencies = [
     "anthropic==0.40.0",
     "google-generativeai==0.8.3",
     "aiosqlite>=0.21.0",
+    "dspy-ai>=2.5.43",
+    "cloudpickle>=3.1.1",
 ]
 
 [project.urls]
