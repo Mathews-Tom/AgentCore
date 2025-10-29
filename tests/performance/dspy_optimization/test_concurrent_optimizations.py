@@ -67,9 +67,12 @@ class TestConcurrentOptimizations:
                 job_ids.append(job_id)
 
             # Wait for all to complete
-            results = await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids],
-                return_exceptions=True
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids],
+                    return_exceptions=True
+                ),
+                timeout=30.0  # 30 second timeout for 100 jobs
             )
 
             end_time = time.perf_counter()
@@ -124,9 +127,12 @@ class TestConcurrentOptimizations:
                 job_ids.append(job_id)
 
             # Wait for all to complete
-            results = await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids],
-                return_exceptions=True
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids],
+                    return_exceptions=True
+                ),
+                timeout=60.0  # 60 second timeout for 500 jobs
             )
 
             end_time = time.perf_counter()
@@ -179,9 +185,12 @@ class TestConcurrentOptimizations:
                 job_ids.append(job_id)
 
             # Wait for all to complete
-            results = await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids],
-                return_exceptions=True
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids],
+                    return_exceptions=True
+                ),
+                timeout=120.0  # 120 second timeout for 1000 jobs
             )
 
             end_time = time.perf_counter()
@@ -285,8 +294,11 @@ class TestConcurrentOptimizations:
                 job_ids.append(job_id)
 
             # Wait for completion
-            await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids]
+            await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids]
+                ),
+                timeout=10.0  # 10 second timeout for priority test
             )
 
             # High priority should complete first
@@ -329,9 +341,12 @@ class TestConcurrentOptimizations:
                 job_ids.append(job_id)
 
             # Wait for all to complete or fail
-            results = await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids],
-                return_exceptions=True
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids],
+                    return_exceptions=True
+                ),
+                timeout=30.0  # 30 second timeout for 100 jobs with failures
             )
 
             # Check results
@@ -374,8 +389,11 @@ class TestConcurrentOptimizations:
                     job_id = await queue.submit_job(job, fast_optimization_handler)
                     job_ids.append(job_id)
 
-                await asyncio.gather(
-                    *[queue.get_job_result(job_id) for job_id in job_ids]
+                await asyncio.wait_for(
+                    asyncio.gather(
+                        *[queue.get_job_result(job_id) for job_id in job_ids]
+                    ),
+                    timeout=30.0  # 30 second timeout per worker configuration
                 )
 
                 elapsed = time.perf_counter() - start_time
@@ -430,8 +448,11 @@ class TestConcurrentOptimizations:
                     assert stats["running"] <= config.max_concurrent_jobs
 
             # Wait for completion
-            await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids]
+            await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids]
+                ),
+                timeout=30.0  # 30 second timeout for 100 jobs
             )
 
             final_stats = queue.get_queue_stats()
@@ -466,8 +487,11 @@ class TestConcurrentOptimizations:
                 job_id = await queue.submit_job(job, fast_optimization_handler)
                 job_ids.append(job_id)
 
-            await asyncio.gather(
-                *[queue.get_job_result(job_id) for job_id in job_ids]
+            await asyncio.wait_for(
+                asyncio.gather(
+                    *[queue.get_job_result(job_id) for job_id in job_ids]
+                ),
+                timeout=30.0  # 30 second timeout for 50 jobs with rate limiting
             )
 
             elapsed = time.perf_counter() - start_time
