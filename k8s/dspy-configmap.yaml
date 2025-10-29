@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dspy-optimization-config
+  namespace: agentcore
+data:
+  LOG_LEVEL: "INFO"
+  HOST: "0.0.0.0"
+  PORT: "8002"
+  MLFLOW_TRACKING_URI: "http://mlflow-service:5000"
+  MLFLOW_EXPERIMENT_NAME: "dspy-optimization"
+  ENABLE_METRICS: "True"
+  # DSPy optimization settings
+  MAX_OPTIMIZATION_TIME: "3600"
+  MAX_ITERATIONS: "100"
+  POPULATION_SIZE: "50"
+  MUTATION_RATE: "0.1"
+  CROSSOVER_RATE: "0.8"
+  # Resource limits
+  MAX_CONCURRENT_OPTIMIZATIONS: "10"
+  GPU_ENABLED: "False"
+  # Redis for job queue
+  REDIS_URL: "redis://redis-service:6379/1"
