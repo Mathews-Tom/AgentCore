@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -56,6 +57,7 @@ class OptimizationJob:
     error: str | None = None
     retries: int = 0
     max_retries: int = 3
+    _completion_event: asyncio.Event | None = field(default=None, repr=False)
 
 
 class JobQueue:
@@ -79,7 +81,7 @@ class JobQueue:
             config: Queue configuration
         """
         self.config = config or QueueConfig()
-        self._queue: asyncio.PriorityQueue[tuple[int, OptimizationJob]] = asyncio.PriorityQueue(
+        self._queue: asyncio.PriorityQueue[tuple[int, int, OptimizationJob]] = asyncio.PriorityQueue(
             maxsize=self.config.max_queue_size
         )
         self._jobs: dict[str, OptimizationJob] = {}
@@ -88,6 +90,7 @@ class JobQueue:
         self._running = False
         self._rate_limiter: asyncio.Semaphore | None = None
         self._job_handlers: dict[str, Callable[[OptimizationJob], Awaitable[Any]]] = {}
+        self._counter = 0  # Insertion order counter for PriorityQueue tie-breaking
 
         if self.config.enable_rate_limiting:
             self._rate_limiter = asyncio.Semaphore(self.config.rate_limit_per_second)
@@ -162,6 +165,10 @@ class JobQueue:
                     f"Queue at {queue_utilization * 100:.1f}% capacity - rejecting new jobs"
                 )
 
+        # Initialize completion event
+        if job._completion_event is None:
+            job._completion_event = asyncio.Event()
+
         # Register job handler
         self._job_handlers[job.job_id] = handler
 
@@ -170,9 +177,10 @@ class JobQueue:
 
         # Add to queue (priority, insertion order, job)
         priority = -job.priority  # Negative for max-heap behavior
+        self._counter += 1  # Increment counter for FIFO ordering within same priority
         try:
-            await self._queue.put((priority, job))
-            logger.debug(f"Queued job {job.job_id} (priority: {job.priority})")
+            await self._queue.put((priority, self._counter, job))
+            logger.debug(f"Queued job {job.job_id} (priority: {job.priority}, counter: {self._counter})")
             return job.job_id
         except asyncio.QueueFull:
             raise RuntimeError("Job queue is full")
@@ -190,12 +198,13 @@ class JobQueue:
         job = self._jobs.get(job_id)
         return job.status if job else None
 
-    async def get_job_result(self, job_id: str) -> Any:
+    async def get_job_result(self, job_id: str, timeout: float | None = None) -> Any:
         """
         Get job result (blocks until complete)
 
         Args:
             job_id: Job identifier
+            timeout: Optional timeout in seconds (default: no timeout)
 
         Returns:
             Job result
@@ -203,15 +212,26 @@ class JobQueue:
         Raises:
             ValueError: If job not found
             RuntimeError: If job failed
+            asyncio.TimeoutError: If timeout expires before job completes
         """
         if job_id not in self._jobs:
             raise ValueError(f"Job {job_id} not found")
 
         job = self._jobs[job_id]
 
-        # Wait for completion
-        while job.status in (JobStatus.QUEUED, JobStatus.RUNNING):
-            await asyncio.sleep(0.1)
+        # Wait for completion using event
+        if job.status in (JobStatus.QUEUED, JobStatus.RUNNING):
+            if job._completion_event is None:
+                job._completion_event = asyncio.Event()
+
+            try:
+                if timeout is not None:
+                    await asyncio.wait_for(job._completion_event.wait(), timeout=timeout)
+                else:
+                    await job._completion_event.wait()
+            except asyncio.TimeoutError:
+                logger.warning(f"Job {job_id} timed out after {timeout}s (status: {job.status})")
+                raise
 
         if job.status == JobStatus.FAILED:
             raise RuntimeError(f"Job failed: {job.error}")
@@ -279,18 +299,27 @@ class JobQueue:
         logger.debug(f"Worker {worker_id} started")
 
         while self._running:
+            job = None
+            task_done_called = False
+
             try:
                 # Get next job (with timeout to allow shutdown)
                 try:
-                    priority, job = await asyncio.wait_for(
+                    priority, counter, job = await asyncio.wait_for(
                         self._queue.get(), timeout=1.0
                     )
+                    logger.debug(f"Worker {worker_id} got job {job.job_id} (priority: {-priority}, counter: {counter}, status: {job.status})")
                 except asyncio.TimeoutError:
                     continue
 
                 # Skip cancelled jobs
                 if job.status == JobStatus.CANCELLED:
+                    logger.debug(f"Worker {worker_id} skipping cancelled job {job.job_id}")
                     self._queue.task_done()
+                    task_done_called = True
+                    # Signal completion for cancelled job
+                    if job._completion_event:
+                        job._completion_event.set()
                     continue
 
                 # Check concurrent limit
@@ -307,6 +336,9 @@ class JobQueue:
                 self._active_jobs.add(job.job_id)
                 job.status = JobStatus.RUNNING
                 job.started_at = datetime.utcnow()
+                logger.debug(f"Worker {worker_id} executing job {job.job_id}")
+
+                will_retry = False
 
                 try:
                     handler = self._job_handlers.get(job.job_id)
@@ -322,27 +354,46 @@ class JobQueue:
                     logger.debug(f"Worker {worker_id} completed job {job.job_id}")
 
                 except Exception as e:
-                    logger.error(f"Worker {worker_id} job {job.job_id} failed: {e}")
+                    logger.error(f"Worker {worker_id} job {job.job_id} failed: {e}", exc_info=True)
 
                     # Retry logic
                     if job.retries < job.max_retries:
                         job.retries += 1
                         job.status = JobStatus.QUEUED
-                        await self._queue.put((priority, job))
+                        self._counter += 1
+                        await self._queue.put((priority, self._counter, job))
+                        will_retry = True
                         logger.info(
-                            f"Retrying job {job.job_id} (attempt {job.retries}/{job.max_retries})"
+                            f"Worker {worker_id} retrying job {job.job_id} (attempt {job.retries}/{job.max_retries})"
                         )
                     else:
                         job.status = JobStatus.FAILED
                         job.error = str(e)
                         job.completed_at = datetime.utcnow()
+                        logger.error(f"Worker {worker_id} job {job.job_id} permanently failed after {job.retries} retries")
 
                 finally:
                     self._active_jobs.discard(job.job_id)
-                    self._queue.task_done()
+
+                    # Only call task_done() if NOT retrying
+                    # When retrying, the job is put back in queue, so task_done() should not be called
+                    if not will_retry:
+                        self._queue.task_done()
+                        task_done_called = True
+                        logger.debug(f"Worker {worker_id} marked job {job.job_id} as done (status: {job.status})")
+                    else:
+                        logger.debug(f"Worker {worker_id} skipping task_done for retried job {job.job_id}")
+
+                    # Signal completion event for completed/failed jobs (not retries)
+                    if not will_retry and job._completion_event:
+                        job._completion_event.set()
+                        logger.debug(f"Worker {worker_id} signaled completion for job {job.job_id}")
 
             except Exception as e:
-                logger.error(f"Worker {worker_id} error: {e}")
+                logger.error(f"Worker {worker_id} unexpected error: {e}", exc_info=True)
+                # Make sure task_done is called if we got a job
+                if job and not task_done_called:
+                    self._queue.task_done()
 
         logger.debug(f"Worker {worker_id} stopped")
 
