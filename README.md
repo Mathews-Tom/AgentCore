@@ -12,6 +12,7 @@
 ## 🎯 Key Features
 
 ### 🤖 Agent-to-Agent Protocol (A2A)
+
 - **JSON-RPC 2.0** compliant API for standardized agent communication
 - **Agent discovery** via `.well-known/agent.json` endpoints
 - **Task coordination** with lifecycle management (create, assign, execute, complete)
@@ -19,6 +20,7 @@
 - **Distributed tracing** with A2A context propagation
 
 ### 🧠 DSPy Optimization Framework
+
 - **Automated prompt optimization** using MIPROv2, BootstrapFewShot, and GEPA algorithms
 - **Continuous learning pipeline** with online optimization and drift detection
 - **A/B testing framework** for prompt variant comparison
@@ -28,6 +30,7 @@
 - **Custom algorithm plugins** for domain-specific optimization strategies
 
 ### 🔌 LLM Gateway
+
 - **Multi-provider support**: OpenAI (GPT-5), Anthropic (Claude 4.5), Google (Gemini 2.5)
 - **Intelligent routing** with automatic failover and load balancing
 - **Cost tracking** and budget management
@@ -36,6 +39,7 @@
 - **Model selection** based on task requirements and constraints
 
 ### 🎭 Agent Runtime
+
 - **Chain-of-Thought (CoT)** reasoning engine
 - **Multi-tool integration** with external API connectors
 - **Memory management** with context preservation
@@ -44,6 +48,7 @@
 - **State persistence** and checkpointing
 
 ### 📊 Orchestration & Workflows
+
 - **Graph-based workflow** planning with topological sorting
 - **Event-driven architecture** with 15k+ events/sec throughput
 - **Parallel execution** with automatic dependency resolution
@@ -51,6 +56,7 @@
 - **Health checks** and circuit breakers
 
 ### 🔐 Security & Compliance
+
 - **JWT authentication** with role-based access control (RBAC)
 - **PII detection** and data anonymization
 - **Audit logging** for compliance tracking
@@ -62,6 +68,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.12+
 - PostgreSQL 14+
 - Redis 7+
@@ -114,23 +121,27 @@ uv run uvicorn agentcore.a2a_protocol.main:app --host 0.0.0.0 --port 8001 --relo
 ## 📖 Documentation
 
 ### Core Documentation
+
 - **[Architecture Overview](./docs/architecture/)** - System design and component interactions
 - **[API Reference](./docs/api/)** - JSON-RPC method specifications
 - **[Deployment Guide](./docs/deployment/)** - Production deployment with Kubernetes
 - **[Development Guide](./CLAUDE.md)** - Contributing and development workflow
 
 ### DSPy Optimization
+
 - **[DSPy Specification](./docs/specs/dspy-optimization/spec.md)** - Detailed requirements and design
 - **[DSPy Implementation Plan](./docs/specs/dspy-optimization/plan.md)** - Architecture and integration
 - **[DSPy User Guide](./docs/dspy-optimization/user-guide.md)** - Getting started with optimization
 - **[DSPy Best Practices](./docs/dspy-optimization/best-practices.md)** - Tips and patterns
 
 ### LLM Integration
+
 - **[LLM Client Service](./docs/llm-client-service/README.md)** - Multi-provider LLM integration
 - **[Configuration Guide](./docs/llm-client-service/configuration-guide.md)** - Provider setup
 - **[Model Selection](./docs/specs/llm-client-service/spec.md)** - Intelligent model routing
 
 ### Research & Future Work
+
 - **[Parallax & OpenEnv Analysis](./docs/research/parallax-openenv-analysis.md)** - Future enhancements
 - **[Integration Proposal](./docs/research/parallax-openenv-integration-proposal.md)** - Technical specifications
 - **[Implementation Roadmap](./docs/research/parallax-openenv-roadmap.md)** - Execution plan
@@ -179,7 +190,7 @@ Current test coverage: **94.2%** (Target: >90%)
 
 ### Component Overview
 
-```
+```plaintext
 agentcore/
 ├── a2a_protocol/           # A2A protocol implementation
 │   ├── models/             # Pydantic models (AgentCard, Task, Event, etc.)
@@ -228,24 +239,28 @@ agentcore/
 ### Technology Stack
 
 **Backend**:
+
 - Python 3.12+ with asyncio
 - FastAPI for HTTP/WebSocket APIs
 - PostgreSQL 14+ (async via asyncpg)
 - Redis 7+ for caching and pub/sub
 
 **Optimization**:
+
 - DSPy for prompt optimization
 - MLflow for experiment tracking
 - SciPy for statistical analysis
 - NetworkX for graph algorithms
 
 **Observability**:
+
 - Prometheus for metrics
 - Grafana for dashboards
 - OpenTelemetry for distributed tracing
 - Structured logging with structlog
 
 **Deployment**:
+
 - Kubernetes for orchestration
 - Docker for containerization
 - Alembic for database migrations
@@ -362,18 +377,21 @@ async with client.websocket_connect("ws://localhost:8001/ws") as ws:
 ## 🔬 Performance Benchmarks
 
 ### Optimization Performance
+
 - **Graph Planning**: <1s for 1000+ node workflows
 - **Event Processing**: 15,000+ events/second
 - **DSPy Optimization**: <5 minutes for typical prompts
 - **LLM Latency**: P95 <500ms (with caching)
 
 ### Scalability
+
 - **Concurrent Agents**: 1000+ agents per instance
 - **Task Throughput**: 500+ tasks/second
 - **WebSocket Connections**: 10,000+ concurrent
 - **Database**: 100,000+ ops/second with PostgreSQL
 
 ### Resource Usage
+
 - **Memory**: ~500MB baseline, scales with workload
 - **CPU**: 2-4 cores typical, scales with parallelism
 - **GPU** (optional): 1x GPU for DSPy acceleration
@@ -402,6 +420,7 @@ uv run pytest --cov=src/agentcore --cov-report=html
 ```
 
 ### Code Quality Standards
+
 - **Test Coverage**: Minimum 90% required
 - **Type Safety**: Mypy strict mode enabled
 - **Linting**: Ruff with project-specific rules
@@ -409,6 +428,7 @@ uv run pytest --cov=src/agentcore --cov-report=html
 - **Documentation**: Docstrings for all public APIs
 
 ### Contributing
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes with tests
@@ -478,6 +498,7 @@ LOG_LEVEL=INFO
 ## 📊 Monitoring & Observability
 
 ### Prometheus Metrics
+
 - `agentcore_agent_count`: Number of registered agents
 - `agentcore_task_count`: Total tasks by status
 - `agentcore_llm_requests_total`: LLM API requests
@@ -486,6 +507,7 @@ LOG_LEVEL=INFO
 - `agentcore_event_throughput`: Event processing rate
 
 ### Grafana Dashboards
+
 - Agent health and activity
 - Task execution metrics
 - LLM usage and costs
@@ -493,7 +515,9 @@ LOG_LEVEL=INFO
 - System resource utilization
 
 ### Distributed Tracing
+
 All requests include A2A context with:
+
 - `trace_id`: End-to-end request tracking
 - `source_agent`: Originating agent
 - `target_agent`: Destination agent
@@ -530,18 +554,21 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ## 🗺️ Roadmap
 
 ### Q1 2025
+
 - ✅ DSPy optimization framework integration
 - ✅ Multi-provider LLM gateway with cost tracking
 - ✅ Production-ready deployment configurations
 - 🔄 OpenEnv training environment integration (planned)
 
 ### Q2 2025
+
 - 🔮 Parallax POC for self-hosted LLM inference
 - 🔮 Enhanced monitoring and alerting
 - 🔮 Advanced workflow orchestration patterns
 - 🔮 Plugin marketplace for custom algorithms
 
 ### Q3-Q4 2025
+
 - 🔮 Multi-region deployment support
 - 🔮 Advanced security features (SAML, SSO)
 - 🔮 Graph-based memory and knowledge management
