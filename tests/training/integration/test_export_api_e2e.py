@@ -24,7 +24,7 @@ pytestmark = pytest.mark.skip(
 )
 
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from agentcore.training.models import (
     Trajectory,
@@ -42,7 +42,7 @@ def sample_trajectories_for_export() -> list[Trajectory]:
                 state={"step": j},
                 action={"type": "action", "value": j},
                 result={"success": True},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=100 + j)
             for j in range(3)
         ]

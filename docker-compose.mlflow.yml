@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: agentcore-mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://${POSTGRES_USER:-agentcore}:${POSTGRES_PASSWORD:-agentcore}@postgres:5432/${POSTGRES_DB:-agentcore_mlflow}
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://${POSTGRES_USER:-agentcore}:${POSTGRES_PASSWORD:-agentcore}@postgres:5432/${POSTGRES_DB:-agentcore_mlflow}
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agentcore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: agentcore-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-agentcore}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-agentcore}
+      - POSTGRES_DB=${POSTGRES_DB:-agentcore_mlflow}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - agentcore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentcore}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mlflow_artifacts:
+    name: agentcore-mlflow-artifacts
+  postgres_data:
+    name: agentcore-postgres-data
+
+networks:
+  agentcore-network:
+    name: agentcore-network
+    driver: bridge

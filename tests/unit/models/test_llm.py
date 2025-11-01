@@ -68,7 +68,7 @@ class TestModelNotAllowedError:
 
     def test_exception_creation(self) -> None:
         """Test that ModelNotAllowedError can be instantiated."""
-        allowed = ["gpt-4.1-mini", "claude-3-5-haiku"]
+        allowed = ["gpt-5-mini", "claude-haiku-4-5-20251001"]
         error = ModelNotAllowedError("gpt-3.5-turbo", allowed)
 
         assert error.model == "gpt-3.5-turbo"
@@ -136,11 +136,11 @@ class TestLLMRequest:
     def test_valid_request_minimal(self) -> None:
         """Test creating LLMRequest with minimal required fields."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Hello"}],
         )
 
-        assert request.model == "gpt-4.1-mini"
+        assert request.model == "gpt-5-mini"
         assert len(request.messages) == 1
         assert request.stream is False  # Default
         assert request.trace_id is None
@@ -150,7 +150,7 @@ class TestLLMRequest:
     def test_valid_request_with_all_fields(self) -> None:
         """Test creating LLMRequest with all fields."""
         request = LLMRequest(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[
                 {"role": "system", "content": "You are helpful"},
                 {"role": "user", "content": "Hello"},
@@ -162,7 +162,7 @@ class TestLLMRequest:
             session_id="session-456",
         )
 
-        assert request.model == "claude-3-5-sonnet-20241022"
+        assert request.model == "claude-haiku-4-5-20251001"
         assert len(request.messages) == 2
         assert request.stream is True
         assert request.reasoning_effort == "medium"
@@ -173,27 +173,27 @@ class TestLLMRequest:
     def test_serialization_to_dict(self) -> None:
         """Test that LLMRequest can be serialized to dict."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             trace_id="trace-123",
         )
         data = request.model_dump()
 
-        assert data["model"] == "gpt-4.1-mini"
+        assert data["model"] == "gpt-5-mini"
         assert data["messages"] == [{"role": "user", "content": "test"}]
         assert data["trace_id"] == "trace-123"
 
     def test_deserialization_from_dict(self) -> None:
         """Test that LLMRequest can be deserialized from dict."""
         data = {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "messages": [{"role": "user", "content": "test"}],
             "stream": False,
             "reasoning_effort": "high",
         }
         request = LLMRequest(**data)
 
-        assert request.model == "gpt-4.1-mini"
+        assert request.model == "gpt-5-mini"
         assert request.reasoning_effort == "high"
 
 
@@ -248,14 +248,14 @@ class TestLLMResponse:
             usage=usage,
             latency_ms=250,
             provider="openai",
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
         )
 
         assert response.content == "Hello, world!"
         assert response.usage.total_tokens == 30
         assert response.latency_ms == 250
         assert response.provider == "openai"
-        assert response.model == "gpt-4.1-mini"
+        assert response.model == "gpt-5-mini"
         assert response.trace_id is None
 
     def test_valid_response_with_trace_id(self) -> None:
@@ -268,7 +268,7 @@ class TestLLMResponse:
             usage=usage,
             latency_ms=300,
             provider="anthropic",
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             trace_id="trace-456",
         )
 
@@ -284,7 +284,7 @@ class TestLLMResponse:
             usage=usage,
             latency_ms=200,
             provider="gemini",
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             trace_id="trace-789",
         )
         data = response.model_dump()
@@ -293,7 +293,7 @@ class TestLLMResponse:
         assert data["usage"]["total_tokens"] == 15
         assert data["latency_ms"] == 200
         assert data["provider"] == "gemini"
-        assert data["model"] == "gemini-1.5-flash"
+        assert data["model"] == "gemini-2.5-flash-lite"
         assert data["trace_id"] == "trace-789"
 
     def test_deserialization_from_dict(self) -> None:
@@ -331,7 +331,7 @@ class TestEdgeCases:
             usage=usage,
             latency_ms=100,
             provider="openai",
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
         )
         assert response.content == ""
 
@@ -351,5 +351,5 @@ class TestEdgeCases:
             {"role": "assistant", "content": "First assistant response"},
             {"role": "user", "content": "Second user message"},
         ]
-        request = LLMRequest(model="gpt-4.1-mini", messages=messages)
+        request = LLMRequest(model="gpt-5-mini", messages=messages)
         assert len(request.messages) == 4

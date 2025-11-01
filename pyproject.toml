@@ -78,6 +78,11 @@ dependencies = [
     "anthropic==0.40.0",
     "google-generativeai==0.8.3",
     "aiosqlite>=0.21.0",
+    "dspy-ai>=2.5.43",
+    "cloudpickle>=3.1.1",
+    "mlflow>=3.5.1",
+    "torch>=2.9.0",
+    "psutil>=7.1.0",
 ]
 
 [project.urls]

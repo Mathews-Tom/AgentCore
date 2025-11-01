@@ -19,8 +19,8 @@ Features:
 - A2A context propagation via extra_headers (trace_id, source_agent, session_id)
 - Token usage extraction and tracking
 - Comprehensive error handling with custom exceptions
-- Support for claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001, claude-3-opus models
-- Legacy support for claude-3-5-sonnet, claude-3-5-haiku-20241022
+- Support for claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001, claude-opus-4-1-20250805 models
+- Legacy support for claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001
 
 Example:
     ```python
@@ -31,7 +31,7 @@ Example:
 
     # Non-streaming completion
     request = LLMRequest(
-        model="claude-3-5-haiku-20241022",
+        model="claude-haiku-4-5-20251001",
         messages=[{"role": "user", "content": "Hello"}],
         trace_id="trace-123",
     )
@@ -172,7 +172,7 @@ class LLMClientAnthropic(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="claude-3-5-haiku-20241022",
+            ...     model="claude-haiku-4-5-20251001",
             ...     messages=[{"role": "user", "content": "Hello"}],
             ...     trace_id="trace-123",
             ... )
@@ -315,7 +315,7 @@ class LLMClientAnthropic(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="claude-3-5-haiku-20241022",
+            ...     model="claude-haiku-4-5-20251001",
             ...     messages=[{"role": "user", "content": "Count to 5"}],
             ...     stream=True,
             ... )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, AsyncIterator
 
 import structlog
@@ -697,7 +697,7 @@ class AzureBlobAdapter(StorageAdapter):
                 permissions.delete = True
 
             # Generate SAS token
-            expiry = datetime.now(timezone.utc) + timedelta(seconds=expiry_seconds)
+            expiry = datetime.now(UTC) + timedelta(seconds=expiry_seconds)
 
             # Get account credentials
             account_name = self.config.access_key or ""

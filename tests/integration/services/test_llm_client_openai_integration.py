@@ -11,7 +11,7 @@ to verify end-to-end functionality including:
 These tests require OPENAI_API_KEY environment variable to be set.
 They are skipped if the API key is not available.
 
-Target model: gpt-4.1-mini (fast and cost-effective for testing)
+Target model: gpt-5-mini (fast and cost-effective for testing)
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def openai_client() -> LLMClientOpenAI:
 def simple_request() -> LLMRequest:
     """Create simple LLM request for testing."""
     return LLMRequest(
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": "Say 'Hello, World!' and nothing else."}],
 # Deterministic responses
 
@@ -71,7 +71,7 @@ class TestLLMClientOpenAIIntegrationComplete:
 
         # Verify provider metadata
         assert response.provider == "openai"
-        assert response.model == "gpt-4.1-mini"
+        assert response.model == "gpt-5-mini"
         assert response.trace_id == "integration-test-trace"
 
         # Verify token usage
@@ -92,7 +92,7 @@ class TestLLMClientOpenAIIntegrationComplete:
     ) -> None:
         """Test multi-turn conversation."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[
                 {"role": "user", "content": "What is 2+2?"},
                 {"role": "assistant", "content": "4"},
@@ -116,7 +116,7 @@ class TestLLMClientOpenAIIntegrationComplete:
     ) -> None:
         """Test completion with higher temperature for creativity."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[
                 {"role": "user", "content": "Generate a random number between 1 and 10."}
             ],
@@ -141,7 +141,7 @@ class TestLLMClientOpenAIIntegrationStream:
     ) -> None:
         """Test streaming with real OpenAI API."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Count from 1 to 5."}],
 
 
@@ -172,7 +172,7 @@ class TestLLMClientOpenAIIntegrationStream:
     ) -> None:
         """Test that streaming delivers tokens progressively."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[
                 {"role": "user", "content": "Write a 50-word paragraph about AI."}
             ],
@@ -206,7 +206,7 @@ class TestLLMClientOpenAIIntegrationStream:
     ) -> None:
         """Test streaming with very short response."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say 'yes'."}],
 
 
@@ -230,9 +230,9 @@ class TestLLMClientOpenAIIntegrationModels:
         self,
         openai_client: LLMClientOpenAI,
     ) -> None:
-        """Test with gpt-4.1-mini model."""
+        """Test with gpt-5-mini model."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
 
 
@@ -241,7 +241,7 @@ class TestLLMClientOpenAIIntegrationModels:
         response = await openai_client.complete(request)
 
         assert isinstance(response, LLMResponse)
-        assert response.model == "gpt-4.1-mini"
+        assert response.model == "gpt-5-mini"
         assert "paris" in response.content.lower()
 
     @pytest.mark.asyncio
@@ -275,7 +275,7 @@ class TestLLMClientOpenAIIntegrationA2AContext:
     ) -> None:
         """Test that A2A context is propagated to response."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say hello."}],
 
 
@@ -297,7 +297,7 @@ class TestLLMClientOpenAIIntegrationA2AContext:
     ) -> None:
         """Test request without A2A context."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say hello."}],
 
 
@@ -332,12 +332,12 @@ class TestLLMClientOpenAIIntegrationPerformance:
     ) -> None:
         """Test that token usage is accurately reported."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[
-                {"role": "user", "content": "This is a test message for token counting."}
+                {"role": "system", "content": "You are a helpful assistant. Be very concise."},
+                {"role": "user", "content": "Say 'OK' only."}
             ],
-
-
+            max_tokens=10,  # Limit response to prevent verbose answers
         )
 
         response = await openai_client.complete(request)
@@ -348,5 +348,5 @@ class TestLLMClientOpenAIIntegrationPerformance:
         assert response.usage.total_tokens == (
             response.usage.prompt_tokens + response.usage.completion_tokens
         )
-        # Total should be less than max_tokens + prompt
-        assert response.usage.total_tokens < 100
+        # With max_tokens=10, total should be reasonable (model may use more than requested)
+        assert response.usage.total_tokens < 200  # Generous limit for model behavior

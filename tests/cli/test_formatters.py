@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import StringIO
 from unittest.mock import patch
 
@@ -92,13 +92,13 @@ class TestTimestampFormatting:
 
     def test_format_timestamp_datetime_object(self) -> None:
         """Test formatting datetime object."""
-        dt = datetime(2025, 10, 21, 14, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 10, 21, 14, 30, 0, tzinfo=UTC)
         result = _format_timestamp(dt, include_time=False)
         assert result == "2025-10-21"
 
     def test_format_timestamp_datetime_with_time(self) -> None:
         """Test formatting datetime object with time."""
-        dt = datetime(2025, 10, 21, 14, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 10, 21, 14, 30, 0, tzinfo=UTC)
         result = _format_timestamp(dt, include_time=True)
         assert result == "2025-10-21 14:30:00"
 

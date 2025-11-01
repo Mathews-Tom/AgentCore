@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import wraps
 from typing import Any, TypeVar
 
@@ -111,9 +111,7 @@ class CircuitBreaker:
             # Handle HALF_OPEN state with request limit
             if self.metrics.state == CircuitBreakerState.HALF_OPEN:
                 # Check if we've exceeded half-open request limit
-                in_flight = (
-                    self.metrics.success_count + self.metrics.failure_count
-                )
+                in_flight = self.metrics.success_count + self.metrics.failure_count
                 if in_flight >= self.config.half_open_max_requests:
                     self.metrics.total_rejections += 1
                     raise CircuitBreakerOpenError(
@@ -149,13 +147,13 @@ class CircuitBreaker:
             if self.metrics.opened_at is None:
                 return
 
-            elapsed = (datetime.now() - self.metrics.opened_at).total_seconds()
+            elapsed = (datetime.now(UTC) - self.metrics.opened_at).total_seconds()
             if elapsed >= self.config.timeout_seconds:
                 # Transition to HALF_OPEN
                 self.metrics.state = CircuitBreakerState.HALF_OPEN
                 self.metrics.failure_count = 0
                 self.metrics.success_count = 0
-                self.metrics.last_state_change = datetime.now()
+                self.metrics.last_state_change = datetime.now(UTC)
 
                 logger.info(
                     "circuit_breaker_half_open",
@@ -186,7 +184,7 @@ class CircuitBreaker:
                 self.metrics.success_count = 0
                 self.metrics.failure_count = 0
                 self.metrics.opened_at = None
-                self.metrics.last_state_change = datetime.now()
+                self.metrics.last_state_change = datetime.now(UTC)
 
                 logger.info(
                     "circuit_breaker_closed",
@@ -203,7 +201,7 @@ class CircuitBreaker:
         self.metrics.total_failures += 1
         self.metrics.failure_count += 1
         self.metrics.success_count = 0
-        self.metrics.last_failure_time = datetime.now()
+        self.metrics.last_failure_time = datetime.now(UTC)
 
         logger.warning(
             "circuit_breaker_failure",
@@ -230,8 +228,8 @@ class CircuitBreaker:
         Transitions to OPEN state and records timestamp.
         """
         self.metrics.state = CircuitBreakerState.OPEN
-        self.metrics.opened_at = datetime.now()
-        self.metrics.last_state_change = datetime.now()
+        self.metrics.opened_at = datetime.now(UTC)
+        self.metrics.last_state_change = datetime.now(UTC)
         self.metrics.success_count = 0
 
         logger.error(
@@ -284,9 +282,7 @@ def circuit_breaker(
     """
     breaker = CircuitBreaker(config)
 
-    def decorator(
-        func: Callable[..., Awaitable[T]]
-    ) -> Callable[..., Awaitable[T]]:
+    def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             return await breaker.call(func, *args, **kwargs)
@@ -363,7 +359,4 @@ class CircuitBreakerRegistry:
         Returns:
             Dictionary mapping names to metrics
         """
-        return {
-            name: breaker.metrics
-            for name, breaker in self._breakers.items()
-        }
+        return {name: breaker.metrics for name, breaker in self._breakers.items()}

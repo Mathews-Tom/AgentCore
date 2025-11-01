@@ -34,7 +34,7 @@ class TestHandleLLMComplete:
         request = JsonRpcRequest(
             method="llm.complete",
             params={
-                "model": "gpt-4.1-mini",
+                "model": "gpt-5-mini",
                 "messages": [{"role": "user", "content": "Hello"}],
                 "temperature": 0.7,
                 "max_tokens": 100,
@@ -51,7 +51,7 @@ class TestHandleLLMComplete:
             usage=LLMUsage(prompt_tokens=10, completion_tokens=7, total_tokens=17),
             latency_ms=234,
             provider="openai",
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             trace_id="trace-123")
 
         with patch(
@@ -65,7 +65,7 @@ class TestHandleLLMComplete:
         assert result["usage"]["total_tokens"] == 17
         assert result["latency_ms"] == 234
         assert result["provider"] == "openai"
-        assert result["model"] == "gpt-4.1-mini"
+        assert result["model"] == "gpt-5-mini"
         assert result["trace_id"] == "trace-123"
 
     @pytest.mark.asyncio
@@ -74,7 +74,7 @@ class TestHandleLLMComplete:
         request = JsonRpcRequest(
             method="llm.complete",
             params={
-                "model": "gpt-4.1-mini",
+                "model": "gpt-5-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
             id=2,
@@ -89,7 +89,7 @@ class TestHandleLLMComplete:
             usage=LLMUsage(prompt_tokens=5, completion_tokens=2, total_tokens=7),
             latency_ms=100,
             provider="openai",
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             trace_id="trace-abc")
 
         with patch(
@@ -120,7 +120,7 @@ class TestHandleLLMComplete:
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.complete",
             new_callable=AsyncMock,
-            side_effect=ModelNotAllowedError("gpt-3.5-turbo", ["gpt-4.1-mini"])):
+            side_effect=ModelNotAllowedError("gpt-3.5-turbo", ["gpt-5-mini"])):
             with pytest.raises(ValueError, match="Model 'gpt-3.5-turbo' not allowed"):
                 await handle_llm_complete(request)
 
@@ -130,7 +130,7 @@ class TestHandleLLMComplete:
         request = JsonRpcRequest(
             method="llm.complete",
             params={
-                "model": "gpt-4.1-mini",
+                "model": "gpt-5-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
             id=4)
@@ -148,7 +148,7 @@ class TestHandleLLMComplete:
         request = JsonRpcRequest(
             method="llm.complete",
             params={
-                "model": "gpt-4.1-mini",
+                "model": "gpt-5-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
             id=5)
@@ -182,7 +182,7 @@ class TestHandleLLMStream:
         request = JsonRpcRequest(
             method="llm.stream",
             params={
-                "model": "gpt-4.1-mini",
+                "model": "gpt-5-mini",
                 "messages": [{"role": "user", "content": "Test"}],
             },
             id=7)
@@ -210,18 +210,18 @@ class TestHandleLLMModels:
 
         with patch(
             "agentcore.a2a_protocol.services.llm_jsonrpc.llm_service.registry.list_available_models",
-            return_value=["gpt-4.1-mini", "claude-3-5-haiku-20241022"]):
+            return_value=["gpt-5-mini", "claude-haiku-4-5-20251001"]):
             with patch(
                 "agentcore.a2a_protocol.config.settings.LLM_DEFAULT_MODEL",
-                "gpt-4.1-mini"):
+                "gpt-5-mini"):
                 result = await handle_llm_models(request)
 
         # Verify result
         assert "allowed_models" in result
         assert "default_model" in result
         assert "count" in result
-        assert result["allowed_models"] == ["gpt-4.1-mini", "claude-3-5-haiku-20241022"]
-        assert result["default_model"] == "gpt-4.1-mini"
+        assert result["allowed_models"] == ["gpt-5-mini", "claude-haiku-4-5-20251001"]
+        assert result["default_model"] == "gpt-5-mini"
         assert result["count"] == 2
 
 
@@ -239,7 +239,7 @@ class TestHandleLLMMetrics:
         # Mock Prometheus metric sample
         mock_sample = MagicMock()
         mock_sample.name = "llm_requests_total"
-        mock_sample.labels = {"provider": "openai", "model": "gpt-4.1-mini", "status": "success"}
+        mock_sample.labels = {"provider": "openai", "model": "gpt-5-mini", "status": "success"}
         mock_sample.value = 10
 
         # Mock Prometheus metric family
@@ -272,23 +272,23 @@ class TestHandleLLMMetrics:
         # Create mock samples for requests
         mock_sample1 = MagicMock()
         mock_sample1.name = "llm_requests_total"
-        mock_sample1.labels = {"provider": "openai", "model": "gpt-4.1-mini", "status": "success"}
+        mock_sample1.labels = {"provider": "openai", "model": "gpt-5-mini", "status": "success"}
         mock_sample1.value = 5
 
         mock_sample2 = MagicMock()
         mock_sample2.name = "llm_requests_total"
-        mock_sample2.labels = {"provider": "anthropic", "model": "claude-3-5-haiku-20241022", "status": "success"}
+        mock_sample2.labels = {"provider": "anthropic", "model": "claude-haiku-4-5-20251001", "status": "success"}
         mock_sample2.value = 3
 
         # Create mock samples for tokens
         mock_sample3 = MagicMock()
         mock_sample3.name = "llm_tokens_total"
-        mock_sample3.labels = {"provider": "openai", "model": "gpt-4.1-mini", "token_type": "prompt"}
+        mock_sample3.labels = {"provider": "openai", "model": "gpt-5-mini", "token_type": "prompt"}
         mock_sample3.value = 100
 
         mock_sample4 = MagicMock()
         mock_sample4.name = "llm_tokens_total"
-        mock_sample4.labels = {"provider": "anthropic", "model": "claude-3-5-haiku-20241022", "token_type": "prompt"}
+        mock_sample4.labels = {"provider": "anthropic", "model": "claude-haiku-4-5-20251001", "token_type": "prompt"}
         mock_sample4.value = 50
 
         # Mock families

@@ -1196,7 +1196,7 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/agentcore
 REDIS_URL=redis://localhost:6379/0
 
 # Tool Configuration
-GOOGLE_API_KEY=your_google_api_key_here
+GEMINI_API_KEY=your_google_api_key_here
 GOOGLE_CSE_ID=your_custom_search_engine_id
 ENABLE_CODE_EXECUTION=true
 CODE_EXECUTION_TIMEOUT=30

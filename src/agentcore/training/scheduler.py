@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import enum
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -116,7 +116,7 @@ class TrainingJobScheduler:
             "job_id": str(job.job_id),
             "agent_id": job.agent_id,
             "priority": priority.value,
-            "enqueued_at": datetime.now(timezone.utc).isoformat(),
+            "enqueued_at": datetime.now(UTC).isoformat(),
         }
 
         # Push to priority queue (RPUSH for FIFO within priority)
@@ -354,7 +354,7 @@ class TrainingJobScheduler:
         health_data = {
             "worker_id": worker_id,
             "status": "healthy",
-            "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+            "last_heartbeat": datetime.now(UTC).isoformat(),
         }
 
         # Set with 30 second TTL (worker should update every 10s)

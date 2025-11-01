@@ -142,7 +142,7 @@ async def benchmark_provider_selection(iterations: int = 1000) -> LatencyStats:
     registry = ProviderRegistry()
     durations_ms: list[float] = []
     # Use only allowed models from CLAUDE.md
-    models = ["gpt-4.1-mini", "claude-3-5-haiku-20241022", "gemini-1.5-flash"]
+    models = ["gpt-5-mini", "claude-haiku-4-5-20251001", "gemini-2.5-flash-lite"]
 
     print(f"Running {iterations} provider selection iterations...")
 
@@ -206,7 +206,7 @@ async def benchmark_request_validation(iterations: int = 1000) -> LatencyStats:
     for _ in range(iterations):
         start = time.perf_counter()
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             temperature=0.7,
             max_tokens=100,
@@ -219,7 +219,7 @@ async def benchmark_request_validation(iterations: int = 1000) -> LatencyStats:
 
 
 async def benchmark_concurrent_requests(
-    concurrency: int, model: str = "gpt-4.1-mini"
+    concurrency: int, model: str = "gpt-5-mini"
 ) -> tuple[LatencyStats, int, int]:
     """Benchmark concurrent LLM requests.
 
@@ -269,7 +269,7 @@ async def benchmark_concurrent_requests(
     return stats, successes, failures
 
 
-async def benchmark_streaming_ttft(model: str = "gpt-4.1-mini") -> LatencyStats:
+async def benchmark_streaming_ttft(model: str = "gpt-5-mini") -> LatencyStats:
     """Benchmark time to first token (TTFT) for streaming.
 
     Measures latency until first token is received.
@@ -337,7 +337,7 @@ async def benchmark_direct_sdk_openai(iterations: int = 10) -> LatencyStats:
         start = time.perf_counter()
         try:
             await client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": "Say 'ok'"}],
                 max_tokens=5,
                 temperature=0.0,
@@ -374,7 +374,7 @@ async def benchmark_abstraction_layer_openai(iterations: int = 10) -> LatencySta
         start = time.perf_counter()
         try:
             request = LLMRequest(
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": "Say 'ok'"}],
                 max_tokens=5,
                 temperature=0.0,
@@ -405,7 +405,7 @@ async def benchmark_throughput(duration_seconds: int = 30) -> dict[str, float]:
     results: dict[str, float] = {}
 
     # Test with lightweight model (fastest, cheapest)
-    model = "gpt-4.1-mini"
+    model = "gpt-5-mini"
     if not os.getenv("OPENAI_API_KEY"):
         print(f"  Skipping throughput test: API key not configured")
         return results
@@ -479,7 +479,7 @@ async def profile_memory_usage() -> dict[str, float]:
 
     # Run some requests
     request = LLMRequest(
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": "Say 'ok'"}],
         max_tokens=5,
         temperature=0.0,
@@ -535,8 +535,8 @@ def validate_slos(suite: BenchmarkSuite) -> dict[str, bool]:
             validation["abstraction_within_5pct"] = abs(overhead_ms / direct.mean_ms) < 0.05
 
     # SLO 4: Time to first token <500ms p95
-    if "streaming_ttft_gpt-4.1-mini" in suite.load_tests:
-        stats = suite.load_tests["streaming_ttft_gpt-4.1-mini"]
+    if "streaming_ttft_gpt-5-mini" in suite.load_tests:
+        stats = suite.load_tests["streaming_ttft_gpt-5-mini"]
         validation["ttft_p95_lt_500ms"] = stats.p95_ms < 500.0
 
     # SLO 5: 1000 concurrent requests succeed
@@ -623,11 +623,11 @@ async def run_benchmark_suite(
         print("-" * 80)
 
         # Test streaming TTFT
-        load_tests["streaming_ttft_gpt-4.1-mini"] = await benchmark_streaming_ttft(
-            "gpt-4.1-mini"
+        load_tests["streaming_ttft_gpt-5-mini"] = await benchmark_streaming_ttft(
+            "gpt-5-mini"
         )
-        if load_tests["streaming_ttft_gpt-4.1-mini"].count > 0:
-            stats = load_tests["streaming_ttft_gpt-4.1-mini"]
+        if load_tests["streaming_ttft_gpt-5-mini"].count > 0:
+            stats = load_tests["streaming_ttft_gpt-5-mini"]
             print(
                 f"✓ Streaming TTFT: p50={stats.p50_ms:.2f}ms, p95={stats.p95_ms:.2f}ms, p99={stats.p99_ms:.2f}ms"
             )

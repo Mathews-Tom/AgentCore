@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import random
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
@@ -240,7 +240,7 @@ class LoadBalancer:
             metrics = self._metrics[service_id]
             metrics.total_requests += 1
             metrics.active_connections += 1
-            metrics.last_request = datetime.now(timezone.utc)
+            metrics.last_request = datetime.now(UTC)
 
     async def record_request_end(
         self, service_id: str, success: bool, response_time_ms: float

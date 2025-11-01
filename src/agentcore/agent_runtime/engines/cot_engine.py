@@ -325,7 +325,7 @@ Please refine the reasoning step based on the feedback."""
 
         return LLMResponse(
             content=content,
-            model="gpt-4.1-simulated",
+            model="gpt-5-simulated",
             tokens_used=100,
             finish_reason="stop",
             cached=False,

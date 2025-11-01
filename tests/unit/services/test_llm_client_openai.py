@@ -54,7 +54,7 @@ def llm_client(mock_openai_client: Mock) -> LLMClientOpenAI:
 def sample_request() -> LLMRequest:
     """Create sample LLM request."""
     return LLMRequest(
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": "Hello"}], trace_id="trace-123",
         source_agent="agent-1",
         session_id="session-456")
@@ -115,7 +115,7 @@ class TestLLMClientOpenAIComplete:
         assert isinstance(response, LLMResponse)
         assert response.content == "Hello! How can I help you?"
         assert response.provider == "openai"
-        assert response.model == "gpt-4.1-mini"
+        assert response.model == "gpt-5-mini"
         assert response.trace_id == "trace-123"
         assert response.usage.prompt_tokens == 10
         assert response.usage.completion_tokens == 8
@@ -125,7 +125,7 @@ class TestLLMClientOpenAIComplete:
         # Verify API call (no temperature/max_tokens per CLAUDE.md)
         llm_client.client.chat.completions.create.assert_called_once()
         call_kwargs = llm_client.client.chat.completions.create.call_args[1]
-        assert call_kwargs["model"] == "gpt-4.1-mini"
+        assert call_kwargs["model"] == "gpt-5-mini"
         assert call_kwargs["extra_headers"]["X-Trace-ID"] == "trace-123"
         assert call_kwargs["extra_headers"]["X-Source-Agent"] == "agent-1"
         assert call_kwargs["extra_headers"]["X-Session-ID"] == "session-456"
@@ -137,7 +137,7 @@ class TestLLMClientOpenAIComplete:
         mock_openai_response: Mock) -> None:
         """Test completion without A2A context."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Hello"}])
         llm_client.client.chat.completions.create = AsyncMock(return_value=mock_openai_response)
 
@@ -422,7 +422,7 @@ class TestLLMClientOpenAINormalizeResponse:
         assert normalized.usage.total_tokens == 18
         assert normalized.latency_ms == 1500
         assert normalized.provider == "openai"
-        assert normalized.model == "gpt-4.1-mini"
+        assert normalized.model == "gpt-5-mini"
         assert normalized.trace_id == "trace-123"
 
     def test_normalize_response_none_content(

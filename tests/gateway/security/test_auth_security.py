@@ -4,7 +4,7 @@ Tests for JWT token security, token tampering, and authentication bypass attempt
 """
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -85,7 +85,7 @@ class TestTokenExpiration:
         """Test that expired tokens are rejected."""
         payload = {
             "sub": "user123",
-            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+            "exp": datetime.now(UTC) - timedelta(hours=1),
         }
         token = create_test_token(payload)
 
@@ -96,7 +96,7 @@ class TestTokenExpiration:
         """Test that valid non-expired tokens are accepted."""
         payload = {
             "sub": "user123",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         token = create_test_token(payload)
 
@@ -107,8 +107,8 @@ class TestTokenExpiration:
         """Test not-before (nbf) claim validation."""
         payload = {
             "sub": "user123",
-            "nbf": datetime.now(timezone.utc) + timedelta(hours=1),
-            "exp": datetime.now(timezone.utc) + timedelta(hours=2),
+            "nbf": datetime.now(UTC) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=2),
         }
         token = create_test_token(payload)
 

@@ -1,0 +1,229 @@
+name: DSPy Optimization Service Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/agentcore/dspy_optimization/**'
+      - 'Dockerfile.dspy'
+      - 'k8s/dspy-*.yaml'
+      - '.github/workflows/dspy-deployment.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/agentcore/dspy_optimization/**'
+      - 'Dockerfile.dspy'
+      - 'k8s/dspy-*.yaml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: agentcore/dspy-optimization
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run DSPy optimization tests
+        run: |
+          uv run pytest tests/dspy_optimization/ \
+            --cov=src/agentcore/dspy_optimization \
+            --cov-report=term-missing \
+            --cov-fail-under=90 \
+            -v
+
+      - name: Run type checking
+        run: |
+          uv run mypy src/agentcore/dspy_optimization/
+
+      - name: Run linting
+        run: |
+          uv run ruff check src/agentcore/dspy_optimization/
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.dspy
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.28.0'
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy to staging
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/dspy-serviceaccount.yaml
+          kubectl apply -f k8s/dspy-configmap.yaml
+          kubectl apply -f k8s/dspy-secret.yaml
+          kubectl apply -f k8s/dspy-deployment.yaml
+          kubectl apply -f k8s/dspy-service.yaml
+          kubectl apply -f k8s/dspy-hpa.yaml
+          kubectl apply -f k8s/dspy-servicemonitor.yaml
+
+      - name: Wait for deployment rollout
+        run: |
+          kubectl rollout status deployment/dspy-optimization -n agentcore --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n agentcore -l app=dspy-optimization
+          kubectl get svc -n agentcore dspy-optimization
+
+      - name: Run smoke tests
+        run: |
+          SERVICE_URL=$(kubectl get svc dspy-optimization -n agentcore -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          curl -f http://${SERVICE_URL}/api/v1/health/live || exit 1
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event.inputs.environment == 'production'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.28.0'
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy to production
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/dspy-serviceaccount.yaml
+          kubectl apply -f k8s/dspy-configmap.yaml
+          kubectl apply -f k8s/dspy-secret.yaml
+          kubectl apply -f k8s/dspy-deployment.yaml
+          kubectl apply -f k8s/dspy-service.yaml
+          kubectl apply -f k8s/dspy-hpa.yaml
+          kubectl apply -f k8s/dspy-servicemonitor.yaml
+
+      - name: Wait for deployment rollout
+        run: |
+          kubectl rollout status deployment/dspy-optimization -n agentcore --timeout=10m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n agentcore -l app=dspy-optimization
+          kubectl get svc -n agentcore dspy-optimization
+
+      - name: Run production health checks
+        run: |
+          SERVICE_URL=$(kubectl get svc dspy-optimization -n agentcore -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          curl -f http://${SERVICE_URL}/api/v1/health/live || exit 1
+          curl -f http://${SERVICE_URL}/api/v1/health/ready || exit 1
+
+      - name: Create deployment notification
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚀 DSPy Optimization Service Deployed to Production',
+              body: `The DSPy optimization service has been successfully deployed to production.
+
+              **Deployment Details:**
+              - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              - Commit: ${{ github.sha }}
+              - Actor: @${{ github.actor }}
+
+              cc @agentcore/platform-team`,
+              labels: ['deployment', 'production', 'dspy']
+            });

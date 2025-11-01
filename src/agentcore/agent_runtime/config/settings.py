@@ -75,8 +75,8 @@ class Settings(BaseSettings):
     portkey_api_key: str = ""
     portkey_base_url: str = "https://api.portkey.ai"
     portkey_virtual_key: str = ""
-    default_llm_model: str = "gpt-4.1"
-    llm_fallback_models: list[str] = ["gpt-4.1-mini", "gpt-5-mini"]
+    default_llm_model: str = "gpt-5"
+    llm_fallback_models: list[str] = ["gpt-5-mini", "gpt-5-mini"]
     llm_temperature: float = 0.7
     llm_max_tokens: int = 500
     llm_timeout_seconds: int = 30

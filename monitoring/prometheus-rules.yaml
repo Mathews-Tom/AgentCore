@@ -1,0 +1,109 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dspy-optimization-alerts
+  namespace: agentcore
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: dspy-optimization
+    interval: 30s
+    rules:
+    # High CPU usage
+    - alert: DSPyHighCPUUsage
+      expr: |
+        rate(container_cpu_usage_seconds_total{namespace="agentcore",pod=~"dspy-optimization-.*"}[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization pod {{ $labels.pod }} has high CPU usage"
+        description: "CPU usage is above 80% for 5 minutes (current: {{ $value | humanizePercentage }})"
+
+    # High memory usage
+    - alert: DSPyHighMemoryUsage
+      expr: |
+        container_memory_usage_bytes{namespace="agentcore",pod=~"dspy-optimization-.*"} /
+        container_spec_memory_limit_bytes{namespace="agentcore",pod=~"dspy-optimization-.*"} > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization pod {{ $labels.pod }} has high memory usage"
+        description: "Memory usage is above 90% for 5 minutes (current: {{ $value | humanizePercentage }})"
+
+    # Pod restarts
+    - alert: DSPyPodRestarts
+      expr: |
+        rate(kube_pod_container_status_restarts_total{namespace="agentcore",pod=~"dspy-optimization-.*"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization pod {{ $labels.pod }} is restarting"
+        description: "Pod has restarted {{ $value }} times in the last 15 minutes"
+
+    # Service unavailable
+    - alert: DSPyServiceDown
+      expr: |
+        up{job="dspy-optimization"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization service is down"
+        description: "The DSPy optimization service has been unavailable for 2 minutes"
+
+    # High error rate
+    - alert: DSPyHighErrorRate
+      expr: |
+        rate(http_requests_total{job="dspy-optimization",status=~"5.."}[5m]) /
+        rate(http_requests_total{job="dspy-optimization"}[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization service has high error rate"
+        description: "Error rate is above 5% for 5 minutes (current: {{ $value | humanizePercentage }})"
+
+    # Slow response time
+    - alert: DSPySlowResponseTime
+      expr: |
+        histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="dspy-optimization"}[5m])) > 5
+      for: 5m
+      labels:
+        severity: warning
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization service has slow response times"
+        description: "95th percentile response time is above 5s (current: {{ $value }}s)"
+
+    # Long-running optimizations
+    - alert: DSPyLongRunningOptimization
+      expr: |
+        dspy_optimization_duration_seconds > 3600
+      for: 10m
+      labels:
+        severity: warning
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization job {{ $labels.job_id }} is running too long"
+        description: "Optimization job has been running for {{ $value | humanizeDuration }}"
+
+    # Queue backlog
+    - alert: DSPyQueueBacklog
+      expr: |
+        dspy_optimization_queue_size > 50
+      for: 10m
+      labels:
+        severity: warning
+        service: dspy-optimization
+      annotations:
+        summary: "DSPy optimization queue has large backlog"
+        description: "Queue size is {{ $value }}, optimization capacity may be insufficient"

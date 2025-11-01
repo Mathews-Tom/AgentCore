@@ -42,7 +42,7 @@ class TestMicrobenchmarks:
         """
 
         def lookup() -> str | None:
-            return MODEL_PROVIDER_MAP.get("gpt-4.1-mini")
+            return MODEL_PROVIDER_MAP.get("gpt-5-mini")
 
         benchmark(lookup)
 
@@ -57,7 +57,7 @@ class TestMicrobenchmarks:
 
         def select_provider() -> bool:
             try:
-                registry.get_provider_for_model("gpt-4.1-mini")
+                registry.get_provider_for_model("gpt-5-mini")
                 return True
             except RuntimeError:
                 # Expected if API key not configured
@@ -75,12 +75,12 @@ class TestMicrobenchmarks:
 
         def validate_request() -> LLMRequest:
             return LLMRequest(
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": "test"}], trace_id="bench-001")
 
         result = benchmark(validate_request)
         assert result is not None
-        assert result.model == "gpt-4.1-mini"
+        assert result.model == "gpt-5-mini"
 
     def test_benchmark_list_available_models(
         self, benchmark: pytest.BenchmarkFixture
@@ -102,9 +102,9 @@ class TestMicrobenchmarks:
 @pytest.mark.parametrize(
     "model",
     [
-        "gpt-4.1-mini",
-        "claude-3-5-haiku-20241022",
-        "gemini-2.0-flash-exp",
+        "gpt-5-mini",
+        "claude-haiku-4-5-20251001",
+        "gemini-2.5-flash-lite",
     ])
 class TestModelSpecificBenchmarks:
     """Benchmarks for each supported model."""

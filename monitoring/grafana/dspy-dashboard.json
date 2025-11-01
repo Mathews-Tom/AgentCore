@@ -1,0 +1,144 @@
+{
+  "dashboard": {
+    "title": "DSPy Optimization Service",
+    "tags": ["dspy", "optimization", "agentcore"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Service Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"dspy-optimization\"}",
+            "legendFormat": "Status"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0}
+      },
+      {
+        "title": "Active Optimizations",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "dspy_optimization_active_jobs",
+            "legendFormat": "Active"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0}
+      },
+      {
+        "title": "Queue Size",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "dspy_optimization_queue_size",
+            "legendFormat": "Queued"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0}
+      },
+      {
+        "title": "Completed Optimizations (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(dspy_optimization_completed_total[24h])",
+            "legendFormat": "Completed"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0}
+      },
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"dspy-optimization\"}[5m])",
+            "legendFormat": "{{ method }} {{ status }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+      },
+      {
+        "title": "Response Time (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"dspy-optimization\"}[5m]))",
+            "legendFormat": "p95"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+      },
+      {
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{namespace=\"agentcore\",pod=~\"dspy-optimization-.*\"}[5m])",
+            "legendFormat": "{{ pod }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{namespace=\"agentcore\",pod=~\"dspy-optimization-.*\"}",
+            "legendFormat": "{{ pod }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12}
+      },
+      {
+        "title": "Optimization Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "dspy_optimization_duration_seconds",
+            "legendFormat": "{{ job_id }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20}
+      },
+      {
+        "title": "Algorithm Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "dspy_optimization_score",
+            "legendFormat": "{{ algorithm }} - {{ metric }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28}
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"dspy-optimization\",status=~\"5..\"}[5m])",
+            "legendFormat": "{{ status }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36}
+      },
+      {
+        "title": "Pod Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "kube_pod_status_phase{namespace=\"agentcore\",pod=~\"dspy-optimization-.*\"}",
+            "format": "table"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36}
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

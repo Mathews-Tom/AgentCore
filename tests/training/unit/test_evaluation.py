@@ -6,7 +6,7 @@ Tests held-out evaluation, metrics computation, and statistical significance tes
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -43,13 +43,13 @@ def successful_trajectory() -> Trajectory:
                 state={"context": "initial"},
                 action={"type": "tool_call", "tool": "search"},
                 result={"data": "result"},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=100),
             TrajectoryStep(
                 state={"context": "after_search"},
                 action={"type": "response", "content": "Final answer"},
                 result={"status": "success"},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=50),
         ],
         reward=1.0,
@@ -57,7 +57,7 @@ def successful_trajectory() -> Trajectory:
         advantage=0.5,
         execution_time_ms=150,
         success=True,
-        created_at=datetime.now(timezone.utc))
+        created_at=datetime.now(UTC))
 
 
 @pytest.fixture
@@ -74,7 +74,7 @@ def failed_trajectory() -> Trajectory:
                 state={"context": "initial"},
                 action={"type": "tool_call", "tool": "search"},
                 result={"error": "Tool failed"},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=100),
         ],
         reward=0.0,
@@ -82,7 +82,7 @@ def failed_trajectory() -> Trajectory:
         advantage=-0.3,
         execution_time_ms=100,
         success=False,
-        created_at=datetime.now(timezone.utc))
+        created_at=datetime.now(UTC))
 
 
 @pytest.fixture
@@ -194,12 +194,12 @@ def test_compute_metrics_no_tool_usage(
                 state={"context": "initial"},
                 action={"type": "response", "content": "Answer"},
                 result={"status": "success"},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=50),
         ],
         reward=1.0,
         success=True,
-        created_at=datetime.now(timezone.utc))
+        created_at=datetime.now(UTC))
 
     metrics = evaluation_framework.compute_metrics([trajectory])
 
@@ -238,7 +238,7 @@ def test_compare_with_baseline_significant_improvement(
             steps=[],
             reward=0.2 + i * 0.01,
             success=False,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for i in range(50)
     ]
 
@@ -252,7 +252,7 @@ def test_compare_with_baseline_significant_improvement(
             steps=[],
             reward=0.8 + i * 0.01,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for i in range(50)
     ]
 
@@ -279,7 +279,7 @@ def test_compare_with_baseline_no_difference(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for _ in range(50)
     ]
 
@@ -292,7 +292,7 @@ def test_compare_with_baseline_no_difference(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for _ in range(50)
     ]
 
@@ -318,7 +318,7 @@ def test_compare_with_baseline_empty_trajectories(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
     ]
 
     with pytest.raises(ValueError, match="Both baseline and trained trajectories required"):
@@ -339,10 +339,10 @@ def test_compare_with_baseline_different_metrics(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 5,  # 5 steps
+                timestamp=datetime.now(UTC), duration_ms=100)] * 5,  # 5 steps
             reward=0.3,
             success=False,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for _ in range(30)
     ]
 
@@ -354,10 +354,10 @@ def test_compare_with_baseline_different_metrics(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 3,  # 3 steps (more efficient)
+                timestamp=datetime.now(UTC), duration_ms=100)] * 3,  # 3 steps (more efficient)
             reward=0.8,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for _ in range(30)
     ]
 
@@ -392,7 +392,7 @@ def test_compare_with_baseline_invalid_metric(
             steps=[],
             reward=0.5,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
     ]
 
     with pytest.raises(ValueError, match="Unknown metric_key"):
@@ -443,10 +443,10 @@ def test_run_evaluation(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 4,
+                timestamp=datetime.now(UTC), duration_ms=100)] * 4,
             reward=0.3,
             success=False,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for _ in range(20)
     ]
 
@@ -458,10 +458,10 @@ def test_run_evaluation(
             query="Query",
             steps=[TrajectoryStep(
                 state={}, action={}, result={},
-                timestamp=datetime.now(timezone.utc), duration_ms=100)] * 3,
+                timestamp=datetime.now(UTC), duration_ms=100)] * 3,
             reward=0.8,
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for _ in range(20)
     ]
 
@@ -508,7 +508,7 @@ def test_run_evaluation_marginal_improvement(
             steps=[],
             reward=0.48 + i * 0.001,  # ~0.48-0.50
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for i in range(20)
     ]
 
@@ -521,7 +521,7 @@ def test_run_evaluation_marginal_improvement(
             steps=[],
             reward=0.50 + i * 0.001,  # ~0.50-0.52
             success=True,
-            created_at=datetime.now(timezone.utc))
+            created_at=datetime.now(UTC))
         for i in range(20)
     ]
 

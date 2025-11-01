@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skip(
 import asyncio
 import time
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from statistics import quantiles
 
@@ -190,7 +190,7 @@ class TestLoadPerformance:
                     state={},
                     action={},
                     result={},
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     duration_ms=100)
             ]
 

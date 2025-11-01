@@ -43,7 +43,7 @@ class TestRateLimitIntegration:
 
         service = LLMService(timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             trace_id="integration-test-001")
 
@@ -99,7 +99,7 @@ class TestRateLimitIntegration:
 
         service = LLMService(timeout=60.0, max_retries=2)
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "test"}],
             trace_id="integration-test-002")
 
@@ -136,7 +136,7 @@ class TestRateLimitIntegration:
 
         service = LLMService(timeout=60.0, max_retries=4)
         request = LLMRequest(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "test"}],
             trace_id="integration-test-003")
 
@@ -170,7 +170,7 @@ class TestRateLimitIntegration:
 
         service = LLMService(timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             stream=True,
             trace_id="integration-test-004")
@@ -208,7 +208,7 @@ class TestRateLimitIntegration:
 
         service = LLMService(timeout=60.0, max_retries=2)
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             trace_id="integration-test-005")
 
@@ -249,7 +249,7 @@ class TestRateLimitIntegration:
             assert mock_record_delay.call_count == 2  # 2 delay recordings (metric recorded before sleep check)
 
             # Verify general error metrics
-            mock_record_request.assert_called_with("openai", "gpt-4.1-mini", "error")
+            mock_record_request.assert_called_with("openai", "gpt-5-mini", "error")
             mock_record_llm_error.assert_called_with(
-                "openai", "gpt-4.1-mini", "RateLimitError"
+                "openai", "gpt-5-mini", "RateLimitError"
             )

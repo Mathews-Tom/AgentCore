@@ -19,9 +19,9 @@ class LLMConfig(BaseModel):
         default="https://api.portkey.ai",
         description="Portkey gateway URL",
     )
-    default_model: str = Field(default="gpt-4.1", description="Default LLM model")
+    default_model: str = Field(default="gpt-5", description="Default LLM model")
     fallback_models: list[str] = Field(
-        default_factory=lambda: ["gpt-4.1-mini"],
+        default_factory=lambda: ["gpt-5-mini"],
         description="Fallback models for resilience",
     )
     default_temperature: float = Field(default=0.7, ge=0.0, le=2.0)

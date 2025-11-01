@@ -65,7 +65,7 @@ async def test_single_iteration_answer(
         content="Let me solve this. <answer>42</answer>",
         tokens_used=500,
         finish_reason="stop",
-        model="gpt-4.1",
+        model="gpt-5",
         stop_sequence_found="<answer>")
 
     # Create engine
@@ -95,33 +95,33 @@ async def test_multi_iteration_reasoning(
             content="Step 1: Breaking down the problem... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1",
+            model="gpt-5",
             stop_sequence_found="<continue>"),
         # Iteration 1: Carryover generation (for carryover)
         GenerationResult(
             content='{"current_strategy": "Solve step by step", "key_findings": ["Problem decomposed"], "progress": "Started analysis", "next_steps": ["Calculate"], "unresolved": []}',
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         # Iteration 2: Still working
         GenerationResult(
             content="Step 2: Calculating intermediate results... <continue>",
             tokens_used=700,
             finish_reason="stop",
-            model="gpt-4.1",
+            model="gpt-5",
             stop_sequence_found="<continue>"),
         # Iteration 3: Carryover generation
         GenerationResult(
             content='{"current_strategy": "Continue calculation", "key_findings": ["Intermediate result found"], "progress": "Halfway done", "next_steps": ["Final calculation"], "unresolved": []}',
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         # Iteration 4: Answer found
         GenerationResult(
             content="Step 3: Final calculation complete. <answer>The answer is 42</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1",
+            model="gpt-5",
             stop_sequence_found="<answer>"),
     ]
 
@@ -152,18 +152,18 @@ async def test_max_iterations_reached(
             content="Still thinking... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1",
+            model="gpt-5",
             stop_sequence_found="<continue>")
 
     mock_llm_client.generate.side_effect = [
         generate_no_answer(),  # Iteration 0
-        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-4.1"),
+        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-5"),
         generate_no_answer(),  # Iteration 1
-        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-4.1"),
+        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-5"),
         generate_no_answer(),  # Iteration 2
-        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-4.1"),
+        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-5"),
         generate_no_answer(),  # Iteration 3
-        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-4.1"),
+        GenerationResult(content='{"current_strategy": "Think", "key_findings": [], "progress": "Thinking", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-5"),
         generate_no_answer(),  # Iteration 4 (last)
     ]
 
@@ -190,7 +190,7 @@ async def test_answer_extraction(
         content="Here's the answer: <answer>42</answer> and some trailing text",
         tokens_used=500,
         finish_reason="stop",
-        model="gpt-4.1",
+        model="gpt-5",
         stop_sequence_found="<answer>")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
@@ -203,7 +203,7 @@ async def test_answer_extraction(
         content="<answer>The answer is forty-two",
         tokens_used=500,
         finish_reason="stop",
-        model="gpt-4.1",
+        model="gpt-5",
         stop_sequence_found="<answer>")
 
     result = await engine.reason(query="Test query 2")
@@ -219,7 +219,7 @@ async def test_metrics_calculation(
         content="<answer>Result</answer>",
         tokens_used=1000,
         finish_reason="stop",
-        model="gpt-4.1",
+        model="gpt-5",
         stop_sequence_found="<answer>")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
@@ -241,7 +241,7 @@ async def test_empty_query_handling(
         content="<answer>Empty query</answer>",
         tokens_used=100,
         finish_reason="stop",
-        model="gpt-4.1")
+        model="gpt-5")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
 
@@ -271,9 +271,9 @@ async def test_iteration_metrics_tracking(
     bounded_config: BoundedContextConfig) -> None:
     """Test that iteration metrics are properly tracked."""
     responses = [
-        GenerationResult(content="Thinking... <continue>", tokens_used=500, finish_reason="stop", model="gpt-4.1"),
-        GenerationResult(content='{"current_strategy": "Plan", "key_findings": [], "progress": "Working", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-4.1"),
-        GenerationResult(content="<answer>Done</answer>", tokens_used=600, finish_reason="stop", model="gpt-4.1"),
+        GenerationResult(content="Thinking... <continue>", tokens_used=500, finish_reason="stop", model="gpt-5"),
+        GenerationResult(content='{"current_strategy": "Plan", "key_findings": [], "progress": "Working", "next_steps": [], "unresolved": []}', tokens_used=200, finish_reason="stop", model="gpt-5"),
+        GenerationResult(content="<answer>Done</answer>", tokens_used=600, finish_reason="stop", model="gpt-5"),
     ]
 
     mock_llm_client.generate.side_effect = responses
@@ -309,19 +309,19 @@ async def test_carryover_parse_failure_fallback(
             content="Step 1: Working on it... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         # Carryover generation returns invalid JSON
         GenerationResult(
             content="This is not valid JSON at all!",
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         # Iteration 1: Answer found
         GenerationResult(
             content="<answer>Final answer</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
     ]
 
     mock_llm_client.generate.side_effect = responses
@@ -346,18 +346,18 @@ async def test_carryover_missing_fields_fallback(
             content="Reasoning... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         # Carryover with incomplete fields
         GenerationResult(
             content='{"current_strategy": "Plan", "key_findings": []}',  # Missing fields
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         GenerationResult(
             content="<answer>Done</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
     ]
 
     mock_llm_client.generate.side_effect = responses
@@ -380,18 +380,18 @@ async def test_carryover_exceeds_token_limit(
             content="Step 1... <continue>",
             tokens_used=600,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         # Very large carryover
         GenerationResult(
             content='{"current_strategy": "Plan", "key_findings": ["F1", "F2", "F3", "F4", "F5"], "progress": "Progress", "next_steps": ["N1", "N2", "N3", "N4", "N5"], "unresolved": []}',
             tokens_used=200,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
         GenerationResult(
             content="<answer>Result</answer>",
             tokens_used=500,
             finish_reason="stop",
-            model="gpt-4.1"),
+            model="gpt-5"),
     ]
 
     # Mock count_tokens to simulate oversized carryover that needs trimming
@@ -438,7 +438,7 @@ async def test_carryover_generation_exception(
                 content="Working... <continue>",
                 tokens_used=600,
                 finish_reason="stop",
-                model="gpt-4.1")
+                model="gpt-5")
         elif call_count[0] == 2:
             # Second call: carryover generation - fails
             raise RuntimeError("Carryover generation failed")
@@ -448,7 +448,7 @@ async def test_carryover_generation_exception(
                 content="<answer>Answer</answer>",
                 tokens_used=500,
                 finish_reason="stop",
-                model="gpt-4.1")
+                model="gpt-5")
 
     mock_llm_client.generate.side_effect = side_effect_generator
 
@@ -470,7 +470,7 @@ async def test_metrics_calculator_edge_cases(
         content="<answer>Quick</answer>",
         tokens_used=100,
         finish_reason="stop",
-        model="gpt-4.1")
+        model="gpt-5")
 
     engine = BoundedContextEngine(mock_llm_client, bounded_config)
     result = await engine.reason(query="Test")

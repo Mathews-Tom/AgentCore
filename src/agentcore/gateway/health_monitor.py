@@ -7,7 +7,7 @@ Monitors backend service health with configurable checks.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import structlog
@@ -53,7 +53,7 @@ class HealthMonitor:
         self._health_status[service.service_id] = ServiceHealth(
             service_id=service.service_id,
             status=ServiceStatus.UNKNOWN,
-            last_check=datetime.now(timezone.utc),
+            last_check=datetime.now(UTC),
         )
 
         # Start monitoring task
@@ -136,14 +136,14 @@ class HealthMonitor:
         service_id = service.service_id
         check_url = f"{service.base_url}{self.config.endpoint}"
 
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
 
         try:
             async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
                 response = await client.get(check_url)
 
             response_time = (
-                datetime.now(timezone.utc) - start_time
+                datetime.now(UTC) - start_time
             ).total_seconds() * 1000
 
             if response.status_code == 200:
@@ -178,7 +178,7 @@ class HealthMonitor:
             health.consecutive_failures = 0
             health.response_time_ms = response_time_ms
             health.error_message = None
-            health.last_check = datetime.now(timezone.utc)
+            health.last_check = datetime.now(UTC)
 
             # Update status based on threshold
             if health.consecutive_successes >= self.config.healthy_threshold:
@@ -208,7 +208,7 @@ class HealthMonitor:
             health.consecutive_failures += 1
             health.consecutive_successes = 0
             health.error_message = error_message
-            health.last_check = datetime.now(timezone.utc)
+            health.last_check = datetime.now(UTC)
 
             # Update status based on threshold
             if health.consecutive_failures >= self.config.unhealthy_threshold:

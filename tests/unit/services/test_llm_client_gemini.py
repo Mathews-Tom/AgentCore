@@ -40,7 +40,7 @@ def llm_client() -> LLMClientGemini:
 def sample_request() -> LLMRequest:
     """Create sample LLM request."""
     return LLMRequest(
-        model="gemini-2.0-flash-exp",
+        model="gemini-2.5-flash-lite",
         messages=[{"role": "user", "content": "Hello"}], trace_id="trace-123",
         source_agent="agent-1",
         session_id="session-456")
@@ -168,7 +168,7 @@ class TestLLMClientGeminiComplete:
         assert isinstance(response, LLMResponse)
         assert response.content == "Hello! How can I help you?"
         assert response.provider == "gemini"
-        assert response.model == "gemini-2.0-flash-exp"
+        assert response.model == "gemini-2.5-flash-lite"
         assert response.trace_id == "trace-123"
         assert response.usage.prompt_tokens == 10
         assert response.usage.completion_tokens == 8
@@ -182,7 +182,7 @@ class TestLLMClientGeminiComplete:
         mock_gemini_response: Mock) -> None:
         """Test completion without A2A context."""
         request = LLMRequest(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Hello"}])
 
         mock_model = Mock()
@@ -421,7 +421,7 @@ class TestLLMClientGeminiNormalizeResponse:
         assert isinstance(response, LLMResponse)
         assert response.content == "Hello! How can I help you?"
         assert response.provider == "gemini"
-        assert response.model == "gemini-2.0-flash-exp"
+        assert response.model == "gemini-2.5-flash-lite"
         assert response.trace_id == "trace-123"
         assert response.usage.prompt_tokens == 10
         assert response.usage.completion_tokens == 8

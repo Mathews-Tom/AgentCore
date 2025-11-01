@@ -264,7 +264,7 @@ class Settings(BaseSettings):
     # LLM Provider API Keys
     OPENAI_API_KEY: str | None = Field(default=None, description="OpenAI API key")
     ANTHROPIC_API_KEY: str | None = Field(default=None, description="Anthropic API key")
-    GOOGLE_API_KEY: str | None = Field(default=None, description="Google Gemini API key")
+    GEMINI_API_KEY: str | None = Field(default=None, description="Google Gemini API key")
 
     # Model Governance (CLAUDE.md compliance)
     ALLOWED_MODELS: list[str] = Field(
@@ -1041,7 +1041,7 @@ data: {"done": true, "usage": {...}, "latency_ms": 456}
 # config.py
 OPENAI_API_KEY: str | None = Field(default=None, description="OpenAI API key")
 ANTHROPIC_API_KEY: str | None = Field(default=None, description="Anthropic API key")
-GOOGLE_API_KEY: str | None = Field(default=None, description="Google API key")
+GEMINI_API_KEY: str | None = Field(default=None, description="Google API key")
 ```
 
 **Logging Filters:**
@@ -1230,7 +1230,7 @@ Already provided in `docker-compose.dev.yml` for PostgreSQL + Redis. LLM client 
 # LLM Provider API Keys (REQUIRED)
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=AIza...
+GEMINI_API_KEY=AIza...
 
 # LLM Configuration (OPTIONAL - defaults in config.py)
 ALLOWED_MODELS=gpt-4.1,gpt-4.1-mini,gpt-5,gpt-5-mini,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,gemini-2.0-flash-exp,gemini-2.0-flash-exp
@@ -1304,7 +1304,7 @@ curl -X POST http://localhost:8001/api/v1/jsonrpc \
 
 - `OPENAI_API_KEY_TEST` (test account with rate limits)
 - `ANTHROPIC_API_KEY_TEST`
-- `GOOGLE_API_KEY_TEST`
+- `GEMINI_API_KEY_TEST`
 
 ### Testing Framework and Coverage Targets
 
@@ -2420,7 +2420,7 @@ src/agentcore/a2a_protocol/
 # LLM Provider API Keys
 OPENAI_API_KEY: str | None = Field(default=None, description="OpenAI API key")
 ANTHROPIC_API_KEY: str | None = Field(default=None, description="Anthropic API key")
-GOOGLE_API_KEY: str | None = Field(default=None, description="Google Gemini API key")
+GEMINI_API_KEY: str | None = Field(default=None, description="Google Gemini API key")
 
 # Model Governance (CLAUDE.md compliance)
 ALLOWED_MODELS: list[str] = Field(
@@ -2474,7 +2474,7 @@ from .services import llm_jsonrpc  # noqa: F401
 # LLM Provider API Keys (REQUIRED for LLM operations)
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=AIza...
+GEMINI_API_KEY=AIza...
 
 # LLM Configuration (OPTIONAL - defaults in config.py)
 ALLOWED_MODELS=gpt-4.1,gpt-4.1-mini,gpt-5,gpt-5-mini,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,gemini-2.0-flash-exp,gemini-2.0-flash-exp

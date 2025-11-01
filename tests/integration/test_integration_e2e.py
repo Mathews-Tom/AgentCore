@@ -19,10 +19,10 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 
-from agentcore.integration.portkey.cache_models import CacheConfig, CacheMode
-from agentcore.integration.portkey.cache_service import CacheService
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.models import LLMRequest, LLMResponse
+from agentcore.llm_gateway.cache_models import CacheConfig, CacheMode
+from agentcore.llm_gateway.cache_service import CacheService
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.models import LLMRequest, LLMResponse
 
 
 class MockLLMProvider:

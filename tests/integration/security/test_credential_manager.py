@@ -6,7 +6,7 @@ Tests encryption, decryption, rotation, and key derivation.
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from cryptography.fernet import InvalidToken
@@ -191,7 +191,7 @@ class TestCredentialManager:
         manager = CredentialManager()
 
         # Create expired credential
-        expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+        expires_at = datetime.now(UTC) - timedelta(days=1)
 
         manager.encrypt_credential(
             credential_id="expired-test",
@@ -222,7 +222,7 @@ class TestCredentialManager:
 
         # Set last rotation to past
         cred = manager.get_credential("rotation-due")
-        cred.last_rotated_at = datetime.now(timezone.utc) - timedelta(days=31)
+        cred.last_rotated_at = datetime.now(UTC) - timedelta(days=31)
 
         # Should need rotation
         assert cred.needs_rotation()
@@ -333,7 +333,7 @@ class TestCredentialManager:
             credential_value="secret",
             rotation_interval_days=30)
         cred = manager.get_credential("needs-rotation")
-        cred.last_rotated_at = datetime.now(timezone.utc) - timedelta(days=31)
+        cred.last_rotated_at = datetime.now(UTC) - timedelta(days=31)
 
         # Create credential that doesn't need rotation
         manager.encrypt_credential(

@@ -21,8 +21,8 @@ def llm_config() -> LLMConfig:
     return LLMConfig(
         portkey_api_key="test-api-key",
         portkey_base_url="https://api.portkey.test",
-        default_model="gpt-4.1-test",
-        fallback_models=["gpt-4.1-mini-test"],
+        default_model="gpt-5-test",
+        fallback_models=["gpt-5-mini-test"],
         default_temperature=0.7,
         default_max_tokens=500,
         timeout_seconds=30,
@@ -48,8 +48,8 @@ class TestLLMConfig:
 
         assert config.portkey_api_key == "test-key"
         assert config.portkey_base_url == "https://api.portkey.ai"
-        assert config.default_model == "gpt-4.1"
-        assert config.fallback_models == ["gpt-4.1-mini"]
+        assert config.default_model == "gpt-5"
+        assert config.fallback_models == ["gpt-5-mini"]
         assert config.timeout_seconds == 30
         assert config.max_retries == 3
         assert config.cache_enabled is True
@@ -107,7 +107,7 @@ class TestPortkeyLLMService:
                     "finish_reason": "stop",
                 }
             ],
-            "model": "gpt-4.1-test",
+            "model": "gpt-5-test",
             "usage": {"total_tokens": 150},
         }
         mock_response.headers = {"x-portkey-cache-status": "MISS"}
@@ -123,7 +123,7 @@ class TestPortkeyLLMService:
         # Verify response
         assert isinstance(response, LLMResponse)
         assert response.content == "Test response content"
-        assert response.model == "gpt-4.1-test"
+        assert response.model == "gpt-5-test"
         assert response.tokens_used == 150
         assert response.finish_reason == "stop"
         assert response.cached is False
@@ -133,7 +133,7 @@ class TestPortkeyLLMService:
         call_args = mock_post.call_args
         assert call_args[0][0] == "/v1/chat/completions"
         payload = call_args[1]["json"]
-        assert payload["model"] == "gpt-4.1-test"
+        assert payload["model"] == "gpt-5-test"
         assert len(payload["messages"]) == 2
         assert payload["messages"][0]["role"] == "system"
         assert payload["messages"][1]["role"] == "user"
@@ -154,7 +154,7 @@ class TestPortkeyLLMService:
                     "finish_reason": "stop",
                 }
             ],
-            "model": "gpt-4.1-test",
+            "model": "gpt-5-test",
             "usage": {"total_tokens": 100},
         }
         mock_response.headers = {"x-portkey-cache-status": "HIT"}
@@ -222,7 +222,7 @@ class TestPortkeyLLMService:
         mock_response = Mock()
         mock_response.json.return_value = {
             "choices": [{"message": {"content": "Response"}, "finish_reason": "stop"}],
-            "model": "gpt-4.1-test",
+            "model": "gpt-5-test",
             "usage": {"total_tokens": 100},
         }
         mock_response.headers = {}

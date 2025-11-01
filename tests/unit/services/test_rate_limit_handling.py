@@ -28,7 +28,7 @@ class TestOpenAIRateLimitHandling:
     async def test_rate_limit_with_retry_after_header(self) -> None:
         """Test rate limit handling respects Retry-After header."""
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             trace_id="test-trace-123")
 
@@ -63,7 +63,7 @@ class TestOpenAIRateLimitHandling:
         """Test rate limit uses exponential backoff without Retry-After."""
         client = LLMClientOpenAI(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}])
 
         # Mock rate limit error without Retry-After header
@@ -92,7 +92,7 @@ class TestOpenAIRateLimitHandling:
         """Test rate limit handling during streaming."""
         client = LLMClientOpenAI(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}],
             stream=True)
 
@@ -124,7 +124,7 @@ class TestAnthropicRateLimitHandling:
         """Test rate limit handling respects retry-after header."""
         client = LLMClientAnthropic(api_key="test-key", timeout=60.0, max_retries=2)
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "test"}],
             trace_id="test-trace-456")
 
@@ -155,7 +155,7 @@ class TestAnthropicRateLimitHandling:
         """Test rate limit uses exponential backoff without retry-after."""
         client = LLMClientAnthropic(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "test"}])
 
         # Mock rate limit error without retry-after header
@@ -182,7 +182,7 @@ class TestAnthropicRateLimitHandling:
         """Test rate limit handling during streaming."""
         client = LLMClientAnthropic(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "test"}],
             stream=True)
 
@@ -213,7 +213,7 @@ class TestGeminiRateLimitHandling:
         """Test rate limit handling for RESOURCE_EXHAUSTED error."""
         client = LLMClientGemini(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "test"}],
             trace_id="test-trace-789")
 
@@ -240,7 +240,7 @@ class TestGeminiRateLimitHandling:
         """Test rate limit backoff is capped at max delay."""
         client = LLMClientGemini(api_key="test-key", timeout=60.0, max_retries=6)
         request = LLMRequest(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "test"}])
 
         rate_limit_error = google_exceptions.ResourceExhausted("Quota exceeded")
@@ -263,7 +263,7 @@ class TestGeminiRateLimitHandling:
         """Test rate limit handling during streaming."""
         client = LLMClientGemini(api_key="test-key", timeout=60.0, max_retries=3)
         request = LLMRequest(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "test"}],
             stream=True)
 
@@ -288,7 +288,7 @@ class TestRateLimitMetrics:
         """Test rate limit errors and retry delays are recorded in metrics."""
         client = LLMClientOpenAI(api_key="test-key", timeout=60.0, max_retries=2)
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "test"}])
 
         mock_response = Mock()

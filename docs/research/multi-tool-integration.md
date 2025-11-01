@@ -558,8 +558,8 @@ async def register_builtin_tools(registry: ToolRegistry):
     """Register built-in tools."""
 
     # Search tools
-    if GOOGLE_API_KEY:
-        registry.register(GoogleSearchTool(GOOGLE_API_KEY))
+    if GEMINI_API_KEY:
+        registry.register(GoogleSearchTool(GEMINI_API_KEY))
 
     if WIKIPEDIA_ENABLED:
         registry.register(WikipediaSearchTool())
