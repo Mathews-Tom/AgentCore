@@ -17,6 +17,7 @@ This document analyzes two emerging open-source projects and their potential to 
 **Key Finding:** These projects address critical gaps in AgentCore's current architecture and offer significant strategic value when integrated properly.
 
 **Recommendation:**
+
 - **Immediate Action**: Integrate OpenEnv (Q1 2025, 2-3 months)
 - **Evaluate & Decide**: Parallax POC (Q2 2025, 1 month)
 - **Conditional**: Production Parallax deployment (Q3-Q4 2025, 4-6 months)
@@ -27,7 +28,7 @@ This document analyzes two emerging open-source projects and their potential to 
 
 ### 1.1 Overview
 
-**Repository:** https://github.com/GradientHQ/parallax
+**Repository:** <https://github.com/GradientHQ/parallax>
 **Organization:** Gradient HQ
 **Status:** Initial release v0.0.1 (September 2025)
 **License:** Open Source
@@ -52,27 +53,27 @@ This document analyzes two emerging open-source projects and their potential to 
 
 #### Architecture Highlights
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  Parallax Cluster                   │
-├─────────────────────────────────────────────────────┤
-│                                                     │
+```plaintext
+┌──────────────────────────────────────────────────┐
+│                  Parallax Cluster                │
+├──────────────────────────────────────────────────┤
+│                                                  │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
 │  │ Node 1  │  │ Node 2  │  │ Node 3  │           │
 │  │ GPU A   │  │ GPU B   │  │ Apple M │           │
 │  │ 24GB    │  │ 16GB    │  │ Silicon │           │
 │  └────┬────┘  └────┬────┘  └────┬────┘           │
-│       │            │            │                  │
-│       └────────────┴────────────┘                  │
-│                    │                               │
-│         ┌──────────▼──────────┐                   │
-│         │  Inference Router   │                   │
-│         │  - Load balancing   │                   │
-│         │  - Model selection  │                   │
-│         │  - Request queue    │                   │
-│         └──────────┬──────────┘                   │
-│                    │                               │
-└────────────────────┼───────────────────────────────┘
+│       │            │            │                │
+│       └────────────┴────────────┘                │
+│                    │                             │
+│         ┌──────────▼──────────┐                  │
+│         │  Inference Router   │                  │
+│         │  - Load balancing   │                  │
+│         │  - Model selection  │                  │
+│         │  - Request queue    │                  │
+│         └──────────┬──────────┘                  │
+│                    │                             │
+└────────────────────┼─────────────────────────────┘
                      │
               ┌──────▼──────┐
               │  API Layer  │
@@ -95,6 +96,7 @@ src/agentcore/a2a_protocol/services/
 ```
 
 **Limitations:**
+
 - Linear cost scaling with usage
 - All data sent to external providers (privacy concerns)
 - API latency overhead (200-500ms)
@@ -136,6 +138,7 @@ class HybridRouter:
 **Example: Enterprise with 10,000 daily agent interactions**
 
 Current State (API-only):
+
 ```
 Daily tokens: 5M tokens
 Cost per token: $0.002/1k tokens
@@ -144,6 +147,7 @@ Annual cost: $3,650
 ```
 
 With Parallax (80% self-hosted, 20% API overflow):
+
 ```
 Infrastructure: 4x NVIDIA L4 GPUs
 Upfront cost: $8,000
@@ -165,6 +169,7 @@ ROI: Break-even at 13 months, 15% savings thereafter
 #### Privacy & Compliance
 
 **Self-hosted advantages:**
+
 - GDPR compliance: Data never leaves infrastructure
 - HIPAA compliance: PHI processing on-premises
 - SOC 2: Complete audit trail of data handling
@@ -176,12 +181,14 @@ ROI: Break-even at 13 months, 15% savings thereafter
 
 **Current**: Stateless FastAPI services, easy to scale horizontally
 **With Parallax**: Stateful GPU nodes requiring:
+
 - Node health monitoring
 - GPU resource tracking
 - Model loading/unloading
 - Failure recovery procedures
 
 **Mitigation:**
+
 - Start with managed GPU providers (RunPod, Vast.ai)
 - Implement robust monitoring (Prometheus + Grafana)
 - Maintain API fallback for all requests
@@ -191,6 +198,7 @@ ROI: Break-even at 13 months, 15% savings thereafter
 Parallax endpoints may differ from OpenAI/Anthropic formats.
 
 **Solution: Adapter Pattern**
+
 ```python
 class ParallaxAdapter(BaseLLMClient):
     """Adapts Parallax API to AgentCore LLMClient interface"""
@@ -211,6 +219,7 @@ class ParallaxAdapter(BaseLLMClient):
 GPU infrastructure has fixed costs that must be justified by usage volume.
 
 **Mitigation Strategy:**
+
 1. **Phase 1**: Thorough POC with production workload simulation
 2. **Phase 2**: Conservative capacity planning (80% target utilization)
 3. **Phase 3**: Incremental rollout (10% → 50% → 80% traffic)
@@ -223,6 +232,7 @@ GPU infrastructure has fixed costs that must be justified by usage volume.
 **Timeline:** 6-12 months for production-ready deployment
 
 **Recommendation:** Proceed with **cautious evaluation**:
+
 1. Q2 2025: 1-month POC to validate cost/performance assumptions
 2. Decision point: Continue to production or remain API-only
 3. Conditional: Q3-Q4 2025 production deployment if POC successful
@@ -233,7 +243,7 @@ GPU infrastructure has fixed costs that must be justified by usage volume.
 
 ### 2.1 Overview
 
-**Repository:** https://github.com/meta-pytorch/OpenEnv
+**Repository:** <https://github.com/meta-pytorch/OpenEnv>
 **Organizations:** Meta-PyTorch + Hugging Face
 **Status:** Experimental (APIs subject to change)
 **License:** Open Source
@@ -293,6 +303,7 @@ observation, reward, terminated, truncated, info = env.step(action)
 **Central Repository:** Hugging Face hosts OpenEnv Hub
 **Current Environments:** 4 diverse environments for agent training
 **Ecosystem Integration:**
+
 - torchforge (Meta's RL training library) - native support
 - verl, TRL, SkyRL - collaboration in progress
 
@@ -312,6 +323,7 @@ src/agentcore/training/
 ```
 
 **Current Gap:** No standardized way to:
+
 - Define agent training environments
 - Test agents against reproducible scenarios
 - Share environments across team
@@ -344,6 +356,7 @@ src/agentcore/training/
 **Problem:** A2A protocol compliance is difficult to test in production-like scenarios.
 
 **Solution with OpenEnv:**
+
 ```python
 class A2AProtocolTestEnv(OpenEnvBase):
     """Environment for testing A2A protocol implementations"""
@@ -368,6 +381,7 @@ class A2AProtocolTestEnv(OpenEnvBase):
 ```
 
 **Benefits:**
+
 - Reproducible protocol testing
 - Regression testing for protocol changes
 - Benchmarking agent implementations
@@ -378,6 +392,7 @@ class A2AProtocolTestEnv(OpenEnvBase):
 **Problem:** Agents need to learn optimal task routing strategies.
 
 **Solution with OpenEnv:**
+
 ```python
 class TaskRoutingEnv(OpenEnvBase):
     """Environment for training task routing decisions"""
@@ -403,6 +418,7 @@ class TaskRoutingEnv(OpenEnvBase):
 ```
 
 **Benefits:**
+
 - Learn optimal routing policies through RL
 - Balance latency, cost, and success rate
 - Adapt to changing agent capabilities
@@ -411,6 +427,7 @@ class TaskRoutingEnv(OpenEnvBase):
 #### Use Case 3: Integration with DSPy Optimization
 
 **Current DSPy Integration:**
+
 ```python
 # AgentCore has DSPy for prompt optimization
 src/agentcore/dspy_optimization/
@@ -420,6 +437,7 @@ src/agentcore/dspy_optimization/
 ```
 
 **Enhanced with OpenEnv:**
+
 ```python
 class DSPyOpenEnvBridge:
     """Use OpenEnv environments for DSPy optimization"""
@@ -453,6 +471,7 @@ class DSPyOpenEnvBridge:
 ```
 
 **Benefits:**
+
 - RL-based prompt optimization (beyond few-shot learning)
 - Environment-driven prompt tuning
 - Continuous improvement from agent-environment interaction
@@ -670,6 +689,7 @@ spec:
 **Impact:** Breaking changes in OpenEnv could require code updates
 
 **Mitigation:**
+
 - Abstract OpenEnv behind AgentCore interface layer
 - Version lock to specific OpenEnv release
 - Maintain compatibility adapters for API changes
@@ -681,6 +701,7 @@ spec:
 **Impact:** Only 4 environments currently on OpenEnv Hub
 
 **Mitigation:**
+
 - Build custom environments following OpenEnv spec
 - Contribute environments back to community
 - Provide templates and best practices
@@ -692,6 +713,7 @@ spec:
 **Impact:** OpenEnv client is Python-focused
 
 **Mitigation:**
+
 - OpenEnv environments are language-agnostic HTTP services
 - Any agent (Python, Node.js, Go) can interact via REST
 - A2A protocol already abstracts language differences
@@ -704,6 +726,7 @@ spec:
 **Timeline:** 2-3 months for initial integration
 
 **Recommendation:** **PROCEED with immediate implementation**
+
 1. Q1 2025: Complete OpenEnv integration (2-3 months)
 2. Build 2-3 custom environments for A2A testing
 3. Integrate with DSPy optimization pipeline
@@ -860,6 +883,7 @@ async def route_customer_ticket(ticket: Ticket):
 ### 3.3 Combined ROI Analysis
 
 **Investment:**
+
 - OpenEnv Integration: $50k (2 engineers × 2 months)
 - Parallax POC: $20k (1 engineer × 1 month)
 - Parallax Production: $120k (2 engineers × 6 months + infrastructure)
@@ -927,12 +951,14 @@ async def route_customer_ticket(ticket: Ticket):
 Both Parallax and OpenEnv offer significant value to AgentCore:
 
 **OpenEnv (Recommended: IMMEDIATE ADOPTION)**
+
 - **Strategic Fit:** HIGH - Fills critical gap in agent development workflow
 - **Implementation Risk:** MEDIUM - Experimental but manageable
 - **Timeline:** Q1 2025 (2-3 months)
 - **ROI:** 95% first year through faster development and higher quality
 
 **Parallax (Recommended: EVALUATE THEN DECIDE)**
+
 - **Strategic Fit:** HIGH - Enables cost optimization and data sovereignty
 - **Implementation Risk:** VERY HIGH - Requires infrastructure expertise
 - **Timeline:** Q2 2025 POC, Q3-Q4 2025 production (if validated)
@@ -941,17 +967,20 @@ Both Parallax and OpenEnv offer significant value to AgentCore:
 ### 5.2 Recommended Path Forward
 
 **Phase 1 - Immediate (Q1 2025): OpenEnv Integration**
+
 - Sprint 1-2: OpenEnv client library and registry
 - Sprint 3-4: A2A protocol adapter
 - Sprint 5-6: Sample environments and DSPy integration
 
 **Phase 2 - Evaluation (Q2 2025): Parallax POC**
+
 - 1 month dedicated POC with production workload simulation
 - Cost-benefit analysis with real data
 - Architecture review and risk assessment
 - GO/NO-GO decision
 
 **Phase 3 - Conditional (Q3-Q4 2025): Parallax Production**
+
 - Only if Phase 2 validates business case
 - Gradual rollout: 10% → 50% → 80% traffic
 - Maintain API fallback permanently
@@ -960,12 +989,14 @@ Both Parallax and OpenEnv offer significant value to AgentCore:
 ### 5.3 Success Criteria
 
 **OpenEnv:**
+
 - ✅ 50% reduction in agent development time
 - ✅ 95% test coverage for A2A protocol compliance
 - ✅ 3+ custom environments deployed
 - ✅ Integration with DSPy optimization pipeline
 
 **Parallax:**
+
 - ✅ 30% reduction in LLM API costs
 - ✅ <10ms latency increase vs pure API
 - ✅ 99.9% uptime SLA maintained
@@ -987,24 +1018,28 @@ Both Parallax and OpenEnv offer significant value to AgentCore:
 ### A. Additional Resources
 
 **Parallax:**
-- GitHub: https://github.com/GradientHQ/parallax
-- Product Hunt: https://www.producthunt.com/products/parallax-by-gradient
+
+- GitHub: <https://github.com/GradientHQ/parallax>
+- Product Hunt: <https://www.producthunt.com/products/parallax-by-gradient>
 - Documentation: (TBD - check repo)
 
 **OpenEnv:**
-- GitHub: https://github.com/meta-pytorch/OpenEnv
-- Hugging Face Blog: https://huggingface.co/blog/openenv
-- OpenEnv Hub: https://huggingface.co/openenv
-- RFC: https://github.com/meta-pytorch/OpenEnv/blob/main/rfcs/002-env-spec.md
+
+- GitHub: <https://github.com/meta-pytorch/OpenEnv>
+- Hugging Face Blog: <https://huggingface.co/blog/openenv>
+- OpenEnv Hub: <https://huggingface.co/openenv>
+- RFC: <https://github.com/meta-pytorch/OpenEnv/blob/main/rfcs/002-env-spec.md>
 
 ### B. Team Requirements
 
 **OpenEnv Integration Team:**
+
 - 2x Backend Engineers (Python, FastAPI, asyncio)
 - 1x DevOps Engineer (Docker, Kubernetes)
 - 1x QA Engineer (Test automation, RL testing)
 
 **Parallax Integration Team:**
+
 - 2x Backend Engineers (LLM systems, distributed systems)
 - 2x DevOps/SRE Engineers (GPU infrastructure, monitoring)
 - 1x ML Engineer (Model serving, optimization)
