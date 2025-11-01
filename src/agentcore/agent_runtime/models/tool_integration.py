@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 class ToolCategory(str, Enum):
     """Categories for tool classification."""
 
+    UTILITY = "utility"
     SEARCH = "search"
     CODE_EXECUTION = "code_execution"
     API_CLIENT = "api_client"
