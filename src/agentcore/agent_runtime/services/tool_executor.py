@@ -14,6 +14,8 @@ from ..models.tool_integration import (
     ToolExecutionStatus,
     ToolResult,
 )
+from .rate_limiter import RateLimitExceeded, RateLimiter
+from .retry_handler import BackoffStrategy, RetryHandler
 from .tool_registry import ToolNotFoundError, ToolRegistry
 
 logger = structlog.get_logger()
@@ -51,6 +53,8 @@ class ToolExecutor:
         self,
         registry: ToolRegistry,
         enable_metrics: bool = True,
+        rate_limiter: RateLimiter | None = None,
+        retry_handler: RetryHandler | None = None,
     ) -> None:
         """
         Initialize tool executor.
@@ -58,9 +62,17 @@ class ToolExecutor:
         Args:
             registry: Tool registry for tool definitions and executors
             enable_metrics: Enable metrics collection
+            rate_limiter: Optional rate limiter for tool execution
+            retry_handler: Optional retry handler for failed executions
         """
         self._registry = registry
         self._enable_metrics = enable_metrics
+        self._rate_limiter = rate_limiter
+        self._retry_handler = retry_handler or RetryHandler(
+            max_retries=3,
+            base_delay=1.0,
+            strategy=BackoffStrategy.EXPONENTIAL,
+        )
         self._before_hooks: list[Callable] = []
         self._after_hooks: list[Callable] = []
         self._error_hooks: list[Callable] = []
@@ -68,6 +80,7 @@ class ToolExecutor:
         logger.info(
             "tool_executor_initialized",
             enable_metrics=enable_metrics,
+            rate_limiter_enabled=rate_limiter is not None,
         )
 
     def add_before_hook(self, hook: Callable[[ToolExecutionRequest], None]) -> None:
@@ -125,8 +138,19 @@ class ToolExecutor:
             # Validate parameters
             self._validate_parameters(tool, request.parameters)
 
+            # Check rate limits if rate limiter is configured
+            if self._rate_limiter and tool.rate_limits:
+                requests_per_minute = tool.rate_limits.get("requests_per_minute")
+                if requests_per_minute:
+                    await self._rate_limiter.check_rate_limit(
+                        tool_id=tool.tool_id,
+                        limit=requests_per_minute,
+                        window_seconds=60,
+                        identifier=request.agent_id,
+                    )
+
             # Execute with timeout and retry
-            result_data = await self._execute_with_retry(tool, request)
+            result_data, retry_count = await self._execute_with_retry(tool, request)
 
             # Calculate execution time
             execution_time_ms = (time.time() - start_time) * 1000
@@ -139,7 +163,7 @@ class ToolExecutor:
                 result=result_data,
                 execution_time_ms=execution_time_ms,
                 timestamp=timestamp,
-                retry_count=0,
+                retry_count=retry_count,
             )
 
             # Run after hooks
@@ -153,6 +177,28 @@ class ToolExecutor:
                 execution_time_ms=execution_time_ms,
             )
 
+            return result
+
+        except RateLimitExceeded as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+            result = ToolResult(
+                request_id=request.request_id,
+                tool_id=request.tool_id,
+                status=ToolExecutionStatus.FAILED,
+                error=str(e),
+                error_type="RateLimitExceeded",
+                execution_time_ms=execution_time_ms,
+                timestamp=timestamp,
+                metadata={"retry_after": e.retry_after},
+            )
+            await self._run_error_hooks(request, e)
+            logger.warning(
+                "tool_execution_rate_limited",
+                tool_id=request.tool_id,
+                agent_id=request.agent_id,
+                request_id=request.request_id,
+                retry_after=e.retry_after,
+            )
             return result
 
         except ToolTimeoutError as e:
@@ -362,7 +408,7 @@ class ToolExecutor:
         self,
         tool: ToolDefinition,
         request: ToolExecutionRequest,
-    ) -> Any:
+    ) -> tuple[Any, int]:
         """
         Execute tool with timeout and retry logic.
 
@@ -371,7 +417,7 @@ class ToolExecutor:
             request: Execution request
 
         Returns:
-            Execution result
+            Tuple of (execution result, retry count)
 
         Raises:
             ToolTimeoutError: If execution times out
@@ -398,58 +444,77 @@ class ToolExecutor:
             else tool.max_retries
         )
 
-        last_error = None
-        for attempt in range(max_retries + 1):
-            try:
-                # Execute with timeout
-                if asyncio.iscoroutinefunction(executor):
+        # Configure retry handler for this execution
+        retry_handler = RetryHandler(
+            max_retries=max_retries,
+            base_delay=self._retry_handler.base_delay,
+            max_delay=self._retry_handler.max_delay,
+            strategy=self._retry_handler.strategy,
+            jitter=self._retry_handler.jitter,
+        )
+
+        retry_count = 0
+
+        def on_retry_callback(exception: Exception, attempt: int, delay: float) -> None:
+            """Callback for retry attempts."""
+            nonlocal retry_count
+            retry_count = attempt
+            logger.warning(
+                "tool_execution_retry",
+                tool_id=tool.tool_id,
+                attempt=attempt,
+                max_retries=max_retries,
+                error=str(exception),
+                delay=delay,
+            )
+
+        async def execute_with_timeout() -> Any:
+            """Execute tool with timeout."""
+            # Execute with timeout
+            if asyncio.iscoroutinefunction(executor):
+                try:
                     result = await asyncio.wait_for(
                         executor(**request.parameters),
                         timeout=timeout,
                     )
-                else:
-                    result = executor(**request.parameters)
+                except asyncio.TimeoutError:
+                    raise ToolTimeoutError(
+                        f"Tool '{tool.tool_id}' execution timed out after {timeout}s"
+                    )
+            else:
+                result = executor(**request.parameters)
 
-                return result
+            return result
 
-            except asyncio.TimeoutError:
-                raise ToolTimeoutError(
-                    f"Tool '{tool.tool_id}' execution timed out after {timeout}s"
-                )
+        # Execute with retry logic if tool is retryable
+        if tool.is_retryable:
+            result = await retry_handler.retry(
+                execute_with_timeout,
+                retryable_exceptions=(Exception,),
+                on_retry=on_retry_callback,
+            )
+        else:
+            result = await execute_with_timeout()
 
-            except Exception as e:
-                last_error = e
-                if not tool.is_retryable or attempt >= max_retries:
-                    raise
-
-                # Log retry
-                logger.warning(
-                    "tool_execution_retry",
-                    tool_id=tool.tool_id,
-                    attempt=attempt + 1,
-                    max_retries=max_retries,
-                    error=str(e),
-                )
-
-                # Wait before retry (exponential backoff)
-                await asyncio.sleep(2**attempt)
-
-        # Should never reach here, but just in case
-        if last_error:
-            raise last_error
-        raise ToolExecutionError("Execution failed after all retries")
+        return result, retry_count
 
 
 # Global tool executor instance
 _global_executor: ToolExecutor | None = None
 
 
-def get_tool_executor(registry: ToolRegistry | None = None) -> ToolExecutor:
+def get_tool_executor(
+    registry: ToolRegistry | None = None,
+    rate_limiter: RateLimiter | None = None,
+    retry_handler: RetryHandler | None = None,
+) -> ToolExecutor:
     """
     Get global tool executor instance.
 
     Args:
         registry: Tool registry (uses global if not provided)
+        rate_limiter: Optional rate limiter for tool execution
+        retry_handler: Optional retry handler for failed executions
 
     Returns:
         ToolExecutor instance
@@ -460,6 +525,10 @@ def get_tool_executor(registry: ToolRegistry | None = None) -> ToolExecutor:
         from .tool_registry import get_tool_registry
 
         reg = registry or get_tool_registry()
-        _global_executor = ToolExecutor(reg)
+        _global_executor = ToolExecutor(
+            reg,
+            rate_limiter=rate_limiter,
+            retry_handler=retry_handler,
+        )
 
     return _global_executor
