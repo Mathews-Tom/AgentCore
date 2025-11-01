@@ -6,7 +6,13 @@ from agentcore.agent_runtime.engines.react_engine import ReActEngine
 from agentcore.agent_runtime.engines.react_models import ReActStepType
 from agentcore.agent_runtime.models.agent_config import AgentConfig, AgentPhilosophy
 from agentcore.agent_runtime.models.agent_state import AgentExecutionState
-from agentcore.agent_runtime.services.tool_registry import ToolRegistry, ToolDefinition
+from agentcore.agent_runtime.models.tool_integration import (
+    AuthMethod,
+    ToolCategory,
+    ToolDefinition,
+    ToolParameter,
+)
+from agentcore.agent_runtime.services.tool_registry import ToolRegistry
 
 
 @pytest.fixture
@@ -23,7 +29,30 @@ def tool_registry() -> ToolRegistry:
         tool_id="calculator",
         name="calculator",
         description="Basic calculator",
-        parameters={"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={
+            "operation": ToolParameter(
+                name="operation",
+                type="string",
+                description="Operation to perform",
+                required=True,
+            ),
+            "a": ToolParameter(
+                name="a",
+                type="number",
+                description="First number",
+                required=True,
+            ),
+            "b": ToolParameter(
+                name="b",
+                type="number",
+                description="Second number",
+                required=True,
+            ),
+        },
+        auth_method=AuthMethod.NONE,
+    )
     registry.register_tool(calculator_def, calculator)
 
     return registry

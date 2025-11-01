@@ -16,7 +16,12 @@ from agentcore.agent_runtime.engines.cot_engine import CoTEngine
 from agentcore.agent_runtime.engines.autonomous_engine import AutonomousEngine
 from agentcore.agent_runtime.models.agent_config import AgentConfig, AgentPhilosophy
 from agentcore.agent_runtime.models.agent_state import AgentExecutionState
-from agentcore.agent_runtime.models.tool_integration import ToolDefinition
+from agentcore.agent_runtime.models.tool_integration import (
+    AuthMethod,
+    ToolCategory,
+    ToolDefinition,
+    ToolParameter,
+)
 from agentcore.agent_runtime.services.agent_lifecycle import AgentLifecycleManager
 from agentcore.agent_runtime.services.multi_agent_coordinator import (
     AgentMessage,
@@ -62,11 +67,30 @@ async def test_complete_react_agent_workflow(
         tool_id="calculator",
         name="calculator",
         description="Perform calculations",
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
         parameters={
-            "operation": {"type": "string", "enum": ["+", "-", "*", "/"]},
-            "a": {"type": "number"},
-            "b": {"type": "number"},
-        })
+            "operation": ToolParameter(
+                name="operation",
+                type="string",
+                description="Operation to perform",
+                required=True,
+            ),
+            "a": ToolParameter(
+                name="a",
+                type="number",
+                description="First operand",
+                required=True,
+            ),
+            "b": ToolParameter(
+                name="b",
+                type="number",
+                description="Second operand",
+                required=True,
+            ),
+        },
+        auth_method=AuthMethod.NONE,
+    )
 
     def calculator_executor(operation: str, a: float, b: float) -> float:
         operations = {
