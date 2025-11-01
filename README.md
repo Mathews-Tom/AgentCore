@@ -553,21 +553,21 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ## 🗺️ Roadmap
 
-### Q1 2025
+### Q4 2025
 
 - ✅ DSPy optimization framework integration
 - ✅ Multi-provider LLM gateway with cost tracking
 - ✅ Production-ready deployment configurations
 - 🔄 OpenEnv training environment integration (planned)
 
-### Q2 2025
+### Q1 2026
 
 - 🔮 Parallax POC for self-hosted LLM inference
 - 🔮 Enhanced monitoring and alerting
 - 🔮 Advanced workflow orchestration patterns
 - 🔮 Plugin marketplace for custom algorithms
 
-### Q3-Q4 2025
+### Q2-Q3 2026
 
 - 🔮 Multi-region deployment support
 - 🔮 Advanced security features (SAML, SSO)
