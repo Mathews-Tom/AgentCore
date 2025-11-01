@@ -78,7 +78,7 @@ groups:
         annotations:
           summary: "LLM provider API key missing"
           description: "API key not configured for provider. Check environment variables."
-          runbook: "Verify OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY are set correctly."
+          runbook: "Verify OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY are set correctly."
           dashboard: "https://grafana/d/llm-governance"
 
   - name: gateway_alerts

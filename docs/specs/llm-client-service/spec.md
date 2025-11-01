@@ -269,7 +269,7 @@ Build production-grade multi-provider LLM client supporting OpenAI, Anthropic Cl
 
 - **OpenAI API**: Requires `OPENAI_API_KEY` environment variable
 - **Anthropic API**: Requires `ANTHROPIC_API_KEY` environment variable
-- **Google Gemini API**: Requires `GOOGLE_API_KEY` environment variable
+- **Google Gemini API**: Requires `GEMINI_API_KEY` environment variable
 
 ### Related Components
 
@@ -314,7 +314,7 @@ src/agentcore/a2a_protocol/
 # config.py additions
 OPENAI_API_KEY: str | None = None
 ANTHROPIC_API_KEY: str | None = None
-GOOGLE_API_KEY: str | None = None
+GEMINI_API_KEY: str | None = None
 
 ALLOWED_MODELS: list[str] = [
     "gpt-4.1-mini", "gpt-5-mini",

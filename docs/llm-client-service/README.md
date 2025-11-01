@@ -80,7 +80,7 @@ export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Google Gemini
-export GOOGLE_API_KEY="..."
+export GEMINI_API_KEY="..."
 
 # Model governance (optional - defaults to all models)
 export ALLOWED_MODELS='["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-2.0-flash-exp"]'
@@ -275,7 +275,7 @@ uv run pytest tests/unit/services/test_llm_*.py
 # Integration tests (requires API keys)
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="..."
+export GEMINI_API_KEY="..."
 uv run pytest tests/integration/services/test_llm_*.py
 
 # Test coverage

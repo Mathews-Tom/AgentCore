@@ -269,7 +269,7 @@
 - **Acceptance:**
   - [ ] `register_builtin_tools(registry)` function in builtin.py
   - [ ] Auto-registration of all 5 built-in tools
-  - [ ] Environment variable configuration (GOOGLE_API_KEY, ENABLE_CODE_EXECUTION, etc.)
+  - [ ] Environment variable configuration (GEMINI_API_KEY, ENABLE_CODE_EXECUTION, etc.)
   - [ ] Conditional registration based on config (e.g., skip Google if no API key)
   - [ ] Integration with FastAPI startup event
   - [ ] Logging of registered tools on startup

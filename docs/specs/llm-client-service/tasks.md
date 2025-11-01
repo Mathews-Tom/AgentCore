@@ -61,7 +61,7 @@
 - **Acceptance Criteria:**
   - [ ] ALLOWED_MODELS list in config.py (gpt-4.1-mini, gpt-5-mini, claude-3-5-haiku-20241022, gemini-2.0-flash-exp)
   - [ ] LLM_DEFAULT_MODEL setting (default: gpt-4.1-mini)
-  - [ ] Provider API key settings (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY) as Optional[str]
+  - [ ] Provider API key settings (OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY) as Optional[str]
   - [ ] LLM_REQUEST_TIMEOUT float setting (default: 60.0)
   - [ ] LLM_MAX_RETRIES int setting (default: 3)
   - [ ] LLM_RETRY_EXPONENTIAL_BASE float (default: 2.0)

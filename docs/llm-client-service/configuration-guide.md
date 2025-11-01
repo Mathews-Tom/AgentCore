@@ -31,7 +31,7 @@ OPENAI_API_KEY="sk-..."
 ANTHROPIC_API_KEY="sk-ant-..."
 
 # Google Gemini API Key
-GOOGLE_API_KEY="..."
+GEMINI_API_KEY="..."
 
 # Model Governance (JSON array of allowed models)
 ALLOWED_MODELS='["gpt-4.1-mini","claude-3-5-haiku-20241022","gemini-2.0-flash-exp"]'
@@ -54,7 +54,7 @@ Create `.env` file in project root:
 # .env
 OPENAI_API_KEY=sk-your-key-here
 ANTHROPIC_API_KEY=sk-ant-your-key-here
-GOOGLE_API_KEY=your-google-key-here
+GEMINI_API_KEY=your-google-key-here
 
 ALLOWED_MODELS=["gpt-4.1-mini","claude-3-5-haiku-20241022"]
 LLM_DEFAULT_MODEL=gpt-4.1-mini
@@ -187,7 +187,7 @@ ANTHROPIC_MODELS = [
 #### 2. Set Environment Variable
 
 ```bash
-export GOOGLE_API_KEY="..."
+export GEMINI_API_KEY="..."
 ```
 
 #### 3. Supported Models
@@ -383,7 +383,7 @@ secrets = get_secret('agentcore/llm-api-keys')
 
 os.environ['OPENAI_API_KEY'] = secrets['openai_key']
 os.environ['ANTHROPIC_API_KEY'] = secrets['anthropic_key']
-os.environ['GOOGLE_API_KEY'] = secrets['google_key']
+os.environ['GEMINI_API_KEY'] = secrets['google_key']
 ```
 
 #### HashiCorp Vault
@@ -482,7 +482,7 @@ services:
       # API Keys (use secrets in production)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
 
       # Model Governance
       ALLOWED_MODELS: '["gpt-4.1-mini","claude-3-5-haiku-20241022"]'
@@ -540,7 +540,7 @@ type: Opaque
 stringData:
   OPENAI_API_KEY: "sk-..."
   ANTHROPIC_API_KEY: "sk-ant-..."
-  GOOGLE_API_KEY: "..."
+  GEMINI_API_KEY: "..."
 ```
 
 ### Deployment
@@ -590,7 +590,7 @@ kubectl create secret generic llm-api-keys \
 kubectl create secret generic llm-api-keys \
   --from-literal=OPENAI_API_KEY=sk-... \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
-  --from-literal=GOOGLE_API_KEY=...
+  --from-literal=GEMINI_API_KEY=...
 ```
 
 ---
@@ -611,7 +611,7 @@ def validate_configuration():
         providers.append("OpenAI")
     if settings.ANTHROPIC_API_KEY:
         providers.append("Anthropic")
-    if settings.GOOGLE_API_KEY:
+    if settings.GEMINI_API_KEY:
         providers.append("Gemini")
 
     if not providers:

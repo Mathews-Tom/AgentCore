@@ -90,7 +90,7 @@ Required secrets in `k8s/dspy-secret.yaml`:
 ```yaml
 OPENAI_API_KEY: ""           # OpenAI API key
 ANTHROPIC_API_KEY: ""        # Anthropic API key
-GOOGLE_API_KEY: ""           # Google API key
+GEMINI_API_KEY: ""           # Google API key
 MODEL_ENCRYPTION_KEY: ""     # Encryption key for model storage
 ```
 
