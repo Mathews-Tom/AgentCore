@@ -71,6 +71,27 @@ class Settings(BaseSettings):
     enable_metrics: bool = True
     metrics_port: int = 9090
 
+    # Tool Integration Configuration
+    tool_integration_enabled: bool = True
+    tool_execution_timeout: int = 30
+    tool_max_retries: int = 3
+    tool_retry_base_delay: float = 1.0
+    tool_retry_max_delay: float = 10.0
+    tool_retry_strategy: Literal["exponential", "linear", "fixed"] = "exponential"
+    tool_retry_jitter: bool = True
+
+    # Rate Limiter Configuration
+    rate_limiter_enabled: bool = False
+    rate_limiter_redis_url: str = "redis://localhost:6379/1"
+    rate_limiter_key_prefix: str = "agentcore:ratelimit"
+    rate_limiter_default_limit: int = 100
+    rate_limiter_default_window_seconds: int = 60
+
+    # Parallel Execution Configuration
+    parallel_execution_enabled: bool = True
+    parallel_max_concurrent: int = 10
+    parallel_default_timeout: int = 300
+
     # Portkey LLM Configuration
     portkey_api_key: str = ""
     portkey_base_url: str = "https://api.portkey.ai"
