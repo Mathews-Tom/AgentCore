@@ -129,7 +129,6 @@ def optimization_result(
     )
 
 
-@pytest.mark.asyncio
 class TestMLflowConfig:
     """Tests for MLflow configuration"""
 

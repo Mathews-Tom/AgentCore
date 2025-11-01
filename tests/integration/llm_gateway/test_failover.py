@@ -355,7 +355,7 @@ class TestFailoverManager:
 
         assert "disabled" in str(exc_info.value)
 
-    def test_get_available_providers_count(
+    async def test_get_available_providers_count(
         self,
         failover_manager: FailoverManager,
     ) -> None:
@@ -365,7 +365,7 @@ class TestFailoverManager:
         # Should have primary + 2 fallbacks = 3 available
         assert count >= 3
 
-    def test_get_available_providers_count_with_criteria(
+    async def test_get_available_providers_count_with_criteria(
         self,
         failover_manager: FailoverManager,
     ) -> None:
