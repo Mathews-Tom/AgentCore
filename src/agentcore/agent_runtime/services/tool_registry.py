@@ -4,12 +4,23 @@ import asyncio
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from ..engines.react_models import ToolCall, ToolResult
-from ..models.tool_integration import ToolDefinition
+from ..models.tool_integration import (
+    AuthMethod,
+    ToolCategory,
+    ToolDefinition,
+    ToolExecutionRequest,
+    ToolExecutionStatus,
+    ToolParameter,
+    ToolResult,
+)
+
+# Avoid circular import
+if TYPE_CHECKING:
+    from ..engines.react_models import ToolCall, ToolResult as ReactToolResult
 
 logger = structlog.get_logger()
 
@@ -18,13 +29,26 @@ class ToolExecutionError(Exception):
     """Raised when tool execution fails."""
 
 
+class ToolNotFoundError(Exception):
+    """Raised when tool is not found in registry."""
+
+
+class ToolValidationError(Exception):
+    """Raised when tool parameters fail validation."""
+
+
 class ToolRegistry:
-    """Registry for managing and executing agent tools."""
+    """Registry for managing and executing agent tools with advanced search and discovery."""
 
     def __init__(self) -> None:
         """Initialize tool registry."""
         self._tools: dict[str, ToolDefinition] = {}
         self._executors: dict[str, Callable[..., Any]] = {}
+        self._category_index: dict[ToolCategory, set[str]] = {
+            category: set() for category in ToolCategory
+        }
+        self._capability_index: dict[str, set[str]] = {}
+        self._tag_index: dict[str, set[str]] = {}
 
     def register_tool(
         self,
@@ -32,7 +56,7 @@ class ToolRegistry:
         executor: Callable[..., Any],
     ) -> None:
         """
-        Register a tool with its executor function.
+        Register a tool with its executor function and build search indexes.
 
         Args:
             tool: Tool definition
@@ -41,23 +65,57 @@ class ToolRegistry:
         self._tools[tool.tool_id] = tool
         self._executors[tool.tool_id] = executor
 
+        # Build category index
+        self._category_index[tool.category].add(tool.tool_id)
+
+        # Build capability index
+        for capability in tool.capabilities:
+            if capability not in self._capability_index:
+                self._capability_index[capability] = set()
+            self._capability_index[capability].add(tool.tool_id)
+
+        # Build tag index
+        for tag in tool.tags:
+            if tag not in self._tag_index:
+                self._tag_index[tag] = set()
+            self._tag_index[tag].add(tool.tool_id)
+
         logger.info(
             "tool_registered",
             tool_id=tool.tool_id,
             tool_name=tool.name,
+            category=tool.category.value,
+            version=tool.version,
         )
 
     def unregister_tool(self, tool_id: str) -> None:
         """
-        Unregister a tool.
+        Unregister a tool and update indexes.
 
         Args:
             tool_id: Tool identifier
         """
-        if tool_id in self._tools:
-            del self._tools[tool_id]
-            del self._executors[tool_id]
-            logger.info("tool_unregistered", tool_id=tool_id)
+        if tool_id not in self._tools:
+            return
+
+        tool = self._tools[tool_id]
+
+        # Remove from category index
+        self._category_index[tool.category].discard(tool_id)
+
+        # Remove from capability index
+        for capability in tool.capabilities:
+            if capability in self._capability_index:
+                self._capability_index[capability].discard(tool_id)
+
+        # Remove from tag index
+        for tag in tool.tags:
+            if tag in self._tag_index:
+                self._tag_index[tag].discard(tool_id)
+
+        del self._tools[tool_id]
+        del self._executors[tool_id]
+        logger.info("tool_unregistered", tool_id=tool_id)
 
     def get_tool(self, tool_id: str) -> ToolDefinition | None:
         """
@@ -80,43 +138,145 @@ class ToolRegistry:
         """
         return list(self._tools.values())
 
-    def get_tool_descriptions(self) -> str:
+    def search_by_category(self, category: ToolCategory) -> list[ToolDefinition]:
         """
-        Get formatted descriptions of all tools.
+        Search tools by category.
+
+        Args:
+            category: Tool category to filter by
 
         Returns:
-            Formatted tool descriptions for prompts
+            List of tools in the specified category
+        """
+        tool_ids = self._category_index.get(category, set())
+        return [self._tools[tid] for tid in tool_ids if tid in self._tools]
+
+    def search_by_capability(self, capability: str) -> list[ToolDefinition]:
+        """
+        Search tools by capability.
+
+        Args:
+            capability: Required capability
+
+        Returns:
+            List of tools with the specified capability
+        """
+        tool_ids = self._capability_index.get(capability, set())
+        return [self._tools[tid] for tid in tool_ids if tid in self._tools]
+
+    def search_by_tags(self, tags: list[str]) -> list[ToolDefinition]:
+        """
+        Search tools by tags (OR logic).
+
+        Args:
+            tags: List of tags to search for
+
+        Returns:
+            List of tools matching any of the tags
+        """
+        matching_ids: set[str] = set()
+        for tag in tags:
+            if tag in self._tag_index:
+                matching_ids.update(self._tag_index[tag])
+        return [self._tools[tid] for tid in matching_ids if tid in self._tools]
+
+    def search_tools(
+        self,
+        name_query: str | None = None,
+        category: ToolCategory | None = None,
+        capabilities: list[str] | None = None,
+        tags: list[str] | None = None,
+    ) -> list[ToolDefinition]:
+        """
+        Comprehensive tool search with multiple filters.
+
+        Args:
+            name_query: Filter by name (case-insensitive substring match)
+            category: Filter by category
+            capabilities: Filter by capabilities (AND logic - must have all)
+            tags: Filter by tags (OR logic - must have at least one)
+
+        Returns:
+            List of tools matching all specified filters
+        """
+        # Start with all tools or filter by category
+        if category:
+            candidates = set(self._category_index.get(category, set()))
+        else:
+            candidates = set(self._tools.keys())
+
+        # Filter by capabilities (AND logic)
+        if capabilities:
+            for capability in capabilities:
+                cap_tools = self._capability_index.get(capability, set())
+                candidates &= cap_tools
+
+        # Filter by tags (OR logic)
+        if tags:
+            tag_tools: set[str] = set()
+            for tag in tags:
+                tag_tools.update(self._tag_index.get(tag, set()))
+            candidates &= tag_tools
+
+        # Filter by name query
+        results = []
+        for tool_id in candidates:
+            if tool_id not in self._tools:
+                continue
+            tool = self._tools[tool_id]
+            if name_query and name_query.lower() not in tool.name.lower():
+                continue
+            results.append(tool)
+
+        return results
+
+    def get_tool_descriptions(self) -> str:
+        """
+        Get formatted descriptions of all tools for LLM prompts.
+
+        Returns:
+            Formatted tool descriptions with parameters
         """
         descriptions = []
         for tool in self._tools.values():
-            param_str = ", ".join(
-                f"{k}: {v.get('type', 'any')}" for k, v in tool.parameters.items()
-            )
+            # Format parameters
+            param_list = []
+            for param_name, param in tool.parameters.items():
+                param_desc = f"{param_name}: {param.type}"
+                if param.required:
+                    param_desc += " (required)"
+                param_list.append(param_desc)
+
+            param_str = ", ".join(param_list) if param_list else "no parameters"
             descriptions.append(f"- {tool.name}({param_str}): {tool.description}")
+
         return "\n".join(descriptions)
 
     async def execute_tool(
         self,
-        tool_call: ToolCall,
+        tool_call: "ToolCall",
         agent_id: str,
-    ) -> ToolResult:
+    ) -> "ReactToolResult":
         """
-        Execute a tool call.
+        Execute a tool call (ReAct engine compatibility).
 
         Args:
-            tool_call: Tool call specification
+            tool_call: Tool call specification from ReAct engine
             agent_id: Agent making the call
 
         Returns:
-            Tool execution result
+            ReactToolResult for backward compatibility with ReAct engine
         """
+        # Import at runtime to avoid circular dependency
+        from ..engines.react_models import ToolResult as ReactToolResult
+
         start_time = time.time()
 
         try:
             # Validate tool exists
             tool = self.get_tool(tool_call.tool_name)
             if not tool:
-                raise ToolExecutionError(f"Tool '{tool_call.tool_name}' not found")
+                raise ToolNotFoundError(f"Tool '{tool_call.tool_name}' not found")
 
             # Get executor
             executor = self._executors.get(tool_call.tool_name)
@@ -148,7 +308,7 @@ class ToolRegistry:
                 execution_time_ms=execution_time,
             )
 
-            return ToolResult(
+            return ReactToolResult(
                 call_id=tool_call.call_id,
                 success=True,
                 result=result,
@@ -166,7 +326,7 @@ class ToolRegistry:
                 execution_time_ms=execution_time,
             )
 
-            return ToolResult(
+            return ReactToolResult(
                 call_id=tool_call.call_id,
                 success=False,
                 error=str(e),
@@ -237,17 +397,37 @@ def get_tool_registry() -> ToolRegistry:
 
 
 def _register_builtin_tools(registry: ToolRegistry) -> None:
-    """Register built-in example tools."""
+    """Register built-in example tools with enhanced definitions."""
     # Calculator tool
     calculator_def = ToolDefinition(
         tool_id="calculator",
         name="calculator",
         description="Perform basic arithmetic operations",
+        version="1.0.0",
+        category=ToolCategory.DATA_PROCESSING,
         parameters={
-            "operation": {"type": "string", "enum": ["+", "-", "*", "/"]},
-            "a": {"type": "number"},
-            "b": {"type": "number"},
+            "operation": ToolParameter(
+                name="operation",
+                type="string",
+                description="Arithmetic operation to perform",
+                required=True,
+                enum=["+", "-", "*", "/"],
+            ),
+            "a": ToolParameter(
+                name="a",
+                type="number",
+                description="First operand",
+                required=True,
+            ),
+            "b": ToolParameter(
+                name="b",
+                type="number",
+                description="Second operand",
+                required=True,
+            ),
         },
+        capabilities=["sync_execution"],
+        tags=["math", "arithmetic", "calculator"],
     )
     registry.register_tool(calculator_def, calculator_tool)
 
@@ -255,8 +435,13 @@ def _register_builtin_tools(registry: ToolRegistry) -> None:
     time_def = ToolDefinition(
         tool_id="get_current_time",
         name="get_current_time",
-        description="Get the current date and time",
+        description="Get the current date and time in ISO format",
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
         parameters={},
+        capabilities=["sync_execution", "no_side_effects"],
+        tags=["time", "datetime", "utility"],
+        is_idempotent=False,  # Returns different value each time
     )
     registry.register_tool(time_def, get_current_time_tool)
 
@@ -264,9 +449,19 @@ def _register_builtin_tools(registry: ToolRegistry) -> None:
     echo_def = ToolDefinition(
         tool_id="echo",
         name="echo",
-        description="Echo a message back",
+        description="Echo a message back (useful for testing)",
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
         parameters={
-            "message": {"type": "string"},
+            "message": ToolParameter(
+                name="message",
+                type="string",
+                description="Message to echo",
+                required=True,
+                max_length=1000,
+            ),
         },
+        capabilities=["sync_execution", "no_side_effects"],
+        tags=["test", "utility", "echo"],
     )
     registry.register_tool(echo_def, echo_tool)
