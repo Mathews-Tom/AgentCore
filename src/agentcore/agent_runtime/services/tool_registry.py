@@ -388,11 +388,29 @@ _global_registry: ToolRegistry | None = None
 
 
 def get_tool_registry() -> ToolRegistry:
-    """Get global tool registry instance."""
+    """Get global tool registry instance with all built-in tools registered."""
     global _global_registry
     if _global_registry is None:
         _global_registry = ToolRegistry()
         _register_builtin_tools(_global_registry)
+
+        # Register Phase 2 built-in tool adapters
+        try:
+            from ..tools.api_tools import register_api_tools
+            from ..tools.code_execution_tools import register_code_execution_tools
+            from ..tools.search_tools import register_search_tools
+
+            register_search_tools(_global_registry)
+            register_code_execution_tools(_global_registry)
+            register_api_tools(_global_registry)
+
+            logger.info("builtin_tool_adapters_registered")
+        except ImportError as e:
+            logger.warning(
+                "builtin_tool_adapters_import_failed",
+                error=str(e),
+            )
+
     return _global_registry
 
 
