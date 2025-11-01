@@ -115,7 +115,7 @@ agentcore task logs task-001 --follow
 
 The CLI follows a strict 4-layer architecture for maintainability, testability, and A2A protocol compliance:
 
-```
+```plaintext
 ┌─────────────────────────────────────────┐
 │  Layer 1: CLI Layer (Typer)             │
 │  - Argument parsing & validation        │
