@@ -8,7 +8,7 @@ and generates structured documentation for team guidance.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -51,7 +51,7 @@ class BestPractice(BaseModel):
     supporting_evidence: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
     impact: str = Field(default="medium")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -149,7 +149,7 @@ class BestPracticeExtractor:
 
             if success_rate >= 0.7:
                 practice = BestPractice(
-                    practice_id=f"algo_{algo}_{int(datetime.utcnow().timestamp())}",
+                    practice_id=f"algo_{algo}_{int(datetime.now(UTC).timestamp())}",
                     category=BestPracticeCategory.ALGORITHM_SELECTION,
                     title=f"Prefer {algo} for reliable optimization",
                     description=f"Algorithm {algo} demonstrates consistent success "
@@ -193,14 +193,17 @@ class BestPracticeExtractor:
         param_patterns = [p for p in patterns if "parameter" in p.pattern_type.value]
 
         for pattern in param_patterns:
-            if pattern.confidence not in (PatternConfidence.HIGH, PatternConfidence.MEDIUM):
+            if pattern.confidence not in (
+                PatternConfidence.HIGH,
+                PatternConfidence.MEDIUM,
+            ):
                 continue
 
             if not pattern.common_parameters:
                 continue
 
             practice = BestPractice(
-                practice_id=f"param_{pattern.pattern_key}_{int(datetime.utcnow().timestamp())}",
+                practice_id=f"param_{pattern.pattern_key}_{int(datetime.now(UTC).timestamp())}",
                 category=BestPracticeCategory.PARAMETER_TUNING,
                 title=f"Optimize with proven parameter combination",
                 description=f"Parameter set achieving {pattern.success_rate:.1%} success rate",
@@ -250,7 +253,7 @@ class BestPracticeExtractor:
             )
 
             practice = BestPractice(
-                practice_id=f"perf_fast_converge_{int(datetime.utcnow().timestamp())}",
+                practice_id=f"perf_fast_converge_{int(datetime.now(UTC).timestamp())}",
                 category=BestPracticeCategory.PERFORMANCE_OPTIMIZATION,
                 title="Use fast-converging algorithms for quick iteration",
                 description=f"Achieve results in ~{int(avg_iterations)} iterations "
@@ -284,7 +287,7 @@ class BestPracticeExtractor:
             avg_improvement = sum(p.avg_improvement for p in high_perf) / len(high_perf)
 
             practice = BestPractice(
-                practice_id=f"perf_high_impact_{int(datetime.utcnow().timestamp())}",
+                practice_id=f"perf_high_impact_{int(datetime.now(UTC).timestamp())}",
                 category=BestPracticeCategory.PERFORMANCE_OPTIMIZATION,
                 title="Target aggressive improvement with proven strategies",
                 description=f"Achieve {avg_improvement:.1%}+ improvement "
@@ -320,9 +323,7 @@ class BestPracticeExtractor:
 
         # Identify efficient patterns (good results with low iterations)
         efficient = [
-            p
-            for p in patterns
-            if p.avg_improvement >= 0.20 and p.avg_iterations < 100
+            p for p in patterns if p.avg_improvement >= 0.20 and p.avg_iterations < 100
         ]
 
         if len(efficient) >= 2:
@@ -330,7 +331,7 @@ class BestPracticeExtractor:
             avg_improvement = sum(p.avg_improvement for p in efficient) / len(efficient)
 
             practice = BestPractice(
-                practice_id=f"cost_efficient_{int(datetime.utcnow().timestamp())}",
+                practice_id=f"cost_efficient_{int(datetime.now(UTC).timestamp())}",
                 category=BestPracticeCategory.COST_OPTIMIZATION,
                 title="Balance performance and cost efficiency",
                 description=f"Achieve {avg_improvement:.1%} improvement "
@@ -375,7 +376,7 @@ class BestPracticeExtractor:
         lines = [
             f"# {title}",
             "",
-            f"*Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}*",
+            f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*",
             "",
             "This document contains automatically extracted best practices from historical optimization data.",
             "",
@@ -405,7 +406,9 @@ class BestPracticeExtractor:
             practices = by_category[category]
             category_title = category.value.replace("_", " ").title()
 
-            lines.extend([f"## {category_title}", "", f"<a name=\"{category.value}\"></a>", ""])
+            lines.extend(
+                [f"## {category_title}", "", f'<a name="{category.value}"></a>', ""]
+            )
 
             for practice in practices:
                 lines.extend(self._format_practice_markdown(practice))

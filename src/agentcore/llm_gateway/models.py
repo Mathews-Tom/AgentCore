@@ -1,4 +1,4 @@
-"""Portkey integration data models.
+"""LLM Gateway integration data models.
 
 Pydantic models for LLM requests, responses, and configurations.
 """
@@ -123,7 +123,7 @@ class ProviderConfig(BaseModel):
     """Configuration for a specific LLM provider.
 
     Defines connection settings, authentication, and behavior
-    for connecting to an LLM provider through Portkey.
+    for connecting to an LLM provider through LLM Gateway.
     """
 
     provider: str = Field(

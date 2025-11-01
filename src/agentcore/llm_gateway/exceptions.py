@@ -1,15 +1,15 @@
-"""Portkey integration exceptions.
+"""LLM Gateway exceptions.
 
-Custom exception hierarchy for handling Portkey API errors and integration issues.
+Custom exception hierarchy for handling LLM Gateway API errors and integration issues.
 """
 
 from __future__ import annotations
 
 
-class PortkeyError(Exception):
-    """Base exception for all Portkey integration errors.
+class LLMGatewayError(Exception):
+    """Base exception for all LLM Gateway errors.
 
-    All Portkey-specific exceptions inherit from this base class.
+    All LLM Gateway-specific exceptions inherit from this base class.
     """
 
     def __init__(self, message: str, status_code: int | None = None) -> None:
@@ -24,7 +24,7 @@ class PortkeyError(Exception):
         super().__init__(message)
 
 
-class PortkeyConfigurationError(PortkeyError):
+class LLMGatewayConfigurationError(LLMGatewayError):
     """Exception raised for configuration errors.
 
     This exception is raised when:
@@ -42,7 +42,7 @@ class PortkeyConfigurationError(PortkeyError):
         super().__init__(f"Configuration error: {message}")
 
 
-class PortkeyAuthenticationError(PortkeyError):
+class LLMGatewayAuthenticationError(LLMGatewayError):
     """Exception raised for authentication failures.
 
     This exception is raised when:
@@ -60,7 +60,7 @@ class PortkeyAuthenticationError(PortkeyError):
         super().__init__(f"Authentication error: {message}", status_code=401)
 
 
-class PortkeyProviderError(PortkeyError):
+class LLMGatewayProviderError(LLMGatewayError):
     """Exception raised for LLM provider errors.
 
     This exception is raised when:
@@ -82,11 +82,11 @@ class PortkeyProviderError(PortkeyError):
         super().__init__(f"Provider error{provider_info}: {message}")
 
 
-class PortkeyRateLimitError(PortkeyError):
+class LLMGatewayRateLimitError(LLMGatewayError):
     """Exception raised when rate limits are exceeded.
 
     This exception is raised when:
-    - Portkey API rate limit is exceeded
+    - LLM Gateway API rate limit is exceeded
     - Provider rate limit is exceeded
     - Request quota is exhausted
     """
@@ -106,11 +106,11 @@ class PortkeyRateLimitError(PortkeyError):
         super().__init__(f"Rate limit exceeded: {message}", status_code=429)
 
 
-class PortkeyTimeoutError(PortkeyError):
+class LLMGatewayTimeoutError(LLMGatewayError):
     """Exception raised when requests timeout.
 
     This exception is raised when:
-    - Request to Portkey API times out
+    - Request to LLM Gateway API times out
     - Provider request exceeds timeout threshold
     - No response received within configured timeout
     """
@@ -126,7 +126,7 @@ class PortkeyTimeoutError(PortkeyError):
         super().__init__(f"Request timed out after {timeout}s: {message}", status_code=408)
 
 
-class PortkeyValidationError(PortkeyError):
+class LLMGatewayValidationError(LLMGatewayError):
     """Exception raised for request validation errors.
 
     This exception is raised when:
@@ -147,7 +147,7 @@ class PortkeyValidationError(PortkeyError):
         super().__init__(f"Validation error{field_info}: {message}", status_code=400)
 
 
-class PortkeyBudgetExceededError(PortkeyError):
+class LLMGatewayBudgetExceededError(LLMGatewayError):
     """Exception raised when budget limits are exceeded.
 
     This exception is raised when:

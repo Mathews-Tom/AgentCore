@@ -7,17 +7,14 @@ the need for model retraining.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from agentcore.dspy_optimization.models import (
-    OptimizationTarget,
-    PerformanceMetrics,
-)
+from agentcore.dspy_optimization.models import OptimizationTarget, PerformanceMetrics
 
 
 class DriftStatus(str, Enum):
@@ -67,7 +64,7 @@ class DriftResult(BaseModel):
     baseline_metrics: PerformanceMetrics
     current_metrics: PerformanceMetrics
     degradation_percentage: float
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     sample_count: int
     details: dict[str, Any] = Field(default_factory=dict)
 
@@ -129,7 +126,7 @@ class DriftDetector:
         if target_key not in self._recent_metrics:
             self._recent_metrics[target_key] = []
 
-        self._recent_metrics[target_key].append((datetime.utcnow(), metrics))
+        self._recent_metrics[target_key].append((datetime.now(UTC), metrics))
 
         # Enforce window size limit
         await self._enforce_window_size(target_key)
@@ -259,7 +256,7 @@ class DriftDetector:
         target_key = self._get_target_key(target)
         recent = self._recent_metrics.get(target_key, [])
 
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         return [(ts, m) for ts, m in recent if ts >= cutoff]
 
     async def _calculate_average_metrics(
@@ -313,13 +310,17 @@ class DriftDetector:
         quality_degradation = 0.0
 
         if baseline.success_rate > 0:
-            success_degradation = (baseline.success_rate - current.success_rate) / baseline.success_rate
+            success_degradation = (
+                baseline.success_rate - current.success_rate
+            ) / baseline.success_rate
 
         if baseline.quality_score > 0:
-            quality_degradation = (baseline.quality_score - current.quality_score) / baseline.quality_score
+            quality_degradation = (
+                baseline.quality_score - current.quality_score
+            ) / baseline.quality_score
 
         # Average degradation (weighted)
-        degradation = (success_degradation * 0.6 + quality_degradation * 0.4)
+        degradation = success_degradation * 0.6 + quality_degradation * 0.4
 
         return max(0.0, degradation)  # Only positive degradation
 

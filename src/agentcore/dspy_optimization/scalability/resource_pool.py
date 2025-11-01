@@ -275,7 +275,7 @@ class OptimizationResourceManager:
             """Create LLM client"""
             import dspy
 
-            return dspy.LM("openai/gpt-4.1-mini")
+            return dspy.LM("openai/gpt-5-mini")
 
         pool = ResourcePool(ResourceType.LLM_CLIENT, llm_factory, config)
         await pool.initialize()

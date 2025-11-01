@@ -40,7 +40,7 @@ class LLMClientConfig(BaseModel):
         default="https://api.openai.com/v1",
         description="LLM API base URL",
     )
-    default_model: str = Field(default="gpt-4.1", description="Default LLM model")
+    default_model: str = Field(default="gpt-5", description="Default LLM model")
     timeout_seconds: int = Field(
         default=60, ge=5, le=300, description="Request timeout"
     )

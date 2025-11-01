@@ -4,7 +4,7 @@ Plugin metadata models for custom optimizer registration
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -75,7 +75,7 @@ class PluginRegistration(BaseModel):
     metadata: PluginMetadata
     config: PluginConfig
     status: PluginStatus = PluginStatus.REGISTERED
-    registered_at: datetime = Field(default_factory=datetime.utcnow)
+    registered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_used: datetime | None = None
     usage_count: int = 0
     error_message: str | None = None

@@ -5,7 +5,7 @@ selection based on task complexity and configured tiers. It enables cost optimiz
 by mapping task requirements to appropriate model tiers (FAST, BALANCED, PREMIUM).
 
 The selector implements the Strategy pattern for flexible model selection with:
-- Tier-to-model mapping (FAST → gpt-4.1-mini, BALANCED → gpt-4.1, PREMIUM → gpt-5)
+- Tier-to-model mapping (FAST → gpt-5-mini, BALANCED → gpt-5, PREMIUM → gpt-5)
 - Complexity-to-tier mapping (low → FAST, medium → BALANCED, high → PREMIUM)
 - Provider preference support for multi-provider failover
 - Fallback model selection if preferred model unavailable
@@ -24,11 +24,11 @@ Example:
     selector = ModelSelector(provider_preference=["openai", "anthropic", "gemini"])
 
     # Select by tier
-    model = selector.select_model(ModelTier.FAST)  # "gpt-4.1-mini"
+    model = selector.select_model(ModelTier.FAST)  # "gpt-5-mini"
 
     # Select by complexity
-    model = selector.select_model_by_complexity("low")  # "gpt-4.1-mini"
-    model = selector.select_model_by_complexity("medium")  # "gpt-4.1"
+    model = selector.select_model_by_complexity("low")  # "gpt-5-mini"
+    model = selector.select_model_by_complexity("medium")  # "gpt-5"
     model = selector.select_model_by_complexity("high")  # "gpt-5"
 
     # Validate configuration
@@ -53,26 +53,19 @@ from agentcore.a2a_protocol.services.llm_service import MODEL_PROVIDER_MAP
 # Models must be in ALLOWED_MODELS configuration to be selected
 TIER_MODEL_MAP: dict[ModelTier, list[str]] = {
     ModelTier.FAST: [
-        "gpt-4.1-mini",
         "gpt-5-mini",
-        "claude-haiku-4-5-20251001",  # Latest Haiku
-        "claude-3-5-haiku-20241022",  # Legacy fallback
-        "gemini-2.5-flash",  # Latest Flash
-        "gemini-2.0-flash-exp",  # Legacy fallback
+        "claude-haiku-4-5-20251001",
+        "gemini-2.5-flash-lite",
     ],
     ModelTier.BALANCED: [
-        "gpt-4.1",
-        "claude-sonnet-4-5-20250929",  # Latest Sonnet
-        "claude-3-5-sonnet",  # Legacy fallback
-        "gemini-2.5-pro",  # Latest Pro
-        "gemini-1.5-pro",  # Legacy fallback
+        "gpt-5",
+        "claude-sonnet-4-5-20250929",
+        "gemini-2.5-flash",
     ],
     ModelTier.PREMIUM: [
-        "gpt-5",
-        "claude-sonnet-4-5-20250929",  # Latest Sonnet as premium
-        "claude-3-opus",  # Legacy fallback
-        "gemini-2.5-pro",  # Latest Pro as premium
-        "gemini-2.0-flash-exp",  # Experimental fallback
+        "gpt-5-pro",
+        "claude-opus-4-1-20250805",
+        "gemini-2.5-pro",
     ],
 }
 
@@ -137,7 +130,7 @@ class ModelSelector:
             tier: Model tier to select from (FAST, BALANCED, or PREMIUM)
 
         Returns:
-            Model identifier string (e.g., "gpt-4.1-mini", "claude-3-5-sonnet")
+            Model identifier string (e.g., "gpt-5-mini", "claude-sonnet-4-5-20250929")
 
         Raises:
             ValueError: When no models available for tier after filtering by ALLOWED_MODELS
@@ -146,7 +139,7 @@ class ModelSelector:
             >>> selector = ModelSelector(provider_preference=["openai"])
             >>> model = selector.select_model(ModelTier.FAST)
             >>> print(model)
-            "gpt-4.1-mini"
+            "gpt-5-mini"
         """
         # Get candidate models from tier mapping
         candidate_models = TIER_MODEL_MAP[tier]
@@ -213,8 +206,8 @@ class ModelSelector:
         who don't want to deal with tier enums directly.
 
         Complexity mapping:
-        - "low" → ModelTier.FAST (e.g., gpt-4.1-mini)
-        - "medium" → ModelTier.BALANCED (e.g., gpt-4.1)
+        - "low" → ModelTier.FAST (e.g., gpt-5-mini)
+        - "medium" → ModelTier.BALANCED (e.g., gpt-5)
         - "high" → ModelTier.PREMIUM (e.g., gpt-5)
 
         Args:
@@ -230,7 +223,7 @@ class ModelSelector:
             >>> selector = ModelSelector()
             >>> model = selector.select_model_by_complexity("low")
             >>> print(model)
-            "gpt-4.1-mini"
+            "gpt-5-mini"
         """
         # Map complexity to tier
         tier = COMPLEXITY_TIER_MAP.get(complexity.lower())
@@ -326,10 +319,10 @@ class ModelSelector:
 
         Example:
             >>> selector = ModelSelector(provider_preference=["openai", "anthropic"])
-            >>> models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
+            >>> models = ["claude-haiku-4-5-20251001", "gpt-5-mini", "gemini-2.5-flash-lite"]
             >>> sorted_models = selector._filter_by_preference(models)
             >>> print(sorted_models)
-            ["gpt-4.1-mini", "claude-3-5-haiku-20241022", "gemini-2.0-flash-exp"]
+            ["gpt-5-mini", "claude-haiku-4-5-20251001", "gemini-2.5-flash-lite"]
         """
         if not self.provider_preference:
             return models

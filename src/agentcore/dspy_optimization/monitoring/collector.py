@@ -7,17 +7,14 @@ monitoring and analysis.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from agentcore.dspy_optimization.models import (
-    PerformanceMetrics,
-    OptimizationTarget,
-)
+from agentcore.dspy_optimization.models import OptimizationTarget, PerformanceMetrics
 
 
 class AggregationMethod(str, Enum):
@@ -58,7 +55,7 @@ class MetricSnapshot(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     target: OptimizationTarget
     metrics: PerformanceMetrics
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     sample_count: int = Field(default=1)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -273,7 +270,7 @@ class MetricsCollector:
         Returns:
             Average metrics or None if no data
         """
-        end_time = datetime.utcnow()
+        end_time = datetime.now(UTC)
         start_time = end_time - timedelta(hours=window_hours)
 
         try:
@@ -394,7 +391,7 @@ class MetricsCollector:
         snapshots = self._snapshots.get(target_key, [])
 
         # Remove old snapshots beyond retention period
-        cutoff_time = datetime.utcnow() - timedelta(days=self.config.retention_days)
+        cutoff_time = datetime.now(UTC) - timedelta(days=self.config.retention_days)
         snapshots = [s for s in snapshots if s.timestamp >= cutoff_time]
 
         # Limit total snapshots

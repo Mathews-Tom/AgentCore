@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -89,9 +89,7 @@ class MLflowTracker:
                 experiment = mlflow.get_experiment(experiment_id)
             return experiment
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to set up MLflow experiment: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to set up MLflow experiment: {e}") from e
 
     async def start_run(
         self,
@@ -112,7 +110,7 @@ class MLflowTracker:
         """
         # Generate run name if not provided
         if run_name is None:
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             run_name = f"opt_{request.target.type}_{request.target.id}_{timestamp}"
 
         # Prepare tags
@@ -145,8 +143,12 @@ class MLflowTracker:
             request: Optimization request
         """
         # Log constraints
-        mlflow.log_param("max_optimization_time", request.constraints.max_optimization_time)
-        mlflow.log_param("min_improvement_threshold", request.constraints.min_improvement_threshold)
+        mlflow.log_param(
+            "max_optimization_time", request.constraints.max_optimization_time
+        )
+        mlflow.log_param(
+            "min_improvement_threshold", request.constraints.min_improvement_threshold
+        )
         mlflow.log_param("max_resource_usage", request.constraints.max_resource_usage)
 
         # Log objectives

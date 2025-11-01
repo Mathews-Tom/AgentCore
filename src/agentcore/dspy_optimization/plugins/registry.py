@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import inspect
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -151,9 +151,7 @@ class PluginRegistry:
             del self._plugins[plugin_name]
             del self._plugin_instances[plugin_name]
 
-    async def get_optimizer(
-        self, plugin_name: str, **kwargs: Any
-    ) -> BaseOptimizer:
+    async def get_optimizer(self, plugin_name: str, **kwargs: Any) -> BaseOptimizer:
         """
         Create optimizer instance from plugin
 
@@ -180,7 +178,7 @@ class PluginRegistry:
                 )
 
             # Update usage stats
-            registration.last_used = datetime.utcnow()
+            registration.last_used = datetime.now(UTC)
             registration.usage_count += 1
 
             # Create optimizer
@@ -252,9 +250,7 @@ class PluginRegistry:
             try:
                 # Import module
                 module_name = plugin_file.stem
-                spec = importlib.util.spec_from_file_location(
-                    module_name, plugin_file
-                )
+                spec = importlib.util.spec_from_file_location(module_name, plugin_file)
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
@@ -275,9 +271,7 @@ class PluginRegistry:
 
         return registered
 
-    async def update_config(
-        self, plugin_name: str, config: PluginConfig
-    ) -> None:
+    async def update_config(self, plugin_name: str, config: PluginConfig) -> None:
         """
         Update plugin configuration
 

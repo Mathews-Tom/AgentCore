@@ -7,17 +7,14 @@ for safe model updates.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from agentcore.dspy_optimization.models import (
-    OptimizationTarget,
-    PerformanceMetrics,
-)
+from agentcore.dspy_optimization.models import OptimizationTarget, PerformanceMetrics
 
 
 class DeploymentStrategy(str, Enum):
@@ -54,7 +51,7 @@ class ModelVersion(BaseModel):
         le=1.0,
         description="Traffic percentage for gradual deployment",
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     deployed_at: datetime | None = None
     deprecated_at: datetime | None = None
     parent_version_id: str | None = None
@@ -161,9 +158,9 @@ class ModelVersionManager:
             version.performance_metrics = performance_metrics
 
         if status == ModelStatus.DEPLOYED:
-            version.deployed_at = datetime.utcnow()
+            version.deployed_at = datetime.now(UTC)
         elif status in (ModelStatus.DEPRECATED, ModelStatus.ROLLED_BACK):
-            version.deprecated_at = datetime.utcnow()
+            version.deprecated_at = datetime.now(UTC)
 
         return version
 
@@ -195,7 +192,7 @@ class ModelVersionManager:
         # Update version
         version.status = ModelStatus.DEPLOYED
         version.traffic_percentage = traffic_percentage
-        version.deployed_at = datetime.utcnow()
+        version.deployed_at = datetime.now(UTC)
 
         # Update active version
         target_key = self._get_target_key(version.target)
@@ -266,7 +263,7 @@ class ModelVersionManager:
         # Mark current version as rolled back
         version.status = ModelStatus.ROLLED_BACK
         version.traffic_percentage = 0.0
-        version.deprecated_at = datetime.utcnow()
+        version.deprecated_at = datetime.now(UTC)
 
         # Get target version
         rollback_to_id = target_version_id or version.parent_version_id

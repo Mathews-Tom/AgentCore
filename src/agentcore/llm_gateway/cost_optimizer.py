@@ -8,26 +8,26 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     CostOptimizationRecommendation,
     CostReport,
     OptimizationContext,
     OptimizationStrategy,
     ProviderCostComparison,
 )
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.exceptions import PortkeyProviderError
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.exceptions import LLMGatewayProviderError
+from agentcore.llm_gateway.provider import (
     ProviderConfiguration,
     ProviderSelectionCriteria,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 logger = structlog.get_logger(__name__)
 
@@ -58,7 +58,9 @@ class CostOptimizer:
         self.optimization_window = timedelta(days=optimization_window_days)
 
         # Cache for provider comparisons (short-lived for performance)
-        self._comparison_cache: dict[str, tuple[datetime, list[ProviderCostComparison]]] = {}
+        self._comparison_cache: dict[
+            str, tuple[datetime, list[ProviderCostComparison]]
+        ] = {}
         self._cache_ttl = timedelta(minutes=5)
 
         logger.info(
@@ -87,13 +89,13 @@ class CostOptimizer:
             Selected provider configuration
 
         Raises:
-            PortkeyProviderError: If no suitable provider found
+            LLMGatewayProviderError: If no suitable provider found
         """
         # Get candidate providers matching base criteria
         candidates = self._get_candidate_providers(criteria, context)
 
         if not candidates:
-            raise PortkeyProviderError(
+            raise LLMGatewayProviderError(
                 "No providers available matching criteria and optimization context"
             )
 
@@ -101,17 +103,27 @@ class CostOptimizer:
         comparisons = self._compare_providers(candidates, context)
 
         # Select based on optimization strategy
-        selected = self._select_from_comparisons(comparisons, context.optimization_strategy)
+        selected = self._select_from_comparisons(
+            comparisons, context.optimization_strategy
+        )
 
         logger.info(
             "optimal_provider_selected",
             provider_id=selected.provider_id,
             estimated_cost=next(
-                (c.estimated_cost for c in comparisons if c.provider_id == selected.provider_id),
+                (
+                    c.estimated_cost
+                    for c in comparisons
+                    if c.provider_id == selected.provider_id
+                ),
                 None,
             ),
             total_score=next(
-                (c.total_score for c in comparisons if c.provider_id == selected.provider_id),
+                (
+                    c.total_score
+                    for c in comparisons
+                    if c.provider_id == selected.provider_id
+                ),
                 None,
             ),
             strategy=context.optimization_strategy,
@@ -160,7 +172,7 @@ class CostOptimizer:
         Returns:
             Cost report with analytics and recommendations
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         period_start = period_start or (now - timedelta(days=30))
         period_end = period_end or now
 
@@ -188,7 +200,9 @@ class CostOptimizer:
         efficiency_score = self._calculate_efficiency_score(summary, trends)
 
         # Identify optimization opportunities
-        opportunities = self._identify_optimization_opportunities(summary, recommendations)
+        opportunities = self._identify_optimization_opportunities(
+            summary, recommendations
+        )
 
         report = CostReport(
             report_id=str(uuid.uuid4()),
@@ -239,7 +253,10 @@ class CostOptimizer:
             candidates = [
                 p
                 for p in candidates
-                if all(cap in p.capabilities.capabilities for cap in criteria.required_capabilities)
+                if all(
+                    cap in p.capabilities.capabilities
+                    for cap in criteria.required_capabilities
+                )
             ]
 
         # Filter by data residency
@@ -252,12 +269,16 @@ class CostOptimizer:
 
         # Filter by tags
         if criteria.tags:
-            candidates = [p for p in candidates if all(tag in p.tags for tag in criteria.tags)]
+            candidates = [
+                p for p in candidates if all(tag in p.tags for tag in criteria.tags)
+            ]
 
         # Filter by excluded providers
         if criteria.excluded_providers:
             candidates = [
-                p for p in candidates if p.provider_id not in criteria.excluded_providers
+                p
+                for p in candidates
+                if p.provider_id not in criteria.excluded_providers
             ]
 
         # Filter by health status
@@ -267,7 +288,10 @@ class CostOptimizer:
                 for p in candidates
                 if p.health is None
                 or p.health.status in (ProviderStatus.HEALTHY, ProviderStatus.DEGRADED)
-                or (context.allow_degraded_providers and p.health.status == ProviderStatus.DEGRADED)
+                or (
+                    context.allow_degraded_providers
+                    and p.health.status == ProviderStatus.DEGRADED
+                )
             ]
 
         # Filter by success rate
@@ -332,7 +356,9 @@ class CostOptimizer:
             )
 
             # Calculate cost per 1K tokens
-            total_tokens = context.estimated_input_tokens + context.estimated_output_tokens
+            total_tokens = (
+                context.estimated_input_tokens + context.estimated_output_tokens
+            )
             cost_per_1k_tokens = (
                 (estimated_cost / total_tokens) * 1000 if total_tokens > 0 else 0.0
             )
@@ -506,7 +532,9 @@ class CostOptimizer:
                 )
             elif context.priority <= 3:
                 # Low priority - favor cost
-                score = cost_score * 0.6 + availability_score * 0.25 + quality_score * 0.15
+                score = (
+                    cost_score * 0.6 + availability_score * 0.25 + quality_score * 0.15
+                )
             else:
                 # Medium priority - balanced
                 score = (
@@ -533,10 +561,10 @@ class CostOptimizer:
             Selected provider configuration
 
         Raises:
-            PortkeyProviderError: If no provider can be selected
+            LLMGatewayProviderError: If no provider can be selected
         """
         if not comparisons:
-            raise PortkeyProviderError("No provider comparisons available")
+            raise LLMGatewayProviderError("No provider comparisons available")
 
         # Select the top-scored provider
         best = comparisons[0]
@@ -544,7 +572,7 @@ class CostOptimizer:
         # Get provider from registry
         provider = self.registry.get_provider(best.provider_id)
         if not provider:
-            raise PortkeyProviderError(f"Provider not found: {best.provider_id}")
+            raise LLMGatewayProviderError(f"Provider not found: {best.provider_id}")
 
         return provider
 
@@ -663,7 +691,9 @@ class CostOptimizer:
         first_half_avg = sum(costs[:mid]) / mid
         second_half_avg = sum(costs[mid:]) / (len(costs) - mid)
 
-        trend_direction = "increasing" if second_half_avg > first_half_avg else "decreasing"
+        trend_direction = (
+            "increasing" if second_half_avg > first_half_avg else "decreasing"
+        )
         trend_magnitude = abs(second_half_avg - first_half_avg) / first_half_avg * 100
 
         return {
@@ -717,12 +747,15 @@ class CostOptimizer:
                         affected_providers=[most_expensive_provider[0]],
                         affected_models=[],
                         metadata={},
-                        timestamp=datetime.now(),
+                        timestamp=datetime.now(UTC),
                     )
                 )
 
         # Recommendation: Increasing cost trend
-        if trends.get("trend") == "increasing" and trends.get("magnitude_percent", 0) > 10:
+        if (
+            trends.get("trend") == "increasing"
+            and trends.get("magnitude_percent", 0) > 10
+        ):
             recommendations.append(
                 CostOptimizationRecommendation(
                     recommendation_id=str(uuid.uuid4()),
@@ -743,7 +776,7 @@ class CostOptimizer:
                     affected_providers=[],
                     affected_models=[],
                     metadata=trends,
-                    timestamp=datetime.now(),
+                    timestamp=datetime.now(UTC),
                 )
             )
 
@@ -767,7 +800,9 @@ class CostOptimizer:
             return []
 
         total = sum(breakdown.values())
-        sorted_items = sorted(breakdown.items(), key=lambda x: x[1], reverse=True)[:limit]
+        sorted_items = sorted(breakdown.items(), key=lambda x: x[1], reverse=True)[
+            :limit
+        ]
 
         return [
             {
@@ -835,9 +870,15 @@ class CostOptimizer:
             Optimization opportunities
         """
         opportunities: dict[str, Any] = {
-            "total_potential_savings": sum(r.potential_savings for r in recommendations),
-            "high_impact_count": len([r for r in recommendations if r.impact == "high"]),
-            "medium_impact_count": len([r for r in recommendations if r.impact == "medium"]),
+            "total_potential_savings": sum(
+                r.potential_savings for r in recommendations
+            ),
+            "high_impact_count": len(
+                [r for r in recommendations if r.impact == "high"]
+            ),
+            "medium_impact_count": len(
+                [r for r in recommendations if r.impact == "medium"]
+            ),
             "low_impact_count": len([r for r in recommendations if r.impact == "low"]),
         }
 

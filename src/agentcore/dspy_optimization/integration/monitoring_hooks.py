@@ -7,9 +7,10 @@ in real-time during optimization runs.
 
 from __future__ import annotations
 
-from datetime import datetime
+from collections.abc import Callable
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 import structlog
 from pydantic import BaseModel, Field
@@ -42,7 +43,9 @@ class MonitoringEvent(BaseModel):
     event_type: MonitoringEventType = Field(..., description="Event type")
     agent_id: str = Field(..., description="Agent identifier")
     optimization_id: str = Field(..., description="Optimization run identifier")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Event timestamp")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Event timestamp"
+    )
     data: dict[str, Any] = Field(default_factory=dict, description="Event data")
     metrics: PerformanceMetrics | None = Field(None, description="Current metrics")
 
@@ -150,7 +153,7 @@ class OptimizationMonitor:
         """
         self._active_optimizations[optimization_id] = {
             "agent_id": agent_id,
-            "started_at": datetime.utcnow(),
+            "started_at": datetime.now(UTC),
             "baseline_metrics": baseline_metrics,
             "objectives": objectives,
             "iteration_count": 0,
@@ -195,7 +198,9 @@ class OptimizationMonitor:
         """
         if optimization_id in self._active_optimizations:
             self._active_optimizations[optimization_id]["iteration_count"] = iteration
-            self._active_optimizations[optimization_id]["current_metrics"] = current_metrics
+            self._active_optimizations[optimization_id]["current_metrics"] = (
+                current_metrics
+            )
 
         event = MonitoringEvent(
             event_type=MonitoringEventType.OPTIMIZATION_ITERATION,
@@ -241,7 +246,10 @@ class OptimizationMonitor:
             data={
                 "result": result.model_dump(),
                 "duration_seconds": (
-                    (datetime.utcnow() - optimization_data.get("started_at", datetime.utcnow())).total_seconds()
+                    (
+                        datetime.now(UTC)
+                        - optimization_data.get("started_at", datetime.now(UTC))
+                    ).total_seconds()
                     if "started_at" in optimization_data
                     else 0
                 ),

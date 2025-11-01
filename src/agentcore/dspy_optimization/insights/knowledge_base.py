@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -45,8 +45,8 @@ class KnowledgeEntry(BaseModel):
     confidence_score: float = Field(ge=0.0, le=1.0)
     applicable_targets: list[OptimizationTargetType] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     usage_count: int = 0
     success_rate: float = Field(default=0.0, ge=0.0, le=1.0)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -125,7 +125,7 @@ class KnowledgeBase:
             Created knowledge entry
         """
         entry = KnowledgeEntry(
-            entry_id=f"pattern_{pattern.pattern_key}_{int(datetime.utcnow().timestamp())}",
+            entry_id=f"pattern_{pattern.pattern_key}_{int(datetime.now(UTC).timestamp())}",
             entry_type=KnowledgeEntryType.PATTERN,
             title=pattern.pattern_description,
             description=f"Pattern with {pattern.success_rate:.1%} success rate",
@@ -169,7 +169,7 @@ class KnowledgeBase:
             Created knowledge entry
         """
         entry = KnowledgeEntry(
-            entry_id=f"lesson_{int(datetime.utcnow().timestamp())}",
+            entry_id=f"lesson_{int(datetime.now(UTC).timestamp())}",
             entry_type=KnowledgeEntryType.LESSON,
             title=title,
             description=description,
@@ -204,7 +204,7 @@ class KnowledgeBase:
             Created knowledge entry
         """
         entry = KnowledgeEntry(
-            entry_id=f"antipattern_{int(datetime.utcnow().timestamp())}",
+            entry_id=f"antipattern_{int(datetime.now(UTC).timestamp())}",
             entry_type=KnowledgeEntryType.ANTI_PATTERN,
             title=title,
             description=description,
@@ -351,7 +351,7 @@ class KnowledgeBase:
         entry.success_rate = new_successes / entry.usage_count
 
         # Update timestamp
-        entry.updated_at = datetime.utcnow()
+        entry.updated_at = datetime.now(UTC)
 
         # Persist if storage configured
         if self.storage_path:
@@ -399,7 +399,9 @@ class KnowledgeBase:
 
         # Identify failure patterns
         failed_results = [
-            r for r in results if r.status.value == "failed" or r.improvement_percentage < 0.05
+            r
+            for r in results
+            if r.status.value == "failed" or r.improvement_percentage < 0.05
         ]
         if len(failed_results) >= min_sample_size:
             # Extract common failure algorithm
@@ -411,8 +413,21 @@ class KnowledgeBase:
             if algos:
                 most_common = max(set(algos), key=algos.count)
                 failure_rate = len(
-                    [r for r in results if r.optimization_details and r.optimization_details.algorithm_used == most_common and r.improvement_percentage < 0.05]
-                ) / len([r for r in results if r.optimization_details and r.optimization_details.algorithm_used == most_common])
+                    [
+                        r
+                        for r in results
+                        if r.optimization_details
+                        and r.optimization_details.algorithm_used == most_common
+                        and r.improvement_percentage < 0.05
+                    ]
+                ) / len(
+                    [
+                        r
+                        for r in results
+                        if r.optimization_details
+                        and r.optimization_details.algorithm_used == most_common
+                    ]
+                )
 
                 if failure_rate > 0.3:
                     entry = await self.add_anti_pattern(
@@ -435,9 +450,11 @@ class KnowledgeBase:
             output_path: Output file path
         """
         data = {
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "entry_count": len(self._entries),
-            "entries": [entry.model_dump(mode="json") for entry in self._entries.values()],
+            "entries": [
+                entry.model_dump(mode="json") for entry in self._entries.values()
+            ],
         }
 
         output_path.parent.mkdir(parents=True, exist_ok=True)

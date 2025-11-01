@@ -10,10 +10,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Awaitable, Callable
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class OptimizationJob:
     optimization_id: str = ""
     status: JobStatus = JobStatus.QUEUED
     priority: int = 0  # Higher priority = executed first
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     result: Any = None
@@ -81,8 +82,8 @@ class JobQueue:
             config: Queue configuration
         """
         self.config = config or QueueConfig()
-        self._queue: asyncio.PriorityQueue[tuple[int, int, OptimizationJob]] = asyncio.PriorityQueue(
-            maxsize=self.config.max_queue_size
+        self._queue: asyncio.PriorityQueue[tuple[int, int, OptimizationJob]] = (
+            asyncio.PriorityQueue(maxsize=self.config.max_queue_size)
         )
         self._jobs: dict[str, OptimizationJob] = {}
         self._active_jobs: set[str] = set()
@@ -123,11 +124,13 @@ class JobQueue:
         if not self._running:
             return
 
-        self._running = False
-
         if graceful:
-            # Wait for queue to drain
+            # Wait for queue to drain BEFORE stopping workers
+            # This ensures workers continue processing remaining jobs
             await self._queue.join()
+
+        # Now stop accepting new jobs
+        self._running = False
 
         # Cancel all workers
         for worker in self._workers:
@@ -180,7 +183,9 @@ class JobQueue:
         self._counter += 1  # Increment counter for FIFO ordering within same priority
         try:
             await self._queue.put((priority, self._counter, job))
-            logger.debug(f"Queued job {job.job_id} (priority: {job.priority}, counter: {self._counter})")
+            logger.debug(
+                f"Queued job {job.job_id} (priority: {job.priority}, counter: {self._counter})"
+            )
             return job.job_id
         except asyncio.QueueFull:
             raise RuntimeError("Job queue is full")
@@ -226,11 +231,15 @@ class JobQueue:
 
             try:
                 if timeout is not None:
-                    await asyncio.wait_for(job._completion_event.wait(), timeout=timeout)
+                    await asyncio.wait_for(
+                        job._completion_event.wait(), timeout=timeout
+                    )
                 else:
                     await job._completion_event.wait()
             except asyncio.TimeoutError:
-                logger.warning(f"Job {job_id} timed out after {timeout}s (status: {job.status})")
+                logger.warning(
+                    f"Job {job_id} timed out after {timeout}s (status: {job.status})"
+                )
                 raise
 
         if job.status == JobStatus.FAILED:
@@ -308,13 +317,17 @@ class JobQueue:
                     priority, counter, job = await asyncio.wait_for(
                         self._queue.get(), timeout=1.0
                     )
-                    logger.debug(f"Worker {worker_id} got job {job.job_id} (priority: {-priority}, counter: {counter}, status: {job.status})")
+                    logger.debug(
+                        f"Worker {worker_id} got job {job.job_id} (priority: {-priority}, counter: {counter}, status: {job.status})"
+                    )
                 except asyncio.TimeoutError:
                     continue
 
                 # Skip cancelled jobs
                 if job.status == JobStatus.CANCELLED:
-                    logger.debug(f"Worker {worker_id} skipping cancelled job {job.job_id}")
+                    logger.debug(
+                        f"Worker {worker_id} skipping cancelled job {job.job_id}"
+                    )
                     self._queue.task_done()
                     task_done_called = True
                     # Signal completion for cancelled job
@@ -335,7 +348,7 @@ class JobQueue:
                 # Execute job
                 self._active_jobs.add(job.job_id)
                 job.status = JobStatus.RUNNING
-                job.started_at = datetime.utcnow()
+                job.started_at = datetime.now(UTC)
                 logger.debug(f"Worker {worker_id} executing job {job.job_id}")
 
                 will_retry = False
@@ -349,12 +362,15 @@ class JobQueue:
                     result = await handler(job)
                     job.result = result
                     job.status = JobStatus.COMPLETED
-                    job.completed_at = datetime.utcnow()
+                    job.completed_at = datetime.now(UTC)
 
                     logger.debug(f"Worker {worker_id} completed job {job.job_id}")
 
                 except Exception as e:
-                    logger.error(f"Worker {worker_id} job {job.job_id} failed: {e}", exc_info=True)
+                    logger.error(
+                        f"Worker {worker_id} job {job.job_id} failed: {e}",
+                        exc_info=True,
+                    )
 
                     # Retry logic
                     if job.retries < job.max_retries:
@@ -369,8 +385,10 @@ class JobQueue:
                     else:
                         job.status = JobStatus.FAILED
                         job.error = str(e)
-                        job.completed_at = datetime.utcnow()
-                        logger.error(f"Worker {worker_id} job {job.job_id} permanently failed after {job.retries} retries")
+                        job.completed_at = datetime.now(UTC)
+                        logger.error(
+                            f"Worker {worker_id} job {job.job_id} permanently failed after {job.retries} retries"
+                        )
 
                 finally:
                     self._active_jobs.discard(job.job_id)
@@ -380,14 +398,20 @@ class JobQueue:
                     if not will_retry:
                         self._queue.task_done()
                         task_done_called = True
-                        logger.debug(f"Worker {worker_id} marked job {job.job_id} as done (status: {job.status})")
+                        logger.debug(
+                            f"Worker {worker_id} marked job {job.job_id} as done (status: {job.status})"
+                        )
                     else:
-                        logger.debug(f"Worker {worker_id} skipping task_done for retried job {job.job_id}")
+                        logger.debug(
+                            f"Worker {worker_id} skipping task_done for retried job {job.job_id}"
+                        )
 
                     # Signal completion event for completed/failed jobs (not retries)
                     if not will_retry and job._completion_event:
                         job._completion_event.set()
-                        logger.debug(f"Worker {worker_id} signaled completion for job {job.job_id}")
+                        logger.debug(
+                            f"Worker {worker_id} signaled completion for job {job.job_id}"
+                        )
 
             except Exception as e:
                 logger.error(f"Worker {worker_id} unexpected error: {e}", exc_info=True)
@@ -413,14 +437,18 @@ class JobQueue:
         Returns:
             Number of jobs cleared
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         cleared = 0
 
         job_ids = list(self._jobs.keys())
         for job_id in job_ids:
             job = self._jobs[job_id]
 
-            if job.status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED):
+            if job.status in (
+                JobStatus.COMPLETED,
+                JobStatus.FAILED,
+                JobStatus.CANCELLED,
+            ):
                 if job.completed_at:
                     age = (now - job.completed_at).total_seconds()
                     if age > older_than_seconds:

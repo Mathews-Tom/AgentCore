@@ -9,13 +9,12 @@ from __future__ import annotations
 import statistics
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
-from agentcore.integration.portkey.metrics_collector import get_metrics_collector
-from agentcore.integration.portkey.metrics_models import (
+from agentcore.llm_gateway.metrics_collector import get_metrics_collector
+from agentcore.llm_gateway.metrics_models import (
     AlertSeverity,
     DashboardData,
     MetricType,
@@ -150,21 +149,31 @@ class PerformanceMonitor:
 
         # Calculate throughput
         duration_seconds = (end_time - start_time).total_seconds()
-        requests_per_second = total_requests / duration_seconds if duration_seconds > 0 else 0.0
+        requests_per_second = (
+            total_requests / duration_seconds if duration_seconds > 0 else 0.0
+        )
 
         total_tokens = sum(m.total_tokens for m in metrics)
-        tokens_per_second = total_tokens / duration_seconds if duration_seconds > 0 else 0.0
-        avg_tokens_per_request = total_tokens / total_requests if total_requests > 0 else 0.0
+        tokens_per_second = (
+            total_tokens / duration_seconds if duration_seconds > 0 else 0.0
+        )
+        avg_tokens_per_request = (
+            total_tokens / total_requests if total_requests > 0 else 0.0
+        )
 
         # Calculate cost statistics
         total_cost = sum(m.total_cost for m in metrics)
-        avg_cost_per_request = total_cost / total_requests if total_requests > 0 else 0.0
+        avg_cost_per_request = (
+            total_cost / total_requests if total_requests > 0 else 0.0
+        )
         avg_cost_per_1k_tokens = (
             (total_cost / total_tokens) * 1000 if total_tokens > 0 else 0.0
         )
 
         # Calculate error statistics
-        error_rate = (failed_requests / total_requests) * 100 if total_requests > 0 else 0.0
+        error_rate = (
+            (failed_requests / total_requests) * 100 if total_requests > 0 else 0.0
+        )
         timeout_count = len(
             [m for m in metrics if m.error_type and "timeout" in m.error_type.lower()]
         )
@@ -268,15 +277,11 @@ class PerformanceMonitor:
         )
 
         # Count violations
-        availability_violations = (
-            1 if availability_status == SLAStatus.VIOLATED else 0
-        )
+        availability_violations = 1 if availability_status == SLAStatus.VIOLATED else 0
         response_time_violations = (
             1 if response_time_status == SLAStatus.VIOLATED else 0
         )
-        success_rate_violations = (
-            1 if success_rate_status == SLAStatus.VIOLATED else 0
-        )
+        success_rate_violations = 1 if success_rate_status == SLAStatus.VIOLATED else 0
 
         sla_metrics = SLAMetrics(
             availability_target=self.availability_target,
@@ -346,9 +351,9 @@ class PerformanceMonitor:
 
         # Overall score (weighted average)
         overall_score = (
-            availability_score * 0.4 +
-            reliability_score * 0.4 +
-            cost_efficiency_score * 0.2
+            availability_score * 0.4
+            + reliability_score * 0.4
+            + cost_efficiency_score * 0.2
         )
 
         # Determine health status
@@ -379,7 +384,7 @@ class PerformanceMonitor:
             overall_score=overall_score,
             health_status=health_status,
             performance_level=performance_level,
-            last_updated=datetime.now(),
+            last_updated=datetime.now(UTC),
         )
 
     def generate_performance_insights(
@@ -436,7 +441,7 @@ class PerformanceMonitor:
             Prometheus-compatible metrics
         """
         # Get last 5 minutes of metrics
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(minutes=5)
 
         metrics = self._metrics_collector.get_metrics_history(
@@ -520,7 +525,7 @@ class PerformanceMonitor:
         Returns:
             Dashboard data with overview, SLA, and provider metrics
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         last_24h_start = now - timedelta(hours=24)
 
         # Calculate 24h metrics
@@ -612,12 +617,14 @@ class PerformanceMonitor:
         for alert in self._alerts:
             if alert.alert_id == alert_id:
                 alert.resolved = True
-                alert.resolved_at = datetime.now()
+                alert.resolved_at = datetime.now(UTC)
                 logger.info("alert_resolved", alert_id=alert_id)
                 return True
         return False
 
-    def _calculate_percentile(self, values: list[float | int], percentile: float) -> float:
+    def _calculate_percentile(
+        self, values: list[float | int], percentile: float
+    ) -> float:
         """Calculate percentile for a list of values.
 
         Args:
@@ -774,7 +781,7 @@ class PerformanceMonitor:
         alert_key = f"{metric_type}_{threshold_name}_{provider_id or 'global'}"
         last_alert = self._last_alert_time.get(alert_key)
 
-        if last_alert and (datetime.now() - last_alert) < self.alert_debounce:
+        if last_alert and (datetime.now(UTC) - last_alert) < self.alert_debounce:
             # Skip duplicate alert
             logger.debug(
                 "alert_debounced",
@@ -785,7 +792,9 @@ class PerformanceMonitor:
 
         # Calculate violation percentage
         if threshold_value > 0:
-            violation_percent = abs((actual_value - threshold_value) / threshold_value) * 100
+            violation_percent = (
+                abs((actual_value - threshold_value) / threshold_value) * 100
+            )
         else:
             violation_percent = 0.0
 
@@ -800,7 +809,7 @@ class PerformanceMonitor:
             violation_percent=violation_percent,
             provider_id=provider_id,
             model=model,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             title=title,
             message=message,
             acknowledged=False,
@@ -808,7 +817,7 @@ class PerformanceMonitor:
         )
 
         self._alerts.append(alert)
-        self._last_alert_time[alert_key] = datetime.now()
+        self._last_alert_time[alert_key] = datetime.now(UTC)
 
         logger.warning(
             "performance_alert_created",
@@ -847,7 +856,9 @@ class PerformanceMonitor:
         threshold = mean_latency + (2 * stdev_latency)
         high_latency_metrics = [m for m in metrics if m.total_latency_ms > threshold]
 
-        if not high_latency_metrics or len(high_latency_metrics) < (len(metrics) * 0.05):
+        if not high_latency_metrics or len(high_latency_metrics) < (
+            len(metrics) * 0.05
+        ):
             return None  # Less than 5% high latency requests
 
         # Analyze patterns
@@ -860,7 +871,8 @@ class PerformanceMonitor:
         )
         potential_improvement = {
             "latency_reduction_ms": avg_high_latency - mean_latency,
-            "affected_requests_percent": (len(high_latency_metrics) / len(metrics)) * 100,
+            "affected_requests_percent": (len(high_latency_metrics) / len(metrics))
+            * 100,
         }
 
         return PerformanceInsight(
@@ -885,7 +897,7 @@ class PerformanceMonitor:
             affected_providers=affected_providers,
             affected_models=affected_models,
             time_period={"start": start_time, "end": end_time},
-            generated_at=datetime.now(),
+            generated_at=datetime.now(UTC),
             metadata={},
         )
 
@@ -920,7 +932,11 @@ class PerformanceMonitor:
             if m.error_type:
                 error_types[m.error_type] += 1
 
-        most_common_error = max(error_types.items(), key=lambda x: x[1]) if error_types else ("unknown", 0)
+        most_common_error = (
+            max(error_types.items(), key=lambda x: x[1])
+            if error_types
+            else ("unknown", 0)
+        )
 
         affected_providers = list(set(m.provider_id for m in error_metrics))
 
@@ -948,7 +964,7 @@ class PerformanceMonitor:
             affected_providers=affected_providers,
             affected_models=[],
             time_period={"start": start_time, "end": end_time},
-            generated_at=datetime.now(),
+            generated_at=datetime.now(UTC),
             metadata={"error_types": dict(error_types)},
         )
 
@@ -1010,7 +1026,7 @@ class PerformanceMonitor:
             affected_providers=[],
             affected_models=[],
             time_period={"start": start_time, "end": end_time},
-            generated_at=datetime.now(),
+            generated_at=datetime.now(UTC),
             metadata={},
         )
 

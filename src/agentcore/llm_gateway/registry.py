@@ -13,12 +13,12 @@ from typing import Any
 
 import structlog
 
-from agentcore.integration.portkey.cost_models import OptimizationContext
-from agentcore.integration.portkey.exceptions import (
-    PortkeyConfigurationError,
-    PortkeyProviderError,
+from agentcore.llm_gateway.cost_models import OptimizationContext
+from agentcore.llm_gateway.exceptions import (
+    LLMGatewayConfigurationError,
+    LLMGatewayProviderError,
 )
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.provider import (
     CircuitBreakerState,
     ProviderCapability,
     ProviderCircuitBreaker,
@@ -54,7 +54,7 @@ class ProviderRegistry:
             provider: Provider configuration to register
 
         Raises:
-            PortkeyConfigurationError: If provider is invalid or already registered
+            LLMGatewayConfigurationError: If provider is invalid or already registered
         """
         if provider.provider_id in self._providers:
             logger.warning(
@@ -166,7 +166,7 @@ class ProviderRegistry:
             Provider selection result with primary and fallback providers
 
         Raises:
-            PortkeyProviderError: If no suitable provider found
+            LLMGatewayProviderError: If no suitable provider found
         """
         # Get enabled providers
         candidates = self.list_providers(enabled_only=True)
@@ -253,7 +253,7 @@ class ProviderRegistry:
             ]
 
         if not candidates:
-            error = PortkeyProviderError(
+            error = LLMGatewayProviderError(
                 "No suitable provider found matching criteria"
             )
             # Attach criteria details as attribute
@@ -477,12 +477,12 @@ class ProviderRegistry:
             file_path: Path to JSON file with provider configurations
 
         Raises:
-            PortkeyConfigurationError: If file cannot be loaded or parsed
+            LLMGatewayConfigurationError: If file cannot be loaded or parsed
         """
         try:
             path = Path(file_path)
             if not path.exists():
-                raise PortkeyConfigurationError(f"Provider config file not found: {file_path}")
+                raise LLMGatewayConfigurationError(f"Provider config file not found: {file_path}")
 
             with path.open("r") as f:
                 data = json.load(f)
@@ -502,7 +502,7 @@ class ProviderRegistry:
             )
 
         except Exception as e:
-            raise PortkeyConfigurationError(
+            raise LLMGatewayConfigurationError(
                 f"Failed to load provider configurations: {e}"
             ) from e
 
@@ -563,11 +563,11 @@ class ProviderRegistry:
             Provider selection result with cost-optimized selection
 
         Raises:
-            PortkeyProviderError: If no suitable provider found
+            LLMGatewayProviderError: If no suitable provider found
         """
         # Import here to avoid circular dependency
-        from agentcore.integration.portkey.cost_optimizer import CostOptimizer
-        from agentcore.integration.portkey.cost_tracker import get_cost_tracker
+        from agentcore.llm_gateway.cost_optimizer import CostOptimizer
+        from agentcore.llm_gateway.cost_tracker import get_cost_tracker
 
         # Create optimizer instance
         optimizer = CostOptimizer(
@@ -647,7 +647,7 @@ class ProviderRegistry:
         # Get cost statistics if available
         cost_stats: dict[str, Any] = {}
         try:
-            from agentcore.integration.portkey.cost_tracker import get_cost_tracker
+            from agentcore.llm_gateway.cost_tracker import get_cost_tracker
 
             cost_tracker = get_cost_tracker()
             cost_stats = cost_tracker.get_stats()

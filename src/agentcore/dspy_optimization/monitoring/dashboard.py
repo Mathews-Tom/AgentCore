@@ -7,15 +7,15 @@ optimization history for monitoring optimization effectiveness.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from agentcore.dspy_optimization.models import (
-    PerformanceMetrics,
-    OptimizationTarget,
     OptimizationStatus,
+    OptimizationTarget,
+    PerformanceMetrics,
 )
 from agentcore.dspy_optimization.monitoring.baseline import BaselineService
 from agentcore.dspy_optimization.monitoring.collector import (
@@ -65,7 +65,7 @@ class DashboardData(BaseModel):
     optimization_history: list[OptimizationHistory] = Field(default_factory=list)
     recommendations: list[PerformanceRecommendation] = Field(default_factory=list)
     time_range: tuple[datetime, datetime]
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DashboardService:
@@ -107,7 +107,7 @@ class DashboardService:
         Returns:
             Dashboard data
         """
-        end_time = datetime.utcnow()
+        end_time = datetime.now(UTC)
         start_time = end_time - timedelta(hours=hours)
 
         # Get current metrics
@@ -181,9 +181,7 @@ class DashboardService:
 
             # Get snapshots in interval
             interval_snapshots = [
-                s
-                for s in snapshots
-                if current_time <= s.timestamp < interval_end
+                s for s in snapshots if current_time <= s.timestamp < interval_end
             ]
 
             if interval_snapshots:
@@ -260,7 +258,7 @@ class DashboardService:
             Created history record
         """
         history_record = OptimizationHistory(
-            deployed_at=datetime.utcnow(),
+            deployed_at=datetime.now(UTC),
             algorithm=algorithm,
             improvement_percentage=improvement_percentage,
             status=OptimizationStatus.COMPLETED,
@@ -405,7 +403,7 @@ class DashboardService:
             "24h_average": day_avg.model_dump() if day_avg else None,
             "baseline": baseline.metrics.model_dump() if baseline else None,
             "baseline_age_hours": (
-                (datetime.utcnow() - baseline.created_at).total_seconds() / 3600
+                (datetime.now(UTC) - baseline.created_at).total_seconds() / 3600
                 if baseline
                 else None
             ),

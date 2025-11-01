@@ -1,4 +1,4 @@
-"""Portkey integration configuration management.
+"""LLM Gateway integration configuration management.
 
 Handles loading and validation of Portkey configuration from environment
 variables and configuration files.
@@ -12,11 +12,11 @@ from typing import Any
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from agentcore.integration.portkey.exceptions import PortkeyConfigurationError
+from agentcore.llm_gateway.exceptions import LLMGatewayConfigurationError
 
 
-class PortkeyConfig(BaseSettings):
-    """Configuration for Portkey AI Gateway integration.
+class LLMGatewayConfig(BaseSettings):
+    """Configuration for LLM Gateway integration.
 
     Loads configuration from environment variables with fallback to
     sensible defaults. All sensitive values should be loaded from
@@ -190,10 +190,10 @@ class PortkeyConfig(BaseSettings):
         """Validate that required configuration is present.
 
         Raises:
-            PortkeyConfigurationError: If required configuration is missing
+            LLMGatewayConfigurationError: If required configuration is missing
         """
         if not self.api_key:
-            raise PortkeyConfigurationError(
+            raise LLMGatewayConfigurationError(
                 "PORTKEY_API_KEY environment variable is required"
             )
 
@@ -251,14 +251,14 @@ class PortkeyConfig(BaseSettings):
         return base_config
 
     @classmethod
-    def from_env(cls) -> PortkeyConfig:
+    def from_env(cls) -> LLMGatewayConfig:
         """Create configuration from environment variables.
 
         Returns:
-            Configured PortkeyConfig instance
+            Configured LLMGatewayConfig instance
 
         Raises:
-            PortkeyConfigurationError: If required configuration is missing
+            LLMGatewayConfigurationError: If required configuration is missing
         """
         config = cls()
         config.validate_required_fields()

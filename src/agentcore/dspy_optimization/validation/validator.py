@@ -213,7 +213,7 @@ class AlgorithmValidator:
         Returns:
             Validation report
         """
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         validation_results: list[ValidationResult] = []
 
@@ -252,7 +252,7 @@ class AlgorithmValidator:
             algorithm_rankings=algorithm_rankings,
             summary=summary,
             recommendations=recommendations,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
     async def _compare_baselines(

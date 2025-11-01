@@ -1,4 +1,4 @@
-"""Portkey AI Gateway client wrapper.
+"""LLM Gateway AI Gateway client wrapper.
 
 Provides a high-level async client interface for interacting with Portkey
 Gateway and managing LLM requests across multiple providers.
@@ -14,25 +14,25 @@ from typing import Any
 import structlog
 from portkey_ai import AsyncPortkey
 
-from agentcore.integration.portkey.config import PortkeyConfig
-from agentcore.integration.portkey.exceptions import (
-    PortkeyAuthenticationError,
-    PortkeyError,
-    PortkeyProviderError,
-    PortkeyRateLimitError,
-    PortkeyTimeoutError,
-    PortkeyValidationError,
+from agentcore.llm_gateway.config import LLMGatewayConfig
+from agentcore.llm_gateway.exceptions import (
+    LLMGatewayAuthenticationError,
+    LLMGatewayError,
+    LLMGatewayProviderError,
+    LLMGatewayRateLimitError,
+    LLMGatewayTimeoutError,
+    LLMGatewayValidationError,
 )
-from agentcore.integration.portkey.metrics_collector import get_metrics_collector
-from agentcore.integration.portkey.models import LLMRequest, LLMResponse
+from agentcore.llm_gateway.metrics_collector import get_metrics_collector
+from agentcore.llm_gateway.models import LLMRequest, LLMResponse
 
 logger = structlog.get_logger(__name__)
 
 
-class PortkeyClient:
-    """Async client for Portkey AI Gateway integration.
+class LLMGatewayClient:
+    """Async client for LLM Gateway integration.
 
-    Wraps the Portkey Python SDK to provide:
+    Provides LLM Gateway functionality to provide:
     - Configuration management
     - Error handling and mapping
     - Request/response logging
@@ -42,21 +42,21 @@ class PortkeyClient:
 
     def __init__(
         self,
-        config: PortkeyConfig | None = None,
+        config: LLMGatewayConfig | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the Portkey client.
 
         Args:
-            config: Optional PortkeyConfig instance. If not provided,
+            config: Optional LLMGatewayConfig instance. If not provided,
                     configuration will be loaded from environment variables.
             **kwargs: Additional keyword arguments to override configuration
 
         Raises:
-            PortkeyConfigurationError: If required configuration is missing
+            LLMGatewayConfigurationError: If required configuration is missing
         """
         # Load or use provided configuration
-        self.config = config or PortkeyConfig.from_env()
+        self.config = config or LLMGatewayConfig.from_env()
 
         # Merge any override parameters
         client_config = self.config.merge_with_defaults(kwargs)
@@ -89,7 +89,7 @@ class PortkeyClient:
         request: LLMRequest,
         **kwargs: Any,
     ) -> LLMResponse:
-        """Execute an LLM completion request through Portkey.
+        """Execute an LLM completion request through LLM Gateway.
 
         Args:
             request: LLM request with messages and model requirements
@@ -99,15 +99,15 @@ class PortkeyClient:
             LLM response with completion and metadata
 
         Raises:
-            PortkeyAuthenticationError: Authentication failed
-            PortkeyProviderError: Provider error occurred
-            PortkeyRateLimitError: Rate limit exceeded
-            PortkeyTimeoutError: Request timed out
-            PortkeyValidationError: Request validation failed
-            PortkeyError: Other errors
+            LLMGatewayAuthenticationError: Authentication failed
+            LLMGatewayProviderError: Provider error occurred
+            LLMGatewayRateLimitError: Rate limit exceeded
+            LLMGatewayTimeoutError: Request timed out
+            LLMGatewayValidationError: Request validation failed
+            LLMGatewayError: Other errors
         """
         if self._closed:
-            raise PortkeyError("Client has been closed")
+            raise LLMGatewayError("Client has been closed")
 
         start_time = time.time()
 
@@ -127,7 +127,7 @@ class PortkeyClient:
             # Prepare request parameters
             params = self._prepare_request_params(request, kwargs)
 
-            # Execute completion through Portkey
+            # Execute completion through LLM Gateway
             response = await self._client.chat.completions.create(**params)
 
             # Calculate request latency
@@ -203,10 +203,10 @@ class PortkeyClient:
             Streaming response chunks
 
         Raises:
-            PortkeyError: If request fails or client is closed
+            LLMGatewayError: If request fails or client is closed
         """
         if self._closed:
-            raise PortkeyError("Client has been closed")
+            raise LLMGatewayError("Client has been closed")
 
         # Force streaming mode
         request.stream = True
@@ -326,7 +326,7 @@ class PortkeyClient:
         # Will be implemented in INT-003 with provider pricing data
         return None
 
-    def _map_exception(self, exc: Exception) -> PortkeyError:
+    def _map_exception(self, exc: Exception) -> LLMGatewayError:
         """Map exceptions to our custom exception types.
 
         Args:
@@ -339,26 +339,26 @@ class PortkeyClient:
 
         # Authentication errors
         if "auth" in exc_str or "unauthorized" in exc_str or "api key" in exc_str:
-            return PortkeyAuthenticationError(str(exc))
+            return LLMGatewayAuthenticationError(str(exc))
 
         # Rate limit errors
         if "rate limit" in exc_str or "429" in exc_str:
-            return PortkeyRateLimitError(str(exc))
+            return LLMGatewayRateLimitError(str(exc))
 
         # Timeout errors
         if "timeout" in exc_str or "timed out" in exc_str:
-            return PortkeyTimeoutError(str(exc), timeout=self.config.timeout)
+            return LLMGatewayTimeoutError(str(exc), timeout=self.config.timeout)
 
         # Provider errors
         if "provider" in exc_str or "model" in exc_str:
-            return PortkeyProviderError(str(exc))
+            return LLMGatewayProviderError(str(exc))
 
         # Validation errors
         if "validation" in exc_str or "invalid" in exc_str:
-            return PortkeyValidationError(str(exc))
+            return LLMGatewayValidationError(str(exc))
 
         # Generic error
-        return PortkeyError(str(exc))
+        return LLMGatewayError(str(exc))
 
     async def close(self) -> None:
         """Close the client and release resources.
@@ -372,7 +372,7 @@ class PortkeyClient:
             self._closed = True
             logger.info("portkey_client_closed")
 
-    async def __aenter__(self) -> PortkeyClient:
+    async def __aenter__(self) -> LLMGatewayClient:
         """Enter async context manager."""
         return self
 

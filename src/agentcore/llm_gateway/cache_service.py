@@ -17,7 +17,7 @@ import redis.asyncio as aioredis
 import structlog
 
 from agentcore.a2a_protocol.config import settings
-from agentcore.integration.portkey.cache_models import (
+from agentcore.llm_gateway.cache_models import (
     CacheConfig,
     CacheEntry,
     CacheKey,
@@ -25,8 +25,8 @@ from agentcore.integration.portkey.cache_models import (
     CacheStats,
     EvictionPolicy,
 )
-from agentcore.integration.portkey.exceptions import PortkeyError
-from agentcore.integration.portkey.models import LLMRequest, LLMResponse
+from agentcore.llm_gateway.exceptions import LLMGatewayError
+from agentcore.llm_gateway.models import LLMRequest, LLMResponse
 
 logger = structlog.get_logger(__name__)
 

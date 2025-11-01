@@ -8,12 +8,14 @@ performance and triggering re-optimization when performance degrades.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
 
-from agentcore.dspy_optimization.integration.agent_connector import AgentRuntimeConnector
+from agentcore.dspy_optimization.integration.agent_connector import (
+    AgentRuntimeConnector,
+)
 from agentcore.dspy_optimization.integration.monitoring_hooks import (
     OptimizationMonitor,
     optimization_monitor,
@@ -65,7 +67,9 @@ class AgentPerformanceTracker:
 
     def __init__(self) -> None:
         """Initialize performance tracker."""
-        self._performance_history: dict[str, list[tuple[datetime, PerformanceMetrics]]] = {}
+        self._performance_history: dict[
+            str, list[tuple[datetime, PerformanceMetrics]]
+        ] = {}
         self._baseline_metrics: dict[str, PerformanceMetrics] = {}
 
     def record_performance(self, agent_id: str, metrics: PerformanceMetrics) -> None:
@@ -79,11 +83,13 @@ class AgentPerformanceTracker:
         if agent_id not in self._performance_history:
             self._performance_history[agent_id] = []
 
-        self._performance_history[agent_id].append((datetime.utcnow(), metrics))
+        self._performance_history[agent_id].append((datetime.now(UTC), metrics))
 
         # Keep only recent history (last 1000 data points)
         if len(self._performance_history[agent_id]) > 1000:
-            self._performance_history[agent_id] = self._performance_history[agent_id][-1000:]
+            self._performance_history[agent_id] = self._performance_history[agent_id][
+                -1000:
+            ]
 
         logger.debug("Recorded performance", agent_id=agent_id)
 
@@ -126,7 +132,7 @@ class AgentPerformanceTracker:
         if agent_id not in self._performance_history:
             return []
 
-        cutoff_time = datetime.utcnow() - timedelta(seconds=window_seconds)
+        cutoff_time = datetime.now(UTC) - timedelta(seconds=window_seconds)
         recent = [
             metrics
             for timestamp, metrics in self._performance_history[agent_id]
@@ -154,9 +160,15 @@ class AgentPerformanceTracker:
             return None
 
         # Calculate averages
-        avg_success_rate = sum(m.success_rate for m in recent_metrics) / len(recent_metrics)
-        avg_cost = sum(m.avg_cost_per_task for m in recent_metrics) / len(recent_metrics)
-        avg_latency = sum(m.avg_latency_ms for m in recent_metrics) / len(recent_metrics)
+        avg_success_rate = sum(m.success_rate for m in recent_metrics) / len(
+            recent_metrics
+        )
+        avg_cost = sum(m.avg_cost_per_task for m in recent_metrics) / len(
+            recent_metrics
+        )
+        avg_latency = sum(m.avg_latency_ms for m in recent_metrics) / len(
+            recent_metrics
+        )
         avg_quality = sum(m.quality_score for m in recent_metrics) / len(recent_metrics)
 
         return PerformanceMetrics(
@@ -187,8 +199,12 @@ class AgentPerformanceTracker:
 
         # Calculate degradation across all metrics
         success_degradation = max(0.0, baseline.success_rate - current.success_rate)
-        cost_degradation = max(0.0, current.avg_cost_per_task - baseline.avg_cost_per_task) / max(baseline.avg_cost_per_task, 0.001)
-        latency_degradation = max(0.0, current.avg_latency_ms - baseline.avg_latency_ms) / max(baseline.avg_latency_ms, 1)
+        cost_degradation = max(
+            0.0, current.avg_cost_per_task - baseline.avg_cost_per_task
+        ) / max(baseline.avg_cost_per_task, 0.001)
+        latency_degradation = max(
+            0.0, current.avg_latency_ms - baseline.avg_latency_ms
+        ) / max(baseline.avg_latency_ms, 1)
         quality_degradation = max(0.0, baseline.quality_score - current.quality_score)
 
         # Weighted average degradation
@@ -248,7 +264,9 @@ class AgentPerformanceFeedbackLoop:
 
         logger.info("Agent performance feedback loop initialized")
 
-    def add_agent(self, agent_id: str, baseline_metrics: PerformanceMetrics | None = None) -> None:
+    def add_agent(
+        self, agent_id: str, baseline_metrics: PerformanceMetrics | None = None
+    ) -> None:
         """
         Add agent to feedback loop monitoring.
 
@@ -309,7 +327,9 @@ class AgentPerformanceFeedbackLoop:
             try:
                 await self._check_agent_performance(agent_id)
             except Exception as e:
-                logger.error("Error checking agent performance", agent_id=agent_id, error=str(e))
+                logger.error(
+                    "Error checking agent performance", agent_id=agent_id, error=str(e)
+                )
 
     async def _check_agent_performance(self, agent_id: str) -> None:
         """
@@ -365,7 +385,7 @@ class AgentPerformanceFeedbackLoop:
 
         last_opt = self._last_optimization[agent_id]
         cooldown = timedelta(seconds=self.config.cooldown_period_seconds)
-        can_optimize = datetime.utcnow() - last_opt > cooldown
+        can_optimize = datetime.now(UTC) - last_opt > cooldown
 
         if not can_optimize:
             logger.debug("Agent in optimization cooldown", agent_id=agent_id)
@@ -392,9 +412,13 @@ class AgentPerformanceFeedbackLoop:
             )
 
             # Validate request
-            is_valid, error = await self.connector.validate_optimization_request(request)
+            is_valid, error = await self.connector.validate_optimization_request(
+                request
+            )
             if not is_valid:
-                logger.error("Invalid optimization request", agent_id=agent_id, error=error)
+                logger.error(
+                    "Invalid optimization request", agent_id=agent_id, error=error
+                )
                 return
 
             # Get baseline metrics
@@ -420,7 +444,7 @@ class AgentPerformanceFeedbackLoop:
             )
 
             # Update last optimization timestamp
-            self._last_optimization[agent_id] = datetime.utcnow()
+            self._last_optimization[agent_id] = datetime.now(UTC)
 
             # Update agent metrics if optimization succeeded
             if result.optimized_performance:
@@ -450,7 +474,9 @@ class AgentPerformanceFeedbackLoop:
         """
         baseline = self.tracker.get_baseline(agent_id)
         current = self.tracker.calculate_average_performance(agent_id)
-        has_degraded, degradation = self.tracker.detect_performance_degradation(agent_id)
+        has_degraded, degradation = self.tracker.detect_performance_degradation(
+            agent_id
+        )
         last_opt = self._last_optimization.get(agent_id)
 
         return {

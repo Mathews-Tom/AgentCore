@@ -25,16 +25,16 @@ Example:
     registry = ProviderRegistry(timeout=60.0, max_retries=3)
 
     # Get provider for a specific model
-    client = registry.get_provider_for_model("gpt-4.1-mini")
+    client = registry.get_provider_for_model("gpt-5-mini")
     request = LLMRequest(
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": "Hello"}],
     )
     response = await client.complete(request)
 
     # List all available models
     models = registry.list_available_models()
-    print(models)  # ["gpt-4.1-mini", "claude-3-5-haiku-20241022", ...]
+    print(models)  # ["gpt-5-mini", "claude-haiku-4-5-20251001", ...]
     ```
 
 Error Handling:
@@ -73,24 +73,17 @@ from agentcore.a2a_protocol.services.llm_client_openai import LLMClientOpenAI
 # This mapping defines which provider handles each model
 MODEL_PROVIDER_MAP: dict[str, Provider] = {
     # OpenAI models
-    "gpt-4.1": Provider.OPENAI,
-    "gpt-4.1-mini": Provider.OPENAI,
-    "gpt-5": Provider.OPENAI,
     "gpt-5-mini": Provider.OPENAI,
-    # Anthropic models - latest
-    "claude-sonnet-4-5-20250929": Provider.ANTHROPIC,
+    "gpt-5": Provider.OPENAI,
+    "gpt-5-pro": Provider.OPENAI,
+    # Anthropic models
     "claude-haiku-4-5-20251001": Provider.ANTHROPIC,
-    # Anthropic models - legacy (keep for backwards compatibility)
-    "claude-3-5-sonnet": Provider.ANTHROPIC,
-    "claude-3-5-haiku-20241022": Provider.ANTHROPIC,
-    "claude-3-opus": Provider.ANTHROPIC,
-    # Gemini models - latest
+    "claude-sonnet-4-5-20250929": Provider.ANTHROPIC,
+    "claude-opus-4-1-20250805": Provider.ANTHROPIC,
+    # Gemini models
+    "gemini-2.5-flash-lite": Provider.GEMINI,
     "gemini-2.5-flash": Provider.GEMINI,
     "gemini-2.5-pro": Provider.GEMINI,
-    # Gemini models - legacy (keep for backwards compatibility)
-    "gemini-2.0-flash-exp": Provider.GEMINI,
-    "gemini-1.5-pro": Provider.GEMINI,
-    "gemini-2.0-flash-exp": Provider.GEMINI,
 }
 
 
@@ -136,7 +129,7 @@ class ProviderRegistry:
         4. Returns cached instance if already created (singleton)
 
         Args:
-            model: Model identifier (e.g., "gpt-4.1-mini", "claude-3-5-haiku-20241022")
+            model: Model identifier (e.g., "gpt-5-mini", "claude-haiku-4-5-20251001")
 
         Returns:
             LLMClient instance for the provider that handles this model
@@ -299,7 +292,7 @@ class LLMService:
 
         # Non-streaming completion
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Hello"}],
             trace_id="trace-123",
             source_agent="agent-001",
@@ -361,7 +354,7 @@ class LLMService:
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gpt-4.1-mini",
+            ...     model="gpt-5-mini",
             ...     messages=[{"role": "user", "content": "Explain async/await"}],
             ...     temperature=0.7,
             ...     max_tokens=200,
@@ -534,7 +527,7 @@ class LLMService:
 
         Example:
             >>> request = LLMRequest(
-            ...     model="claude-3-5-haiku-20241022",
+            ...     model="claude-haiku-4-5-20251001",
             ...     messages=[{"role": "user", "content": "Count to 5"}],
             ...     stream=True,
             ...     trace_id="trace-xyz-789",

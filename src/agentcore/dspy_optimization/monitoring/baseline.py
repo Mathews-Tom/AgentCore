@@ -7,16 +7,13 @@ enabling accurate improvement calculations and validation.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from agentcore.dspy_optimization.models import (
-    PerformanceMetrics,
-    OptimizationTarget,
-)
+from agentcore.dspy_optimization.models import OptimizationTarget, PerformanceMetrics
 
 
 class BaselineConfig(BaseModel):
@@ -49,7 +46,7 @@ class BaselineMeasurement(BaseModel):
     sample_count: int
     measurement_start: datetime
     measurement_end: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_valid: bool = True
 
 
@@ -103,12 +100,13 @@ class BaselineService:
         metrics = self._calculate_aggregate_metrics(samples)
 
         # Create baseline measurement
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         measurement = BaselineMeasurement(
             target=target,
             metrics=metrics,
             sample_count=len(samples),
-            measurement_start=now - timedelta(hours=self.config.measurement_window_hours),
+            measurement_start=now
+            - timedelta(hours=self.config.measurement_window_hours),
             measurement_end=now,
         )
 
@@ -153,7 +151,7 @@ class BaselineService:
         baseline = await self.get_baseline(target)
 
         if baseline:
-            time_since_update = datetime.utcnow() - baseline.created_at
+            time_since_update = datetime.now(UTC) - baseline.created_at
             if time_since_update.total_seconds() < (
                 self.config.update_frequency_hours * 3600
             ):
@@ -190,7 +188,7 @@ class BaselineService:
             return False
 
         # Check if baseline is expired
-        time_since_measurement = datetime.utcnow() - baseline.created_at
+        time_since_measurement = datetime.now(UTC) - baseline.created_at
         if time_since_measurement.total_seconds() > (
             self.config.update_frequency_hours * 3600
         ):

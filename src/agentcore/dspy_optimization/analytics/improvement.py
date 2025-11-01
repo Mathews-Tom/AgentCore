@@ -7,7 +7,7 @@ provides statistical validation, and analyzes improvement patterns.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -94,7 +94,7 @@ class ImprovementValidation(BaseModel):
     meets_target: bool
     exceeds_target: bool
     sample_sizes: dict[str, int] = Field(default_factory=dict)
-    validation_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    validation_timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     recommendations: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

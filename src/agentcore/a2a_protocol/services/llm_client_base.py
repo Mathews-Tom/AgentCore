@@ -160,7 +160,7 @@ class LLMClient(ABC):
         Example:
             >>> client = OpenAIClient(api_key="sk-...")
             >>> request = LLMRequest(
-            ...     model="gpt-4.1-mini",
+            ...     model="gpt-5-mini",
             ...     messages=[{"role": "user", "content": "Hello"}],
             ...     trace_id="trace-123",
             ... )
@@ -212,7 +212,7 @@ class LLMClient(ABC):
         Example:
             >>> client = OpenAIClient(api_key="sk-...")
             >>> request = LLMRequest(
-            ...     model="gpt-4.1-mini",
+            ...     model="gpt-5-mini",
             ...     messages=[{"role": "user", "content": "Count to 5"}],
             ...     stream=True,
             ... )
@@ -266,7 +266,7 @@ class LLMClient(ABC):
 
         Example:
             >>> raw = openai_client.chat.completions.create(...)
-            >>> request = LLMRequest(model="gpt-4.1-mini", messages=[...])
+            >>> request = LLMRequest(model="gpt-5-mini", messages=[...])
             >>> normalized = client._normalize_response(raw, request)
             >>> assert isinstance(normalized, LLMResponse)
             >>> assert normalized.provider == "openai"

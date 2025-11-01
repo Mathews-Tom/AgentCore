@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -98,7 +98,7 @@ class OptimizationTimer:
             return
 
         self._active_cycles[optimization_id] = {
-            "start_time": datetime.utcnow(),
+            "start_time": datetime.now(UTC),
             "start_timestamp": time.perf_counter(),
             "iterations": 0,
         }
@@ -133,7 +133,7 @@ class OptimizationTimer:
                     metric_name="duration",
                     current_value=elapsed,
                     threshold_value=warning_time,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                 )
                 self._add_alert(alert)
 
@@ -146,11 +146,13 @@ class OptimizationTimer:
                     metric_name="duration",
                     current_value=elapsed,
                     threshold_value=self.target_duration_seconds,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                 )
                 self._add_alert(alert)
 
-    def end_cycle(self, optimization_id: str, status: str = "completed") -> CycleMetrics:
+    def end_cycle(
+        self, optimization_id: str, status: str = "completed"
+    ) -> CycleMetrics:
         """
         End timing cycle and compute metrics
 
@@ -169,7 +171,7 @@ class OptimizationTimer:
         start_timestamp = cycle_data["start_timestamp"]
         iterations = cycle_data["iterations"]
 
-        end_time = datetime.utcnow()
+        end_time = datetime.now(UTC)
         duration = time.perf_counter() - start_timestamp
 
         # Calculate throughput
@@ -282,9 +284,7 @@ class OptimizationTimer:
         durations = [c.duration_seconds for c in self._completed_cycles]
         throughputs = [c.throughput for c in self._completed_cycles]
         exceeded = sum(1 for c in self._completed_cycles if c.exceeded_target)
-        successful = sum(
-            1 for c in self._completed_cycles if c.status == "completed"
-        )
+        successful = sum(1 for c in self._completed_cycles if c.status == "completed")
 
         return {
             "total_cycles": len(self._completed_cycles),
@@ -344,7 +344,9 @@ class OptimizationTimer:
         if not similar:
             self._alerts.append(alert)
             logger.log(
-                logging.WARNING if alert.severity == AlertSeverity.WARNING else logging.ERROR,
+                logging.WARNING
+                if alert.severity == AlertSeverity.WARNING
+                else logging.ERROR,
                 f"Performance alert ({alert.severity.value}): {alert.message}",
             )
 

@@ -6,16 +6,15 @@ quality, and resource usage for comprehensive performance monitoring.
 
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
 
-from agentcore.integration.portkey.cost_tracker import get_cost_tracker
-from agentcore.integration.portkey.metrics_models import RequestMetrics
+from agentcore.llm_gateway.cost_tracker import get_cost_tracker
+from agentcore.llm_gateway.metrics_models import RequestMetrics
 
 logger = structlog.get_logger(__name__)
 
@@ -67,7 +66,7 @@ class MetricsCollector:
             Collected request metrics
         """
         context = context or {}
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
 
         # Extract timing metrics
         total_latency = timing_data.get("total", 0)
@@ -255,7 +254,11 @@ class MetricsCollector:
         total_latency = int((end_time - start_time) * 1000)
 
         # Generate request ID if not provided
-        request_id = context.get("request_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
+        request_id = (
+            context.get("request_id", str(uuid.uuid4()))
+            if context
+            else str(uuid.uuid4())
+        )
 
         # Build timing data
         timing_data = {
@@ -304,7 +307,11 @@ class MetricsCollector:
         total_latency = int((end_time - start_time) * 1000)
 
         # Generate request ID if not provided
-        request_id = context.get("request_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
+        request_id = (
+            context.get("request_id", str(uuid.uuid4()))
+            if context
+            else str(uuid.uuid4())
+        )
 
         # Build timing data
         timing_data = {
@@ -393,7 +400,9 @@ class MetricsCollector:
             "total_metrics": total_metrics,
             "successful_requests": successful,
             "failed_requests": failed,
-            "success_rate": (successful / total_metrics * 100) if total_metrics > 0 else 0.0,
+            "success_rate": (successful / total_metrics * 100)
+            if total_metrics > 0
+            else 0.0,
         }
 
     def clear_history(self) -> None:

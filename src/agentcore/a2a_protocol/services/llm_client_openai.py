@@ -15,7 +15,7 @@ Features:
 - A2A context propagation via extra_headers (trace_id, source_agent, session_id)
 - Token usage extraction and tracking
 - Comprehensive error handling with custom exceptions
-- Support for gpt-4.1, gpt-4.1-mini, gpt-5, gpt-5-mini models
+- Support for gpt-5, gpt-5-mini, gpt-5, gpt-5-mini models
 
 Example:
     ```python
@@ -26,7 +26,7 @@ Example:
 
     # Non-streaming completion
     request = LLMRequest(
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": "Hello"}],
         trace_id="trace-123",
     )
@@ -137,7 +137,7 @@ class LLMClientOpenAI(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gpt-4.1-mini",
+            ...     model="gpt-5-mini",
             ...     messages=[{"role": "user", "content": "Hello"}],
             ...     trace_id="trace-123",
             ... )
@@ -274,7 +274,7 @@ class LLMClientOpenAI(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gpt-4.1-mini",
+            ...     model="gpt-5-mini",
             ...     messages=[{"role": "user", "content": "Count to 5"}],
             ...     stream=True,
             ... )

@@ -8,18 +8,18 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
 
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.provider import (
     CircuitBreakerState,
     ProviderCircuitBreaker,
     ProviderHealthMetrics,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 logger = structlog.get_logger(__name__)
 
@@ -143,7 +143,7 @@ class ProviderHealthMonitor:
             error: Error message if request failed
         """
         record = RequestRecord(
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             success=success,
             latency_ms=latency_ms,
             error=error,
@@ -165,7 +165,7 @@ class ProviderHealthMonitor:
                     # No running event loop - handle synchronously
                     circuit_breaker.consecutive_failures += 1
                     circuit_breaker.consecutive_successes = 0
-                    circuit_breaker.last_failure_time = datetime.now()
+                    circuit_breaker.last_failure_time = datetime.now(UTC)
 
         logger.debug(
             "request_recorded",
@@ -183,7 +183,7 @@ class ProviderHealthMonitor:
         Returns:
             Calculated health metrics
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         cutoff_time = now - self.monitoring_window
 
         # Get recent requests within monitoring window
@@ -209,7 +209,9 @@ class ProviderHealthMonitor:
         successful_requests = sum(1 for r in recent_records if r.success)
         failed_requests = total_requests - successful_requests
 
-        success_rate = successful_requests / total_requests if total_requests > 0 else 1.0
+        success_rate = (
+            successful_requests / total_requests if total_requests > 0 else 1.0
+        )
 
         # Calculate average latency (only for successful requests)
         successful_latencies = [r.latency_ms for r in recent_records if r.success]
@@ -300,7 +302,7 @@ class ProviderHealthMonitor:
         if not circuit_breaker:
             return
 
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Handle OPEN circuit breaker
         if circuit_breaker.state == CircuitBreakerState.OPEN:
@@ -352,7 +354,7 @@ class ProviderHealthMonitor:
             provider_id: Provider identifier
             circuit_breaker: Circuit breaker to update
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         circuit_breaker.consecutive_failures += 1
         circuit_breaker.consecutive_successes = 0

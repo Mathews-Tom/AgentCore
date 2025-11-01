@@ -6,7 +6,7 @@ Intelligent routing and proxying to backend services with health monitoring.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -165,7 +165,7 @@ class BackendRouter:
         if headers:
             headers = self._filter_headers(headers)
 
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         await self.load_balancer.record_request_start(service_id)
 
         try:
@@ -183,7 +183,7 @@ class BackendRouter:
                 )
 
             response_time = (
-                datetime.now(timezone.utc) - start_time
+                datetime.now(UTC) - start_time
             ).total_seconds() * 1000
 
             await self.load_balancer.record_request_end(
@@ -207,7 +207,7 @@ class BackendRouter:
 
         except httpx.TimeoutException as e:
             response_time = (
-                datetime.now(timezone.utc) - start_time
+                datetime.now(UTC) - start_time
             ).total_seconds() * 1000
 
             await self.load_balancer.record_request_end(
@@ -225,7 +225,7 @@ class BackendRouter:
 
         except httpx.RequestError as e:
             response_time = (
-                datetime.now(timezone.utc) - start_time
+                datetime.now(UTC) - start_time
             ).total_seconds() * 1000
 
             await self.load_balancer.record_request_end(

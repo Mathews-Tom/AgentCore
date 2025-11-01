@@ -4,7 +4,7 @@ Data models for DSPy optimization engine
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -113,6 +113,6 @@ class OptimizationResult(BaseModel):
     improvement_percentage: float = 0.0
     statistical_significance: float = 0.0
     optimization_details: OptimizationDetails | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     error_message: str | None = None

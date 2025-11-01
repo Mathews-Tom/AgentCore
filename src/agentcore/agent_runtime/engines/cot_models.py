@@ -130,7 +130,7 @@ class LLMRequest(BaseModel):
         description="Maximum tokens in response",
     )
     model: str = Field(
-        default="gpt-4.1",
+        default="gpt-5",
         description="LLM model identifier",
     )
 

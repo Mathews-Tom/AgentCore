@@ -7,17 +7,14 @@ for A/B testing optimization validation.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from agentcore.dspy_optimization.models import (
-    OptimizationTarget,
-    PerformanceMetrics,
-)
+from agentcore.dspy_optimization.models import OptimizationTarget, PerformanceMetrics
 
 
 class ExperimentStatus(str, Enum):
@@ -95,8 +92,8 @@ class Experiment(BaseModel):
     results: dict[str, ExperimentResult] = Field(default_factory=dict)
     start_time: datetime | None = None
     end_time: datetime | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def is_active(self) -> bool:
@@ -111,7 +108,7 @@ class Experiment(BaseModel):
         """Get elapsed duration since start"""
         if not self.start_time:
             return None
-        end = self.end_time or datetime.utcnow()
+        end = self.end_time or datetime.now(UTC)
         return end - self.start_time
 
     def get_control_result(self) -> ExperimentResult | None:
@@ -216,8 +213,8 @@ class ExperimentManager:
             raise ValueError(f"Experiment already started: {experiment_id}")
 
         experiment.status = ExperimentStatus.ACTIVE
-        experiment.start_time = datetime.utcnow()
-        experiment.updated_at = datetime.utcnow()
+        experiment.start_time = datetime.now(UTC)
+        experiment.updated_at = datetime.now(UTC)
 
         return experiment
 
@@ -267,7 +264,7 @@ class ExperimentManager:
         # Recalculate metrics
         result.metrics = self._calculate_metrics(result.samples)
 
-        experiment.updated_at = datetime.utcnow()
+        experiment.updated_at = datetime.now(UTC)
 
     async def pause_experiment(self, experiment_id: str) -> Experiment:
         """
@@ -290,7 +287,7 @@ class ExperimentManager:
             raise ValueError(f"Experiment not active: {experiment_id}")
 
         experiment.status = ExperimentStatus.PAUSED
-        experiment.updated_at = datetime.utcnow()
+        experiment.updated_at = datetime.now(UTC)
 
         return experiment
 
@@ -315,7 +312,7 @@ class ExperimentManager:
             raise ValueError(f"Experiment not paused: {experiment_id}")
 
         experiment.status = ExperimentStatus.ACTIVE
-        experiment.updated_at = datetime.utcnow()
+        experiment.updated_at = datetime.now(UTC)
 
         return experiment
 
@@ -345,8 +342,8 @@ class ExperimentManager:
             raise ValueError(f"Experiment not found: {experiment_id}")
 
         experiment.status = status
-        experiment.end_time = datetime.utcnow()
-        experiment.updated_at = datetime.utcnow()
+        experiment.end_time = datetime.now(UTC)
+        experiment.updated_at = datetime.now(UTC)
 
         return experiment
 

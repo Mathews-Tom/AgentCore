@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import wraps
 from typing import Any, TypeVar
 
@@ -111,7 +111,7 @@ class Bulkhead:
                 # Queue is full, reject request
                 async with self._lock:
                     self.metrics.total_rejected += 1
-                    self.metrics.last_rejection_time = datetime.now()
+                    self.metrics.last_rejection_time = datetime.now(UTC)
 
                 logger.warning(
                     "bulkhead_rejected",
@@ -245,9 +245,7 @@ def bulkhead(
     """
     bh = Bulkhead(config)
 
-    def decorator(
-        func: Callable[..., Awaitable[T]]
-    ) -> Callable[..., Awaitable[T]]:
+    def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             return await bh.execute(func, *args, **kwargs)
@@ -318,7 +316,4 @@ class BulkheadRegistry:
         Returns:
             Dictionary mapping names to metrics
         """
-        return {
-            name: bulkhead.metrics
-            for name, bulkhead in self._bulkheads.items()
-        }
+        return {name: bulkhead.metrics for name, bulkhead in self._bulkheads.items()}

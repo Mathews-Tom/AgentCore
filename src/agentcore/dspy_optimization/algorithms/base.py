@@ -31,7 +31,7 @@ class BaseOptimizer(ABC):
         Args:
             llm: DSPy language model for optimization
         """
-        self.llm = llm or dspy.LM("openai/gpt-4.1-mini")
+        self.llm = llm or dspy.LM("openai/gpt-5-mini")
 
     @abstractmethod
     async def optimize(

@@ -105,7 +105,7 @@ def _get_llm_requests_total() -> Counter:
 
     Labels:
         provider: LLM provider (openai, anthropic, gemini)
-        model: Model identifier (e.g., gpt-4.1-mini)
+        model: Model identifier (e.g., gpt-5-mini)
         status: Request status (success, error)
     """
     global _llm_requests_total
@@ -123,7 +123,7 @@ def _get_llm_requests_duration_seconds() -> Histogram:
 
     Labels:
         provider: LLM provider (openai, anthropic, gemini)
-        model: Model identifier (e.g., gpt-4.1-mini)
+        model: Model identifier (e.g., gpt-5-mini)
 
     Buckets optimized for LLM latency patterns (100ms to 5min):
     - 0.1s: Very fast cached/simple responses
@@ -153,7 +153,7 @@ def _get_llm_tokens_total() -> Counter:
 
     Labels:
         provider: LLM provider (openai, anthropic, gemini)
-        model: Model identifier (e.g., gpt-4.1-mini)
+        model: Model identifier (e.g., gpt-5-mini)
         token_type: Token type (prompt, completion)
     """
     global _llm_tokens_total
@@ -171,7 +171,7 @@ def _get_llm_errors_total() -> Counter:
 
     Labels:
         provider: LLM provider (openai, anthropic, gemini)
-        model: Model identifier (e.g., gpt-4.1-mini)
+        model: Model identifier (e.g., gpt-5-mini)
         error_type: Error type (ProviderError, ProviderTimeoutError, ModelNotAllowedError, etc.)
     """
     global _llm_errors_total

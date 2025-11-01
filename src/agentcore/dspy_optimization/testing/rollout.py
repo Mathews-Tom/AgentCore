@@ -7,16 +7,13 @@ based on statistical validation and rollback mechanisms.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from agentcore.dspy_optimization.testing.experiment import (
-    Experiment,
-    ExperimentStatus,
-)
+from agentcore.dspy_optimization.testing.experiment import Experiment, ExperimentStatus
 from agentcore.dspy_optimization.testing.validation import (
     ExperimentValidator,
     ValidationResult,
@@ -95,8 +92,8 @@ class RolloutState(BaseModel):
     traffic_percentage: float = 0.0
     step_start_time: datetime | None = None
     decisions: list[RolloutDecision] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class RolloutManager:
@@ -163,11 +160,11 @@ class RolloutManager:
         elif rollout_config.strategy == RolloutStrategy.CANARY:
             state.phase = RolloutPhase.CANARY
             state.traffic_percentage = rollout_config.canary_percentage
-            state.step_start_time = datetime.utcnow()
+            state.step_start_time = datetime.now(UTC)
         else:  # PROGRESSIVE or BLUE_GREEN
             state.phase = RolloutPhase.PROGRESSIVE
             state.traffic_percentage = rollout_config.progressive_steps[0]
-            state.step_start_time = datetime.utcnow()
+            state.step_start_time = datetime.now(UTC)
 
         # Record decision
         decision = RolloutDecision(
@@ -225,8 +222,13 @@ class RolloutManager:
 
         # Check for rollback conditions
         if state.config.auto_rollback_enabled:
-            if validation.improvement_percentage < state.config.rollback_threshold_percentage:
-                return await self._rollback(state, validation, "Performance below threshold")
+            if (
+                validation.improvement_percentage
+                < state.config.rollback_threshold_percentage
+            ):
+                return await self._rollback(
+                    state, validation, "Performance below threshold"
+                )
 
         # Check if sufficient samples collected
         if not experiment.has_minimum_samples():
@@ -240,7 +242,9 @@ class RolloutManager:
 
         # Check step duration
         if state.step_start_time:
-            elapsed_hours = (datetime.utcnow() - state.step_start_time).total_seconds() / 3600
+            elapsed_hours = (
+                datetime.now(UTC) - state.step_start_time
+            ).total_seconds() / 3600
             if elapsed_hours < state.config.step_duration_hours:
                 return RolloutDecision(
                     action="hold",
@@ -334,8 +338,8 @@ class RolloutManager:
         else:
             reason = "Invalid phase for advancement"
 
-        state.step_start_time = datetime.utcnow()
-        state.updated_at = datetime.utcnow()
+        state.step_start_time = datetime.now(UTC)
+        state.updated_at = datetime.now(UTC)
 
         decision = RolloutDecision(
             action="advance",
@@ -371,7 +375,7 @@ class RolloutManager:
         """
         state.phase = RolloutPhase.ROLLED_BACK
         state.traffic_percentage = 0.0
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(UTC)
 
         decision = RolloutDecision(
             action="rollback",

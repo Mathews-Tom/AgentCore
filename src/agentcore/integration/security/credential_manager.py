@@ -10,7 +10,7 @@ import base64
 import hashlib
 import hmac
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -73,7 +73,7 @@ class EncryptedCredential(BaseModel):
         description="Current credential status",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Creation timestamp",
     )
     expires_at: datetime | None = Field(
@@ -106,13 +106,13 @@ class EncryptedCredential(BaseModel):
 
         # Check expiration
         if self.expires_at:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if now >= self.expires_at:
                 return True
 
         # Check rotation interval
         if self.rotation_interval_days and self.last_rotated_at:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             rotation_due = self.last_rotated_at + timedelta(
                 days=self.rotation_interval_days
             )
@@ -127,7 +127,7 @@ class EncryptedCredential(BaseModel):
             True if credential has expired
         """
         if self.expires_at:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             return now >= self.expires_at
         return False
 
@@ -362,7 +362,7 @@ class CredentialManager:
         # Update credential
         old_cred.encrypted_value = encrypted_b64
         old_cred.version += 1
-        old_cred.last_rotated_at = datetime.now(timezone.utc)
+        old_cred.last_rotated_at = datetime.now(UTC)
         old_cred.status = CredentialStatus.ACTIVE
 
         logger.info(

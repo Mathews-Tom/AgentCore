@@ -6,7 +6,7 @@ Provides connection lifecycle management, health checks, and metrics integration
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -177,24 +177,26 @@ class APIConnector(ABC):
         Returns:
             Health check result with status and latency
         """
-        start_time = datetime.now()
+        start_time = datetime.now(UTC)
 
         try:
             # Call connector-specific health check
             is_healthy = await self._perform_health_check()
 
-            end_time = datetime.now()
+            end_time = datetime.now(UTC)
             latency_ms = (end_time - start_time).total_seconds() * 1000
 
             result = HealthCheckResult(
                 healthy=is_healthy,
-                status=ConnectorStatus.CONNECTED if is_healthy else ConnectorStatus.UNHEALTHY,
+                status=ConnectorStatus.CONNECTED
+                if is_healthy
+                else ConnectorStatus.UNHEALTHY,
                 latency_ms=latency_ms,
                 last_check=end_time,
             )
 
         except Exception as e:
-            end_time = datetime.now()
+            end_time = datetime.now(UTC)
             latency_ms = (end_time - start_time).total_seconds() * 1000
 
             result = HealthCheckResult(

@@ -9,7 +9,7 @@ import asyncio
 import random
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urljoin
 
@@ -371,7 +371,7 @@ class APIClient:
                 body_data = request.body
 
         # Execute request
-        request_time = datetime.now()
+        request_time = datetime.now(UTC)
         start_time = time.monotonic()
 
         try:
@@ -420,7 +420,7 @@ class APIClient:
             )
             raise APIError(f"HTTP error: {e}") from e
 
-        response_time = datetime.now()
+        response_time = datetime.now(UTC)
         duration_ms = (time.monotonic() - start_time) * 1000
 
         # Check for errors
@@ -446,7 +446,9 @@ class APIClient:
             response_time=response_time,
             duration_ms=duration_ms,
             attempt_number=attempt,
-            total_attempts=self.config.retry.max_attempts if self.config.retry.enabled else 1,
+            total_attempts=self.config.retry.max_attempts
+            if self.config.retry.enabled
+            else 1,
             request=request,
         )
 
@@ -490,7 +492,9 @@ class APIClient:
         # Add authentication headers
         if self.config.auth.scheme == AuthScheme.BEARER:
             if self.config.auth.token:
-                headers["Authorization"] = f"Bearer {self.config.auth.token.get_secret_value()}"
+                headers["Authorization"] = (
+                    f"Bearer {self.config.auth.token.get_secret_value()}"
+                )
 
         elif self.config.auth.scheme == AuthScheme.BASIC:
             if self.config.auth.username and self.config.auth.password:
@@ -502,7 +506,9 @@ class APIClient:
 
         elif self.config.auth.scheme == AuthScheme.API_KEY:
             if self.config.auth.api_key and self.config.auth.api_key_header:
-                headers[self.config.auth.api_key_header] = self.config.auth.api_key.get_secret_value()
+                headers[self.config.auth.api_key_header] = (
+                    self.config.auth.api_key.get_secret_value()
+                )
 
         elif self.config.auth.scheme == AuthScheme.OAUTH2:
             token = await self._get_oauth2_token()
@@ -523,11 +529,13 @@ class APIClient:
                 return self._oauth2_token
 
         # Request new token
-        if not all([
-            self.config.auth.oauth2_token_url,
-            self.config.auth.oauth2_client_id,
-            self.config.auth.oauth2_client_secret,
-        ]):
+        if not all(
+            [
+                self.config.auth.oauth2_token_url,
+                self.config.auth.oauth2_client_id,
+                self.config.auth.oauth2_client_secret,
+            ]
+        ):
             return None
 
         try:
@@ -570,9 +578,7 @@ class APIClient:
         try:
             error_body = response.json()
             error_message = (
-                error_body.get("error")
-                or error_body.get("message")
-                or response.text
+                error_body.get("error") or error_body.get("message") or response.text
             )
         except Exception:
             error_message = response.text

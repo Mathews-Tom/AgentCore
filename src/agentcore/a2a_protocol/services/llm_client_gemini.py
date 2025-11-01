@@ -22,7 +22,7 @@ Features:
 - A2A context propagation via request_options (limited support)
 - Token usage extraction and tracking
 - Comprehensive error handling with custom exceptions
-- Support for gemini-2.0-flash-exp, gemini-1.5-pro, gemini-2.0-flash-exp models
+- Support for gemini-2.5-flash-lite, gemini-2.5-flash, gemini-2.5-flash-lite models
 
 Example:
     ```python
@@ -33,7 +33,7 @@ Example:
 
     # Non-streaming completion
     request = LLMRequest(
-        model="gemini-2.0-flash-exp",
+        model="gemini-2.5-flash-lite",
         messages=[{"role": "user", "content": "Hello"}],
         trace_id="trace-123",
     )
@@ -182,7 +182,7 @@ class LLMClientGemini(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gemini-2.0-flash-exp",
+            ...     model="gemini-2.5-flash-lite",
             ...     messages=[{"role": "user", "content": "Hello"}],
             ...     trace_id="trace-123",
             ... )
@@ -311,7 +311,7 @@ class LLMClientGemini(LLMClient):
 
         Example:
             >>> request = LLMRequest(
-            ...     model="gemini-2.0-flash-exp",
+            ...     model="gemini-2.5-flash-lite",
             ...     messages=[{"role": "user", "content": "Count to 5"}],
             ...     stream=True,
             ... )

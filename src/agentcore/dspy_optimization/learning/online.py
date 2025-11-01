@@ -7,7 +7,7 @@ without full retraining using new data.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -82,7 +82,7 @@ class LearningUpdate(BaseModel):
     performance_before: PerformanceMetrics
     performance_after: PerformanceMetrics
     improvement: float
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

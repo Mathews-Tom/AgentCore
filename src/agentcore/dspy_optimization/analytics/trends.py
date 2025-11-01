@@ -7,7 +7,7 @@ for optimization performance over time.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -81,7 +81,7 @@ class TrendResult(BaseModel):
     volatility: float
     data_points: int
     time_span_days: float
-    analysis_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    analysis_timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TrendForecast(BaseModel):

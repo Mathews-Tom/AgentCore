@@ -8,20 +8,20 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     BudgetAlert,
     BudgetAlertSeverity,
     BudgetConfig,
+    BudgetThreshold,
     CostMetrics,
-    CostPeriod,
     CostSummary,
 )
-from agentcore.integration.portkey.exceptions import PortkeyBudgetExceededError
+from agentcore.llm_gateway.exceptions import LLMGatewayBudgetExceededError
 
 logger = structlog.get_logger(__name__)
 
@@ -98,6 +98,10 @@ class CostTracker:
         elif output_tokens is None:
             output_tokens = tokens - input_tokens
 
+        # Type narrowing: ensure both values are set
+        assert input_tokens is not None
+        assert output_tokens is not None
+
         metrics = CostMetrics(
             total_cost=cost,
             input_cost=cost / 2,  # Simple split assumption
@@ -106,7 +110,7 @@ class CostTracker:
             output_tokens=output_tokens,
             provider_id=provider,
             model=model,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             latency_ms=latency_ms,
             request_id=request_id,
             tenant_id=tenant_id,
@@ -124,7 +128,7 @@ class CostTracker:
             metrics: Cost metrics to record
 
         Raises:
-            PortkeyBudgetExceededError: If hard budget limit exceeded
+            LLMGatewayBudgetExceededError: If hard budget limit exceeded
         """
         # Add to history
         self._cost_history.append(metrics)
@@ -142,7 +146,7 @@ class CostTracker:
 
                     # Enforce hard limit if enabled
                     if budget.hard_limit and budget.current_spend > budget.limit_amount:
-                        error = PortkeyBudgetExceededError(
+                        error = LLMGatewayBudgetExceededError(
                             f"Budget exceeded for tenant {budget.tenant_id}: "
                             f"${budget.current_spend:.2f} / ${budget.limit_amount:.2f}"
                         )
@@ -213,7 +217,7 @@ class CostTracker:
             output_tokens=output_tokens,
             provider_id=provider_id,
             model=model,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             latency_ms=latency_ms,
             request_id=request_id,
             tenant_id=tenant_id,
@@ -240,7 +244,7 @@ class CostTracker:
         Returns:
             Cost summary for the period
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         period_start = period_start or (now - timedelta(days=30))
         period_end = period_end or now
 
@@ -374,7 +378,7 @@ class CostTracker:
             return True, None
 
         # Check if budget period is active
-        now = datetime.now()
+        now = datetime.now(UTC)
         if not (budget.period_start <= now <= budget.period_end):
             return True, "Budget period not active"
 
@@ -485,9 +489,13 @@ class CostTracker:
         Returns:
             Dictionary with statistics
         """
-        now = datetime.now()
-        last_24h = [m for m in self._cost_history if m.timestamp >= now - timedelta(days=1)]
-        last_7d = [m for m in self._cost_history if m.timestamp >= now - timedelta(days=7)]
+        now = datetime.now(UTC)
+        last_24h = [
+            m for m in self._cost_history if m.timestamp >= now - timedelta(days=1)
+        ]
+        last_7d = [
+            m for m in self._cost_history if m.timestamp >= now - timedelta(days=7)
+        ]
 
         total_records = len(self._cost_history)
         total_cost = sum(m.total_cost for m in self._cost_history)
@@ -498,7 +506,9 @@ class CostTracker:
             "total_cost": total_cost,
             "active_budgets": len(self._budgets),
             "total_alerts": len(self._alerts),
-            "unacknowledged_alerts": len([a for a in self._alerts if not a.acknowledged]),
+            "unacknowledged_alerts": len(
+                [a for a in self._alerts if not a.acknowledged]
+            ),
             "last_24h_requests": len(last_24h),
             "last_24h_cost": sum(m.total_cost for m in last_24h),
             "last_7d_requests": len(last_7d),
@@ -531,7 +541,7 @@ class CostTracker:
                 last_alert = self._last_alert_time.get(alert_key)
 
                 if last_alert is None or (
-                    datetime.now() - last_alert >= self.alert_debounce
+                    datetime.now(UTC) - last_alert >= self.alert_debounce
                 ):
                     # Generate alert
                     alert = self._create_alert(
@@ -541,7 +551,7 @@ class CostTracker:
                     )
 
                     self._alerts.append(alert)
-                    self._last_alert_time[alert_key] = datetime.now()
+                    self._last_alert_time[alert_key] = datetime.now(UTC)
 
                     logger.warning(
                         "budget_alert_triggered",
@@ -602,14 +612,14 @@ class CostTracker:
             threshold=threshold,
             current_spend=budget.current_spend,
             percent_consumed=percent_consumed,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             message=message,
             acknowledged=False,
         )
 
     def _cleanup_old_history(self) -> None:
         """Remove cost history older than retention period."""
-        cutoff_time = datetime.now() - self.history_retention
+        cutoff_time = datetime.now(UTC) - self.history_retention
         initial_count = len(self._cost_history)
 
         self._cost_history = [

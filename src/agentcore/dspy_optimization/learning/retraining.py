@@ -7,7 +7,7 @@ and performance thresholds.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -85,7 +85,7 @@ class RetrainingTrigger(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     target: OptimizationTarget
     condition: TriggerCondition
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -197,7 +197,7 @@ class RetrainingManager:
                     )
             else:
                 # Check if schedule interval has elapsed
-                elapsed = datetime.utcnow() - last_retraining
+                elapsed = datetime.now(UTC) - last_retraining
                 schedule_interval = timedelta(hours=self.config.schedule_interval_hours)
 
                 if elapsed >= schedule_interval:
@@ -309,15 +309,19 @@ class RetrainingManager:
         job.status = status
 
         if status == RetrainingStatus.RUNNING and not job.started_at:
-            job.started_at = datetime.utcnow()
+            job.started_at = datetime.now(UTC)
 
-        if status in (RetrainingStatus.COMPLETED, RetrainingStatus.FAILED, RetrainingStatus.CANCELLED):
-            job.completed_at = datetime.utcnow()
+        if status in (
+            RetrainingStatus.COMPLETED,
+            RetrainingStatus.FAILED,
+            RetrainingStatus.CANCELLED,
+        ):
+            job.completed_at = datetime.now(UTC)
 
             if status == RetrainingStatus.COMPLETED:
                 # Update last retraining time
                 target_key = self._get_target_key(job.target)
-                self._last_retraining[target_key] = datetime.utcnow()
+                self._last_retraining[target_key] = datetime.now(UTC)
                 self._sample_counts[f"{target_key}_last_training"] = job.samples_used
 
         if validation_improvement:
@@ -372,7 +376,7 @@ class RetrainingManager:
             raise ValueError(f"Cannot cancel completed job: {job_id}")
 
         job.status = RetrainingStatus.CANCELLED
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(UTC)
 
         return job
 
@@ -410,9 +414,7 @@ class RetrainingManager:
 
         if target:
             target_key = self._get_target_key(target)
-            jobs = [
-                j for j in jobs if self._get_target_key(j.target) == target_key
-            ]
+            jobs = [j for j in jobs if self._get_target_key(j.target) == target_key]
 
         if status:
             jobs = [j for j in jobs if j.status == status]

@@ -120,15 +120,23 @@ class Settings(BaseSettings):
     # LLM Service Configuration
     ALLOWED_MODELS: list[str] = Field(
         default=[
-            "gpt-4.1-mini",
+            # OpenAI models
             "gpt-5-mini",
-            "claude-3-5-haiku-20241022",
-            "gemini-2.0-flash-exp",
+            "gpt-5",
+            "gpt-5-pro",
+            # Anthropic models
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-5-20250929",
+            "claude-opus-4-1-20250805",
+            # Gemini models
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
         ],
         description="List of allowed LLM models for the service",
     )
     LLM_DEFAULT_MODEL: str = Field(
-        default="gpt-4.1-mini", description="Default LLM model to use"
+        default="gpt-5-mini", description="Default LLM model to use"
     )
 
     OPENAI_API_KEY: str | None = Field(

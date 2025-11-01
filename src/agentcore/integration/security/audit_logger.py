@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -71,7 +71,7 @@ class AuditEvent(BaseModel):
         description="Unique event identifier",
     )
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Event timestamp (UTC)",
     )
     user_id: str | None = Field(
@@ -460,7 +460,7 @@ class AuditLogger:
         Returns:
             Number of events removed
         """
-        cutoff_time = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
+        cutoff_time = datetime.now(UTC) - timedelta(days=self._retention_days)
 
         old_events = [e for e in self._events if e.timestamp < cutoff_time]
         self._events = [e for e in self._events if e.timestamp >= cutoff_time]

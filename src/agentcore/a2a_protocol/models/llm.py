@@ -30,9 +30,9 @@ class ModelTier(str, Enum):
     """Model tier classification for runtime selection.
 
     Used by ModelSelector to choose appropriate models based on task requirements:
-    - FAST: Low latency, cost-effective models (e.g., gpt-4.1-mini, gemini-2.0-flash-exp)
-    - BALANCED: Balance of quality and cost (e.g., claude-3-5-haiku)
-    - PREMIUM: Highest quality models (e.g., gpt-5, claude-3-5-sonnet)
+    - FAST: Low latency, cost-effective models (e.g., gpt-5-mini, gemini-2.5-flash-lite)
+    - BALANCED: Balance of quality and cost (e.g., claude-haiku-4-5-20251001)
+    - PREMIUM: Highest quality models (e.g., gpt-5, claude-sonnet-4-5-20250929)
     """
 
     FAST = "fast"

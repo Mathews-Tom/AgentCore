@@ -7,7 +7,7 @@ including infrastructure costs, compute time, and business value.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -86,7 +86,7 @@ class ROIReport(BaseModel):
     is_profitable: bool
     break_even_date: datetime | None = None
     recommendations: list[str] = Field(default_factory=list)
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -210,7 +210,7 @@ class ROICalculator:
         # Break-even date
         break_even_date = None
         if payback_days < float("inf"):
-            break_even_date = datetime.utcnow() + timedelta(days=payback_days)
+            break_even_date = datetime.now(UTC) + timedelta(days=payback_days)
 
         # Performance improvements
         perf_improvements = {

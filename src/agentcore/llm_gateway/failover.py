@@ -11,21 +11,21 @@ from typing import Any
 
 import structlog
 
-from agentcore.integration.portkey.client import PortkeyClient
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.exceptions import (
-    PortkeyError,
-    PortkeyProviderError,
-    PortkeyRateLimitError,
-    PortkeyTimeoutError,
+from agentcore.llm_gateway.client import LLMGatewayClient
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.exceptions import (
+    LLMGatewayError,
+    LLMGatewayProviderError,
+    LLMGatewayRateLimitError,
+    LLMGatewayTimeoutError,
 )
-from agentcore.integration.portkey.health import ProviderHealthMonitor
-from agentcore.integration.portkey.models import LLMRequest, LLMResponse
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.health import ProviderHealthMonitor
+from agentcore.llm_gateway.models import LLMRequest, LLMResponse
+from agentcore.llm_gateway.provider import (
     CircuitBreakerState,
     ProviderSelectionCriteria,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 logger = structlog.get_logger(__name__)
 
@@ -39,7 +39,7 @@ class FailoverManager:
 
     def __init__(
         self,
-        client: PortkeyClient,
+        client: LLMGatewayClient,
         registry: ProviderRegistry,
         health_monitor: ProviderHealthMonitor,
         cost_tracker: CostTracker | None = None,
@@ -85,8 +85,8 @@ class FailoverManager:
             LLM response from successful provider
 
         Raises:
-            PortkeyProviderError: If all providers fail
-            PortkeyError: For other errors
+            LLMGatewayProviderError: If all providers fail
+            LLMGatewayError: For other errors
         """
         # Use default criteria if not provided
         if criteria is None:
@@ -213,9 +213,9 @@ class FailoverManager:
                 return response
 
             except (
-                PortkeyRateLimitError,
-                PortkeyTimeoutError,
-                PortkeyProviderError,
+                LLMGatewayRateLimitError,
+                LLMGatewayTimeoutError,
+                LLMGatewayProviderError,
             ) as e:
                 # Retriable errors - record failure and try next provider
                 latency_ms = int((time.time() - start_time) * 1000)
@@ -267,7 +267,7 @@ class FailoverManager:
                 raise
 
         # All providers failed
-        error = PortkeyProviderError(
+        error = LLMGatewayProviderError(
             f"All {len(providers_to_try)} provider(s) failed"
         )
         # Attach failure details as attribute
@@ -295,7 +295,7 @@ class FailoverManager:
         if request.model_requirements:
             if request.model_requirements.capabilities:
                 # Map string capabilities to enum
-                from agentcore.integration.portkey.provider import ProviderCapability
+                from agentcore.llm_gateway.provider import ProviderCapability
 
                 criteria.required_capabilities = [
                     ProviderCapability(cap)
@@ -313,7 +313,7 @@ class FailoverManager:
                 criteria.max_latency_ms = request.model_requirements.max_latency_ms
 
             if request.model_requirements.data_residency:
-                from agentcore.integration.portkey.provider import DataResidency
+                from agentcore.llm_gateway.provider import DataResidency
 
                 # Try to map to DataResidency enum
                 try:
@@ -377,20 +377,20 @@ class FailoverManager:
             LLM response from provider
 
         Raises:
-            PortkeyProviderError: If provider not found or unavailable
-            PortkeyError: For other errors
+            LLMGatewayProviderError: If provider not found or unavailable
+            LLMGatewayError: For other errors
         """
         # Get provider
         provider = self.registry.get_provider(provider_id)
         if not provider:
-            raise PortkeyProviderError(f"Provider not found: {provider_id}")
+            raise LLMGatewayProviderError(f"Provider not found: {provider_id}")
 
         if not provider.enabled:
-            raise PortkeyProviderError(f"Provider is disabled: {provider_id}")
+            raise LLMGatewayProviderError(f"Provider is disabled: {provider_id}")
 
         # Check availability
         if not self.health_monitor.is_provider_available(provider_id):
-            error = PortkeyProviderError(
+            error = LLMGatewayProviderError(
                 f"Provider is unavailable: {provider_id}"
             )
             error.details = {"health": provider.health}  # type: ignore[attr-defined]
@@ -480,5 +480,5 @@ class FailoverManager:
             selection = self.registry.select_provider(criteria)
             # Count primary + fallbacks
             return 1 + len(selection.fallback_providers)
-        except PortkeyProviderError:
+        except LLMGatewayProviderError:
             return 0

@@ -49,7 +49,7 @@ class OptimizationPipeline:
             mlflow_config: MLflow configuration for experiment tracking
             enable_tracking: Enable MLflow tracking (default: True)
         """
-        self.llm = llm or dspy.LM("openai/gpt-4.1-mini")
+        self.llm = llm or dspy.LM("openai/gpt-5-mini")
         self.optimizers: dict[str, BaseOptimizer] = {
             "miprov2": MIPROv2Optimizer(llm=self.llm),
             "gepa": GEPAOptimizer(llm=self.llm),

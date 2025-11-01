@@ -7,7 +7,7 @@ into a complete continuous learning system.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -38,10 +38,7 @@ from agentcore.dspy_optimization.learning.versioning import (
     ModelVersion,
     ModelVersionManager,
 )
-from agentcore.dspy_optimization.models import (
-    OptimizationTarget,
-    PerformanceMetrics,
-)
+from agentcore.dspy_optimization.models import OptimizationTarget, PerformanceMetrics
 
 
 class PipelineStatus(str, Enum):
@@ -168,31 +165,37 @@ class ContinuousLearningPipeline:
             update = await self.online_learner.add_training_sample(target, sample)
 
             if update:
-                result["actions"].append({
-                    "type": "online_update",
-                    "improvement": update.improvement,
-                })
+                result["actions"].append(
+                    {
+                        "type": "online_update",
+                        "improvement": update.improvement,
+                    }
+                )
                 await self._update_metrics(target, "update")
 
             # Check for drift
             drift = await self.drift_detector.check_drift(target)
 
             if drift:
-                result["actions"].append({
-                    "type": "drift_detected",
-                    "status": drift.status.value,
-                    "degradation": drift.degradation_percentage,
-                })
+                result["actions"].append(
+                    {
+                        "type": "drift_detected",
+                        "status": drift.status.value,
+                        "degradation": drift.degradation_percentage,
+                    }
+                )
                 await self._update_metrics(target, "drift")
 
                 # Check if retraining should be triggered
                 trigger = await self._handle_drift(target, drift)
 
                 if trigger:
-                    result["actions"].append({
-                        "type": "retraining_triggered",
-                        "condition": trigger.condition.value,
-                    })
+                    result["actions"].append(
+                        {
+                            "type": "retraining_triggered",
+                            "condition": trigger.condition.value,
+                        }
+                    )
 
             # Check for other retraining triggers
             sample_count = len(self.online_learner._training_data.get(target_key, []))
@@ -203,18 +206,24 @@ class ContinuousLearningPipeline:
                 sample_count=sample_count,
             )
 
-            if trigger and "retraining_triggered" not in [a["type"] for a in result["actions"]]:
-                result["actions"].append({
-                    "type": "retraining_triggered",
-                    "condition": trigger.condition.value,
-                })
+            if trigger and "retraining_triggered" not in [
+                a["type"] for a in result["actions"]
+            ]:
+                result["actions"].append(
+                    {
+                        "type": "retraining_triggered",
+                        "condition": trigger.condition.value,
+                    }
+                )
 
                 # Start retraining job
                 job = await self._start_retraining(target, trigger, sample_count)
-                result["actions"].append({
-                    "type": "retraining_started",
-                    "job_id": job.id,
-                })
+                result["actions"].append(
+                    {
+                        "type": "retraining_started",
+                        "job_id": job.id,
+                    }
+                )
 
             # Return to idle
             self._set_status(target_key, PipelineStatus.IDLE)
@@ -345,7 +354,9 @@ class ContinuousLearningPipeline:
             "updates": await self.online_learner.get_update_history(target, limit),
             "retraining_jobs": await self.retraining_manager.list_jobs(target),
             "versions": await self.version_manager.list_versions(target),
-            "triggers": await self.retraining_manager.get_trigger_history(target, limit),
+            "triggers": await self.retraining_manager.get_trigger_history(
+                target, limit
+            ),
         }
 
     async def _handle_drift(
@@ -425,18 +436,18 @@ class ContinuousLearningPipeline:
 
         if event_type == "update":
             metrics.total_updates += 1
-            metrics.last_update = datetime.utcnow()
+            metrics.last_update = datetime.now(UTC)
 
         elif event_type == "drift":
             metrics.drift_detections += 1
 
         elif event_type == "retraining":
             metrics.total_retrainings += 1
-            metrics.last_retraining = datetime.utcnow()
+            metrics.last_retraining = datetime.now(UTC)
 
         elif event_type == "deployment":
             metrics.total_deployments += 1
-            metrics.last_deployment = datetime.utcnow()
+            metrics.last_deployment = datetime.now(UTC)
 
     def _get_status(self, target_key: str) -> PipelineStatus:
         """Get pipeline status"""

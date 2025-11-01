@@ -8,7 +8,7 @@ and provides recommendations based on historical patterns.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -56,7 +56,7 @@ class OptimizationPattern(BaseModel):
     best_results: list[str] = Field(default_factory=list)
     common_parameters: dict[str, Any] = Field(default_factory=dict)
     recommendations: list[str] = Field(default_factory=list)
-    discovered_at: datetime = Field(default_factory=datetime.utcnow)
+    discovered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
