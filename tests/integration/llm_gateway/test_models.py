@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from agentcore.integration.portkey.models import (
+from agentcore.llm_gateway.models import (
     CacheConfig,
     LLMRequest,
     LLMResponse,

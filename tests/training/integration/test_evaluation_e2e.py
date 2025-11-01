@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skip(
 )
 
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # NOTE: These imports will fail - kept for reference
 # from agentcore.training.evaluation import (
@@ -56,7 +56,7 @@ def sample_trajectories() -> list[Trajectory]:
                 state={"step": 0},
                 action={"type": "generate", "content": f"result {i}"},
                 result={"success": True, "quality": 0.8 + (i * 0.01)},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 duration_ms=100 + i * 10)
         ]
 
@@ -128,7 +128,7 @@ class TestEvaluationFramework:
                     state={"step": 0},
                     action={"type": "generate"},
                     result={"success": True},
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     duration_ms=200)
             ]
 
@@ -174,7 +174,7 @@ class TestEvaluationFramework:
                     state={},
                     action={"type": "answer", "content": f"Response to {query}"},
                     result={"success": True},
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     duration_ms=150)
             ]
 
@@ -216,7 +216,7 @@ class TestEvaluationFramework:
                     state={},
                     action={"type": "execute"},
                     result={"success": True},
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     duration_ms=100)
             ]
 
@@ -263,7 +263,7 @@ class TestEvaluationFramework:
                         state={},
                         action={},
                         result={},
-                        timestamp=datetime.now(timezone.utc),
+                        timestamp=datetime.now(UTC),
                         duration_ms=100)
                 ],
                 success=True,
@@ -303,7 +303,7 @@ class TestEvaluationFramework:
                         state={},
                         action={},
                         result={},
-                        timestamp=datetime.now(timezone.utc),
+                        timestamp=datetime.now(UTC),
                         duration_ms=100)
                 ],
                 success=True,
@@ -321,7 +321,7 @@ class TestEvaluationFramework:
                         state={},
                         action={},
                         result={},
-                        timestamp=datetime.now(timezone.utc),
+                        timestamp=datetime.now(UTC),
                         duration_ms=100)
                 ],
                 success=i >= 15,  # Only 25% success rate
@@ -389,7 +389,7 @@ class TestEvaluationFramework:
                         state={},
                         action={},
                         result={"success": i % 3 == 0},  # Every 3rd succeeds
-                        timestamp=datetime.now(timezone.utc),
+                        timestamp=datetime.now(UTC),
                         duration_ms=100)
                 ],
                 success=i % 3 == 0,

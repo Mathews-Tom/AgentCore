@@ -100,7 +100,7 @@ class TestAPIKeyProtection:
                 # Force an error condition
                 with patch.object(registry, "_providers", {}):
                     # This should trigger provider creation with potential error
-                    _ = registry.get_provider_for_model("gpt-4.1-mini")
+                    _ = registry.get_provider_for_model("gpt-5-mini")
             except Exception as e:
                 error_message = str(e)
                 # Verify API key is not in error message
@@ -152,11 +152,11 @@ class TestTLSValidation:
             # Verify provider clients are created with proper configuration
             # The actual TLS verification happens in the underlying httpx client
             if provider == Provider.OPENAI:
-                client = registry.get_provider_for_model("gpt-4.1-mini")
+                client = registry.get_provider_for_model("gpt-5-mini")
             elif provider == Provider.ANTHROPIC:
-                client = registry.get_provider_for_model("claude-3-5-haiku-20241022")
+                client = registry.get_provider_for_model("claude-haiku-4-5-20251001")
             elif provider == Provider.GEMINI:
-                client = registry.get_provider_for_model("gemini-2.0-flash-exp")
+                client = registry.get_provider_for_model("gemini-2.5-flash-lite")
 
             # Verify client exists (TLS is handled by underlying SDKs)
             assert client is not None, f"{provider.value} client not created"
@@ -198,7 +198,7 @@ class TestInputSanitization:
         for injection_attempt in injection_attempts:
             # Create request with injection attempt
             request = LLMRequest(
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": injection_attempt}],
             )
 
@@ -214,7 +214,7 @@ class TestInputSanitization:
         """
         with (
             patch("agentcore.a2a_protocol.config.settings.OPENAI_API_KEY", "sk-test"),
-            patch("agentcore.a2a_protocol.config.settings.ALLOWED_MODELS", ["gpt-4.1-mini"]),
+            patch("agentcore.a2a_protocol.config.settings.ALLOWED_MODELS", ["gpt-5-mini"]),
         ):
             registry = ProviderRegistry()
 
@@ -223,7 +223,7 @@ class TestInputSanitization:
                 registry.get_provider_for_model("gpt-5")  # Not in allowed list
 
             # Test allowed model
-            client = registry.get_provider_for_model("gpt-4.1-mini")
+            client = registry.get_provider_for_model("gpt-5-mini")
             assert client is not None
 
     @pytest.mark.parametrize(
@@ -241,7 +241,7 @@ class TestInputSanitization:
         """
         # Create request with invalid input
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": invalid_input}],
         )
 

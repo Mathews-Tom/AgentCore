@@ -7,24 +7,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agentcore.integration.portkey.client import PortkeyClient
-from agentcore.integration.portkey.config import PortkeyConfig
-from agentcore.integration.portkey.exceptions import (
-    PortkeyAuthenticationError,
-    PortkeyError,
-    PortkeyProviderError,
-    PortkeyRateLimitError,
-    PortkeyTimeoutError,
-    PortkeyValidationError,
+from agentcore.llm_gateway.client import LLMGatewayClient
+from agentcore.llm_gateway.config import LLMGatewayConfig
+from agentcore.llm_gateway.exceptions import (
+    LLMGatewayAuthenticationError,
+    LLMGatewayError,
+    LLMGatewayProviderError,
+    LLMGatewayRateLimitError,
+    LLMGatewayTimeoutError,
+    LLMGatewayValidationError,
 )
-from agentcore.integration.portkey.models import LLMRequest, LLMResponse
+from agentcore.llm_gateway.models import LLMRequest, LLMResponse
 
 
 @pytest.fixture
-def mock_config(monkeypatch: pytest.MonkeyPatch) -> PortkeyConfig:
+def mock_config(monkeypatch: pytest.MonkeyPatch) -> LLMGatewayConfig:
     """Create a mock configuration for testing."""
     monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
-    return PortkeyConfig(
+    return LLMGatewayConfig(
         api_key="test-api-key",
         base_url="https://api.portkey.ai/v1",
         timeout=60.0,
@@ -65,23 +65,23 @@ def mock_response() -> dict[str, Any]:
     }
 
 
-class TestPortkeyClient:
-    """Test suite for PortkeyClient."""
+class TestLLMGatewayClient:
+    """Test suite for LLMGatewayClient."""
 
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     def test_initialization_with_config(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
     ) -> None:
         """Test client initialization with provided config."""
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         assert client.config == mock_config
         assert not client._closed
         mock_portkey.assert_called_once()
 
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     def test_initialization_from_env(
         self,
         mock_portkey: MagicMock,
@@ -90,17 +90,17 @@ class TestPortkeyClient:
         """Test client initialization from environment variables."""
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
 
-        client = PortkeyClient()
+        client = LLMGatewayClient()
 
         assert client.config.api_key == "test-api-key"
         assert not client._closed
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_success(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
         mock_response: dict[str, Any],
     ) -> None:
@@ -110,7 +110,7 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(return_value=MagicMock(model_dump=lambda: mock_response))
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Execute request
         response = await client.complete(sample_request)
@@ -133,11 +133,11 @@ class TestPortkeyClient:
         assert call_kwargs["temperature"] == 0.7
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_with_trace_id(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         mock_response: dict[str, Any],
     ) -> None:
         """Test completion request with trace ID."""
@@ -146,7 +146,7 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(return_value=MagicMock(model_dump=lambda: mock_response))
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Create request with trace ID
         request = LLMRequest(
@@ -164,11 +164,11 @@ class TestPortkeyClient:
         assert call_kwargs["metadata"]["trace_id"] == "trace-123"
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_authentication_error(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test handling of authentication errors."""
@@ -179,18 +179,18 @@ class TestPortkeyClient:
         )
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Verify error is mapped correctly
-        with pytest.raises(PortkeyAuthenticationError):
+        with pytest.raises(LLMGatewayAuthenticationError):
             await client.complete(sample_request)
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_rate_limit_error(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test handling of rate limit errors."""
@@ -199,18 +199,18 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(side_effect=Exception("Rate limit exceeded"))
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Verify error is mapped correctly
-        with pytest.raises(PortkeyRateLimitError):
+        with pytest.raises(LLMGatewayRateLimitError):
             await client.complete(sample_request)
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_timeout_error(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test handling of timeout errors."""
@@ -219,18 +219,18 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(side_effect=Exception("Request timed out"))
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Verify error is mapped correctly
-        with pytest.raises(PortkeyTimeoutError):
+        with pytest.raises(LLMGatewayTimeoutError):
             await client.complete(sample_request)
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_provider_error(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test handling of provider errors."""
@@ -239,18 +239,18 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(side_effect=Exception("Provider error: model not found"))
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Verify error is mapped correctly
-        with pytest.raises(PortkeyProviderError):
+        with pytest.raises(LLMGatewayProviderError):
             await client.complete(sample_request)
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_validation_error(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test handling of validation errors."""
@@ -259,34 +259,34 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(side_effect=Exception("Validation error: invalid parameter"))
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Verify error is mapped correctly
-        with pytest.raises(PortkeyValidationError):
+        with pytest.raises(LLMGatewayValidationError):
             await client.complete(sample_request)
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_complete_after_close(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test that requests fail after client is closed."""
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
         await client.close()
 
         # Verify error is raised
-        with pytest.raises(PortkeyError, match="Client has been closed"):
+        with pytest.raises(LLMGatewayError, match="Client has been closed"):
             await client.complete(sample_request)
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_stream_complete(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
         sample_request: LLMRequest,
     ) -> None:
         """Test streaming completion request."""
@@ -304,7 +304,7 @@ class TestPortkeyClient:
         mock_completion.create = AsyncMock(return_value=mock_stream())
         mock_portkey.return_value.chat.completions = mock_completion
 
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
 
         # Execute streaming request
         chunks = []
@@ -317,28 +317,28 @@ class TestPortkeyClient:
         assert chunks[1]["id"] == "chunk-2"
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_context_manager(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
     ) -> None:
         """Test using client as async context manager."""
-        async with PortkeyClient(config=mock_config) as client:
+        async with LLMGatewayClient(config=mock_config) as client:
             assert not client._closed
 
         # Client should be closed after exiting context
         assert client._closed
 
     @pytest.mark.asyncio
-    @patch("agentcore.integration.portkey.client.AsyncPortkey")
+    @patch("agentcore.llm_gateway.client.AsyncPortkey")
     async def test_close(
         self,
         mock_portkey: MagicMock,
-        mock_config: PortkeyConfig,
+        mock_config: LLMGatewayConfig,
     ) -> None:
         """Test closing the client."""
-        client = PortkeyClient(config=mock_config)
+        client = LLMGatewayClient(config=mock_config)
         assert not client._closed
 
         await client.close()

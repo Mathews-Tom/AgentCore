@@ -8,12 +8,12 @@ free tier, discounts, and promotional pricing.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import CostMetrics
-from agentcore.integration.portkey.cost_tracker import CostTracker
+from agentcore.llm_gateway.cost_models import CostMetrics
+from agentcore.llm_gateway.cost_tracker import CostTracker
 
 
 @pytest.fixture
@@ -113,12 +113,20 @@ class TestCostCalculationAccuracy:
             # (provider, model, input_price, output_price, input_tokens, output_tokens, expected_cost)
             ("openai", "gpt-4-turbo", 0.01, 0.03, 1000, 500, 0.025),
             ("openai", "gpt-3.5-turbo", 0.0005, 0.0015, 1000, 500, 0.00125),
-            ("anthropic", "claude-3-opus", 0.015, 0.075, 1000, 500, 0.0525),
+            ("anthropic", "claude-opus-4-1-20250805", 0.015, 0.075, 1000, 500, 0.0525),
             ("anthropic", "claude-3-sonnet", 0.003, 0.015, 1000, 500, 0.0105),
             ("anthropic", "claude-3-haiku", 0.00025, 0.00125, 1000, 500, 0.000875),
         ]
 
-        for provider, model, input_price, output_price, input_tokens, output_tokens, expected in test_cases:
+        for (
+            provider,
+            model,
+            input_price,
+            output_price,
+            input_tokens,
+            output_tokens,
+            expected,
+        ) in test_cases:
             metrics = cost_tracker_accuracy.calculate_request_cost(
                 provider_id=provider,
                 input_tokens=input_tokens,
@@ -142,7 +150,7 @@ class TestTokenCountingAccuracy:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test accurate token aggregation across multiple requests."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Record multiple requests with varying token counts
         test_requests = [
@@ -188,7 +196,7 @@ class TestTokenCountingAccuracy:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test cost per 1K tokens calculation."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Record requests with known costs
         for _ in range(10):
@@ -214,7 +222,9 @@ class TestTokenCountingAccuracy:
         # Total tokens: 10 * 2000 = 20,000
         # Cost per 1K: ($0.40 / 20,000) * 1000 = $0.02
         expected_cost_per_1k = 0.02
-        assert summary.average_cost_per_1k_tokens == pytest.approx(expected_cost_per_1k, abs=0.001)
+        assert summary.average_cost_per_1k_tokens == pytest.approx(
+            expected_cost_per_1k, abs=0.001
+        )
 
 
 class TestCostAllocationAcrossTenants:
@@ -225,7 +235,7 @@ class TestCostAllocationAcrossTenants:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test accurate per-tenant cost tracking."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Record costs for multiple tenants
         tenant_costs = {
@@ -258,7 +268,9 @@ class TestCostAllocationAcrossTenants:
         # Verify tenant breakdown
         assert len(summary.tenant_breakdown) == len(tenant_costs)
         for tenant_id, expected_cost in tenant_costs.items():
-            assert summary.tenant_breakdown[tenant_id] == pytest.approx(expected_cost, abs=0.01)
+            assert summary.tenant_breakdown[tenant_id] == pytest.approx(
+                expected_cost, abs=0.01
+            )
 
         # Verify total
         total_cost = sum(tenant_costs.values())
@@ -269,7 +281,7 @@ class TestCostAllocationAcrossTenants:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test that tenant costs are properly isolated."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Record costs for tenant A
         for _ in range(5):
@@ -330,7 +342,7 @@ class TestProviderCostBreakdown:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test cost breakdown across multiple providers."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         provider_costs = {
             "openai": 50.00,
@@ -360,10 +372,14 @@ class TestProviderCostBreakdown:
         # Verify provider breakdown
         assert len(summary.provider_breakdown) == len(provider_costs)
         for provider_id, expected_cost in provider_costs.items():
-            assert summary.provider_breakdown[provider_id] == pytest.approx(expected_cost, abs=0.01)
+            assert summary.provider_breakdown[provider_id] == pytest.approx(
+                expected_cost, abs=0.01
+            )
 
         # Verify total
-        assert summary.total_cost == pytest.approx(sum(provider_costs.values()), abs=0.01)
+        assert summary.total_cost == pytest.approx(
+            sum(provider_costs.values()), abs=0.01
+        )
 
 
 class TestChargebackReportGeneration:
@@ -374,7 +390,7 @@ class TestChargebackReportGeneration:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test chargeback reporting by tenant."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Simulate a month of usage
         tenants = ["sales", "engineering", "marketing", "support"]
@@ -428,7 +444,7 @@ class TestChargebackReportGeneration:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test cost allocation by workflow for project billing."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         workflows = {
             "data_pipeline": 150.00,
@@ -480,7 +496,7 @@ class TestCostReportingAccuracy:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test average cost per request calculation."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Record requests with varying costs
         request_costs = [0.10, 0.20, 0.15, 0.25, 0.30]
@@ -513,7 +529,7 @@ class TestCostReportingAccuracy:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test latency tracking and average calculation."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Record requests with varying latencies
         latencies = [800, 1200, 900, 1500, 1000]
@@ -551,7 +567,7 @@ class TestEdgeCasesAndSpecialPricing:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test tracking of free tier usage (zero cost)."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Free tier request
         metrics = cost_tracker_accuracy.calculate_request_cost(
@@ -620,7 +636,7 @@ class TestEdgeCasesAndSpecialPricing:
         cost_tracker_accuracy: CostTracker,
     ) -> None:
         """Test tracking costs with promotional discounts."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Regular pricing
         regular_price_input = 0.01
@@ -657,7 +673,9 @@ class TestEdgeCasesAndSpecialPricing:
         cost_tracker_accuracy.record_cost(promo_metrics)
 
         # Verify promotional savings
-        assert promo_metrics.total_cost == pytest.approx(regular_metrics.total_cost * 0.5, rel=0.01)
+        assert promo_metrics.total_cost == pytest.approx(
+            regular_metrics.total_cost * 0.5, rel=0.01
+        )
 
         # Get history and verify tags
         history = cost_tracker_accuracy.get_cost_history(

@@ -5,7 +5,7 @@ Tests for rate limiting mechanisms and bypass prevention.
 
 import asyncio
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -33,7 +33,7 @@ class RateLimiter:
         Returns:
             True if request is allowed, False if rate limited
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         window_start = now - timedelta(seconds=self.window_seconds)
 
         if client_id not in self.requests:

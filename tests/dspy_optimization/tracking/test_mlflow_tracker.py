@@ -5,9 +5,7 @@ Tests for MLflow experiment tracking integration
 from __future__ import annotations
 
 import tempfile
-from datetime import datetime
-from pathlib import Path
-from typing import Any
+from datetime import UTC, datetime
 
 import mlflow
 import pytest
@@ -126,8 +124,8 @@ def optimization_result(
             ],
             parameters={"learning_rate": 0.01, "batch_size": 32},
         ),
-        created_at=datetime.utcnow(),
-        completed_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
     )
 
 
@@ -163,9 +161,7 @@ class TestMLflowConfig:
 class TestMLflowTracker:
     """Tests for MLflow tracker"""
 
-    async def test_tracker_initialization(
-        self, mlflow_config: MLflowConfig
-    ) -> None:
+    async def test_tracker_initialization(self, mlflow_config: MLflowConfig) -> None:
         """Test tracker initialization"""
         tracker = MLflowTracker(config=mlflow_config)
 
@@ -247,7 +243,9 @@ class TestMLflowTracker:
 
         # Verify improvement metrics
         run = mlflow.get_run(run_id)
-        assert run.data.metrics["success_rate_improvement"] == pytest.approx(0.17, abs=0.01)
+        assert run.data.metrics["success_rate_improvement"] == pytest.approx(
+            0.17, abs=0.01
+        )
         assert run.data.metrics["cost_reduction"] == pytest.approx(0.05, abs=0.01)
         assert run.data.metrics["latency_reduction_ms"] == 500.0
         assert run.data.metrics["quality_improvement"] == pytest.approx(0.15, abs=0.01)
@@ -303,7 +301,9 @@ class TestMLflowTracker:
 
         # Verify artifact exists (artifacts are under models/ directory)
         run = mlflow.get_run(run_id)
-        artifacts = [a.path for a in mlflow.MlflowClient().list_artifacts(run_id, "models")]
+        artifacts = [
+            a.path for a in mlflow.MlflowClient().list_artifacts(run_id, "models")
+        ]
         assert any("test_model.pkl" in a for a in artifacts)
 
     async def test_load_model_artifact(
@@ -503,7 +503,9 @@ class TestMLflowTrackerIntegration:
         # Verify artifacts
         all_artifacts = mlflow.MlflowClient().list_artifacts(run_id)
         artifact_paths = [a.path for a in all_artifacts]
-        model_artifacts = [a.path for a in mlflow.MlflowClient().list_artifacts(run_id, "models")]
+        model_artifacts = [
+            a.path for a in mlflow.MlflowClient().list_artifacts(run_id, "models")
+        ]
 
         assert any("training_data.json" in a for a in artifact_paths)
         assert any("final_model.pkl" in a for a in model_artifacts)

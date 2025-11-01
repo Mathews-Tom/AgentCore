@@ -8,11 +8,23 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+try:
+    import torch
+    CUDA_AVAILABLE = torch.cuda.is_available()
+except ImportError:
+    CUDA_AVAILABLE = False
+
 from agentcore.dspy_optimization.gpu.device import DeviceManager, DeviceType
 from agentcore.dspy_optimization.gpu.memory import (
     MemoryManager,
     MemoryPool,
     MemoryStats,
+)
+
+# Skip CUDA-dependent tests on non-CUDA systems
+pytestmark = pytest.mark.skipif(
+    not CUDA_AVAILABLE,
+    reason="CUDA not available - GPU memory tests require NVIDIA GPU"
 )
 
 

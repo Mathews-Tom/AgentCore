@@ -54,7 +54,7 @@ def llm_client(mock_anthropic_client: Mock) -> LLMClientAnthropic:
 def sample_request() -> LLMRequest:
     """Create sample LLM request."""
     return LLMRequest(
-        model="claude-3-5-haiku-20241022",
+        model="claude-haiku-4-5-20251001",
         messages=[{"role": "user", "content": "Hello"}], trace_id="trace-123",
         source_agent="agent-1",
         session_id="session-456")
@@ -64,7 +64,7 @@ def sample_request() -> LLMRequest:
 def sample_request_with_system() -> LLMRequest:
     """Create sample LLM request with system message."""
     return LLMRequest(
-        model="claude-3-5-haiku-20241022",
+        model="claude-haiku-4-5-20251001",
         messages=[
             {"role": "system", "content": "You are a helpful assistant"},
             {"role": "user", "content": "Hello"},
@@ -178,7 +178,7 @@ class TestLLMClientAnthropicComplete:
         assert isinstance(response, LLMResponse)
         assert response.content == "Hello! How can I help you?"
         assert response.provider == "anthropic"
-        assert response.model == "claude-3-5-haiku-20241022"
+        assert response.model == "claude-haiku-4-5-20251001"
         assert response.trace_id == "trace-123"
         assert response.usage.prompt_tokens == 10
         assert response.usage.completion_tokens == 8
@@ -188,7 +188,7 @@ class TestLLMClientAnthropicComplete:
         # Verify API call (no temperature per CLAUDE.md, max_tokens=4096 is Anthropic requirement)
         llm_client.client.messages.create.assert_called_once()
         call_kwargs = llm_client.client.messages.create.call_args[1]
-        assert call_kwargs["model"] == "claude-3-5-haiku-20241022"
+        assert call_kwargs["model"] == "claude-haiku-4-5-20251001"
         assert call_kwargs["max_tokens"] == 4096  # Anthropic API requirement
         assert "system" not in call_kwargs  # No system message in this request (param omitted)
         assert call_kwargs["extra_headers"]["X-Trace-ID"] == "trace-123"
@@ -222,7 +222,7 @@ class TestLLMClientAnthropicComplete:
         mock_anthropic_response: Mock) -> None:
         """Test completion without A2A context."""
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "Hello"}])
         llm_client.client.messages.create = AsyncMock(return_value=mock_anthropic_response)
 
@@ -239,7 +239,7 @@ class TestLLMClientAnthropicComplete:
         mock_anthropic_response: Mock) -> None:
         """Test completion defaults max_tokens to 4096 when not provided."""
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "Hello"}])
         llm_client.client.messages.create = AsyncMock(return_value=mock_anthropic_response)
 
@@ -550,7 +550,7 @@ class TestLLMClientAnthropicNormalizeResponse:
         assert normalized.usage.total_tokens == 18
         assert normalized.latency_ms == 1500
         assert normalized.provider == "anthropic"
-        assert normalized.model == "claude-3-5-haiku-20241022"
+        assert normalized.model == "claude-haiku-4-5-20251001"
         assert normalized.trace_id == "trace-123"
 
     def test_normalize_response_empty_content(

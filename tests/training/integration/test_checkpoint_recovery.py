@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skip(
 )
 
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 import tempfile
 import shutil

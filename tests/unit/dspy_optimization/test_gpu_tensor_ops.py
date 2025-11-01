@@ -100,10 +100,10 @@ class TestTensorOperations:
         similarity = tensor_ops.cosine_similarity(a, b)
 
         assert similarity.shape == (2, 2)
-        # Similarity of [1,0] with [1,0] should be 1
+        # Similarity of a[0]=[1,0] with b[0]=[1,0] should be 1
         assert abs(similarity[0, 0] - 1.0) < 0.01
-        # Similarity of [1,0] with [0,1] should be 0
-        assert abs(similarity[0, 1]) < 0.01
+        # Similarity of a[0]=[1,0] with b[1]=[1,1] should be 1/sqrt(2) ≈ 0.707
+        assert abs(similarity[0, 1] - 0.707) < 0.01
 
 
 class TestBatchProcessor:

@@ -32,7 +32,7 @@ Edit `.env.test` and add your API keys:
 ```env
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=...
+GEMINI_API_KEY=...
 ```
 
 **Important:** Never commit `.env.test` to version control!
@@ -235,7 +235,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           uv run pytest tests/integration/test_llm_integration.py -v -m integration --no-cov
 ```
@@ -245,7 +245,7 @@ jobs:
 Configure these as repository secrets:
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
-- `GOOGLE_API_KEY`
+- `GEMINI_API_KEY`
 
 Use separate test accounts with usage limits to prevent cost overruns.
 

@@ -4,7 +4,7 @@ Unit tests for RewardRegistry and custom reward functions.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -41,7 +41,7 @@ def create_test_step(
         state=state or {},
         action=action or {"step_type": "test"},
         result=result or {},
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         duration_ms=100)
 
 

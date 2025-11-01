@@ -37,8 +37,8 @@ import pytest
 
 
 # Mark all tests in this module as requiring live API server
-# pytestmark = pytest.mark.skip(reason="E2E tests require live API server at http://localhost:8001 - run manually with docker-compose up")
-# Skip marker removed - tests now rely on api_health_check fixture for conditional skipping
+# Skip by default - run manually with: pytest tests/e2e/test_cli_e2e.py -v
+pytestmark = pytest.mark.skip(reason="E2E tests require live API server at http://localhost:8001 - run manually with docker-compose up")
 
 
 # Constants

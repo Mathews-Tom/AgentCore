@@ -1,18 +1,18 @@
 """Tests for cost tracking functionality."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     BudgetAlertSeverity,
     BudgetConfig,
     BudgetThreshold,
     CostMetrics,
     CostPeriod,
 )
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.exceptions import PortkeyBudgetExceededError
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.exceptions import LLMGatewayBudgetExceededError
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def sample_cost_metrics() -> CostMetrics:
         output_tokens=1500,
         provider_id="openai",
         model="gpt-4",
-        timestamp=datetime.now(),
+        timestamp=datetime.now(UTC),
         latency_ms=1200,
         request_id="req-123",
         tenant_id="tenant-1",
@@ -42,7 +42,9 @@ def sample_cost_metrics() -> CostMetrics:
     )
 
 
-def test_record_cost(cost_tracker: CostTracker, sample_cost_metrics: CostMetrics) -> None:
+def test_record_cost(
+    cost_tracker: CostTracker, sample_cost_metrics: CostMetrics
+) -> None:
     """Test recording cost metrics."""
     cost_tracker.record_cost(sample_cost_metrics)
 
@@ -61,7 +63,7 @@ def test_calculate_request_cost(cost_tracker: CostTracker) -> None:
         output_tokens=1000,
         input_token_price=0.01,  # Per 1K tokens
         output_token_price=0.03,  # Per 1K tokens
-        model="claude-3-opus",
+        model="claude-opus-4-1-20250805",
         latency_ms=800,
         tenant_id="tenant-2",
     )
@@ -71,7 +73,7 @@ def test_calculate_request_cost(cost_tracker: CostTracker) -> None:
     assert metrics.input_cost == 0.02
     assert metrics.output_cost == 0.03
     assert metrics.provider_id == "anthropic"
-    assert metrics.model == "claude-3-opus"
+    assert metrics.model == "claude-opus-4-1-20250805"
 
 
 def test_get_summary_empty(cost_tracker: CostTracker) -> None:
@@ -99,7 +101,7 @@ def test_get_summary_with_data(
             output_tokens=1500 * (i + 1),
             provider_id="openai" if i % 2 == 0 else "anthropic",
             model="gpt-4",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             tenant_id="tenant-1",
         )
         cost_tracker.record_cost(metrics)
@@ -115,7 +117,7 @@ def test_get_summary_with_data(
 
 def test_set_and_get_budget(cost_tracker: CostTracker) -> None:
     """Test budget configuration."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     budget = BudgetConfig(
         tenant_id="tenant-1",
         limit_amount=100.0,
@@ -135,7 +137,7 @@ def test_set_and_get_budget(cost_tracker: CostTracker) -> None:
 
 def test_budget_enforcement_soft_limit(cost_tracker: CostTracker) -> None:
     """Test budget enforcement without hard limit."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     budget = BudgetConfig(
         tenant_id="tenant-1",
         limit_amount=0.10,
@@ -170,7 +172,7 @@ def test_budget_enforcement_soft_limit(cost_tracker: CostTracker) -> None:
 
 def test_budget_enforcement_hard_limit(cost_tracker: CostTracker) -> None:
     """Test budget enforcement with hard limit."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     budget = BudgetConfig(
         tenant_id="tenant-1",
         limit_amount=0.10,
@@ -208,7 +210,7 @@ def test_budget_enforcement_hard_limit(cost_tracker: CostTracker) -> None:
         tenant_id="tenant-1",
     )
 
-    with pytest.raises(PortkeyBudgetExceededError) as exc_info:
+    with pytest.raises(LLMGatewayBudgetExceededError) as exc_info:
         cost_tracker.record_cost(metrics2)
 
     assert "Budget exceeded" in str(exc_info.value)
@@ -216,7 +218,7 @@ def test_budget_enforcement_hard_limit(cost_tracker: CostTracker) -> None:
 
 def test_budget_threshold_alerts(cost_tracker: CostTracker) -> None:
     """Test budget threshold alerts."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     threshold = BudgetThreshold(
         threshold_percent=80.0,
         severity=BudgetAlertSeverity.WARNING,
@@ -256,7 +258,7 @@ def test_budget_threshold_alerts(cost_tracker: CostTracker) -> None:
 
 def test_check_budget_available(cost_tracker: CostTracker) -> None:
     """Test checking budget availability."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     budget = BudgetConfig(
         tenant_id="tenant-1",
         limit_amount=1.00,
@@ -282,7 +284,7 @@ def test_check_budget_available(cost_tracker: CostTracker) -> None:
 
 def test_acknowledge_alert(cost_tracker: CostTracker) -> None:
     """Test acknowledging budget alerts."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     threshold = BudgetThreshold(
         threshold_percent=90.0,
         severity=BudgetAlertSeverity.CRITICAL,
@@ -322,7 +324,9 @@ def test_acknowledge_alert(cost_tracker: CostTracker) -> None:
     assert result is True
 
     # Check acknowledged status
-    acknowledged_alerts = cost_tracker.get_alerts(tenant_id="tenant-1", acknowledged=True)
+    acknowledged_alerts = cost_tracker.get_alerts(
+        tenant_id="tenant-1", acknowledged=True
+    )
     assert len(acknowledged_alerts) > 0
 
 
@@ -331,7 +335,7 @@ def test_get_cost_history_with_filters(
     sample_cost_metrics: CostMetrics,
 ) -> None:
     """Test getting cost history with filters."""
-    now = datetime.now()
+    now = datetime.now(UTC)
 
     # Record multiple requests with different attributes
     for i in range(10):
@@ -370,7 +374,7 @@ def test_get_cost_history_with_filters(
 
 def test_get_stats(cost_tracker: CostTracker) -> None:
     """Test getting cost tracker statistics."""
-    now = datetime.now()
+    now = datetime.now(UTC)
 
     # Record some requests
     for i in range(5):

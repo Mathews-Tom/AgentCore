@@ -5,13 +5,12 @@ Tests provider configuration, registry, health monitoring, and failover logic.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agentcore.integration.portkey.health import ProviderHealthMonitor
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.health import ProviderHealthMonitor
+from agentcore.llm_gateway.provider import (
     CircuitBreakerConfig,
     CircuitBreakerState,
     DataResidency,
@@ -24,7 +23,7 @@ from agentcore.integration.portkey.provider import (
     ProviderSelectionCriteria,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 
 class TestProviderModels:
@@ -408,7 +407,7 @@ class TestProviderRegistry:
                 ),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
             ProviderConfiguration(
@@ -420,7 +419,7 @@ class TestProviderRegistry:
                 ),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
             ProviderConfiguration(
@@ -441,9 +440,7 @@ class TestProviderRegistry:
         assert stats["healthy_providers"] == 2
         # Only count enabled providers
         assert stats["capability_counts"][ProviderCapability.TEXT_GENERATION] == 2
-        assert (
-            stats["capability_counts"][ProviderCapability.CHAT_COMPLETION] == 1
-        )
+        assert stats["capability_counts"][ProviderCapability.CHAT_COMPLETION] == 1
 
 
 class TestProviderHealthMonitor:
@@ -473,18 +470,14 @@ class TestProviderHealthMonitor:
             health_check_interval_seconds=10,
         )
 
-    def test_monitor_initialization(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    def test_monitor_initialization(self, monitor: ProviderHealthMonitor) -> None:
         """Test health monitor initialization."""
         assert monitor.monitoring_window == timedelta(seconds=60)
         assert monitor.health_check_interval == 10
         assert not monitor._running
 
     @pytest.mark.asyncio
-    async def test_monitor_start_stop(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    async def test_monitor_start_stop(self, monitor: ProviderHealthMonitor) -> None:
         """Test starting and stopping monitor."""
         await monitor.start()
         assert monitor._running
@@ -493,9 +486,7 @@ class TestProviderHealthMonitor:
         await monitor.stop()
         assert not monitor._running
 
-    def test_record_successful_request(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    def test_record_successful_request(self, monitor: ProviderHealthMonitor) -> None:
         """Test recording a successful request."""
         monitor.record_request_success(
             provider_id="test_provider",
@@ -508,9 +499,7 @@ class TestProviderHealthMonitor:
         assert record.success is True
         assert record.latency_ms == 100
 
-    def test_record_failed_request(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    def test_record_failed_request(self, monitor: ProviderHealthMonitor) -> None:
         """Test recording a failed request."""
         monitor.record_request_failure(
             provider_id="test_provider",
@@ -576,9 +565,7 @@ class TestProviderHealthMonitor:
         # Status should be DEGRADED (success rate < 0.9)
         assert metrics.status == ProviderStatus.DEGRADED
 
-    def test_determine_status_healthy(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    def test_determine_status_healthy(self, monitor: ProviderHealthMonitor) -> None:
         """Test status determination for healthy provider."""
         status = monitor._determine_status(
             success_rate=0.99,
@@ -587,9 +574,7 @@ class TestProviderHealthMonitor:
         )
         assert status == ProviderStatus.HEALTHY
 
-    def test_determine_status_degraded(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    def test_determine_status_degraded(self, monitor: ProviderHealthMonitor) -> None:
         """Test status determination for degraded provider."""
         # Low success rate
         status = monitor._determine_status(
@@ -607,9 +592,7 @@ class TestProviderHealthMonitor:
         )
         assert status == ProviderStatus.DEGRADED
 
-    def test_determine_status_unhealthy(
-        self, monitor: ProviderHealthMonitor
-    ) -> None:
+    def test_determine_status_unhealthy(self, monitor: ProviderHealthMonitor) -> None:
         """Test status determination for unhealthy provider."""
         # Multiple consecutive failures
         status = monitor._determine_status(
@@ -641,7 +624,7 @@ class TestProviderHealthMonitor:
         if provider:
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
             )
         assert monitor.is_provider_available("test_provider") is True
 
@@ -649,7 +632,7 @@ class TestProviderHealthMonitor:
         if provider:
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.UNHEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
             )
         assert monitor.is_provider_available("test_provider") is False
 
@@ -658,6 +641,6 @@ class TestProviderHealthMonitor:
             provider.enabled = False
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
             )
         assert monitor.is_provider_available("test_provider") is False

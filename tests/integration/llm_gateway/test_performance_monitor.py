@@ -6,20 +6,19 @@ and dashboard data generation with 90%+ coverage.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agentcore.integration.portkey.metrics_collector import MetricsCollector
-from agentcore.integration.portkey.metrics_models import (
+from agentcore.llm_gateway.metrics_collector import MetricsCollector
+from agentcore.llm_gateway.metrics_models import (
     AlertSeverity,
     MetricType,
     PerformanceLevel,
     RequestMetrics,
     SLAStatus,
 )
-from agentcore.integration.portkey.performance_monitor import PerformanceMonitor
+from agentcore.llm_gateway.performance_monitor import PerformanceMonitor
 
 
 @pytest.fixture
@@ -45,10 +44,10 @@ def sample_request_metrics() -> RequestMetrics:
     return RequestMetrics(
         request_id="test-request-1",
         trace_id="test-trace-1",
-        timestamp=datetime.now(),
+        timestamp=datetime.now(UTC),
         provider_id="openai",
         provider_name="OpenAI",
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         model_version="2024-01",
         total_latency_ms=1500,
         routing_latency_ms=10,
@@ -87,8 +86,6 @@ def sample_request_metrics() -> RequestMetrics:
         workflow_id="test-workflow",
         agent_id="test-agent",
         session_id="test-session",
-
-
         stream=False,
         tags={"env": "test"},
         metadata={"test": "data"},
@@ -104,7 +101,7 @@ class TestMetricsCollector:
     ) -> None:
         """Test collecting metrics for successful request."""
         request_data = {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "messages": [{"role": "user", "content": "Hello"}],
             "temperature": 0.7,
             "max_tokens": 100,
@@ -113,7 +110,7 @@ class TestMetricsCollector:
 
         response_data = {
             "id": "resp-123",
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "choices": [{"message": {"content": "Hi!"}, "finish_reason": "stop"}],
             "usage": {
                 "prompt_tokens": 10,
@@ -133,14 +130,18 @@ class TestMetricsCollector:
         context = {
             "tenant_id": "test-tenant",
             "trace_id": "trace-123",
-            "cost_data": {"total_cost": 0.001, "input_cost": 0.0005, "output_cost": 0.0005},
+            "cost_data": {
+                "total_cost": 0.001,
+                "input_cost": 0.0005,
+                "output_cost": 0.0005,
+            },
         }
 
         metrics = await metrics_collector.collect_request_metrics(
             request_id="req-123",
             provider_id="openai",
             provider_name="OpenAI",
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             request_data=request_data,
             response_data=response_data,
             timing_data=timing_data,
@@ -150,7 +151,7 @@ class TestMetricsCollector:
 
         assert metrics.request_id == "req-123"
         assert metrics.provider_id == "openai"
-        assert metrics.model == "gpt-4.1-mini"
+        assert metrics.model == "gpt-5-mini"
         assert metrics.total_latency_ms == 1000
         assert metrics.input_tokens == 10
         assert metrics.output_tokens == 5
@@ -165,7 +166,7 @@ class TestMetricsCollector:
     ) -> None:
         """Test collecting metrics for failed request."""
         request_data = {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "messages": [{"role": "user", "content": "Hello"}],
         }
 
@@ -178,7 +179,7 @@ class TestMetricsCollector:
         }
 
         error_data = {
-            "type": "PortkeyTimeoutError",
+            "type": "LLMGatewayTimeoutError",
             "message": "Request timed out",
             "retry_count": 3,
             "fallback_used": True,
@@ -188,7 +189,7 @@ class TestMetricsCollector:
             request_id="req-err-123",
             provider_id="openai",
             provider_name="OpenAI",
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             request_data=request_data,
             response_data=None,
             timing_data=timing_data,
@@ -199,7 +200,7 @@ class TestMetricsCollector:
         assert metrics.request_id == "req-err-123"
         assert metrics.success is False
         assert metrics.error_occurred is True
-        assert metrics.error_type == "PortkeyTimeoutError"
+        assert metrics.error_type == "LLMGatewayTimeoutError"
         assert metrics.error_message == "Request timed out"
         assert metrics.retry_count == 3
         assert metrics.fallback_used is True
@@ -212,13 +213,13 @@ class TestMetricsCollector:
         import time
 
         request = {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "messages": [{"role": "user", "content": "Test"}],
         }
 
         response = {
             "id": "resp-123",
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "choices": [{"message": {"content": "Response"}}],
             "usage": {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15},
         }
@@ -234,7 +235,7 @@ class TestMetricsCollector:
             context={"tenant_id": "test"},
         )
 
-        assert metrics.model == "gpt-4.1-mini"
+        assert metrics.model == "gpt-5-mini"
         assert metrics.input_tokens == 5
         assert metrics.output_tokens == 10
         assert metrics.success is True
@@ -248,7 +249,7 @@ class TestMetricsCollector:
         import time
 
         request = {
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5-mini",
             "messages": [{"role": "user", "content": "Test"}],
         }
 
@@ -337,12 +338,12 @@ class TestPerformanceMonitor:
         # Add more metrics with different values
         for i in range(9):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+2}"
+            metrics.request_id = f"request-{i + 2}"
             metrics.total_latency_ms = 1000 + (i * 100)
             metrics.total_cost = 0.01 + (i * 0.001)
             metrics_collector._metrics_history.append(metrics)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(hours=1)
 
         perf_metrics = performance_monitor.calculate_performance_metrics(
@@ -369,12 +370,12 @@ class TestPerformanceMonitor:
         # Add metrics that meet SLA targets
         for i in range(10):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+1}"
+            metrics.request_id = f"request-{i + 1}"
             metrics.total_latency_ms = 1000  # Below 2000ms target
             metrics.success = True
             metrics_collector._metrics_history.append(metrics)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(hours=1)
 
         sla_metrics = performance_monitor.calculate_sla_metrics(
@@ -403,12 +404,12 @@ class TestPerformanceMonitor:
         # Add metrics that violate SLA targets
         for i in range(10):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+1}"
+            metrics.request_id = f"request-{i + 1}"
             metrics.total_latency_ms = 5000  # Above 2000ms target
             metrics.success = i < 8  # 80% success rate (below 95% target)
             metrics_collector._metrics_history.append(metrics)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(hours=1)
 
         sla_metrics = performance_monitor.calculate_sla_metrics(
@@ -434,12 +435,12 @@ class TestPerformanceMonitor:
         # Add metrics for a specific provider
         for i in range(5):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"openai-request-{i+1}"
+            metrics.request_id = f"openai-request-{i + 1}"
             metrics.provider_id = "openai"
             metrics.provider_name = "OpenAI"
             metrics_collector._metrics_history.append(metrics)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(hours=1)
 
         provider_perf = performance_monitor.calculate_provider_performance(
@@ -477,16 +478,18 @@ class TestPerformanceMonitor:
         # Add metrics with high latency spike (need more variance)
         for i in range(100):  # Increased to 100 requests
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+1}"
-            metrics.timestamp = datetime.now() - timedelta(minutes=i)
+            metrics.request_id = f"request-{i + 1}"
+            metrics.timestamp = datetime.now(UTC) - timedelta(minutes=i)
             # 10% of requests have very high latency (>2 std dev)
             if i < 10:
                 metrics.total_latency_ms = 20000  # Very high
             else:
-                metrics.total_latency_ms = 1000 + (i % 100)  # Normal with small variance
+                metrics.total_latency_ms = 1000 + (
+                    i % 100
+                )  # Normal with small variance
             metrics_collector._metrics_history.append(metrics)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(hours=2)
 
         insights = performance_monitor.generate_performance_insights(
@@ -516,10 +519,10 @@ class TestPerformanceMonitor:
         performance_monitor._metrics_collector = metrics_collector
 
         # Add recent metrics (last 5 minutes)
-        now = datetime.now()
+        now = datetime.now(UTC)
         for i in range(10):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+1}"
+            metrics.request_id = f"request-{i + 1}"
             metrics.timestamp = now - timedelta(seconds=i * 10)
             metrics_collector._metrics_history.append(metrics)
 
@@ -547,10 +550,10 @@ class TestPerformanceMonitor:
         performance_monitor._metrics_collector = metrics_collector
 
         # Add metrics for last 24 hours
-        now = datetime.now()
+        now = datetime.now(UTC)
         for i in range(100):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+1}"
+            metrics.request_id = f"request-{i + 1}"
             metrics.timestamp = now - timedelta(minutes=i * 10)
             metrics_collector._metrics_history.append(metrics)
 
@@ -580,11 +583,11 @@ class TestPerformanceMonitor:
         # Add metrics that violate SLA
         for i in range(10):
             metrics = sample_request_metrics.model_copy(deep=True)
-            metrics.request_id = f"request-{i+1}"
+            metrics.request_id = f"request-{i + 1}"
             metrics.success = False  # All failures
             metrics_collector._metrics_history.append(metrics)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         start_time = now - timedelta(hours=1)
 
         # First SLA check should generate alerts
@@ -717,23 +720,27 @@ class TestIntegration:
         performance_monitor._metrics_collector = metrics_collector
 
         # Simulate 50 requests over time
-        now = datetime.now()
+        now = datetime.now(UTC)
         for i in range(50):
             # Vary success and latency
             success = i < 45  # 90% success rate
             latency = 1000 if success else 5000
 
             request_data = {
-                "model": "gpt-4.1-mini",
+                "model": "gpt-5-mini",
                 "messages": [{"role": "user", "content": f"Request {i}"}],
             }
 
             response_data = (
                 {
                     "id": f"resp-{i}",
-                    "model": "gpt-4.1-mini",
+                    "model": "gpt-5-mini",
                     "choices": [{"message": {"content": "Response"}}],
-                    "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+                    "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 20,
+                        "total_tokens": 30,
+                    },
                 }
                 if success
                 else None
@@ -747,7 +754,9 @@ class TestIntegration:
                 "network": 5,
             }
 
-            error_data = None if success else {"type": "TimeoutError", "message": "Timeout"}
+            error_data = (
+                None if success else {"type": "TimeoutError", "message": "Timeout"}
+            )
 
             # Set timestamp to be within query range
             context = {
@@ -759,7 +768,7 @@ class TestIntegration:
                 request_id=f"req-{i}",
                 provider_id="openai",
                 provider_name="OpenAI",
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 request_data=request_data,
                 response_data=response_data,
                 timing_data=timing_data,

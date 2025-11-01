@@ -6,18 +6,18 @@ import os
 
 import pytest
 
-from agentcore.integration.portkey.config import PortkeyConfig
-from agentcore.integration.portkey.exceptions import PortkeyConfigurationError
+from agentcore.llm_gateway.config import LLMGatewayConfig
+from agentcore.llm_gateway.exceptions import LLMGatewayConfigurationError
 
 
-class TestPortkeyConfig:
-    """Test suite for PortkeyConfig."""
+class TestLLMGatewayConfig:
+    """Test suite for LLMGatewayConfig."""
 
     def test_default_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that default values are set correctly."""
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
 
-        config = PortkeyConfig()
+        config = LLMGatewayConfig()
 
         assert config.api_key == "test-api-key"
         assert config.base_url == "https://api.portkey.ai/v1"
@@ -36,7 +36,7 @@ class TestPortkeyConfig:
         monkeypatch.setenv("PORTKEY_MAX_RETRIES", "5")
         monkeypatch.setenv("PORTKEY_DEFAULT_PROVIDER", "openai")
 
-        config = PortkeyConfig()
+        config = LLMGatewayConfig()
 
         assert config.api_key == "custom-api-key"
         assert config.base_url == "https://custom.portkey.ai"
@@ -51,15 +51,15 @@ class TestPortkeyConfig:
         """Test validation passes when required fields are present."""
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
 
-        config = PortkeyConfig()
+        config = LLMGatewayConfig()
         config.validate_required_fields()  # Should not raise
 
     def test_validate_required_fields_missing_api_key(self) -> None:
         """Test validation fails when API key is missing."""
-        config = PortkeyConfig(api_key=None)
+        config = LLMGatewayConfig(api_key=None)
 
         with pytest.raises(
-            PortkeyConfigurationError,
+            LLMGatewayConfigurationError,
             match="PORTKEY_API_KEY environment variable is required",
         ):
             config.validate_required_fields()
@@ -72,7 +72,7 @@ class TestPortkeyConfig:
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
         monkeypatch.setenv("PORTKEY_VIRTUAL_KEY", "default-virtual-key")
 
-        config = PortkeyConfig()
+        config = LLMGatewayConfig()
         provider_config = config.get_provider_config("openai")
 
         assert provider_config["provider"] == "openai"
@@ -87,7 +87,7 @@ class TestPortkeyConfig:
         monkeypatch.setenv("PORTKEY_VIRTUAL_KEY", "default-virtual-key")
         monkeypatch.setenv("PORTKEY_OPENAI_VIRTUAL_KEY", "openai-virtual-key")
 
-        config = PortkeyConfig()
+        config = LLMGatewayConfig()
         provider_config = config.get_provider_config("openai")
 
         assert provider_config["provider"] == "openai"
@@ -97,7 +97,7 @@ class TestPortkeyConfig:
         """Test merging override parameters with defaults."""
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
 
-        config = PortkeyConfig(
+        config = LLMGatewayConfig(
             custom_headers={"X-Custom": "header1"},
             metadata={"key1": "value1"},
         )
@@ -122,7 +122,7 @@ class TestPortkeyConfig:
         """Test creating config from environment variables."""
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
 
-        config = PortkeyConfig.from_env()
+        config = LLMGatewayConfig.from_env()
 
         assert config.api_key == "test-api-key"
 
@@ -132,10 +132,10 @@ class TestPortkeyConfig:
         monkeypatch.delenv("PORTKEY_API_KEY", raising=False)
 
         with pytest.raises(
-            PortkeyConfigurationError,
+            LLMGatewayConfigurationError,
             match="PORTKEY_API_KEY environment variable is required",
         ):
-            PortkeyConfig.from_env()
+            LLMGatewayConfig.from_env()
 
     def test_custom_headers_and_metadata(
         self,
@@ -144,7 +144,7 @@ class TestPortkeyConfig:
         """Test setting custom headers and metadata."""
         monkeypatch.setenv("PORTKEY_API_KEY", "test-api-key")
 
-        config = PortkeyConfig(
+        config = LLMGatewayConfig(
             custom_headers={"X-Custom-Header": "value"},
             metadata={"environment": "test"},
         )
@@ -162,7 +162,7 @@ class TestPortkeyConfig:
         monkeypatch.setenv("PORTKEY_CACHE_TTL", "7200")
         monkeypatch.setenv("PORTKEY_MAX_COST_PER_REQUEST", "0.5")
 
-        config = PortkeyConfig()
+        config = LLMGatewayConfig()
 
         assert config.enable_caching is False
         assert config.cache_ttl == 7200

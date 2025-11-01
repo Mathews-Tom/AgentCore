@@ -45,7 +45,7 @@ class TestProviderRegistryIntegration:
         """Test registry creates actual OpenAI client instance."""
         registry = ProviderRegistry()
 
-        client = registry.get_provider_for_model("gpt-4.1-mini")
+        client = registry.get_provider_for_model("gpt-5-mini")
 
         # Verify it's a real OpenAI client, not a mock
         assert isinstance(client, LLMClientOpenAI)
@@ -59,21 +59,21 @@ class TestProviderRegistryIntegration:
         """Test registry creates actual Anthropic client instance."""
         registry = ProviderRegistry()
 
-        client = registry.get_provider_for_model("claude-3-5-haiku-20241022")
+        client = registry.get_provider_for_model("claude-haiku-4-5-20251001")
 
         # Verify it's a real Anthropic client, not a mock
         assert isinstance(client, LLMClientAnthropic)
         assert hasattr(client, "client")  # Has AsyncAnthropic instance
 
     @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY"),
+        not os.getenv("GEMINI_API_KEY"),
         reason="Google API key not configured",
     )
     def test_registry_creates_real_gemini_client(self) -> None:
         """Test registry creates actual Gemini client instance."""
         registry = ProviderRegistry()
 
-        client = registry.get_provider_for_model("gemini-1.5-flash")
+        client = registry.get_provider_for_model("gemini-2.5-flash-lite")
 
         # Verify it's a real Gemini client, not a mock
         assert isinstance(client, LLMClientGemini)
@@ -85,7 +85,7 @@ class TestProviderRegistryIntegration:
             [
                 os.getenv("OPENAI_API_KEY"),
                 os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("GOOGLE_API_KEY"),
+                os.getenv("GEMINI_API_KEY"),
             ]
         ),
         reason="All API keys not configured",
@@ -95,9 +95,9 @@ class TestProviderRegistryIntegration:
         registry = ProviderRegistry(timeout=90.0, max_retries=5)
 
         # Request model from each provider
-        openai_client = registry.get_provider_for_model("gpt-4.1-mini")
-        anthropic_client = registry.get_provider_for_model("claude-3-5-haiku-20241022")
-        gemini_client = registry.get_provider_for_model("gemini-1.5-flash")
+        openai_client = registry.get_provider_for_model("gpt-5-mini")
+        anthropic_client = registry.get_provider_for_model("claude-haiku-4-5-20251001")
+        gemini_client = registry.get_provider_for_model("gemini-2.5-flash-lite")
 
         # Verify all are real instances
         assert isinstance(openai_client, LLMClientOpenAI)
@@ -106,8 +106,8 @@ class TestProviderRegistryIntegration:
 
         # Verify singleton - same instances returned on subsequent requests
         assert openai_client is registry.get_provider_for_model("gpt-5-mini")
-        assert anthropic_client is registry.get_provider_for_model("claude-3-opus")
-        assert gemini_client is registry.get_provider_for_model("gemini-1.5-pro")
+        assert anthropic_client is registry.get_provider_for_model("claude-opus-4-1-20250805")
+        assert gemini_client is registry.get_provider_for_model("gemini-2.5-flash")
 
         # Verify configuration propagated to clients
         assert openai_client.timeout == 90.0
@@ -139,7 +139,7 @@ class TestLLMServiceIntegration:
         service = LLMService(timeout=30.0, max_retries=2)
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say 'test' and nothing else"}],
             trace_id="integration-test-001",
             source_agent="test-agent",
@@ -152,7 +152,7 @@ class TestLLMServiceIntegration:
         assert response.content
         assert "test" in response.content.lower()
         assert response.provider == "openai"
-        assert response.model == "gpt-4.1-mini"
+        assert response.model == "gpt-5-mini"
         assert response.usage.total_tokens > 0
         assert response.usage.prompt_tokens > 0
         assert response.usage.completion_tokens > 0
@@ -169,7 +169,7 @@ class TestLLMServiceIntegration:
         service = LLMService(timeout=30.0)
 
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "Respond with 'hello' only"}],
             trace_id="integration-test-002",
         )
@@ -180,14 +180,14 @@ class TestLLMServiceIntegration:
         assert isinstance(response, LLMResponse)
         assert response.content
         assert response.provider == "anthropic"
-        assert response.model == "claude-3-5-haiku-20241022"
+        assert response.model == "claude-haiku-4-5-20251001"
         assert response.usage.total_tokens > 0
         assert response.latency_ms > 0
         assert response.trace_id == "integration-test-002"
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY"),
+        not os.getenv("GEMINI_API_KEY"),
         reason="Google API key not configured",
     )
     async def test_complete_with_gemini(self) -> None:
@@ -195,7 +195,7 @@ class TestLLMServiceIntegration:
         service = LLMService()
 
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say 'hi'"}],
             trace_id="integration-test-003",
         )
@@ -206,7 +206,7 @@ class TestLLMServiceIntegration:
         assert isinstance(response, LLMResponse)
         assert response.content
         assert response.provider == "gemini"
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.5-flash-lite"
         assert response.usage.total_tokens > 0
         assert response.latency_ms > 0
         assert response.trace_id == "integration-test-003"
@@ -221,7 +221,7 @@ class TestLLMServiceIntegration:
         service = LLMService()
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Count from 1 to 3"}],
             stream=True,
             trace_id="integration-test-stream-001",
@@ -243,7 +243,7 @@ class TestLLMServiceIntegration:
             [
                 os.getenv("OPENAI_API_KEY"),
                 os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("GOOGLE_API_KEY"),
+                os.getenv("GEMINI_API_KEY"),
             ]
         ),
         reason="All API keys not configured",
@@ -254,7 +254,7 @@ class TestLLMServiceIntegration:
 
         # OpenAI request
         openai_request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say 'openai'"}],
         )
         openai_response = await service.complete(openai_request)
@@ -262,7 +262,7 @@ class TestLLMServiceIntegration:
 
         # Anthropic request
         anthropic_request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "Say 'anthropic'"}],
         )
         anthropic_response = await service.complete(anthropic_request)
@@ -270,7 +270,7 @@ class TestLLMServiceIntegration:
 
         # Gemini request
         gemini_request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say 'gemini'"}],
         )
         gemini_response = await service.complete(gemini_request)

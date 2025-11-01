@@ -22,12 +22,20 @@ class TestLLMConfig:
         settings = Settings(_env_file=None)
 
         assert settings.ALLOWED_MODELS == [
-            "gpt-4.1-mini",
+            # OpenAI models
             "gpt-5-mini",
-            "claude-3-5-haiku-20241022",
-            "gemini-2.0-flash-exp",
+            "gpt-5",
+            "gpt-5-pro",
+            # Anthropic models
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-5-20250929",
+            "claude-opus-4-1-20250805",
+            # Gemini models
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
         ]
-        assert settings.LLM_DEFAULT_MODEL == "gpt-4.1-mini"
+        assert settings.LLM_DEFAULT_MODEL == "gpt-5-mini"
         assert settings.OPENAI_API_KEY is None
         assert settings.ANTHROPIC_API_KEY is None
         assert settings.GEMINI_API_KEY is None
@@ -133,10 +141,10 @@ class TestLLMConfig:
 
         # Verify all expected models are present
         expected_models = [
-            "gpt-4.1-mini",
             "gpt-5-mini",
-            "claude-3-5-haiku-20241022",
-            "gemini-2.0-flash-exp",
+            "gpt-5-mini",
+            "claude-haiku-4-5-20251001",
+            "gemini-2.5-flash-lite",
         ]
 
         for model in expected_models:

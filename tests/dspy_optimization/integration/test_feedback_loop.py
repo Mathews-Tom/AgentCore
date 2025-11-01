@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,7 +16,9 @@ from agentcore.a2a_protocol.models.agent import (
     EndpointType,
 )
 from agentcore.a2a_protocol.services.agent_manager import AgentManager
-from agentcore.dspy_optimization.integration.agent_connector import AgentRuntimeConnector
+from agentcore.dspy_optimization.integration.agent_connector import (
+    AgentRuntimeConnector,
+)
 from agentcore.dspy_optimization.integration.feedback_loop import (
     AgentPerformanceFeedbackLoop,
     AgentPerformanceTracker,
@@ -83,7 +85,9 @@ def feedback_loop(
     return AgentPerformanceFeedbackLoop(connector, pipeline, config, monitor)
 
 
-def test_tracker_record_performance(tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics) -> None:
+def test_tracker_record_performance(
+    tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics
+) -> None:
     """Test recording agent performance metrics."""
     tracker.record_performance("agent-123", sample_metrics)
 
@@ -92,7 +96,9 @@ def test_tracker_record_performance(tracker: AgentPerformanceTracker, sample_met
     assert recent[0] == sample_metrics
 
 
-def test_tracker_set_baseline(tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics) -> None:
+def test_tracker_set_baseline(
+    tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics
+) -> None:
     """Test setting baseline metrics."""
     tracker.set_baseline("agent-123", sample_metrics)
 
@@ -106,7 +112,9 @@ def test_tracker_get_baseline_not_found(tracker: AgentPerformanceTracker) -> Non
     assert baseline is None
 
 
-def test_tracker_get_recent_performance(tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics) -> None:
+def test_tracker_get_recent_performance(
+    tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics
+) -> None:
     """Test getting recent performance within time window."""
     tracker.record_performance("agent-123", sample_metrics)
 
@@ -122,7 +130,7 @@ def test_tracker_get_recent_performance_outside_window(
     tracker.record_performance("agent-123", sample_metrics)
 
     # Manually adjust timestamp to be outside window
-    old_timestamp = datetime.utcnow() - timedelta(hours=2)
+    old_timestamp = datetime.now(UTC) - timedelta(hours=2)
     tracker._performance_history["agent-123"][0] = (old_timestamp, sample_metrics)
 
     # Should not return old metrics
@@ -159,13 +167,17 @@ def test_tracker_calculate_average_performance(
     assert avg.quality_score == 0.875  # (0.85 + 0.9) / 2
 
 
-def test_tracker_calculate_average_performance_no_data(tracker: AgentPerformanceTracker) -> None:
+def test_tracker_calculate_average_performance_no_data(
+    tracker: AgentPerformanceTracker,
+) -> None:
     """Test calculating average with no data."""
     avg = tracker.calculate_average_performance("agent-123")
     assert avg is None
 
 
-def test_tracker_detect_performance_degradation(tracker: AgentPerformanceTracker) -> None:
+def test_tracker_detect_performance_degradation(
+    tracker: AgentPerformanceTracker,
+) -> None:
     """Test detecting performance degradation."""
     baseline = PerformanceMetrics(
         success_rate=0.95,
@@ -184,7 +196,9 @@ def test_tracker_detect_performance_degradation(tracker: AgentPerformanceTracker
     tracker.set_baseline("agent-123", baseline)
     tracker.record_performance("agent-123", degraded)
 
-    has_degraded, percentage = tracker.detect_performance_degradation("agent-123", threshold=0.1)
+    has_degraded, percentage = tracker.detect_performance_degradation(
+        "agent-123", threshold=0.1
+    )
 
     assert has_degraded is True
     assert percentage > 0.1
@@ -209,12 +223,16 @@ def test_tracker_detect_no_degradation(tracker: AgentPerformanceTracker) -> None
     tracker.set_baseline("agent-123", baseline)
     tracker.record_performance("agent-123", good_metrics)
 
-    has_degraded, percentage = tracker.detect_performance_degradation("agent-123", threshold=0.1)
+    has_degraded, percentage = tracker.detect_performance_degradation(
+        "agent-123", threshold=0.1
+    )
 
     assert has_degraded is False
 
 
-def test_tracker_detect_degradation_no_baseline(tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics) -> None:
+def test_tracker_detect_degradation_no_baseline(
+    tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics
+) -> None:
     """Test degradation detection without baseline."""
     tracker.record_performance("agent-123", sample_metrics)
 
@@ -224,7 +242,9 @@ def test_tracker_detect_degradation_no_baseline(tracker: AgentPerformanceTracker
     assert percentage == 0.0
 
 
-def test_feedback_loop_add_agent(feedback_loop: AgentPerformanceFeedbackLoop, sample_metrics: PerformanceMetrics) -> None:
+def test_feedback_loop_add_agent(
+    feedback_loop: AgentPerformanceFeedbackLoop, sample_metrics: PerformanceMetrics
+) -> None:
     """Test adding agent to feedback loop."""
     feedback_loop.add_agent("agent-123", baseline_metrics=sample_metrics)
 
@@ -232,7 +252,9 @@ def test_feedback_loop_add_agent(feedback_loop: AgentPerformanceFeedbackLoop, sa
     assert feedback_loop.tracker.get_baseline("agent-123") == sample_metrics
 
 
-def test_feedback_loop_remove_agent(feedback_loop: AgentPerformanceFeedbackLoop) -> None:
+def test_feedback_loop_remove_agent(
+    feedback_loop: AgentPerformanceFeedbackLoop,
+) -> None:
     """Test removing agent from feedback loop."""
     feedback_loop.add_agent("agent-123")
     feedback_loop.remove_agent("agent-123")
@@ -241,7 +263,9 @@ def test_feedback_loop_remove_agent(feedback_loop: AgentPerformanceFeedbackLoop)
 
 
 @pytest.mark.asyncio
-async def test_feedback_loop_start_stop(feedback_loop: AgentPerformanceFeedbackLoop) -> None:
+async def test_feedback_loop_start_stop(
+    feedback_loop: AgentPerformanceFeedbackLoop,
+) -> None:
     """Test starting and stopping feedback loop."""
     await feedback_loop.start()
     assert feedback_loop.is_running() is True
@@ -266,7 +290,9 @@ async def test_feedback_loop_get_agent_status(
 
 
 @pytest.mark.asyncio
-async def test_feedback_loop_get_monitored_agents(feedback_loop: AgentPerformanceFeedbackLoop) -> None:
+async def test_feedback_loop_get_monitored_agents(
+    feedback_loop: AgentPerformanceFeedbackLoop,
+) -> None:
     """Test getting list of monitored agents."""
     feedback_loop.add_agent("agent-123")
     feedback_loop.add_agent("agent-456")
@@ -278,23 +304,31 @@ async def test_feedback_loop_get_monitored_agents(feedback_loop: AgentPerformanc
     assert "agent-456" in agents
 
 
-def test_feedback_loop_can_optimize_no_cooldown(feedback_loop: AgentPerformanceFeedbackLoop) -> None:
+def test_feedback_loop_can_optimize_no_cooldown(
+    feedback_loop: AgentPerformanceFeedbackLoop,
+) -> None:
     """Test that agent can be optimized when not in cooldown."""
     can_optimize = feedback_loop._can_optimize("agent-123")
     assert can_optimize is True
 
 
-def test_feedback_loop_can_optimize_in_cooldown(feedback_loop: AgentPerformanceFeedbackLoop) -> None:
+def test_feedback_loop_can_optimize_in_cooldown(
+    feedback_loop: AgentPerformanceFeedbackLoop,
+) -> None:
     """Test that agent cannot be optimized during cooldown."""
-    feedback_loop._last_optimization["agent-123"] = datetime.utcnow()
+    feedback_loop._last_optimization["agent-123"] = datetime.now(UTC)
 
     can_optimize = feedback_loop._can_optimize("agent-123")
     assert can_optimize is False
 
 
-def test_feedback_loop_can_optimize_after_cooldown(feedback_loop: AgentPerformanceFeedbackLoop) -> None:
+def test_feedback_loop_can_optimize_after_cooldown(
+    feedback_loop: AgentPerformanceFeedbackLoop,
+) -> None:
     """Test that agent can be optimized after cooldown expires."""
-    feedback_loop._last_optimization["agent-123"] = datetime.utcnow() - timedelta(hours=2)
+    feedback_loop._last_optimization["agent-123"] = datetime.now(UTC) - timedelta(
+        hours=2
+    )
 
     can_optimize = feedback_loop._can_optimize("agent-123")
     assert can_optimize is True
@@ -409,17 +443,23 @@ async def test_feedback_loop_validate_request_integration(
     )
 
     opt_request = AgentOptimizationTarget.create_optimization_request("agent-123")
-    is_valid, error = await feedback_loop.connector.validate_optimization_request(opt_request)
+    is_valid, error = await feedback_loop.connector.validate_optimization_request(
+        opt_request
+    )
 
     assert is_valid is True
     assert error is None
 
 
-def test_tracker_history_limit(tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics) -> None:
+def test_tracker_history_limit(
+    tracker: AgentPerformanceTracker, sample_metrics: PerformanceMetrics
+) -> None:
     """Test that performance history is limited."""
     # Record 1100 metrics
     for _ in range(1100):
         tracker.record_performance("agent-123", sample_metrics)
 
+    history = tracker._performance_history["agent-123"]
+    assert len(history) == 1000  # Should be capped at 1000
     history = tracker._performance_history["agent-123"]
     assert len(history) == 1000  # Should be capped at 1000

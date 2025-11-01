@@ -23,7 +23,7 @@ from agentcore.dspy_optimization.models import (
 @pytest.fixture
 def optimizer() -> GEPAOptimizer:
     """Create GEPA optimizer instance"""
-    mock_llm = dspy.LM("openai/gpt-4.1-mini", api_key="test-key", cache_seed=42)
+    mock_llm = dspy.LM("openai/gpt-5-mini", api_key="test-key", cache_seed=42)
     return GEPAOptimizer(llm=mock_llm, max_iterations=3)
 
 

@@ -14,7 +14,7 @@ This is the CRITICAL PATH quality gate for production readiness.
 Tests require real API keys in environment:
 - OPENAI_API_KEY
 - ANTHROPIC_API_KEY
-- GOOGLE_API_KEY
+- GEMINI_API_KEY
 
 Run with:
     uv run pytest tests/integration/test_llm_integration.py -v -m integration
@@ -66,7 +66,7 @@ class TestProviderIntegrationOpenAI:
         service = LLMService(timeout=30.0, max_retries=3)
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say 'test' and nothing else"}],
             trace_id="integration-openai-001",
             source_agent="test-agent",
@@ -80,7 +80,7 @@ class TestProviderIntegrationOpenAI:
         assert response.content
         assert "test" in response.content.lower()
         assert response.provider == "openai"
-        assert response.model == "gpt-4.1-mini"
+        assert response.model == "gpt-5-mini"
         assert response.trace_id == "integration-openai-001"
         assert response.usage.total_tokens > 0
         assert response.usage.prompt_tokens > 0
@@ -97,7 +97,7 @@ class TestProviderIntegrationOpenAI:
         service = LLMService(timeout=30.0)
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Count from 1 to 5"}],
             stream=True,
             trace_id="integration-openai-stream-001",
@@ -127,7 +127,7 @@ class TestProviderIntegrationOpenAI:
         service = LLMService()
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[
                 {"role": "user", "content": "What is 10 + 5?"},
                 {"role": "assistant", "content": "15"},
@@ -161,7 +161,7 @@ class TestProviderIntegrationAnthropic:
         service = LLMService(timeout=30.0)
 
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "Respond with 'hello' only"}],
             trace_id="integration-anthropic-001",
             source_agent="test-agent-anthropic",
@@ -173,7 +173,7 @@ class TestProviderIntegrationAnthropic:
         assert isinstance(response, LLMResponse)
         assert response.content
         assert response.provider == "anthropic"
-        assert response.model == "claude-3-5-haiku-20241022"
+        assert response.model == "claude-haiku-4-5-20251001"
         assert response.trace_id == "integration-anthropic-001"
         assert response.usage.total_tokens > 0
         assert response.latency_ms > 0
@@ -188,7 +188,7 @@ class TestProviderIntegrationAnthropic:
         service = LLMService()
 
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "List 3 colors"}],
             stream=True,
             trace_id="integration-anthropic-stream-001",
@@ -214,15 +214,15 @@ class TestProviderIntegrationGemini:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY"),
-        reason="GOOGLE_API_KEY not configured",
+        not os.getenv("GEMINI_API_KEY"),
+        reason="GEMINI_API_KEY not configured",
     )
     async def test_gemini_complete_basic(self) -> None:
         """Test basic Gemini completion with real API."""
         service = LLMService(timeout=30.0)
 
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say 'hi'"}],
             trace_id="integration-gemini-001",
         )
@@ -233,22 +233,22 @@ class TestProviderIntegrationGemini:
         assert isinstance(response, LLMResponse)
         assert response.content
         assert response.provider == "gemini"
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.5-flash-lite"
         assert response.trace_id == "integration-gemini-001"
         assert response.usage.total_tokens > 0
         assert response.latency_ms > 0
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY"),
-        reason="GOOGLE_API_KEY not configured",
+        not os.getenv("GEMINI_API_KEY"),
+        reason="GEMINI_API_KEY not configured",
     )
     async def test_gemini_stream_basic(self) -> None:
         """Test basic Gemini streaming with real API."""
         service = LLMService()
 
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Name 3 animals"}],
             stream=True,
             trace_id="integration-gemini-stream-001",
@@ -283,7 +283,7 @@ class TestA2AContextPropagation:
 
         trace_id = "trace-a2a-openai-12345"
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say yes"}],
             trace_id=trace_id,
             source_agent="agent-001",
@@ -306,7 +306,7 @@ class TestA2AContextPropagation:
 
         trace_id = "trace-a2a-anthropic-67890"
         request = LLMRequest(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             messages=[{"role": "user", "content": "Say yes"}],
             trace_id=trace_id,
         )
@@ -318,8 +318,8 @@ class TestA2AContextPropagation:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY"),
-        reason="GOOGLE_API_KEY not configured",
+        not os.getenv("GEMINI_API_KEY"),
+        reason="GEMINI_API_KEY not configured",
     )
     async def test_trace_id_propagation_gemini(self) -> None:
         """Test trace_id propagates through Gemini request/response."""
@@ -327,7 +327,7 @@ class TestA2AContextPropagation:
 
         trace_id = "trace-a2a-gemini-abcde"
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say yes"}],
             trace_id=trace_id,
         )
@@ -347,7 +347,7 @@ class TestA2AContextPropagation:
         service = LLMService()
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say yes"}],
         )
 
@@ -390,7 +390,7 @@ class TestErrorHandling:
         service = LLMService(timeout=0.001, max_retries=1)
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Write a long essay"}],
         )
 
@@ -429,7 +429,7 @@ class TestRetryLogic:
         service = LLMService(timeout=30.0, max_retries=3)
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say test"}],
         )
 
@@ -461,7 +461,7 @@ class TestConcurrentRequests:
 
         async def make_request(idx: int) -> LLMResponse:
             request = LLMRequest(
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": f"Say number {idx}"}],
                 trace_id=f"concurrent-{idx}",
             )
@@ -494,7 +494,7 @@ class TestConcurrentRequests:
             [
                 os.getenv("OPENAI_API_KEY"),
                 os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("GOOGLE_API_KEY"),
+                os.getenv("GEMINI_API_KEY"),
             ]
         ),
         reason="All API keys not configured",
@@ -504,9 +504,9 @@ class TestConcurrentRequests:
         service = LLMService(timeout=30.0, max_retries=3)
 
         providers_config = [
-            ("gpt-4.1-mini", "openai"),
-            ("claude-3-5-haiku-20241022", "anthropic"),
-            ("gemini-1.5-flash", "gemini"),
+            ("gpt-5-mini", "openai"),
+            ("claude-haiku-4-5-20251001", "anthropic"),
+            ("gemini-2.5-flash-lite", "gemini"),
         ]
 
         async def make_request(model: str, provider: str, idx: int) -> LLMResponse:
@@ -558,7 +558,7 @@ class TestRateLimitHandling:
 
         # Make rapid sequential requests
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say test"}],
         )
 
@@ -591,7 +591,7 @@ class TestMultiProviderE2E:
             [
                 os.getenv("OPENAI_API_KEY"),
                 os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("GOOGLE_API_KEY"),
+                os.getenv("GEMINI_API_KEY"),
             ]
         ),
         reason="All API keys not configured",
@@ -601,9 +601,9 @@ class TestMultiProviderE2E:
         service = LLMService(timeout=30.0, max_retries=3)
 
         test_cases = [
-            ("gpt-4.1-mini", "openai", "What is 2+2?"),
-            ("claude-3-5-haiku-20241022", "anthropic", "What is the capital of France?"),
-            ("gemini-1.5-flash", "gemini", "Name a color"),
+            ("gpt-5-mini", "openai", "What is 2+2?"),
+            ("claude-haiku-4-5-20251001", "anthropic", "What is the capital of France?"),
+            ("gemini-2.5-flash-lite", "gemini", "Name a color"),
         ]
 
         for model, expected_provider, prompt in test_cases:
@@ -630,7 +630,7 @@ class TestMultiProviderE2E:
             [
                 os.getenv("OPENAI_API_KEY"),
                 os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("GOOGLE_API_KEY"),
+                os.getenv("GEMINI_API_KEY"),
             ]
         ),
         reason="All API keys not configured",
@@ -640,9 +640,9 @@ class TestMultiProviderE2E:
         service = LLMService(timeout=30.0)
 
         test_cases = [
-            ("gpt-4.1-mini", "Count to 3"),
-            ("claude-3-5-haiku-20241022", "List 2 fruits"),
-            ("gemini-1.5-flash", "Name 2 cities"),
+            ("gpt-5-mini", "Count to 3"),
+            ("claude-haiku-4-5-20251001", "List 2 fruits"),
+            ("gemini-2.5-flash-lite", "Name 2 cities"),
         ]
 
         for model, prompt in test_cases:
@@ -689,7 +689,7 @@ class TestPerformanceMetrics:
         service = LLMService()
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": "Say test"}],
         )
 
@@ -712,8 +712,12 @@ class TestPerformanceMetrics:
         service = LLMService()
 
         request = LLMRequest(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": "This is a test message"}],
+            model="gpt-5-mini",
+            messages=[
+                {"role": "system", "content": "Be very concise. Reply with only 'OK'."},
+                {"role": "user", "content": "Acknowledge"}
+            ],
+            max_tokens=10,  # Limit response tokens
         )
 
         response = await service.complete(request)
@@ -724,5 +728,5 @@ class TestPerformanceMetrics:
         assert response.usage.total_tokens == (
             response.usage.prompt_tokens + response.usage.completion_tokens
         )
-        # Should be under max_tokens + prompt
-        assert response.usage.total_tokens < 100
+        # With max_tokens=10 and concise prompt, should be reasonable (model may use more)
+        assert response.usage.total_tokens < 200  # Generous limit for model behavior

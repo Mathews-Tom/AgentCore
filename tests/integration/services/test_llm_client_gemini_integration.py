@@ -8,10 +8,10 @@ to verify end-to-end functionality including:
 - Latency measurement
 - Message format conversion
 
-These tests require GOOGLE_API_KEY environment variable to be set.
+These tests require GEMINI_API_KEY environment variable to be set.
 They are skipped if the API key is not available.
 
-Target model: gemini-1.5-flash (fast and cost-effective for testing)
+Target model: gemini-2.5-flash-lite (fast and cost-effective for testing)
 """
 
 from __future__ import annotations
@@ -24,17 +24,17 @@ from agentcore.a2a_protocol.models.llm import LLMRequest, LLMResponse
 from agentcore.a2a_protocol.services.llm_client_gemini import LLMClientGemini
 
 
-# Skip all tests if GOOGLE_API_KEY is not set
+# Skip all tests if GEMINI_API_KEY is not set
 pytestmark = pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY"),
-    reason="GOOGLE_API_KEY environment variable not set",
+    not os.getenv("GEMINI_API_KEY"),
+    reason="GEMINI_API_KEY environment variable not set",
 )
 
 
 @pytest.fixture
 def gemini_client() -> LLMClientGemini:
     """Create LLMClientGemini with real API key."""
-    api_key = os.getenv("GOOGLE_API_KEY", "")
+    api_key = os.getenv("GEMINI_API_KEY", "")
     return LLMClientGemini(api_key=api_key, timeout=30.0, max_retries=3)
 
 
@@ -42,7 +42,7 @@ def gemini_client() -> LLMClientGemini:
 def simple_request() -> LLMRequest:
     """Create simple LLM request for testing."""
     return LLMRequest(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash-lite",
         messages=[{"role": "user", "content": "Say 'Hello, World!' and nothing else."}],
 # Deterministic responses
 
@@ -71,7 +71,7 @@ class TestLLMClientGeminiIntegrationComplete:
 
         # Verify provider metadata
         assert response.provider == "gemini"
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.5-flash-lite"
         assert response.trace_id == "integration-test-trace"
 
         # Verify token usage
@@ -92,7 +92,7 @@ class TestLLMClientGeminiIntegrationComplete:
     ) -> None:
         """Test completion with system message."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that speaks like a pirate."},
                 {"role": "user", "content": "Say hello."},
@@ -115,7 +115,7 @@ class TestLLMClientGeminiIntegrationComplete:
     ) -> None:
         """Test multi-turn conversation."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "user", "content": "What is 2+2?"},
                 {"role": "assistant", "content": "4"},
@@ -139,7 +139,7 @@ class TestLLMClientGeminiIntegrationComplete:
     ) -> None:
         """Test completion with higher temperature for creativity."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "user", "content": "Generate a random number between 1 and 10."}
             ],
@@ -164,7 +164,7 @@ class TestLLMClientGeminiIntegrationStream:
     ) -> None:
         """Test streaming with real Gemini API."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Count from 1 to 5."}],
 
 
@@ -195,7 +195,7 @@ class TestLLMClientGeminiIntegrationStream:
     ) -> None:
         """Test that streaming delivers tokens progressively."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "user", "content": "Write a 50-word paragraph about AI."}
             ],
@@ -229,7 +229,7 @@ class TestLLMClientGeminiIntegrationStream:
     ) -> None:
         """Test streaming with very short response."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say 'yes'."}],
 
 
@@ -253,9 +253,9 @@ class TestLLMClientGeminiIntegrationModels:
         self,
         gemini_client: LLMClientGemini,
     ) -> None:
-        """Test with gemini-1.5-flash model."""
+        """Test with gemini-2.5-flash-lite model."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
 
 
@@ -264,18 +264,18 @@ class TestLLMClientGeminiIntegrationModels:
         response = await gemini_client.complete(request)
 
         assert isinstance(response, LLMResponse)
-        assert response.model == "gemini-1.5-flash"
+        assert response.model == "gemini-2.5-flash-lite"
         assert "paris" in response.content.lower()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="gemini-2.0-flash-exp may require different API access")
+    @pytest.mark.skip(reason="gemini-2.5-flash-lite may require different API access")
     async def test_gemini_2_0_flash_exp_model(
         self,
         gemini_client: LLMClientGemini,
     ) -> None:
-        """Test with gemini-2.0-flash-exp model (experimental)."""
+        """Test with gemini-2.5-flash-lite model (experimental)."""
         request = LLMRequest(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
 
 
@@ -284,7 +284,7 @@ class TestLLMClientGeminiIntegrationModels:
         response = await gemini_client.complete(request)
 
         assert isinstance(response, LLMResponse)
-        assert response.model == "gemini-2.0-flash-exp"
+        assert response.model == "gemini-2.5-flash-lite"
         assert "paris" in response.content.lower()
 
 
@@ -298,7 +298,7 @@ class TestLLMClientGeminiIntegrationA2AContext:
     ) -> None:
         """Test that A2A context is propagated to response."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say hello."}],
 
 
@@ -321,7 +321,7 @@ class TestLLMClientGeminiIntegrationA2AContext:
     ) -> None:
         """Test request without A2A context."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "Say hello."}],
 
 
@@ -356,7 +356,7 @@ class TestLLMClientGeminiIntegrationPerformance:
     ) -> None:
         """Test that token usage is accurately reported."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "user", "content": "This is a test message for token counting."}
             ],
@@ -386,7 +386,7 @@ class TestLLMClientGeminiIntegrationMessageFormat:
     ) -> None:
         """Test simple user message conversion and execution."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "What is 1+1?"}],
 
 
@@ -404,7 +404,7 @@ class TestLLMClientGeminiIntegrationMessageFormat:
     ) -> None:
         """Test assistant role conversion to model role."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "user", "content": "What is 5+5?"},
                 {"role": "assistant", "content": "5+5 equals 10."},
@@ -427,7 +427,7 @@ class TestLLMClientGeminiIntegrationMessageFormat:
     ) -> None:
         """Test system instruction extraction and usage."""
         request = LLMRequest(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash-lite",
             messages=[
                 {"role": "system", "content": "Always respond with exactly one word."},
                 {"role": "user", "content": "What is the capital of France?"},

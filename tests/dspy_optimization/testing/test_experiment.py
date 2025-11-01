@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from agentcore.dspy_optimization.models import (
+    OptimizationScope,
     OptimizationTarget,
     OptimizationTargetType,
-    OptimizationScope,
 )
 from agentcore.dspy_optimization.testing.experiment import (
     Experiment,
@@ -78,7 +78,9 @@ class TestExperimentConfig:
 class TestExperiment:
     """Test experiment model"""
 
-    def test_create_experiment(self, target: OptimizationTarget, config: ExperimentConfig) -> None:
+    def test_create_experiment(
+        self, target: OptimizationTarget, config: ExperimentConfig
+    ) -> None:
         """Test experiment creation"""
         experiment = Experiment(
             target=target,
@@ -94,7 +96,9 @@ class TestExperiment:
         assert experiment.treatment_version == "v1.1"
         assert len(experiment.results) == 0
 
-    def test_is_active(self, target: OptimizationTarget, config: ExperimentConfig) -> None:
+    def test_is_active(
+        self, target: OptimizationTarget, config: ExperimentConfig
+    ) -> None:
         """Test active status check"""
         experiment = Experiment(
             target=target,
@@ -108,7 +112,9 @@ class TestExperiment:
         experiment.status = ExperimentStatus.ACTIVE
         assert experiment.is_active()
 
-    def test_is_completed(self, target: OptimizationTarget, config: ExperimentConfig) -> None:
+    def test_is_completed(
+        self, target: OptimizationTarget, config: ExperimentConfig
+    ) -> None:
         """Test completed status check"""
         experiment = Experiment(
             target=target,
@@ -138,7 +144,7 @@ class TestExperiment:
 
         assert experiment.get_duration_elapsed() is None
 
-        start = datetime.utcnow()
+        start = datetime.now(UTC)
         experiment.start_time = start
         experiment.end_time = start + timedelta(hours=12)
 

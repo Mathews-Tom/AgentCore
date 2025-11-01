@@ -13,7 +13,7 @@ requiring actual cloud accounts or credentials.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -154,7 +154,7 @@ class MockS3Adapter(S3Adapter):
                     key=key,
                     size=obj["size"],
                     etag=obj["etag"],
-                    last_modified=datetime.now(timezone.utc),
+                    last_modified=datetime.now(UTC),
                     metadata=obj["metadata"],
                     version_id=obj["version_id"],
                     storage_class="STANDARD")
@@ -182,7 +182,7 @@ class MockS3Adapter(S3Adapter):
             key=key,
             size=obj["size"],
             etag=obj["etag"],
-            last_modified=datetime.now(timezone.utc),
+            last_modified=datetime.now(UTC),
             metadata=obj["metadata"],
             version_id=obj["version_id"],
             storage_class="STANDARD")

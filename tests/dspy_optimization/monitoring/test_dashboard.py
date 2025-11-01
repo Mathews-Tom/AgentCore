@@ -1,29 +1,29 @@
 """Tests for dashboard service"""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from agentcore.dspy_optimization.models import (
+    OptimizationScope,
+    OptimizationStatus,
     OptimizationTarget,
     OptimizationTargetType,
-    OptimizationScope,
     PerformanceMetrics,
-    OptimizationStatus,
 )
 from agentcore.dspy_optimization.monitoring.baseline import (
-    BaselineService,
     BaselineConfig,
+    BaselineService,
 )
 from agentcore.dspy_optimization.monitoring.collector import (
-    MetricsCollector,
     CollectorConfig,
+    MetricsCollector,
 )
 from agentcore.dspy_optimization.monitoring.dashboard import (
     DashboardService,
-    PerformanceTrend,
     OptimizationHistory,
     PerformanceRecommendation,
+    PerformanceTrend,
 )
 
 
@@ -118,7 +118,7 @@ async def test_get_dashboard_data_no_metrics(dashboard_service, sample_target):
 async def test_get_performance_trends(dashboard_service, sample_target, collector):
     """Test getting performance trends"""
     # Collect metrics over time
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     for i in range(10):
         metrics = PerformanceMetrics(
@@ -149,7 +149,7 @@ async def test_get_performance_trends(dashboard_service, sample_target, collecto
 @pytest.mark.asyncio
 async def test_get_performance_trends_empty(dashboard_service, sample_target):
     """Test trends with no data"""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     start_time = now - timedelta(hours=24)
     end_time = now
 
@@ -333,9 +333,7 @@ async def test_generate_recommendations_high_cost(dashboard_service, sample_targ
 
 
 @pytest.mark.asyncio
-async def test_generate_recommendations_high_latency(
-    dashboard_service, sample_target
-):
+async def test_generate_recommendations_high_latency(dashboard_service, sample_target):
     """Test recommendations for high latency"""
     baseline_metrics = PerformanceMetrics(
         success_rate=0.75,
@@ -491,7 +489,7 @@ async def test_trends_with_optimization_versions(
     dashboard_service, sample_target, collector
 ):
     """Test trends tracking optimization versions"""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Collect baseline metrics
     for i in range(5):

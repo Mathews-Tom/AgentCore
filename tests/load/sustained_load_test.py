@@ -9,9 +9,9 @@ Usage:
 
 import random
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
-from locust import HttpUser, task, between, events
+from locust import HttpUser, between, events, task
 
 
 class SustainedLoadUser(HttpUser):
@@ -35,7 +35,7 @@ class SustainedLoadUser(HttpUser):
                 {
                     "url": f"http://localhost:8080/{self.agent_id}",
                     "type": "https",
-                    "protocols": ["jsonrpc-2.0"]
+                    "protocols": ["jsonrpc-2.0"],
                 }
             ],
         }
@@ -44,7 +44,7 @@ class SustainedLoadUser(HttpUser):
             "jsonrpc": "2.0",
             "method": "agent.register",
             "params": {"agent_card": agent_card},
-            "id": "1"
+            "id": "1",
         }
 
         self.client.post("/api/v1/jsonrpc", json=request)
@@ -56,14 +56,14 @@ class SustainedLoadUser(HttpUser):
             "jsonrpc": "2.0",
             "method": "agent.ping",
             "params": {"agent_id": self.agent_id},
-            "id": str(random.randint(1, 10000))
+            "id": str(random.randint(1, 10000)),
         }
 
         with self.client.post(
             "/api/v1/jsonrpc",
             json=request,
             name="Sustained: agent.ping",
-            catch_response=True
+            catch_response=True,
         ) as response:
             if response.status_code == 200:
                 response.success()
@@ -82,14 +82,14 @@ class SustainedLoadUser(HttpUser):
             "jsonrpc": "2.0",
             "method": method,
             "params": params,
-            "id": str(random.randint(1, 10000))
+            "id": str(random.randint(1, 10000)),
         }
 
         with self.client.post(
             "/api/v1/jsonrpc",
             json=request,
             name=f"Sustained: {method}",
-            catch_response=True
+            catch_response=True,
         ) as response:
             if response.status_code == 200:
                 response.success()
@@ -106,16 +106,18 @@ def on_test_start(environment, **kwargs) -> None:
     global last_stats_time
     last_stats_time = time.time()
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Sustained Load Test Starting")
     print(f"Target: {environment.host}")
     print(f"Duration: 10+ minutes")
     print(f"Monitoring for memory leaks and performance degradation")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 @events.request.add_listener
-def on_request(request_type, name, response_time, response_length, exception, **kwargs) -> None:
+def on_request(
+    request_type, name, response_time, response_length, exception, **kwargs
+) -> None:
     """Track request metrics over time."""
     global time_series_stats, last_stats_time
 
@@ -123,11 +125,13 @@ def on_request(request_type, name, response_time, response_length, exception, **
 
     # Record stats every 10 seconds
     if current_time - last_stats_time >= 10:
-        time_series_stats.append({
-            "timestamp": datetime.now().isoformat(),
-            "elapsed": current_time - last_stats_time,
-            "response_time": response_time,
-        })
+        time_series_stats.append(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "elapsed": current_time - last_stats_time,
+                "response_time": response_time,
+            }
+        )
         last_stats_time = current_time
 
 
@@ -136,9 +140,9 @@ def on_test_stop(environment, **kwargs) -> None:
     """Log test results and check for degradation."""
     stats = environment.stats.total
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Sustained Load Test Results")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"Total Duration: {stats.last_request_timestamp - stats.start_time:.2f}, s")
     print(f"Total Requests: {stats.num_requests:,}")
     print(f"Failed Requests: {stats.num_failures:,}")
@@ -150,8 +154,8 @@ def on_test_stop(environment, **kwargs) -> None:
 
     # Check for performance degradation
     if len(time_series_stats) > 1:
-        first_half = time_series_stats[:len(time_series_stats)//2]
-        second_half = time_series_stats[len(time_series_stats)//2:]
+        first_half = time_series_stats[: len(time_series_stats) // 2]
+        second_half = time_series_stats[len(time_series_stats) // 2 :]
 
         if first_half and second_half:
             avg_first = sum(s["response_time"] for s in first_half) / len(first_half)
@@ -169,4 +173,4 @@ def on_test_stop(environment, **kwargs) -> None:
             else:
                 print(f"✗ Performance degraded by {degradation:.2f}%")
 
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")

@@ -1,16 +1,16 @@
 """Tests for cost optimization functionality."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     OptimizationContext,
     OptimizationStrategy,
 )
-from agentcore.integration.portkey.cost_optimizer import CostOptimizer
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.cost_optimizer import CostOptimizer
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.provider import (
     DataResidency,
     ProviderCapabilities,
     ProviderCapability,
@@ -21,7 +21,7 @@ from agentcore.integration.portkey.provider import (
     ProviderSelectionCriteria,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.99,
                 average_latency_ms=800,
                 availability_percent=99.9,
@@ -81,7 +81,7 @@ def registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.97,
                 average_latency_ms=1200,
                 availability_percent=98.5,
@@ -112,7 +112,7 @@ def registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.98,
                 average_latency_ms=1000,
                 availability_percent=99.0,
@@ -130,7 +130,9 @@ def cost_tracker() -> CostTracker:
 
 
 @pytest.fixture
-def cost_optimizer(registry: ProviderRegistry, cost_tracker: CostTracker) -> CostOptimizer:
+def cost_optimizer(
+    registry: ProviderRegistry, cost_tracker: CostTracker
+) -> CostOptimizer:
     """Create a cost optimizer for testing."""
     return CostOptimizer(registry, cost_tracker)
 
@@ -341,7 +343,7 @@ def test_generate_cost_report(
 ) -> None:
     """Test generating cost report."""
     # Record some cost history
-    from agentcore.integration.portkey.cost_models import CostMetrics
+    from agentcore.llm_gateway.cost_models import CostMetrics
 
     for i in range(10):
         metrics = CostMetrics(
@@ -352,7 +354,7 @@ def test_generate_cost_report(
             output_tokens=1500 * (i + 1),
             provider_id="expensive_provider" if i < 5 else "cheap_provider",
             model="gpt-4",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             tenant_id="tenant-1",
         )
         cost_tracker.record_cost(metrics)
@@ -371,7 +373,7 @@ def test_cost_optimization_recommendations(
     cost_tracker: CostTracker,
 ) -> None:
     """Test cost optimization recommendations."""
-    from agentcore.integration.portkey.cost_models import CostMetrics
+    from agentcore.llm_gateway.cost_models import CostMetrics
 
     # Record high cost from expensive provider
     for i in range(20):
@@ -383,7 +385,7 @@ def test_cost_optimization_recommendations(
             output_tokens=1000,
             provider_id="expensive_provider",
             model="gpt-4",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             tenant_id="tenant-1",
         )
         cost_tracker.record_cost(metrics)
@@ -405,7 +407,7 @@ def test_cost_efficiency_score(
     cost_tracker: CostTracker,
 ) -> None:
     """Test cost efficiency score calculation."""
-    from agentcore.integration.portkey.cost_models import CostMetrics
+    from agentcore.llm_gateway.cost_models import CostMetrics
 
     # Record cost-efficient requests
     for i in range(10):
@@ -417,7 +419,7 @@ def test_cost_efficiency_score(
             output_tokens=333,
             provider_id="cheap_provider",
             model="gpt-4",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             tenant_id="tenant-1",
         )
         cost_tracker.record_cost(metrics)
@@ -509,17 +511,13 @@ def test_50_percent_cost_reduction_achievable(
     )
 
     # Calculate cost reduction
-    cost_reduction_percent = (
-        (expensive_cost - optimized_cost) / expensive_cost * 100
-    )
+    cost_reduction_percent = (expensive_cost - optimized_cost) / expensive_cost * 100
 
     # Verify 50%+ cost reduction is achievable
     assert cost_reduction_percent >= 50.0
 
     # Log the actual reduction for visibility
-    print(
-        f"\nCost reduction achieved: {cost_reduction_percent:.1f}%"
-    )
+    print(f"\nCost reduction achieved: {cost_reduction_percent:.1f}%")
     print(f"Expensive cost: ${expensive_cost:.4f}")
     print(f"Optimized cost: ${optimized_cost:.4f}")
     print(f"Savings: ${expensive_cost - optimized_cost:.4f}")

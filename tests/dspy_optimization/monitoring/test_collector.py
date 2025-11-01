@@ -1,19 +1,19 @@
 """Tests for metrics collection framework"""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from agentcore.dspy_optimization.models import (
+    OptimizationScope,
     OptimizationTarget,
     OptimizationTargetType,
-    OptimizationScope,
     PerformanceMetrics,
 )
 from agentcore.dspy_optimization.monitoring.collector import (
-    MetricsCollector,
-    CollectorConfig,
     AggregationMethod,
+    CollectorConfig,
+    MetricsCollector,
     MetricSnapshot,
 )
 
@@ -88,9 +88,7 @@ async def test_collect_with_metadata(collector, sample_target, sample_metrics):
     """Test collecting snapshot with metadata"""
     metadata = {"version": "v1.0", "is_optimized": True}
 
-    snapshot = await collector.collect(
-        sample_target, sample_metrics, metadata=metadata
-    )
+    snapshot = await collector.collect(sample_target, sample_metrics, metadata=metadata)
 
     assert snapshot.metadata == metadata
 
@@ -132,7 +130,7 @@ async def test_get_snapshots(collector, sample_target, sample_metrics):
 async def test_get_snapshots_with_time_filter(collector, sample_target):
     """Test getting snapshots with time filter"""
     # Collect snapshots with different timestamps
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     for i in range(5):
         metrics = PerformanceMetrics(
@@ -147,9 +145,7 @@ async def test_get_snapshots_with_time_filter(collector, sample_target):
 
     # Get snapshots from last 2 hours
     start_time = now - timedelta(hours=2)
-    snapshots = await collector.get_snapshots(
-        sample_target, start_time=start_time
-    )
+    snapshots = await collector.get_snapshots(sample_target, start_time=start_time)
 
     assert len(snapshots) <= 3  # 0, 1, 2 hours ago
 
@@ -181,7 +177,7 @@ async def test_aggregate_average(collector, sample_target):
         await collector.collect(sample_target, metrics)
 
     # Aggregate
-    end_time = datetime.utcnow()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(hours=1)
 
     aggregation = await collector.aggregate(
@@ -211,7 +207,7 @@ async def test_aggregate_median(collector, sample_target):
         await collector.collect(sample_target, metrics)
 
     # Aggregate
-    end_time = datetime.utcnow()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(hours=1)
 
     aggregation = await collector.aggregate(
@@ -228,7 +224,7 @@ async def test_aggregate_median(collector, sample_target):
 @pytest.mark.asyncio
 async def test_aggregate_no_data(collector, sample_target):
     """Test aggregation with no data"""
-    end_time = datetime.utcnow()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(hours=1)
 
     with pytest.raises(ValueError, match="No metrics found"):
@@ -317,7 +313,7 @@ async def test_percentile_95_aggregation(collector, sample_target):
         await collector.collect(sample_target, metrics)
 
     # Aggregate
-    end_time = datetime.utcnow()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(hours=1)
 
     aggregation = await collector.aggregate(
@@ -344,7 +340,7 @@ async def test_min_max_aggregation(collector, sample_target):
         )
         await collector.collect(sample_target, metrics)
 
-    end_time = datetime.utcnow()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(hours=1)
 
     # Test MIN

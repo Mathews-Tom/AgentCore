@@ -1,19 +1,19 @@
 """Tests for baseline performance measurement service"""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from agentcore.dspy_optimization.models import (
+    OptimizationScope,
     OptimizationTarget,
     OptimizationTargetType,
-    OptimizationScope,
     PerformanceMetrics,
 )
 from agentcore.dspy_optimization.monitoring.baseline import (
-    BaselineService,
     BaselineConfig,
     BaselineMeasurement,
+    BaselineService,
 )
 
 
@@ -93,9 +93,7 @@ async def test_measure_baseline(baseline_service, sample_target, performance_sam
 
 
 @pytest.mark.asyncio
-async def test_measure_baseline_insufficient_samples(
-    baseline_service, sample_target
-):
+async def test_measure_baseline_insufficient_samples(baseline_service, sample_target):
     """Test baseline measurement with insufficient samples"""
     samples = [{"success_rate": 0.8}] * 5  # Less than min_samples
 
@@ -150,9 +148,7 @@ async def test_update_baseline_fresh(
     )
 
     # Try to update immediately
-    updated = await baseline_service.update_baseline(
-        sample_target, performance_samples
-    )
+    updated = await baseline_service.update_baseline(sample_target, performance_samples)
 
     # Should return original (still fresh)
     assert updated.id == original.id
@@ -176,7 +172,7 @@ async def test_update_baseline_expired(baseline_service, sample_target):
     original = await baseline_service.measure_baseline(sample_target, samples)
 
     # Manually expire baseline
-    original.created_at = datetime.utcnow() - timedelta(
+    original.created_at = datetime.now(UTC) - timedelta(
         hours=baseline_service.config.update_frequency_hours + 1
     )
 
@@ -253,7 +249,7 @@ async def test_is_baseline_valid_expired(baseline_service, sample_target):
     baseline = await baseline_service.measure_baseline(sample_target, samples)
 
     # Manually expire
-    baseline.created_at = datetime.utcnow() - timedelta(
+    baseline.created_at = datetime.now(UTC) - timedelta(
         hours=baseline_service.config.update_frequency_hours + 1
     )
 
@@ -272,9 +268,7 @@ async def test_baseline_measurement_time_window(
     )
 
     # Check time window
-    expected_window = timedelta(
-        hours=baseline_service.config.measurement_window_hours
-    )
+    expected_window = timedelta(hours=baseline_service.config.measurement_window_hours)
     actual_window = measurement.measurement_end - measurement.measurement_start
 
     assert actual_window == expected_window

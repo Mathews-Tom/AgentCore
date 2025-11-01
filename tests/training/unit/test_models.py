@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -16,7 +16,8 @@ from agentcore.training.models import (
     TrainingJobStatus,
     TrainingQuery,
     Trajectory,
-    TrajectoryStep)
+    TrajectoryStep,
+)
 
 
 class TestGRPOConfig:
@@ -44,7 +45,8 @@ class TestGRPOConfig:
             max_budget_usd=Decimal("50.00"),
             checkpoint_interval=5,
             max_steps_per_trajectory=15,
-            gamma=0.95)
+            gamma=0.95,
+        )
         assert config.n_iterations == 500
         assert config.batch_size == 32
         assert config.learning_rate == 0.001
@@ -82,7 +84,8 @@ class TestTrainingQuery:
         """Test TrainingQuery creates successfully with valid data."""
         query = TrainingQuery(
             query="What is the capital of France?",
-            expected_outcome={"answer": "Paris", "correct": True})
+            expected_outcome={"answer": "Paris", "correct": True},
+        )
         assert query.query == "What is the capital of France?"
         assert query.expected_outcome["answer"] == "Paris"
 
@@ -90,8 +93,8 @@ class TestTrainingQuery:
         """Test validation fails for empty query string."""
         with pytest.raises(ValidationError) as exc_info:
             TrainingQuery(
-                query="",
-                expected_outcome={"answer": "Paris", "correct": True})
+                query="", expected_outcome={"answer": "Paris", "correct": True}
+            )
         assert "query" in str(exc_info.value)
 
     def test_complex_expected_outcome(self) -> None:
@@ -103,7 +106,8 @@ class TestTrainingQuery:
                 "confidence": 0.95,
                 "entities": ["example", "test"],
                 "metadata": {"source": "test"},
-            })
+            },
+        )
         assert query.expected_outcome["confidence"] == 0.95
         assert len(query.expected_outcome["entities"]) == 2
 
@@ -117,8 +121,9 @@ class TestTrajectoryStep:
             state={"context": "test context", "memory": []},
             action={"type": "tool_call", "tool": "calculator", "params": {"x": 5}},
             result={"output": 10, "success": True},
-            timestamp=datetime.now(),
-            duration_ms=150)
+            timestamp=datetime.now(UTC),
+            duration_ms=150,
+        )
         assert step.state["context"] == "test context"
         assert step.action["tool"] == "calculator"
         assert step.duration_ms == 150
@@ -130,8 +135,9 @@ class TestTrajectoryStep:
                 state={},
                 action={},
                 result={},
-                timestamp=datetime.now(),
-                duration_ms=-100)
+                timestamp=datetime.now(UTC),
+                duration_ms=-100,
+            )
         assert "duration_ms" in str(exc_info.value)
 
 
@@ -141,10 +147,7 @@ class TestTrajectory:
     def test_trajectory_defaults(self) -> None:
         """Test Trajectory initializes with defaults."""
         job_id = uuid4()
-        traj = Trajectory(
-            job_id=job_id,
-            agent_id="agent-123",
-            query="Test query")
+        traj = Trajectory(job_id=job_id, agent_id="agent-123", query="Test query")
         assert traj.trajectory_id is None
         assert traj.job_id == job_id
         assert traj.agent_id == "agent-123"
@@ -160,8 +163,9 @@ class TestTrajectory:
             state={"x": 1},
             action={"y": 2},
             result={"z": 3},
-            timestamp=datetime.now(),
-            duration_ms=100)
+            timestamp=datetime.now(UTC),
+            duration_ms=100,
+        )
         traj = Trajectory(
             job_id=job_id,
             agent_id="agent-123",
@@ -169,7 +173,8 @@ class TestTrajectory:
             steps=[step],
             reward=0.85,
             normalized_reward=0.5,
-            advantage=0.3)
+            advantage=0.3,
+        )
         assert len(traj.steps) == 1
         assert traj.reward == 0.85
 
@@ -181,16 +186,13 @@ class TestTrajectory:
                 state={},
                 action={},
                 result={},
-                timestamp=datetime.now(),
-                duration_ms=10)
+                timestamp=datetime.now(UTC),
+                duration_ms=10,
+            )
             for _ in range(101)
         ]
         with pytest.raises(ValidationError) as exc_info:
-            Trajectory(
-                job_id=job_id,
-                agent_id="agent-123",
-                query="Test",
-                steps=steps)
+            Trajectory(job_id=job_id, agent_id="agent-123", query="Test", steps=steps)
         assert "steps" in str(exc_info.value)
         assert "100 steps" in str(exc_info.value)
 
@@ -204,7 +206,8 @@ class TestTrainingJob:
         queries = [
             TrainingQuery(
                 query=f"Query {i}",
-                expected_outcome={"answer": f"Answer {i}", "correct": True})
+                expected_outcome={"answer": f"Answer {i}", "correct": True},
+            )
             for i in range(100)
         ]
         job = TrainingJob(
@@ -212,7 +215,8 @@ class TestTrainingJob:
             config=config,
             training_data=queries,
             total_iterations=1000,
-            budget_usd=Decimal("100.00"))
+            budget_usd=Decimal("100.00"),
+        )
         assert job.job_id is None
         assert job.agent_id == "agent-123"
         assert job.status == TrainingJobStatus.QUEUED
@@ -225,8 +229,8 @@ class TestTrainingJob:
         config = GRPOConfig()
         queries = [
             TrainingQuery(
-                query=f"Query {i}",
-                expected_outcome={"answer": "test", "correct": True})
+                query=f"Query {i}", expected_outcome={"answer": "test", "correct": True}
+            )
             for i in range(50)
         ]
         with pytest.raises(ValidationError) as exc_info:
@@ -235,7 +239,8 @@ class TestTrainingJob:
                 config=config,
                 training_data=queries,
                 total_iterations=1000,
-                budget_usd=Decimal("100.00"))
+                budget_usd=Decimal("100.00"),
+            )
         assert "training_data" in str(exc_info.value)
 
     def test_training_job_cost_conversion(self) -> None:
@@ -251,7 +256,8 @@ class TestTrainingJob:
             training_data=queries,
             total_iterations=1000,
             budget_usd="200.00",
-            cost_usd=25.50)
+            cost_usd=25.50,
+        )
         assert isinstance(job.cost_usd, Decimal)
         assert job.cost_usd == Decimal("25.50")
         assert isinstance(job.budget_usd, Decimal)
@@ -266,7 +272,7 @@ class TestTrainingJob:
         ]
         job_id = uuid4()
         checkpoint_id = uuid4()
-        created = datetime.now()
+        created = datetime.now(UTC)
 
         job = TrainingJob(
             job_id=job_id,
@@ -280,7 +286,8 @@ class TestTrainingJob:
             cost_usd=Decimal("15.00"),
             budget_usd=Decimal("100.00"),
             best_checkpoint_id=checkpoint_id,
-            created_at=created)
+            created_at=created,
+        )
         assert job.job_id == job_id
         assert job.status == TrainingJobStatus.RUNNING
         assert job.current_iteration == 50
@@ -302,7 +309,8 @@ class TestPolicyCheckpoint:
                 "examples": ["example1", "example2"],
             },
             validation_score=0.85,
-            metrics={"accuracy": 0.9, "loss": 0.2})
+            metrics={"accuracy": 0.9, "loss": 0.2},
+        )
         assert checkpoint.agent_id == "agent-123"
         assert checkpoint.iteration == 10
         assert checkpoint.policy_data["prompt"] == "You are a helpful assistant"
@@ -316,18 +324,17 @@ class TestPolicyCheckpoint:
             job_id=job_id,
             iteration=20,
             policy_s3_path="s3://bucket/checkpoints/agent-123/iter-20.pkl",
-            validation_score=0.90)
+            validation_score=0.90,
+        )
         assert checkpoint.policy_s3_path.startswith("s3://")
         assert checkpoint.policy_data is None
 
     def test_checkpoint_defaults(self) -> None:
         """Test PolicyCheckpoint defaults."""
         job_id = uuid4()
-        checkpoint = PolicyCheckpoint(
-            agent_id="agent-123",
-            job_id=job_id,
-            iteration=0)
+        checkpoint = PolicyCheckpoint(agent_id="agent-123", job_id=job_id, iteration=0)
         assert checkpoint.checkpoint_id is None
         assert checkpoint.validation_score == 0.0
         assert len(checkpoint.metrics) == 0
+        assert checkpoint.created_at is None
         assert checkpoint.created_at is None

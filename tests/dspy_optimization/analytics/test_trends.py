@@ -2,7 +2,7 @@
 Tests for trend analysis and forecasting
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -34,7 +34,7 @@ def target() -> OptimizationTarget:
 @pytest.fixture
 def improving_series() -> list[TimeSeriesPoint]:
     """Create improving time series"""
-    base_time = datetime.utcnow()
+    base_time = datetime.now(UTC)
     return [
         TimeSeriesPoint(
             timestamp=base_time + timedelta(hours=i),
@@ -47,7 +47,7 @@ def improving_series() -> list[TimeSeriesPoint]:
 @pytest.fixture
 def degrading_series() -> list[TimeSeriesPoint]:
     """Create degrading time series"""
-    base_time = datetime.utcnow()
+    base_time = datetime.now(UTC)
     return [
         TimeSeriesPoint(
             timestamp=base_time + timedelta(hours=i),
@@ -60,7 +60,7 @@ def degrading_series() -> list[TimeSeriesPoint]:
 @pytest.fixture
 def stable_series() -> list[TimeSeriesPoint]:
     """Create stable time series"""
-    base_time = datetime.utcnow()
+    base_time = datetime.now(UTC)
     return [
         TimeSeriesPoint(
             timestamp=base_time + timedelta(hours=i),
@@ -73,7 +73,7 @@ def stable_series() -> list[TimeSeriesPoint]:
 @pytest.fixture
 def volatile_series() -> list[TimeSeriesPoint]:
     """Create volatile time series"""
-    base_time = datetime.utcnow()
+    base_time = datetime.now(UTC)
     # Create highly volatile series with large swings
     # Mean ~0.7, std > 0.35 gives volatility > 0.5
     return [
@@ -209,8 +209,7 @@ async def test_forecast_insufficient_data(
 ) -> None:
     """Test forecast fails with insufficient data"""
     short_series = [
-        TimeSeriesPoint(timestamp=datetime.utcnow(), value=0.8)
-        for _ in range(5)
+        TimeSeriesPoint(timestamp=datetime.now(UTC), value=0.8) for _ in range(5)
     ]
 
     with pytest.raises(ValueError, match="Insufficient historical data"):
@@ -372,9 +371,8 @@ async def test_expected_change_calculation(
 
     # Should be percentage change from baseline
     calculated_change = (
-        (forecast.predicted_values[-1] - forecast.baseline_value)
-        / forecast.baseline_value
-    )
+        forecast.predicted_values[-1] - forecast.baseline_value
+    ) / forecast.baseline_value
     assert forecast.expected_change == pytest.approx(calculated_change, rel=0.01)
 
 
@@ -408,7 +406,7 @@ async def test_analyze_insufficient_data(
     target: OptimizationTarget,
 ) -> None:
     """Test analysis fails with insufficient data"""
-    single_point = [TimeSeriesPoint(timestamp=datetime.utcnow(), value=0.8)]
+    single_point = [TimeSeriesPoint(timestamp=datetime.now(UTC), value=0.8)]
 
     with pytest.raises(ValueError, match="Insufficient data points"):
         await analyzer.analyze_trend(target, "success_rate", single_point)
@@ -420,7 +418,7 @@ async def test_time_span_calculation(
     target: OptimizationTarget,
 ) -> None:
     """Test time span calculation"""
-    base_time = datetime.utcnow()
+    base_time = datetime.now(UTC)
     series = [
         TimeSeriesPoint(timestamp=base_time + timedelta(days=i), value=0.7 + i * 0.01)
         for i in range(30)

@@ -1,27 +1,26 @@
 """Budget control and enforcement tests.
 
-Tests budget enforcement (per-tenant, per-service, global), quota limits,
 budget alerts and notifications, overage handling, budget reset cycles,
+Tests budget enforcement (per-tenant, per-service, global), quota limits,
 and multi-tenant budget isolation. Includes edge case testing for
 concurrent requests and race conditions.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     BudgetAlertSeverity,
     BudgetConfig,
     BudgetThreshold,
     CostMetrics,
     CostPeriod,
 )
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.exceptions import PortkeyBudgetExceededError
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.exceptions import LLMGatewayBudgetExceededError
 
 
 @pytest.fixture
@@ -38,7 +37,7 @@ class TestBudgetEnforcement:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test per-tenant budget limits."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Set budgets for multiple tenants
         for tenant_id in range(3):
@@ -86,7 +85,7 @@ class TestBudgetEnforcement:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test hard limit budget enforcement (reject requests when exceeded)."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_hard_limit",
@@ -126,7 +125,7 @@ class TestBudgetEnforcement:
         )
 
         # Should raise exception due to hard limit
-        with pytest.raises(PortkeyBudgetExceededError) as exc_info:
+        with pytest.raises(LLMGatewayBudgetExceededError) as exc_info:
             cost_tracker_budget.record_cost(metrics2)
 
         assert "Budget exceeded" in str(exc_info.value)
@@ -137,7 +136,7 @@ class TestBudgetEnforcement:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test soft limit budget enforcement (warn but allow overage)."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_soft_limit",
@@ -180,7 +179,7 @@ class TestQuotaLimits:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test cost-based quota limits."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_cost_quota",
@@ -235,7 +234,7 @@ class TestQuotaLimits:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test tracking budgets based on token usage."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Track token usage across multiple requests
         total_tokens = 0
@@ -279,7 +278,7 @@ class TestBudgetAlerts:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test alert generation at budget thresholds."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Configure budget with multiple thresholds
         budget = BudgetConfig(
@@ -358,7 +357,7 @@ class TestBudgetAlerts:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test different alert severity levels."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_severity",
@@ -404,7 +403,7 @@ class TestBudgetAlerts:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test alert debouncing to prevent spam."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_debounce",
@@ -435,7 +434,9 @@ class TestBudgetAlerts:
         )
         cost_tracker_budget.record_cost(metrics1)
 
-        alerts_count_1 = len(cost_tracker_budget.get_alerts(tenant_id="tenant_debounce"))
+        alerts_count_1 = len(
+            cost_tracker_budget.get_alerts(tenant_id="tenant_debounce")
+        )
 
         # Spend another $0.50 immediately (still above threshold)
         metrics2 = CostMetrics(
@@ -451,7 +452,9 @@ class TestBudgetAlerts:
         )
         cost_tracker_budget.record_cost(metrics2)
 
-        alerts_count_2 = len(cost_tracker_budget.get_alerts(tenant_id="tenant_debounce"))
+        alerts_count_2 = len(
+            cost_tracker_budget.get_alerts(tenant_id="tenant_debounce")
+        )
 
         # Should not generate duplicate alert due to debouncing
         assert alerts_count_2 == alerts_count_1
@@ -465,7 +468,7 @@ class TestOverageHandling:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test tracking overage for soft limit budgets."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_overage",
@@ -508,7 +511,7 @@ class TestOverageHandling:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test that hard limit prevents any overage."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_no_overage",
@@ -547,7 +550,7 @@ class TestOverageHandling:
             tenant_id="tenant_no_overage",
         )
 
-        with pytest.raises(PortkeyBudgetExceededError):
+        with pytest.raises(LLMGatewayBudgetExceededError):
             cost_tracker_budget.record_cost(metrics2)
 
         # Verify the overage was recorded (cost is added before exception)
@@ -568,7 +571,7 @@ class TestBudgetResetCycles:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test that spending outside budget period is not counted."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_period",
@@ -627,7 +630,7 @@ class TestMultiTenantBudgetIsolation:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test that tenant budgets are completely isolated."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Create budgets for 10 tenants
         num_tenants = 10
@@ -671,7 +674,7 @@ class TestMultiTenantBudgetIsolation:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test that one tenant exceeding budget doesn't affect others."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Create budgets
         budget1 = BudgetConfig(
@@ -709,7 +712,7 @@ class TestMultiTenantBudgetIsolation:
         cost_tracker_budget.record_cost(metrics_a)
 
         # Attempt to exceed tenant A budget
-        with pytest.raises(PortkeyBudgetExceededError):
+        with pytest.raises(LLMGatewayBudgetExceededError):
             metrics_a_exceed = CostMetrics(
                 total_cost=1.0,
                 input_cost=0.5,
@@ -755,7 +758,7 @@ class TestConcurrencyAndRaceConditions:
         Note: This is a simplified test. In production, proper locking
         mechanisms would be needed for true concurrent safety.
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_concurrent",
@@ -793,7 +796,7 @@ class TestConcurrencyAndRaceConditions:
                     )
                     cost_tracker_budget.record_cost(metrics)
                     successful_requests += 1
-                except PortkeyBudgetExceededError:
+                except LLMGatewayBudgetExceededError:
                     # Budget exceeded
                     break
 
@@ -808,7 +811,7 @@ class TestConcurrencyAndRaceConditions:
         cost_tracker_budget: CostTracker,
     ) -> None:
         """Test pre-flight budget checking to prevent overage."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         budget = BudgetConfig(
             tenant_id="tenant_preflight",

@@ -77,7 +77,7 @@ class TestLLMMetricsDefinition:
     def test_llm_requests_total_exists(self) -> None:
         """Test that llm_requests_total counter exists with correct labels."""
         # Trigger metric creation by recording a request
-        record_llm_request("openai", "gpt-4.1-mini", "success")
+        record_llm_request("openai", "gpt-5-mini", "success")
 
         # Verify metric exists in registry
         # Note: Prometheus counters with _total suffix have metric name WITHOUT suffix
@@ -96,7 +96,7 @@ class TestLLMMetricsDefinition:
     def test_llm_requests_duration_seconds_exists(self) -> None:
         """Test that llm_requests_duration_seconds histogram exists with correct labels."""
         # Trigger metric creation
-        record_llm_duration("anthropic", "claude-3-5-haiku-20241022", 1.5)
+        record_llm_duration("anthropic", "claude-haiku-4-5-20251001", 1.5)
 
         # Verify metric exists in registry
         metric_found = False
@@ -113,7 +113,7 @@ class TestLLMMetricsDefinition:
     def test_llm_tokens_total_exists(self) -> None:
         """Test that llm_tokens_total counter exists with correct labels."""
         # Trigger metric creation
-        record_llm_tokens("gemini", "gemini-2.0-flash-exp", "prompt", 100)
+        record_llm_tokens("gemini", "gemini-2.5-flash-lite", "prompt", 100)
 
         # Verify metric exists in registry
         metric_found = False
@@ -190,15 +190,15 @@ class TestLLMMetricsRecording:
         # Get initial value
         initial = get_metric_value(
             "llm_requests_total",
-            {"provider": "openai", "model": "gpt-4.1", "status": "success"})
+            {"provider": "openai", "model": "gpt-5", "status": "success"})
 
         # Record a successful request
-        record_llm_request("openai", "gpt-4.1", "success")
+        record_llm_request("openai", "gpt-5", "success")
 
         # Verify it incremented
         value = get_metric_value(
             "llm_requests_total",
-            {"provider": "openai", "model": "gpt-4.1", "status": "success"})
+            {"provider": "openai", "model": "gpt-5", "status": "success"})
         assert value == initial + 1.0
 
     def test_record_llm_request_different_labels(self) -> None:
@@ -214,14 +214,14 @@ class TestLLMMetricsRecording:
             "llm_requests_total",
             {
                 "provider": "anthropic",
-                "model": "claude-3-opus",
+                "model": "claude-opus-4-1-20250805",
                 "status": "success",
             })
 
         # Record requests with different labels
         record_llm_request("openai", "gpt-5-mini", "success")
         record_llm_request("openai", "gpt-5-mini", "error")
-        record_llm_request("anthropic", "claude-3-opus", "success")
+        record_llm_request("anthropic", "claude-opus-4-1-20250805", "success")
 
         # Verify each combination incremented independently
         assert (
@@ -241,7 +241,7 @@ class TestLLMMetricsRecording:
                 "llm_requests_total",
                 {
                     "provider": "anthropic",
-                    "model": "claude-3-opus",
+                    "model": "claude-opus-4-1-20250805",
                     "status": "success",
                 })
             == init_anthropic + 1.0
@@ -252,17 +252,17 @@ class TestLLMMetricsRecording:
         # Get initial count
         init_count = get_metric_value(
             "llm_requests_duration_seconds_count",
-            {"provider": "gemini", "model": "gemini-2.0-flash-exp"})
+            {"provider": "gemini", "model": "gemini-2.5-flash-lite"})
 
         # Record some durations
-        record_llm_duration("gemini", "gemini-2.0-flash-exp", 0.5)
-        record_llm_duration("gemini", "gemini-2.0-flash-exp", 1.5)
-        record_llm_duration("gemini", "gemini-2.0-flash-exp", 2.5)
+        record_llm_duration("gemini", "gemini-2.5-flash-lite", 0.5)
+        record_llm_duration("gemini", "gemini-2.5-flash-lite", 1.5)
+        record_llm_duration("gemini", "gemini-2.5-flash-lite", 2.5)
 
         # Verify histogram count increased by 3
         count = get_metric_value(
             "llm_requests_duration_seconds_count",
-            {"provider": "gemini", "model": "gemini-2.0-flash-exp"})
+            {"provider": "gemini", "model": "gemini-2.5-flash-lite"})
         assert count == init_count + 3.0
 
     def test_record_llm_tokens_increments_by_count(self) -> None:
@@ -270,28 +270,28 @@ class TestLLMMetricsRecording:
         # Get initial value
         init_prompt = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "prompt"})
+            {"provider": "openai", "model": "gpt-5", "token_type": "prompt"})
         init_completion = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "completion"})
+            {"provider": "openai", "model": "gpt-5", "token_type": "completion"})
 
         # Record prompt tokens
-        record_llm_tokens("openai", "gpt-4.1", "prompt", 100)
-        record_llm_tokens("openai", "gpt-4.1", "prompt", 50)
+        record_llm_tokens("openai", "gpt-5", "prompt", 100)
+        record_llm_tokens("openai", "gpt-5", "prompt", 50)
 
         # Verify counter increased by total
         value = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "prompt"})
+            {"provider": "openai", "model": "gpt-5", "token_type": "prompt"})
         assert value == init_prompt + 150.0
 
         # Record completion tokens
-        record_llm_tokens("openai", "gpt-4.1", "completion", 75)
+        record_llm_tokens("openai", "gpt-5", "completion", 75)
 
         # Verify completion tokens tracked separately
         value = get_metric_value(
             "llm_tokens_total",
-            {"provider": "openai", "model": "gpt-4.1", "token_type": "completion"})
+            {"provider": "openai", "model": "gpt-5", "token_type": "completion"})
         assert value == init_completion + 75.0
 
     def test_record_llm_error_increments_counter(self) -> None:
@@ -301,28 +301,28 @@ class TestLLMMetricsRecording:
             "llm_errors_total",
             {
                 "provider": "anthropic",
-                "model": "claude-3-5-sonnet",
+                "model": "claude-haiku-4-5-20251001",
                 "error_type": "ProviderError",
             })
         init_timeout = get_metric_value(
             "llm_errors_total",
             {
                 "provider": "anthropic",
-                "model": "claude-3-5-sonnet",
+                "model": "claude-haiku-4-5-20251001",
                 "error_type": "ProviderTimeoutError",
             })
 
         # Record errors
-        record_llm_error("anthropic", "claude-3-5-sonnet", "ProviderError")
-        record_llm_error("anthropic", "claude-3-5-sonnet", "ProviderError")
-        record_llm_error("anthropic", "claude-3-5-sonnet", "ProviderTimeoutError")
+        record_llm_error("anthropic", "claude-haiku-4-5-20251001", "ProviderError")
+        record_llm_error("anthropic", "claude-haiku-4-5-20251001", "ProviderError")
+        record_llm_error("anthropic", "claude-haiku-4-5-20251001", "ProviderTimeoutError")
 
         # Verify error counts incremented correctly
         provider_error_count = get_metric_value(
             "llm_errors_total",
             {
                 "provider": "anthropic",
-                "model": "claude-3-5-sonnet",
+                "model": "claude-haiku-4-5-20251001",
                 "error_type": "ProviderError",
             })
         assert provider_error_count == init_provider + 2.0
@@ -331,7 +331,7 @@ class TestLLMMetricsRecording:
             "llm_errors_total",
             {
                 "provider": "anthropic",
-                "model": "claude-3-5-sonnet",
+                "model": "claude-haiku-4-5-20251001",
                 "error_type": "ProviderTimeoutError",
             })
         assert timeout_error_count == init_timeout + 1.0

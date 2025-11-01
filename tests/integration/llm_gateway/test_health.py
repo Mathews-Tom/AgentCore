@@ -6,13 +6,12 @@ Tests health metrics tracking, circuit breaker management, and background monito
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from agentcore.integration.portkey.health import ProviderHealthMonitor, RequestRecord
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.health import ProviderHealthMonitor, RequestRecord
+from agentcore.llm_gateway.provider import (
     CircuitBreakerConfig,
     CircuitBreakerState,
     ProviderCapabilities,
@@ -21,7 +20,7 @@ from agentcore.integration.portkey.provider import (
     ProviderMetadata,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 
 @pytest.fixture
@@ -84,7 +83,9 @@ class TestHealthMonitorInitialization:
 class TestRequestTracking:
     """Test request recording and tracking."""
 
-    def test_record_request_success(self, health_monitor: ProviderHealthMonitor) -> None:
+    def test_record_request_success(
+        self, health_monitor: ProviderHealthMonitor
+    ) -> None:
         """Test recording a successful request."""
         health_monitor.record_request(
             provider_id="provider1",
@@ -98,7 +99,9 @@ class TestRequestTracking:
         assert history[0].latency_ms == 100
         assert history[0].error is None
 
-    def test_record_request_failure(self, health_monitor: ProviderHealthMonitor) -> None:
+    def test_record_request_failure(
+        self, health_monitor: ProviderHealthMonitor
+    ) -> None:
         """Test recording a failed request."""
         health_monitor.record_request(
             provider_id="provider1",
@@ -365,7 +368,7 @@ class TestProviderAvailability:
         if provider:
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
             )
 
         assert health_monitor.is_provider_available("provider1") is True
@@ -378,7 +381,7 @@ class TestProviderAvailability:
         if provider:
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.DEGRADED,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
             )
 
         assert health_monitor.is_provider_available("provider1") is True
@@ -446,11 +449,11 @@ class TestCircuitBreakerManagement:
 
         # Manually open circuit
         cb.state = CircuitBreakerState.OPEN
-        cb.opened_at = datetime.now() - timedelta(seconds=40)  # Past timeout
+        cb.opened_at = datetime.now(UTC) - timedelta(seconds=40)  # Past timeout
 
         metrics = ProviderHealthMetrics(
             status=ProviderStatus.DEGRADED,
-            last_check=datetime.now(),
+            last_check=datetime.now(UTC),
         )
 
         await health_monitor._update_circuit_breaker("provider1", metrics)
@@ -472,7 +475,7 @@ class TestCircuitBreakerManagement:
 
         metrics = ProviderHealthMetrics(
             status=ProviderStatus.HEALTHY,
-            last_check=datetime.now(),
+            last_check=datetime.now(UTC),
         )
 
         await health_monitor._update_circuit_breaker("provider1", metrics)
@@ -526,7 +529,7 @@ class TestGetProviderMetrics:
         if provider:
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.99,
             )
 
@@ -609,7 +612,7 @@ class TestRequestRecord:
 
     def test_request_record_creation(self) -> None:
         """Test creating a request record."""
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
         record = RequestRecord(
             timestamp=timestamp,
             success=True,
@@ -624,7 +627,7 @@ class TestRequestRecord:
 
     def test_request_record_with_error(self) -> None:
         """Test creating a request record with error."""
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
         record = RequestRecord(
             timestamp=timestamp,
             success=False,

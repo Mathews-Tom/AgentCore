@@ -113,7 +113,7 @@ class TestOptimizerPluginInterface:
         """Test create_optimizer with custom LLM"""
         plugin = TestOptimizerPlugin()
         config = PluginConfig(plugin_name="test_optimizer")
-        custom_llm = dspy.LM("openai/gpt-4.1")
+        custom_llm = dspy.LM("openai/gpt-5")
 
         optimizer = plugin.create_optimizer(config, llm=custom_llm)
 

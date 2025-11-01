@@ -15,13 +15,13 @@ from typing import Any
 import pytest
 import pytest_asyncio
 
-from agentcore.integration.portkey.cache_models import (
+from agentcore.llm_gateway.cache_models import (
     CacheConfig,
     CacheMode,
     CacheStats,
     EvictionPolicy)
-from agentcore.integration.portkey.cache_service import CacheService
-from agentcore.integration.portkey.models import (
+from agentcore.llm_gateway.cache_service import CacheService
+from agentcore.llm_gateway.models import (
     LLMRequest,
     LLMResponse)
 

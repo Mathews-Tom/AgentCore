@@ -5,7 +5,7 @@ Tests audit event logging, tamper-proof chain, and event querying.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -251,7 +251,7 @@ class TestAuditLogger:
         """Test filtering events by time range."""
         logger = AuditLogger()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Log event in the past
         past_event = logger.log_event(
@@ -399,7 +399,7 @@ class TestAuditLogger:
         """Test cleanup of old events."""
         logger = AuditLogger(retention_days=30)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Log old event
         old_event = logger.log_event(

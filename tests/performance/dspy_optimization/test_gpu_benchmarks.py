@@ -13,6 +13,12 @@ import numpy as np
 import pytest
 
 try:
+    import torch
+    CUDA_AVAILABLE = torch.cuda.is_available()
+except ImportError:
+    CUDA_AVAILABLE = False
+
+try:
     from agentcore.dspy_optimization.gpu.benchmark import (
         BenchmarkResult,
         PerformanceBenchmark,
@@ -22,6 +28,12 @@ try:
     from agentcore.dspy_optimization.gpu.tensor_ops import TensorOperations
 except ImportError as e:
     pytest.skip(f"Required dependencies not available: {e}", allow_module_level=True)
+
+# Skip CUDA-dependent tests on non-CUDA systems (e.g., Apple Silicon with Metal)
+pytestmark = pytest.mark.skipif(
+    not CUDA_AVAILABLE,
+    reason="CUDA not available - tests require NVIDIA GPU"
+)
 
 
 class TestGPUBenchmarks:
@@ -33,7 +45,7 @@ class TestGPUBenchmarks:
         return DeviceManager()
 
     @pytest.fixture
-    def benchmark(self, device_manager):
+    def perf_benchmark(self, device_manager):
         """Initialize performance benchmark"""
         return PerformanceBenchmark(device_manager)
 
@@ -52,9 +64,9 @@ class TestGPUBenchmarks:
         assert any(d.device_type == DeviceType.CPU for d in device_manager.available_devices)
 
     @pytest.mark.performance
-    def test_matrix_multiplication_benchmark(self, benchmark):
+    def test_matrix_multiplication_benchmark(self, perf_benchmark):
         """Benchmark matrix multiplication (CPU vs GPU)"""
-        results = benchmark.benchmark_matrix_operations(
+        results = perf_benchmark.benchmark_matrix_operations(
             matrix_size=1000,
             iterations=10
         )
@@ -85,9 +97,9 @@ class TestGPUBenchmarks:
             print(f"\nGPU VALIDATION: {result.speedup:.2f}x speedup achieved")
 
     @pytest.mark.performance
-    def test_distance_computation_benchmark(self, benchmark):
+    def test_distance_computation_benchmark(self, perf_benchmark):
         """Benchmark distance computation (common in optimization)"""
-        result = benchmark.benchmark_distance_computation(
+        result = perf_benchmark.benchmark_distance_computation(
             n_points=10000,
             n_centroids=100,
             n_features=128,
@@ -105,9 +117,9 @@ class TestGPUBenchmarks:
         assert result.efficiency > 0
 
     @pytest.mark.performance
-    def test_normalization_benchmark(self, benchmark):
+    def test_normalization_benchmark(self, perf_benchmark):
         """Benchmark vector normalization"""
-        result = benchmark.benchmark_normalization(
+        result = perf_benchmark.benchmark_normalization(
             array_size=(10000, 128),
             iterations=10
         )
@@ -123,9 +135,9 @@ class TestGPUBenchmarks:
         assert result.efficiency > 0
 
     @pytest.mark.performance
-    def test_cosine_similarity_benchmark(self, benchmark):
+    def test_cosine_similarity_benchmark(self, perf_benchmark):
         """Benchmark cosine similarity computation"""
-        result = benchmark.benchmark_cosine_similarity(
+        result = perf_benchmark.benchmark_cosine_similarity(
             n_vectors_a=1000,
             n_vectors_b=1000,
             n_features=256,
@@ -144,16 +156,16 @@ class TestGPUBenchmarks:
 
     @pytest.mark.performance
     @pytest.mark.slow
-    def test_comprehensive_benchmark_suite(self, benchmark):
+    def test_comprehensive_benchmark_suite(self, perf_benchmark):
         """Run comprehensive GPU benchmark suite"""
         print("\n" + "=" * 80)
         print("COMPREHENSIVE GPU BENCHMARK SUITE")
         print("=" * 80)
 
-        results = benchmark.run_comprehensive_benchmark()
+        results = perf_benchmark.run_comprehensive_benchmark()
 
         # Print all results
-        benchmark.print_benchmark_results(results)
+        perf_benchmark.print_benchmark_results(results)
 
         # Verify all benchmarks ran
         assert len(results) >= 4
@@ -284,9 +296,9 @@ class TestGPUBenchmarks:
 
     @pytest.mark.performance
     @pytest.mark.parametrize("matrix_size", [100, 500, 1000, 2000])
-    def test_scaling_with_matrix_size(self, benchmark, matrix_size):
+    def test_scaling_with_matrix_size(self, perf_benchmark, matrix_size):
         """Test performance scaling with matrix size"""
-        results = benchmark.benchmark_matrix_operations(
+        results = perf_benchmark.benchmark_matrix_operations(
             matrix_size=matrix_size,
             iterations=5
         )
@@ -301,7 +313,7 @@ class TestGPUBenchmarks:
         assert result.cpu_time > 0
 
     @pytest.mark.performance
-    def test_warmup_effect(self, benchmark, device_manager):
+    def test_warmup_effect(self, perf_benchmark, device_manager):
         """Test effect of warmup iterations"""
         tensor_ops = TensorOperations(device_manager)
 

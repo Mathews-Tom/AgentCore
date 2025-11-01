@@ -6,19 +6,20 @@ Tests provider registration, selection, filtering, ranking, and cost optimizatio
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import OptimizationContext, OptimizationStrategy
-from agentcore.integration.portkey.exceptions import (
-    PortkeyConfigurationError,
-    PortkeyProviderError,
+from agentcore.llm_gateway.cost_models import (
+    OptimizationContext,
+    OptimizationStrategy,
 )
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.exceptions import (
+    LLMGatewayConfigurationError,
+    LLMGatewayProviderError,
+)
+from agentcore.llm_gateway.provider import (
     CircuitBreakerConfig,
     CircuitBreakerState,
     DataResidency,
@@ -32,7 +33,10 @@ from agentcore.integration.portkey.provider import (
     ProviderSelectionCriteria,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry, get_provider_registry
+from agentcore.llm_gateway.registry import (
+    ProviderRegistry,
+    get_provider_registry,
+)
 
 
 class TestProviderRegistryBasics:
@@ -223,7 +227,7 @@ class TestProviderListing:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
             ProviderConfiguration(
@@ -233,7 +237,7 @@ class TestProviderListing:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.DEGRADED,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
             ProviderConfiguration(
@@ -243,7 +247,7 @@ class TestProviderListing:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.UNHEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
         ]
@@ -316,7 +320,7 @@ class TestProviderSelection:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.99,
             ),
         )
@@ -347,7 +351,7 @@ class TestProviderSelection:
                 ),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             )
             for i in range(5)
@@ -386,7 +390,7 @@ class TestProviderSelection:
             required_capabilities=[ProviderCapability.VISION]
         )
 
-        with pytest.raises(PortkeyProviderError) as exc_info:
+        with pytest.raises(LLMGatewayProviderError) as exc_info:
             registry.select_provider(criteria)
 
         assert "No suitable provider found" in str(exc_info.value)
@@ -529,7 +533,7 @@ class TestProviderSelection:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                     average_latency_ms=100,
                 ),
             ),
@@ -540,7 +544,7 @@ class TestProviderSelection:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                     average_latency_ms=2000,
                 ),
             ),
@@ -603,7 +607,7 @@ class TestProviderRanking:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                     success_rate=0.99,
                     availability_percent=99.9,
                 ),
@@ -616,7 +620,7 @@ class TestProviderRanking:
                 capabilities=ProviderCapabilities(),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.DEGRADED,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                     success_rate=0.85,
                     availability_percent=85.0,
                 ),
@@ -702,7 +706,7 @@ class TestFileOperations:
         """Test loading from non-existent file."""
         registry = ProviderRegistry()
 
-        with pytest.raises(PortkeyConfigurationError) as exc_info:
+        with pytest.raises(LLMGatewayConfigurationError) as exc_info:
             registry.load_from_file("/nonexistent/path.json")
 
         assert "not found" in str(exc_info.value)
@@ -760,7 +764,7 @@ class TestRegistryStats:
                 ),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.HEALTHY,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
             ProviderConfiguration(
@@ -772,7 +776,7 @@ class TestRegistryStats:
                 ),
                 health=ProviderHealthMetrics(
                     status=ProviderStatus.DEGRADED,
-                    last_check=datetime.now(),
+                    last_check=datetime.now(UTC),
                 ),
             ),
             ProviderConfiguration(

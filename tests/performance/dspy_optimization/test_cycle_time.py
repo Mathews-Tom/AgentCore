@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -36,7 +36,7 @@ class TestOptimizationCycleTimes:
         timer = OptimizationTimer(target_duration_seconds=TARGET_DURATION_SECONDS)
 
         # Run optimization with timing
-        optimization_id = f"miprov2-small-{datetime.utcnow().isoformat()}"
+        optimization_id = f"miprov2-small-{datetime.now(UTC).isoformat()}"
         timer.start_cycle(optimization_id)
 
         start_time = time.perf_counter()
@@ -63,7 +63,7 @@ class TestOptimizationCycleTimes:
         """Test GEPA cycle time for small workload"""
         timer = OptimizationTimer(target_duration_seconds=TARGET_DURATION_SECONDS)
 
-        optimization_id = f"gepa-small-{datetime.utcnow().isoformat()}"
+        optimization_id = f"gepa-small-{datetime.now(UTC).isoformat()}"
         timer.start_cycle(optimization_id)
 
         start_time = time.perf_counter()
@@ -86,7 +86,7 @@ class TestOptimizationCycleTimes:
         """Test Genetic algorithm cycle time for small workload"""
         timer = OptimizationTimer(target_duration_seconds=TARGET_DURATION_SECONDS)
 
-        optimization_id = f"genetic-small-{datetime.utcnow().isoformat()}"
+        optimization_id = f"genetic-small-{datetime.now(UTC).isoformat()}"
         timer.start_cycle(optimization_id)
 
         start_time = time.perf_counter()
@@ -107,10 +107,7 @@ class TestOptimizationCycleTimes:
     @pytest.mark.performance
     async def test_cycle_time_with_progress_tracking(self):
         """Test cycle time with progress updates"""
-        timer = OptimizationTimer(
-            target_duration_seconds=60,
-            warning_threshold=0.8
-        )
+        timer = OptimizationTimer(target_duration_seconds=60, warning_threshold=0.8)
 
         optimization_id = "progress-test"
         timer.start_cycle(optimization_id)
@@ -146,10 +143,7 @@ class TestOptimizationCycleTimes:
             return metrics.duration_seconds
 
         # Run 5 optimizations concurrently
-        tasks = [
-            run_optimization(f"opt-{i}", 0.1)
-            for i in range(5)
-        ]
+        tasks = [run_optimization(f"opt-{i}", 0.1) for i in range(5)]
 
         start_time = time.perf_counter()
         durations = await asyncio.gather(*tasks)
@@ -227,7 +221,7 @@ class TestOptimizationCycleTimes:
         """Test detection of approaching time limit"""
         timer = OptimizationTimer(
             target_duration_seconds=1.0,
-            warning_threshold=0.5  # Warn at 50% of time
+            warning_threshold=0.5,  # Warn at 50% of time
         )
 
         optimization_id = "limit-test"
@@ -268,11 +262,7 @@ class TestOptimizationCycleTimes:
         """Run comprehensive performance benchmark"""
         timer = OptimizationTimer(target_duration_seconds=TARGET_DURATION_SECONDS)
 
-        results = {
-            "miprov2": [],
-            "gepa": [],
-            "genetic": []
-        }
+        results = {"miprov2": [], "gepa": [], "genetic": []}
 
         # Test each algorithm multiple times
         for algorithm in ["miprov2", "gepa", "genetic"]:
@@ -287,11 +277,13 @@ class TestOptimizationCycleTimes:
                 timer.update_progress(opt_id, iterations=10)
                 metrics = timer.end_cycle(opt_id, status="completed")
 
-                results[algorithm].append({
-                    "duration": end - start,
-                    "throughput": metrics.throughput,
-                    "exceeded_target": metrics.exceeded_target
-                })
+                results[algorithm].append(
+                    {
+                        "duration": end - start,
+                        "throughput": metrics.throughput,
+                        "exceeded_target": metrics.exceeded_target,
+                    }
+                )
 
         # Verify all completed successfully
         for algorithm, runs in results.items():

@@ -24,7 +24,7 @@ from agentcore.dspy_optimization.models import (
 def optimizer() -> MIPROv2Optimizer:
     """Create MIPROv2 optimizer instance"""
     # Use a mock LM for testing to avoid API calls
-    mock_llm = dspy.LM("openai/gpt-4.1-mini", api_key="test-key", cache_seed=42)
+    mock_llm = dspy.LM("openai/gpt-5-mini", api_key="test-key", cache_seed=42)
     return MIPROv2Optimizer(llm=mock_llm, num_candidates=3)
 
 

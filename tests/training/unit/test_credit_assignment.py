@@ -6,7 +6,7 @@ Tests temporal difference rewards and per-step advantage computation.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -22,7 +22,7 @@ def create_test_trajectory(num_steps: int, final_reward: float) -> Trajectory:
             state={"step": i},
             action={"type": f"action_{i}"},
             result={"output": f"result_{i}"},
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             duration_ms=100)
         for i in range(num_steps)
     ]

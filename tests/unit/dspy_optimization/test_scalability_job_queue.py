@@ -3,14 +3,14 @@ Tests for job queue management
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
 from agentcore.dspy_optimization.scalability.job_queue import (
     JobQueue,
-    OptimizationJob,
     JobStatus,
+    OptimizationJob,
     QueueConfig,
 )
 
@@ -121,10 +121,7 @@ class TestJobQueue:
                 return "done"
 
             # Submit many jobs
-            jobs = [
-                OptimizationJob(optimization_id=f"job-{i}")
-                for i in range(10)
-            ]
+            jobs = [OptimizationJob(optimization_id=f"job-{i}") for i in range(10)]
             for job in jobs:
                 await limited_queue.submit_job(job, monitor_handler)
 
@@ -140,9 +137,7 @@ class TestJobQueue:
     @pytest.mark.asyncio
     async def test_job_failure_and_retry(self, job_queue):
         """Test job retry on failure"""
-        job = OptimizationJob(
-            optimization_id="failing-job", max_retries=2
-        )
+        job = OptimizationJob(optimization_id="failing-job", max_retries=2)
 
         await job_queue.submit_job(job, failing_handler)
 
@@ -173,6 +168,7 @@ class TestJobQueue:
     @pytest.mark.asyncio
     async def test_cancel_job(self, job_queue):
         """Test cancelling job"""
+
         async def slow_handler(job: OptimizationJob) -> str:
             await asyncio.sleep(1.0)
             return "done"
@@ -224,23 +220,35 @@ class TestJobQueue:
             max_queue_size=10,
             enable_backpressure=True,
             backpressure_threshold=0.5,  # Reject at 50%
+            worker_count=1,  # Single worker to ensure queue fills up
         )
         queue = JobQueue(config)
         await queue.start()
 
         try:
-            # Fill queue to trigger backpressure
-            for i in range(6):  # 60% of capacity
+            # Use a slow handler to keep jobs in queue
+            async def blocking_handler(job: OptimizationJob) -> str:
+                await asyncio.sleep(2.0)  # Long enough to keep jobs queued
+                return "done"
+
+            # Fill queue rapidly to trigger backpressure
+            # Submit first job and let worker pick it up
+            job = OptimizationJob(optimization_id="job-0")
+            await queue.submit_job(job, blocking_handler)
+            await asyncio.sleep(0.1)  # Let worker pick up the job
+
+            # Now submit 5 more to fill queue to 50% (5/10)
+            for i in range(1, 6):
                 job = OptimizationJob(optimization_id=f"job-{i}")
-                if i < 5:
-                    await queue.submit_job(job, dummy_handler)
-                else:
-                    # Should raise error due to backpressure
-                    with pytest.raises(RuntimeError, match="capacity"):
-                        await queue.submit_job(job, dummy_handler)
+                await queue.submit_job(job, blocking_handler)
+
+            # 7th job should be rejected (qsize=5, which is 50%)
+            job = OptimizationJob(optimization_id="job-overflow")
+            with pytest.raises(RuntimeError, match="capacity"):
+                await queue.submit_job(job, blocking_handler)
 
         finally:
-            await queue.stop()
+            await queue.stop(graceful=False)
 
     @pytest.mark.asyncio
     async def test_rate_limiting(self):
@@ -257,7 +265,7 @@ class TestJobQueue:
             execution_times = []
 
             async def timed_handler(job: OptimizationJob) -> str:
-                execution_times.append(datetime.utcnow())
+                execution_times.append(datetime.now(UTC))
                 return "done"
 
             # Submit 10 jobs
@@ -340,8 +348,7 @@ class TestJobQueue:
 
         # All jobs should complete
         assert all(
-            job.status in (JobStatus.COMPLETED, JobStatus.RUNNING)
-            for job in jobs
+            job.status in (JobStatus.COMPLETED, JobStatus.RUNNING) for job in jobs
         )
 
     @pytest.mark.asyncio

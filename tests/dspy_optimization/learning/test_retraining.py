@@ -1,17 +1,19 @@
 """Tests for automatic retraining"""
 
+from datetime import UTC
+
 import pytest
 
 from agentcore.dspy_optimization.learning.retraining import (
-    RetrainingManager,
     RetrainingConfig,
-    TriggerCondition,
+    RetrainingManager,
     RetrainingStatus,
+    TriggerCondition,
 )
 from agentcore.dspy_optimization.models import (
+    OptimizationScope,
     OptimizationTarget,
     OptimizationTargetType,
-    OptimizationScope,
 )
 
 
@@ -97,7 +99,9 @@ class TestRetrainingManager:
         # Simulate previous training
         target_key = manager._get_target_key(target)
         manager._sample_counts[f"{target_key}_last_training"] = 100
-        manager._last_retraining[target_key] = manager._last_retraining.get(target_key) or __import__('datetime').datetime.utcnow()
+        manager._last_retraining[target_key] = manager._last_retraining.get(
+            target_key
+        ) or __import__("datetime").datetime.now(UTC)
 
         # New samples exceed 2x minimum
         trigger = await manager.check_triggers(
@@ -106,7 +110,10 @@ class TestRetrainingManager:
         )
 
         assert trigger is not None
-        assert trigger.condition in (TriggerCondition.SAMPLE_COUNT, TriggerCondition.SCHEDULED)
+        assert trigger.condition in (
+            TriggerCondition.SAMPLE_COUNT,
+            TriggerCondition.SCHEDULED,
+        )
 
     @pytest.mark.asyncio
     async def test_manual_trigger(
@@ -253,4 +260,5 @@ class TestRetrainingManager:
 
         assert len(history) == 3
         # Should be sorted newest first
+        assert history[0].metadata["index"] == 4
         assert history[0].metadata["index"] == 4

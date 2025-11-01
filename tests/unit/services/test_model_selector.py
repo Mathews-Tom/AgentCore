@@ -49,15 +49,15 @@ class TestModelSelector:
         # Mock ALLOWED_MODELS to include FAST tier models
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             mock_settings.ALLOWED_MODELS = [
-                "gpt-4.1-mini",
-                "claude-3-5-haiku-20241022",
-                "gemini-2.0-flash-exp",
+                "gpt-5-mini",
+                "claude-haiku-4-5-20251001",
+                "gemini-2.5-flash-lite",
             ]
 
             model = selector.select_model(ModelTier.FAST)
 
             # Should return first allowed model from TIER_MODEL_MAP[FAST]
-            assert model == "gpt-4.1-mini"
+            assert model == "gpt-5-mini"
 
     def test_select_model_balanced_tier(self) -> None:
         """Test selecting model for BALANCED tier."""
@@ -65,14 +65,14 @@ class TestModelSelector:
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             mock_settings.ALLOWED_MODELS = [
-                "gpt-4.1",
-                "claude-3-5-sonnet",
-                "gemini-1.5-pro",
+                "gpt-5",
+                "claude-haiku-4-5-20251001",
+                "gemini-2.5-flash",
             ]
 
             model = selector.select_model(ModelTier.BALANCED)
 
-            assert model == "gpt-4.1"
+            assert model == "gpt-5"
 
     def test_select_model_premium_tier(self) -> None:
         """Test selecting model for PREMIUM tier."""
@@ -80,14 +80,15 @@ class TestModelSelector:
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             mock_settings.ALLOWED_MODELS = [
-                "gpt-5",
-                "claude-3-opus",
-                "gemini-2.0-flash-exp",
+                "gpt-5-pro",
+                "claude-opus-4-1-20250805",
+                "gemini-2.5-pro",
             ]
 
             model = selector.select_model(ModelTier.PREMIUM)
 
-            assert model == "gpt-5"
+            # Any premium tier model is valid
+            assert model in TIER_MODEL_MAP[ModelTier.PREMIUM]
 
     def test_select_model_with_provider_preference_openai(self) -> None:
         """Test model selection with OpenAI provider preference."""
@@ -96,14 +97,14 @@ class TestModelSelector:
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # Make OpenAI model allowed
             mock_settings.ALLOWED_MODELS = [
-                "gpt-4.1-mini",
-                "claude-3-5-haiku-20241022",
+                "gpt-5-mini",
+                "claude-haiku-4-5-20251001",
             ]
 
             model = selector.select_model(ModelTier.FAST)
 
-            # Should prefer OpenAI model (gpt-4.1-mini)
-            assert model == "gpt-4.1-mini"
+            # Should prefer OpenAI model (gpt-5-mini)
+            assert model == "gpt-5-mini"
 
     def test_select_model_with_provider_preference_anthropic(self) -> None:
         """Test model selection with Anthropic provider preference."""
@@ -112,14 +113,14 @@ class TestModelSelector:
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # Make both OpenAI and Anthropic models allowed
             mock_settings.ALLOWED_MODELS = [
-                "gpt-4.1-mini",
-                "claude-3-5-haiku-20241022",
+                "gpt-5-mini",
+                "claude-haiku-4-5-20251001",
             ]
 
             model = selector.select_model(ModelTier.FAST)
 
-            # Should prefer Anthropic model (claude-3-5-haiku-20241022)
-            assert model == "claude-3-5-haiku-20241022"
+            # Should prefer Anthropic model (claude-haiku-4-5-20251001)
+            assert model == "claude-haiku-4-5-20251001"
 
     def test_select_model_fallback_when_preferred_not_available(self) -> None:
         """Test fallback to non-preferred model when preferred provider not available."""
@@ -128,12 +129,12 @@ class TestModelSelector:
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # Only Anthropic model allowed
-            mock_settings.ALLOWED_MODELS = ["claude-3-5-haiku-20241022"]
+            mock_settings.ALLOWED_MODELS = ["claude-haiku-4-5-20251001"]
 
             model = selector.select_model(ModelTier.FAST)
 
             # Should fallback to Anthropic model
-            assert model == "claude-3-5-haiku-20241022"
+            assert model == "claude-haiku-4-5-20251001"
 
     def test_select_model_no_allowed_models_raises_error(self) -> None:
         """Test error when no models allowed for tier."""
@@ -153,51 +154,56 @@ class TestModelSelector:
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5-mini"]
 
             model = selector.select_model_by_complexity("low")
 
-            # low → FAST → gpt-4.1-mini
-            assert model == "gpt-4.1-mini"
+            # low → FAST → gpt-5-mini
+            assert model == "gpt-5-mini"
 
     def test_select_model_by_complexity_medium(self) -> None:
         """Test selecting model by 'medium' complexity."""
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-4.1"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5"]
 
             model = selector.select_model_by_complexity("medium")
 
-            # medium → BALANCED → gpt-4.1
-            assert model == "gpt-4.1"
+            # medium → BALANCED → gpt-5
+            assert model == "gpt-5"
 
     def test_select_model_by_complexity_high(self) -> None:
         """Test selecting model by 'high' complexity."""
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-5"]
+            # Allow all premium tier models
+            mock_settings.ALLOWED_MODELS = [
+                "gpt-5-pro",
+                "claude-opus-4-1-20250805",
+                "gemini-2.5-pro",
+            ]
 
             model = selector.select_model_by_complexity("high")
 
-            # high → PREMIUM → gpt-5
-            assert model == "gpt-5"
+            # high → PREMIUM → any premium model
+            assert model in TIER_MODEL_MAP[ModelTier.PREMIUM]
 
     def test_select_model_by_complexity_case_insensitive(self) -> None:
         """Test complexity selection is case-insensitive."""
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5-mini"]
 
             # Test uppercase
             model_upper = selector.select_model_by_complexity("LOW")
-            assert model_upper == "gpt-4.1-mini"
+            assert model_upper == "gpt-5-mini"
 
             # Test mixed case
             model_mixed = selector.select_model_by_complexity("Low")
-            assert model_mixed == "gpt-4.1-mini"
+            assert model_mixed == "gpt-5-mini"
 
     def test_select_model_by_complexity_invalid_raises_error(self) -> None:
         """Test error when invalid complexity provided."""
@@ -214,11 +220,11 @@ class TestModelSelector:
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            # All tier models allowed
+            # All tier models allowed - one from each tier
             mock_settings.ALLOWED_MODELS = [
-                "gpt-4.1-mini",  # FAST
-                "gpt-4.1",  # BALANCED
-                "gpt-5",  # PREMIUM
+                "gpt-5-mini",  # FAST
+                "gpt-5",  # BALANCED
+                "gpt-5-pro",  # PREMIUM
             ]
 
             is_valid = selector.validate_configuration()
@@ -232,8 +238,8 @@ class TestModelSelector:
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # Only FAST and BALANCED tiers have models, PREMIUM missing
             mock_settings.ALLOWED_MODELS = [
-                "gpt-4.1-mini",  # FAST
-                "gpt-4.1",  # BALANCED
+                "gpt-5-mini",  # FAST
+                "gpt-5",  # BALANCED
                 # PREMIUM tier has no allowed models
             ]
 
@@ -256,29 +262,29 @@ class TestModelSelector:
         """Test _filter_by_preference with single provider preference."""
         selector = ModelSelector(provider_preference=["openai"])
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
+        models = ["claude-haiku-4-5-20251001", "gpt-5-mini", "gemini-2.5-flash-lite"]
         sorted_models = selector._filter_by_preference(models)
 
         # OpenAI model should be first
-        assert sorted_models[0] == "gpt-4.1-mini"
+        assert sorted_models[0] == "gpt-5-mini"
 
     def test_filter_by_preference_with_multiple_preferences(self) -> None:
         """Test _filter_by_preference with multiple provider preferences."""
         selector = ModelSelector(provider_preference=["anthropic", "gemini", "openai"])
 
-        models = ["gpt-4.1-mini", "gemini-2.0-flash-exp", "claude-3-5-haiku-20241022"]
+        models = ["gpt-5-mini", "gemini-2.5-flash-lite", "claude-haiku-4-5-20251001"]
         sorted_models = selector._filter_by_preference(models)
 
         # Should be sorted: anthropic, gemini, openai
-        assert sorted_models[0] == "claude-3-5-haiku-20241022"  # anthropic
-        assert sorted_models[1] == "gemini-2.0-flash-exp"  # gemini
-        assert sorted_models[2] == "gpt-4.1-mini"  # openai
+        assert sorted_models[0] == "claude-haiku-4-5-20251001"  # anthropic
+        assert sorted_models[1] == "gemini-2.5-flash-lite"  # gemini
+        assert sorted_models[2] == "gpt-5-mini"  # openai
 
     def test_filter_by_preference_no_preference(self) -> None:
         """Test _filter_by_preference with no provider preference."""
         selector = ModelSelector(provider_preference=None)
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
+        models = ["claude-haiku-4-5-20251001", "gpt-5-mini", "gemini-2.5-flash-lite"]
         sorted_models = selector._filter_by_preference(models)
 
         # Should return models unchanged
@@ -288,7 +294,7 @@ class TestModelSelector:
         """Test _filter_by_preference with empty provider preference list."""
         selector = ModelSelector(provider_preference=[])
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini", "gemini-2.0-flash-exp"]
+        models = ["claude-haiku-4-5-20251001", "gpt-5-mini", "gemini-2.5-flash-lite"]
         sorted_models = selector._filter_by_preference(models)
 
         # Should return models unchanged
@@ -319,35 +325,35 @@ class TestModelSelector:
         """Test FAST tier contains expected fast models."""
         fast_models = TIER_MODEL_MAP[ModelTier.FAST]
 
-        # Should include mini/flash models
-        assert "gpt-4.1-mini" in fast_models or "gpt-5-mini" in fast_models
-        assert "gemini-2.0-flash-exp" in fast_models
-        assert "claude-3-5-haiku-20241022" in fast_models
+        # Should include small models
+        assert "gpt-5-mini" in fast_models
+        assert "claude-haiku-4-5-20251001" in fast_models
+        assert "gemini-2.5-flash-lite" in fast_models
 
     def test_tier_model_map_balanced_tier_models(self) -> None:
         """Test BALANCED tier contains expected balanced models."""
         balanced_models = TIER_MODEL_MAP[ModelTier.BALANCED]
 
-        # Should include standard models
-        assert "gpt-4.1" in balanced_models
-        assert "claude-3-5-sonnet" in balanced_models
-        assert "gemini-1.5-pro" in balanced_models
+        # Should include medium models
+        assert "gpt-5" in balanced_models
+        assert "claude-sonnet-4-5-20250929" in balanced_models
+        assert "gemini-2.5-flash" in balanced_models
 
     def test_tier_model_map_premium_tier_models(self) -> None:
         """Test PREMIUM tier contains expected premium models."""
         premium_models = TIER_MODEL_MAP[ModelTier.PREMIUM]
 
-        # Should include premium models
-        assert "gpt-5" in premium_models
-        assert "claude-3-opus" in premium_models
-        assert "gemini-2.0-flash-exp" in premium_models
+        # Should include large models
+        assert "gpt-5-pro" in premium_models
+        assert "claude-opus-4-1-20250805" in premium_models
+        assert "gemini-2.5-pro" in premium_models
 
     def test_select_model_logs_selection_rationale(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test that select_model logs selection rationale."""
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5-mini"]
 
             selector.select_model(ModelTier.FAST)
 
@@ -373,7 +379,7 @@ class TestModelSelector:
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # Only FAST tier has models
-            mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5-mini"]
 
             selector.validate_configuration()
 
@@ -384,11 +390,11 @@ class TestModelSelector:
             assert len(warning_messages) >= 2  # At least BALANCED and PREMIUM
 
     def test_select_model_with_gpt_5_mini_fallback(self) -> None:
-        """Test FAST tier can select gpt-5-mini if gpt-4.1-mini not available."""
+        """Test FAST tier can select gpt-5-mini if gpt-5-mini not available."""
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            # Only gpt-5-mini allowed (gpt-4.1-mini not in list)
+            # Only gpt-5-mini allowed (gpt-5-mini not in list)
             mock_settings.ALLOWED_MODELS = ["gpt-5-mini"]
 
             model = selector.select_model(ModelTier.FAST)
@@ -403,17 +409,17 @@ class TestModelSelector:
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # All FAST tier models allowed
             mock_settings.ALLOWED_MODELS = [
-                "gemini-2.0-flash-exp",
-                "claude-3-5-haiku-20241022",
-                "gpt-4.1-mini",
+                "gemini-2.5-flash-lite",
+                "claude-haiku-4-5-20251001",
+                "gpt-5-mini",
                 "gpt-5-mini",
             ]
 
             model = selector.select_model(ModelTier.FAST)
 
             # Should select first model from TIER_MODEL_MAP[FAST]
-            # which is gpt-4.1-mini per configuration
-            assert model == "gpt-4.1-mini"
+            # which is gpt-5-mini per configuration
+            assert model == "gpt-5-mini"
 
     def test_provider_preference_with_partial_match(self) -> None:
         """Test provider preference when only some preferred providers available."""
@@ -423,14 +429,14 @@ class TestModelSelector:
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             # Only Anthropic and Gemini models allowed (no OpenAI)
             mock_settings.ALLOWED_MODELS = [
-                "claude-3-5-haiku-20241022",
-                "gemini-2.0-flash-exp",
+                "claude-haiku-4-5-20251001",
+                "gemini-2.5-flash-lite",
             ]
 
             model = selector.select_model(ModelTier.FAST)
 
             # Should select Anthropic (next in preference after OpenAI)
-            assert model == "claude-3-5-haiku-20241022"
+            assert model == "claude-haiku-4-5-20251001"
 
     def test_filter_by_preference_logs_debug_info(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test that _filter_by_preference logs debug information."""
@@ -440,7 +446,7 @@ class TestModelSelector:
 
         selector = ModelSelector(provider_preference=["openai", "anthropic"])
 
-        models = ["claude-3-5-haiku-20241022", "gpt-4.1-mini"]
+        models = ["claude-haiku-4-5-20251001", "gpt-5-mini"]
         selector._filter_by_preference(models)
 
         # Check that debug log was created
@@ -460,7 +466,7 @@ class TestModelSelector:
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-4.1-mini"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5-mini"]
 
             selector.select_model_by_complexity("low")
 

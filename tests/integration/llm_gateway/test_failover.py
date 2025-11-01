@@ -5,16 +5,23 @@ Tests automatic failover logic with circuit breakers and health monitoring.
 
 from __future__ import annotations
 
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 import pytest
 
-from agentcore.integration.portkey.exceptions import PortkeyProviderError, PortkeyTimeoutError
-from agentcore.integration.portkey.failover import FailoverManager
-from agentcore.integration.portkey.health import ProviderHealthMonitor
-from agentcore.integration.portkey.models import LLMRequest, LLMResponse, ModelRequirements
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.exceptions import (
+    LLMGatewayProviderError,
+    LLMGatewayTimeoutError,
+)
+from agentcore.llm_gateway.failover import FailoverManager
+from agentcore.llm_gateway.health import ProviderHealthMonitor
+from agentcore.llm_gateway.models import (
+    LLMRequest,
+    LLMResponse,
+    ModelRequirements,
+)
+from agentcore.llm_gateway.provider import (
     CircuitBreakerState,
     ProviderCapabilities,
     ProviderCapability,
@@ -23,7 +30,7 @@ from agentcore.integration.portkey.provider import (
     ProviderMetadata,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 
 @pytest.fixture
@@ -45,7 +52,7 @@ def registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.99,
                 average_latency_ms=100,
             ),
@@ -63,7 +70,7 @@ def registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.98,
                 average_latency_ms=120,
             ),
@@ -81,7 +88,7 @@ def registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.97,
                 average_latency_ms=150,
             ),
@@ -128,10 +135,8 @@ def failover_manager(
 def sample_request() -> LLMRequest:
     """Create a sample LLM request."""
     return LLMRequest(
-        model="gpt-4.1",
+        model="gpt-5",
         messages=[{"role": "user", "content": "Hello"}],
-
-
         model_requirements=ModelRequirements(
             capabilities=["text_generation", "chat_completion"],
         ),
@@ -152,7 +157,7 @@ class TestFailoverManager:
         # Mock successful response
         mock_response = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
             usage={"prompt_tokens": 10, "completion_tokens": 5},
         )
@@ -174,10 +179,10 @@ class TestFailoverManager:
         """Test automatic failover on timeout error."""
         # First call times out, second succeeds
         mock_client.complete.side_effect = [
-            PortkeyTimeoutError("Request timed out", timeout=30.0),
+            LLMGatewayTimeoutError("Request timed out", timeout=30.0),
             LLMResponse(
                 id="test_id",
-                model="gpt-4.1",
+                model="gpt-5",
                 choices=[{"message": {"content": "Hello from fallback!"}}],
                 usage={"prompt_tokens": 10, "completion_tokens": 5},
             ),
@@ -202,11 +207,11 @@ class TestFailoverManager:
         """Test failover through multiple providers."""
         # First two calls fail, third succeeds
         mock_client.complete.side_effect = [
-            PortkeyTimeoutError("Timeout 1", timeout=30.0),
-            PortkeyTimeoutError("Timeout 2", timeout=30.0),
+            LLMGatewayTimeoutError("Timeout 1", timeout=30.0),
+            LLMGatewayTimeoutError("Timeout 2", timeout=30.0),
             LLMResponse(
                 id="test_id",
-                model="gpt-4.1",
+                model="gpt-5",
                 choices=[{"message": {"content": "Hello from fallback2!"}}],
                 usage={"prompt_tokens": 10, "completion_tokens": 5},
             ),
@@ -226,12 +231,12 @@ class TestFailoverManager:
     ) -> None:
         """Test behavior when all providers fail."""
         # All calls fail
-        mock_client.complete.side_effect = PortkeyTimeoutError(
+        mock_client.complete.side_effect = LLMGatewayTimeoutError(
             "Timeout",
             timeout=30.0,
         )
 
-        with pytest.raises(PortkeyProviderError) as exc_info:
+        with pytest.raises(LLMGatewayProviderError) as exc_info:
             await failover_manager.execute_with_failover(sample_request)
 
         # Verify error contains failure details
@@ -250,12 +255,12 @@ class TestFailoverManager:
         circuit_breaker = registry.get_circuit_breaker("primary")
         if circuit_breaker:
             circuit_breaker.state = CircuitBreakerState.OPEN
-            circuit_breaker.opened_at = datetime.now()
+            circuit_breaker.opened_at = datetime.now(UTC)
 
         # Mock successful response from fallback
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello from fallback!"}}],
             usage={"prompt_tokens": 10, "completion_tokens": 5},
         )
@@ -282,7 +287,7 @@ class TestFailoverManager:
         # Mock successful response from fallback
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello from fallback!"}}],
             usage={"prompt_tokens": 10, "completion_tokens": 5},
         )
@@ -302,7 +307,7 @@ class TestFailoverManager:
         """Test executing with a specific provider (no failover)."""
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
             usage={"prompt_tokens": 10, "completion_tokens": 5},
         )
@@ -322,7 +327,7 @@ class TestFailoverManager:
         sample_request: LLMRequest,
     ) -> None:
         """Test error when specific provider not found."""
-        with pytest.raises(PortkeyProviderError) as exc_info:
+        with pytest.raises(LLMGatewayProviderError) as exc_info:
             await failover_manager.execute_with_specific_provider(
                 sample_request,
                 "nonexistent",
@@ -342,7 +347,7 @@ class TestFailoverManager:
         if primary:
             primary.enabled = False
 
-        with pytest.raises(PortkeyProviderError) as exc_info:
+        with pytest.raises(LLMGatewayProviderError) as exc_info:
             await failover_manager.execute_with_specific_provider(
                 sample_request,
                 "primary",
@@ -365,7 +370,7 @@ class TestFailoverManager:
         failover_manager: FailoverManager,
     ) -> None:
         """Test counting providers with specific criteria."""
-        from agentcore.integration.portkey.provider import ProviderSelectionCriteria
+        from agentcore.llm_gateway.provider import ProviderSelectionCriteria
 
         criteria = ProviderSelectionCriteria(
             required_capabilities=[
@@ -394,7 +399,7 @@ class TestCircuitBreakerIntegration:
         # Configure to fail 5 times (failure threshold)
         failure_count = 5
         mock_client.complete.side_effect = [
-            PortkeyTimeoutError("Timeout", timeout=30.0)
+            LLMGatewayTimeoutError("Timeout", timeout=30.0)
         ] * failure_count
 
         # Execute multiple requests to trigger circuit breaker
@@ -404,7 +409,7 @@ class TestCircuitBreakerIntegration:
                     sample_request,
                     "primary",
                 )
-            except (PortkeyProviderError, PortkeyTimeoutError):
+            except (LLMGatewayProviderError, LLMGatewayTimeoutError):
                 pass
 
         # Check that failures were recorded in health monitor
@@ -425,10 +430,10 @@ class TestCircuitBreakerIntegration:
         """Test that successful requests reset failure count."""
         # First request fails
         mock_client.complete.side_effect = [
-            PortkeyTimeoutError("Timeout", timeout=30.0),
+            LLMGatewayTimeoutError("Timeout", timeout=30.0),
             LLMResponse(
                 id="test_id",
-                model="gpt-4.1",
+                model="gpt-5",
                 choices=[{"message": {"content": "Success!"}}],
                 usage={"prompt_tokens": 10, "completion_tokens": 5},
             ),
@@ -439,14 +444,14 @@ class TestCircuitBreakerIntegration:
                 sample_request,
                 "primary",
             )
-        except PortkeyTimeoutError:
+        except LLMGatewayTimeoutError:
             pass
 
         # Second request succeeds
         mock_client.complete.side_effect = None
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Success!"}}],
             usage={"prompt_tokens": 10, "completion_tokens": 5},
         )
@@ -469,8 +474,8 @@ class TestCircuitBreakerIntegration:
         registry: ProviderRegistry,
     ) -> None:
         """Test cost tracking integration with failover."""
-        from agentcore.integration.portkey.cost_tracker import CostTracker
-        from agentcore.integration.portkey.provider import ProviderPricing
+        from agentcore.llm_gateway.cost_tracker import CostTracker
+        from agentcore.llm_gateway.provider import ProviderPricing
 
         # Add cost tracker
         cost_tracker = CostTracker()
@@ -487,7 +492,7 @@ class TestCircuitBreakerIntegration:
         # Mock successful response with usage
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
             usage={"prompt_tokens": 100, "completion_tokens": 50},
         )
@@ -506,14 +511,16 @@ class TestCircuitBreakerIntegration:
         registry: ProviderRegistry,
     ) -> None:
         """Test that cost tracking failures don't break requests."""
-        from agentcore.integration.portkey.cost_tracker import CostTracker
-        from agentcore.integration.portkey.provider import ProviderPricing
+        from agentcore.llm_gateway.cost_tracker import CostTracker
+        from agentcore.llm_gateway.provider import ProviderPricing
 
         # Add cost tracker that returns a value but record_cost fails
         cost_tracker = CostTracker()
         original_record = cost_tracker.record_cost
+
         def failing_record(*args, **kwargs):
             raise Exception("Cost recording failed")
+
         cost_tracker.record_cost = failing_record
         failover_manager.cost_tracker = cost_tracker
 
@@ -528,7 +535,7 @@ class TestCircuitBreakerIntegration:
         # Mock successful response
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
             usage={"prompt_tokens": 100, "completion_tokens": 50},
         )
@@ -544,8 +551,11 @@ class TestCircuitBreakerIntegration:
         registry: ProviderRegistry,
     ) -> None:
         """Test creation of default criteria from request."""
-        from agentcore.integration.portkey.models import ModelRequirements
-        from agentcore.integration.portkey.provider import DataResidency, ProviderPricing
+        from agentcore.llm_gateway.models import ModelRequirements
+        from agentcore.llm_gateway.provider import (
+            DataResidency,
+            ProviderPricing,
+        )
 
         # Update provider to have pricing and data residency
         provider = registry.get_provider("primary")
@@ -554,10 +564,13 @@ class TestCircuitBreakerIntegration:
                 input_token_price=0.001,
                 output_token_price=0.002,
             )
-            provider.capabilities.data_residency = [DataResidency.US_EAST, DataResidency.US_WEST]
+            provider.capabilities.data_residency = [
+                DataResidency.US_EAST,
+                DataResidency.US_WEST,
+            ]
 
         request = LLMRequest(
-            model="gpt-4.1",
+            model="gpt-5",
             messages=[{"role": "user", "content": "Test"}],
             model_requirements=ModelRequirements(
                 capabilities=["text_generation", "chat_completion"],
@@ -571,7 +584,7 @@ class TestCircuitBreakerIntegration:
         # Mock response
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
         )
 
@@ -594,7 +607,7 @@ class TestCircuitBreakerIntegration:
         # Mock response
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
         )
 
@@ -614,10 +627,10 @@ class TestCircuitBreakerIntegration:
         if provider:
             provider.health = ProviderHealthMetrics(
                 status=ProviderStatus.UNHEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
             )
 
-        with pytest.raises(PortkeyProviderError) as exc_info:
+        with pytest.raises(LLMGatewayProviderError) as exc_info:
             await failover_manager.execute_with_specific_provider(
                 sample_request,
                 "primary",
@@ -633,8 +646,8 @@ class TestCircuitBreakerIntegration:
         registry: ProviderRegistry,
     ) -> None:
         """Test specific provider execution with cost tracking."""
-        from agentcore.integration.portkey.cost_tracker import CostTracker
-        from agentcore.integration.portkey.provider import ProviderPricing
+        from agentcore.llm_gateway.cost_tracker import CostTracker
+        from agentcore.llm_gateway.provider import ProviderPricing
 
         # Add cost tracker
         cost_tracker = CostTracker()
@@ -651,7 +664,7 @@ class TestCircuitBreakerIntegration:
         # Mock successful response
         mock_client.complete.return_value = LLMResponse(
             id="test_id",
-            model="gpt-4.1",
+            model="gpt-5",
             choices=[{"message": {"content": "Hello!"}}],
             usage={"prompt_tokens": 100, "completion_tokens": 50},
         )
@@ -672,6 +685,16 @@ class TestCircuitBreakerIntegration:
         health_monitor: ProviderHealthMonitor,
     ) -> None:
         """Test that failures are properly recorded with specific provider."""
+        mock_client.complete.side_effect = Exception("Test error")
+
+        with pytest.raises(Exception) as exc_info:
+            await failover_manager.execute_with_specific_provider(
+                sample_request,
+                "primary",
+            )
+
+        # Verify error was recorded in health monitor
+        # (failures are tracked even if exception is raised)
         mock_client.complete.side_effect = Exception("Test error")
 
         with pytest.raises(Exception) as exc_info:

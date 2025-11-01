@@ -7,19 +7,18 @@ usage patterns including high-volume chat, code generation, and multi-tenant Saa
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     CostMetrics,
     OptimizationContext,
     OptimizationStrategy,
 )
-from agentcore.integration.portkey.cost_optimizer import CostOptimizer
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.cost_optimizer import CostOptimizer
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.provider import (
     DataResidency,
     ProviderCapabilities,
     ProviderCapability,
@@ -30,7 +29,7 @@ from agentcore.integration.portkey.provider import (
     ProviderSelectionCriteria,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 
 @pytest.fixture
@@ -56,7 +55,6 @@ def realistic_registry() -> ProviderRegistry:
                 supports_streaming=True,
                 supports_json_mode=True,
                 context_window=128000,
-
                 data_residency=[DataResidency.US_EAST, DataResidency.EU_WEST],
             ),
             pricing=ProviderPricing(
@@ -65,7 +63,7 @@ def realistic_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.99,
                 average_latency_ms=800,
                 availability_percent=99.9,
@@ -91,7 +89,6 @@ def realistic_registry() -> ProviderRegistry:
                 supports_streaming=True,
                 supports_json_mode=True,
                 context_window=16385,
-
                 data_residency=[DataResidency.US_EAST, DataResidency.EU_WEST],
             ),
             pricing=ProviderPricing(
@@ -100,7 +97,7 @@ def realistic_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.98,
                 average_latency_ms=600,
                 availability_percent=99.5,
@@ -126,7 +123,6 @@ def realistic_registry() -> ProviderRegistry:
                 supports_function_calling=True,
                 supports_streaming=True,
                 context_window=200000,
-
                 data_residency=[DataResidency.US_EAST, DataResidency.US_WEST],
             ),
             pricing=ProviderPricing(
@@ -135,7 +131,7 @@ def realistic_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.99,
                 average_latency_ms=900,
                 availability_percent=99.8,
@@ -159,7 +155,6 @@ def realistic_registry() -> ProviderRegistry:
                 ],
                 supports_streaming=True,
                 context_window=8192,
-
                 data_residency=[DataResidency.US_EAST],
             ),
             pricing=ProviderPricing(
@@ -168,7 +163,7 @@ def realistic_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.97,
                 average_latency_ms=1100,
                 availability_percent=98.0,
@@ -228,16 +223,19 @@ class TestScenario1HighVolumeChatApplication:
 
         # Calculate baseline cost (typical user distribution)
         gpt4_cost_per_request = (
-            (input_tokens / 1000) * gpt4_provider.pricing.input_token_price
-            + (output_tokens / 1000) * gpt4_provider.pricing.output_token_price
-        )
+            input_tokens / 1000
+        ) * gpt4_provider.pricing.input_token_price + (
+            output_tokens / 1000
+        ) * gpt4_provider.pricing.output_token_price
         gpt35_cost_per_request = (
-            (input_tokens / 1000) * gpt35_provider.pricing.input_token_price
-            + (output_tokens / 1000) * gpt35_provider.pricing.output_token_price
-        )
+            input_tokens / 1000
+        ) * gpt35_provider.pricing.input_token_price + (
+            output_tokens / 1000
+        ) * gpt35_provider.pricing.output_token_price
 
         baseline_cost = (
-            gpt4_requests * gpt4_cost_per_request + gpt35_requests * gpt35_cost_per_request
+            gpt4_requests * gpt4_cost_per_request
+            + gpt35_requests * gpt35_cost_per_request
         )
 
         # Baseline should be around $100-$200/day
@@ -305,7 +303,9 @@ class TestScenario1HighVolumeChatApplication:
         input_tokens = 100
         output_tokens = 200
         # GPT-4 pricing: $0.01 input, $0.03 output per 1K tokens
-        baseline_cost_per_request = (input_tokens / 1000) * 0.01 + (output_tokens / 1000) * 0.03
+        baseline_cost_per_request = (input_tokens / 1000) * 0.01 + (
+            output_tokens / 1000
+        ) * 0.03
         baseline_cost = total_requests * baseline_cost_per_request
 
         cost_reduction = ((baseline_cost - total_optimized_cost) / baseline_cost) * 100
@@ -354,9 +354,10 @@ class TestScenario2CodeGenerationWorkload:
             output_tokens = 500 + (i % 1000)  # 500-1500 tokens
 
             cost = (
-                (input_tokens / 1000) * baseline_provider.pricing.input_token_price
-                + (output_tokens / 1000) * baseline_provider.pricing.output_token_price
-            )
+                input_tokens / 1000
+            ) * baseline_provider.pricing.input_token_price + (
+                output_tokens / 1000
+            ) * baseline_provider.pricing.output_token_price
             baseline_cost += cost
 
         # Optimized: Use intelligent routing
@@ -445,9 +446,10 @@ class TestScenario3MultiTenantSaaS:
                 output_tokens = 200
 
                 request_cost = (
-                    (input_tokens / 1000) * baseline_provider.pricing.input_token_price
-                    + (output_tokens / 1000) * baseline_provider.pricing.output_token_price
-                )
+                    input_tokens / 1000
+                ) * baseline_provider.pricing.input_token_price + (
+                    output_tokens / 1000
+                ) * baseline_provider.pricing.output_token_price
                 cost += request_cost
 
             baseline_cost_per_tenant[tenant_key] = cost
@@ -489,7 +491,9 @@ class TestScenario3MultiTenantSaaS:
                     tenant_id=tenant_key,
                 )
 
-                selected = cost_optimizer_fixture.select_optimal_provider(criteria, context)
+                selected = cost_optimizer_fixture.select_optimal_provider(
+                    criteria, context
+                )
                 request_cost = cost_optimizer_fixture.estimate_request_cost(
                     selected, input_tokens, output_tokens
                 )
@@ -499,7 +503,9 @@ class TestScenario3MultiTenantSaaS:
 
         total_optimized_cost = sum(optimized_cost_per_tenant.values())
 
-        cost_reduction = ((total_baseline_cost - total_optimized_cost) / total_baseline_cost) * 100
+        cost_reduction = (
+            (total_baseline_cost - total_optimized_cost) / total_baseline_cost
+        ) * 100
 
         # Validate 30%+ cost reduction
         assert cost_reduction >= 30.0, (
@@ -511,8 +517,12 @@ class TestScenario3MultiTenantSaaS:
         assert len(optimized_cost_per_tenant) == num_tenants
 
         # Validate tier-based optimization (basic tier should have lowest per-tenant cost)
-        basic_tier_costs = [optimized_cost_per_tenant[f"tenant_{i}"] for i in range(50, 100)]
-        premium_tier_costs = [optimized_cost_per_tenant[f"tenant_{i}"] for i in range(10)]
+        basic_tier_costs = [
+            optimized_cost_per_tenant[f"tenant_{i}"] for i in range(50, 100)
+        ]
+        premium_tier_costs = [
+            optimized_cost_per_tenant[f"tenant_{i}"] for i in range(10)
+        ]
 
         avg_basic_cost = sum(basic_tier_costs) / len(basic_tier_costs)
         avg_premium_cost = sum(premium_tier_costs) / len(premium_tier_costs)
@@ -560,9 +570,10 @@ class TestOverallCostReductionTarget:
 
             # Baseline cost (all GPT-4)
             baseline_request_cost = (
-                (input_tokens / 1000) * baseline_provider.pricing.input_token_price
-                + (output_tokens / 1000) * baseline_provider.pricing.output_token_price
-            )
+                input_tokens / 1000
+            ) * baseline_provider.pricing.input_token_price + (
+                output_tokens / 1000
+            ) * baseline_provider.pricing.output_token_price
             baseline_cost += baseline_request_cost
 
             # Optimized cost (intelligent routing)
@@ -615,8 +626,10 @@ class TestOverallCostReductionTarget:
         print(f"Cost reduction: {cost_reduction:.1f}%")
         print(f"Total savings: ${savings:.2f}")
         print(f"{'=' * 60}")
-        print(f"RESULT: {'PASS' if cost_reduction >= 30.0 else 'FAIL'} - "
-              f"30%+ cost reduction {'achieved' if cost_reduction >= 30.0 else 'NOT achieved'}")
+        print(
+            f"RESULT: {'PASS' if cost_reduction >= 30.0 else 'FAIL'} - "
+            f"30%+ cost reduction {'achieved' if cost_reduction >= 30.0 else 'NOT achieved'}"
+        )
         print(f"{'=' * 60}\n")
 
 
@@ -648,9 +661,10 @@ class TestStatisticalValidation:
 
                 # Baseline
                 baseline_cost += (
-                    (input_tokens / 1000) * baseline_provider.pricing.input_token_price
-                    + (output_tokens / 1000) * baseline_provider.pricing.output_token_price
-                )
+                    input_tokens / 1000
+                ) * baseline_provider.pricing.input_token_price + (
+                    output_tokens / 1000
+                ) * baseline_provider.pricing.output_token_price
 
                 # Optimized
                 criteria = ProviderSelectionCriteria(
@@ -663,7 +677,9 @@ class TestStatisticalValidation:
                     priority=5,
                 )
 
-                selected = cost_optimizer_fixture.select_optimal_provider(criteria, context)
+                selected = cost_optimizer_fixture.select_optimal_provider(
+                    criteria, context
+                )
                 optimized_cost += cost_optimizer_fixture.estimate_request_cost(
                     selected, input_tokens, output_tokens
                 )
@@ -688,4 +704,6 @@ class TestStatisticalValidation:
         print(f"Mean cost reduction: {mean_reduction:.1f}%")
         print(f"Min cost reduction: {min_reduction:.1f}%")
         print(f"Max cost reduction: {max_reduction:.1f}%")
-        print(f"All runs achieved 30%+ reduction: {'YES' if min_reduction >= 30.0 else 'NO'}")
+        print(
+            f"All runs achieved 30%+ reduction: {'YES' if min_reduction >= 30.0 else 'NO'}"
+        )

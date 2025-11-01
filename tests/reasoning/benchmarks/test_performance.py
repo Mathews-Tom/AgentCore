@@ -59,7 +59,7 @@ def create_mock_llm_client() -> LLMClient:
             content=content,
             tokens_used=len(content) // 4,  # Approximate token count
             finish_reason="stop",
-            model=model or "gpt-4.1",
+            model=model or "gpt-5",
             stop_sequence_found=None)
 
     def mock_count_tokens(text: str) -> int:
@@ -80,7 +80,7 @@ def create_authenticated_request(
     Note: In real benchmarks, this would use actual JWT tokens. For performance testing,
     we mock the authentication to isolate reasoning engine performance.
     """
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
 
     return JsonRpcRequest(
         jsonrpc="2.0",
@@ -96,7 +96,7 @@ def create_authenticated_request(
             trace_id="bench-trace-1",
             source_agent="benchmark-client",
             target_agent="reasoning-agent",
-            timestamp=datetime.now(timezone.utc).isoformat()))
+            timestamp=datetime.now(UTC).isoformat()))
 
 
 @pytest.fixture

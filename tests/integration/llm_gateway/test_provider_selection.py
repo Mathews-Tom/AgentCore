@@ -7,18 +7,18 @@ changes and provider unavailability.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
-from agentcore.integration.portkey.cost_models import (
+from agentcore.llm_gateway.cost_models import (
     OptimizationContext,
     OptimizationStrategy,
 )
-from agentcore.integration.portkey.cost_optimizer import CostOptimizer
-from agentcore.integration.portkey.cost_tracker import CostTracker
-from agentcore.integration.portkey.exceptions import PortkeyProviderError
-from agentcore.integration.portkey.provider import (
+from agentcore.llm_gateway.cost_optimizer import CostOptimizer
+from agentcore.llm_gateway.cost_tracker import CostTracker
+from agentcore.llm_gateway.exceptions import LLMGatewayProviderError
+from agentcore.llm_gateway.provider import (
     DataResidency,
     ProviderCapabilities,
     ProviderCapability,
@@ -29,7 +29,7 @@ from agentcore.integration.portkey.provider import (
     ProviderSelectionCriteria,
     ProviderStatus,
 )
-from agentcore.integration.portkey.registry import ProviderRegistry
+from agentcore.llm_gateway.registry import ProviderRegistry
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def diverse_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.92,
                 average_latency_ms=1500,
                 availability_percent=95.0,
@@ -85,7 +85,7 @@ def diverse_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.98,
                 average_latency_ms=900,
                 availability_percent=99.0,
@@ -112,7 +112,11 @@ def diverse_registry() -> ProviderRegistry:
                 supports_streaming=True,
                 supports_json_mode=True,
                 context_window=128000,
-                data_residency=[DataResidency.US_EAST, DataResidency.US_WEST, DataResidency.EU_WEST],
+                data_residency=[
+                    DataResidency.US_EAST,
+                    DataResidency.US_WEST,
+                    DataResidency.EU_WEST,
+                ],
             ),
             pricing=ProviderPricing(
                 input_token_price=0.015,
@@ -120,7 +124,7 @@ def diverse_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.HEALTHY,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.995,
                 average_latency_ms=700,
                 availability_percent=99.95,
@@ -151,7 +155,7 @@ def diverse_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.DEGRADED,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.85,
                 average_latency_ms=2000,
                 availability_percent=90.0,
@@ -181,7 +185,7 @@ def diverse_registry() -> ProviderRegistry:
             ),
             health=ProviderHealthMetrics(
                 status=ProviderStatus.UNAVAILABLE,
-                last_check=datetime.now(),
+                last_check=datetime.now(UTC),
                 success_rate=0.0,
                 average_latency_ms=None,
                 availability_percent=0.0,
@@ -334,7 +338,7 @@ class TestCapabilityAwareSelection:
             optimization_strategy=OptimizationStrategy.COST_ONLY,
         )
 
-        with pytest.raises(PortkeyProviderError) as exc_info:
+        with pytest.raises(LLMGatewayProviderError) as exc_info:
             cost_optimizer_diverse.select_optimal_provider(criteria, context)
 
         assert "No providers available" in str(exc_info.value)
@@ -649,7 +653,7 @@ class TestEdgeCasesAndErrorHandling:
             optimization_strategy=OptimizationStrategy.COST_ONLY,
         )
 
-        with pytest.raises(PortkeyProviderError):
+        with pytest.raises(LLMGatewayProviderError):
             optimizer.select_optimal_provider(criteria, context)
 
     def test_all_providers_degraded(
