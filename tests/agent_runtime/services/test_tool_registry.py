@@ -3,11 +3,16 @@
 import pytest
 
 from agentcore.agent_runtime.engines.react_models import ToolCall
-from agentcore.agent_runtime.models.tool_integration import ToolDefinition
+from agentcore.agent_runtime.models.tool_integration import (
+    ToolCategory,
+    ToolDefinition,
+    ToolParameter,
+)
 from agentcore.agent_runtime.services.tool_registry import (
     ToolExecutionError,
     ToolRegistry,
-    get_tool_registry)
+    get_tool_registry,
+)
 
 
 @pytest.fixture
@@ -26,7 +31,17 @@ async def test_register_tool(tool_registry: ToolRegistry) -> None:
         tool_id="test_tool",
         name="test_tool",
         description="Test tool",
-        parameters={"param": {"type": "string"}})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={
+            "param": ToolParameter(
+                name="param",
+                type="string",
+                description="Test parameter",
+                required=True,
+            )
+        },
+    )
 
     tool_registry.register_tool(tool_def, test_tool)
 
