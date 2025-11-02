@@ -268,12 +268,11 @@ class TestLLMClientGeminiIntegrationModels:
         assert "paris" in response.content.lower()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="gemini-2.5-flash-lite may require different API access")
     async def test_gemini_2_0_flash_exp_model(
         self,
         gemini_client: LLMClientGemini,
     ) -> None:
-        """Test with gemini-2.5-flash-lite model (experimental)."""
+        """Test with gemini-2.5-flash-lite model (FAST tier)."""
         request = LLMRequest(
             model="gemini-2.5-flash-lite",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
