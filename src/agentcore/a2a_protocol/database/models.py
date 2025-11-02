@@ -36,6 +36,7 @@ from agentcore.a2a_protocol.database.connection import Base
 from agentcore.a2a_protocol.models.agent import AgentStatus
 from agentcore.a2a_protocol.models.session import SessionPriority, SessionState
 from agentcore.a2a_protocol.models.task import TaskStatus
+from agentcore.agent_runtime.models.tool_integration import ToolExecutionStatus
 
 
 class AgentDB(Base):
@@ -429,4 +430,69 @@ class SessionSnapshotDB(Base):
         ),
         Index("idx_session_expires_at", "expires_at"),
         Index("idx_session_tags", "tags", postgresql_using="gin"),
+    )
+
+
+class ToolExecutionDB(Base):
+    """Tool execution history database model."""
+
+    __tablename__ = "tool_executions"
+
+    # Primary key
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # Execution identification
+    request_id = Column(String(255), nullable=False, unique=True, index=True)
+    tool_id = Column(String(255), nullable=False, index=True)
+
+    # Agent context
+    agent_id = Column(String(255), nullable=False, index=True)
+
+    # Execution status
+    status = Column(
+        SQLEnum(
+            ToolExecutionStatus,
+            name="toolexecutionstatus",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    # Result data
+    result = Column(JSON, nullable=True)
+    error = Column(Text, nullable=True)
+    error_type = Column(String(100), nullable=True)
+
+    # Execution metadata
+    execution_time_ms = Column(Float, nullable=False)
+    retry_count = Column(Integer, nullable=False, default=0)
+
+    # Resource usage
+    memory_mb = Column(Float, nullable=True)
+    cpu_percent = Column(Float, nullable=True)
+
+    # Parameters and context
+    parameters = Column(JSON, nullable=False, default=dict)
+    execution_context = Column(JSON, nullable=False, default=dict)
+
+    # Additional metadata
+    execution_metadata = Column(JSON, nullable=False, default=dict)
+
+    # Timestamps
+    timestamp = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+    )
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        Index("idx_tool_execution_agent_tool", "agent_id", "tool_id"),
+        Index("idx_tool_execution_status_time", "status", "timestamp"),
+        Index("idx_tool_execution_tool_time", "tool_id", "timestamp"),
+        Index(
+            "idx_tool_execution_timestamp",
+            "timestamp",
+            postgresql_ops={"timestamp": "DESC"},
+        ),
     )

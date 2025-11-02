@@ -3,11 +3,17 @@
 import pytest
 
 from agentcore.agent_runtime.engines.react_models import ToolCall
-from agentcore.agent_runtime.models.tool_integration import ToolDefinition
+from agentcore.agent_runtime.models.tool_integration import (
+    AuthMethod,
+    ToolCategory,
+    ToolDefinition,
+    ToolParameter,
+)
 from agentcore.agent_runtime.services.tool_registry import (
     ToolExecutionError,
     ToolRegistry,
-    get_tool_registry)
+    get_tool_registry,
+)
 
 
 @pytest.fixture
@@ -26,7 +32,17 @@ async def test_register_tool(tool_registry: ToolRegistry) -> None:
         tool_id="test_tool",
         name="test_tool",
         description="Test tool",
-        parameters={"param": {"type": "string"}})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={
+            "param": ToolParameter(
+                name="param",
+                type="string",
+                description="Test parameter",
+                required=True,
+            )
+        },
+    )
 
     tool_registry.register_tool(tool_def, test_tool)
 
@@ -44,7 +60,11 @@ async def test_unregister_tool(tool_registry: ToolRegistry) -> None:
         tool_id="test_tool",
         name="test_tool",
         description="Test",
-        parameters={})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={},
+        auth_method=AuthMethod.NONE,
+    )
 
     tool_registry.register_tool(tool_def, test_tool)
     assert tool_registry.get_tool("test_tool") is not None
@@ -63,7 +83,24 @@ async def test_execute_tool_success(tool_registry: ToolRegistry) -> None:
         tool_id="add",
         name="add",
         description="Add two numbers",
-        parameters={"a": {"type": "number"}, "b": {"type": "number"}})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={
+            "a": ToolParameter(
+                name="a",
+                type="number",
+                description="First number",
+                required=True,
+            ),
+            "b": ToolParameter(
+                name="b",
+                type="number",
+                description="Second number",
+                required=True,
+            ),
+        },
+        auth_method=AuthMethod.NONE,
+    )
 
     tool_registry.register_tool(tool_def, add_tool)
 
@@ -103,7 +140,11 @@ async def test_execute_tool_error(tool_registry: ToolRegistry) -> None:
         tool_id="error_tool",
         name="error_tool",
         description="Tool that errors",
-        parameters={})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={},
+        auth_method=AuthMethod.NONE,
+    )
 
     tool_registry.register_tool(tool_def, error_tool)
 
@@ -128,7 +169,18 @@ async def test_get_tool_descriptions(tool_registry: ToolRegistry) -> None:
         tool_id="tool1",
         name="tool1",
         description="Test tool 1",
-        parameters={"param": {"type": "string"}})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={
+            "param": ToolParameter(
+                name="param",
+                type="string",
+                description="Parameter",
+                required=True,
+            )
+        },
+        auth_method=AuthMethod.NONE,
+    )
 
     tool_registry.register_tool(tool_def, tool1)
 
@@ -195,7 +247,11 @@ async def test_tool_execution_time_tracking(tool_registry: ToolRegistry) -> None
         tool_id="slow_tool",
         name="slow_tool",
         description="Slow tool",
-        parameters={})
+        version="1.0.0",
+        category=ToolCategory.CUSTOM,
+        parameters={},
+        auth_method=AuthMethod.NONE,
+    )
 
     tool_registry.register_tool(tool_def, slow_tool)
 

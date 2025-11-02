@@ -38,6 +38,13 @@ from agentcore.reasoning.services import reasoning_jsonrpc
 # Import training JSON-RPC methods
 from agentcore.training.services import training_jsonrpc
 
+# Import agent runtime tool JSON-RPC methods
+try:
+    from agentcore.agent_runtime.jsonrpc import tools_jsonrpc
+except ImportError:
+    # Agent runtime tools optional
+    tools_jsonrpc = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
