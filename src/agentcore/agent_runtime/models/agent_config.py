@@ -69,6 +69,10 @@ class SecurityProfile(BaseModel):
         default_factory=lambda: ["mount", "umount", "chroot", "pivot_root"],
         description="Blocked dangerous system calls",
     )
+    allowed_capabilities: list[str] = Field(
+        default_factory=list,
+        description="Docker capabilities to add back (e.g., NET_BIND_SERVICE, CHOWN)",
+    )
     user_namespace: bool = Field(
         default=True,
         description="Enable user namespace remapping",
@@ -80,6 +84,14 @@ class SecurityProfile(BaseModel):
     no_new_privileges: bool = Field(
         default=True,
         description="Prevent privilege escalation",
+    )
+    apparmor_profile: Literal["unconfined", "docker-default", "agentcore-minimal", "agentcore-standard"] = Field(
+        default="agentcore-standard",
+        description="AppArmor profile for mandatory access control",
+    )
+    seccomp_profile: Literal["unconfined", "runtime/default", "agentcore-minimal", "agentcore-standard"] = Field(
+        default="agentcore-standard",
+        description="Seccomp profile for syscall filtering",
     )
 
 
