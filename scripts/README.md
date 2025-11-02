@@ -9,6 +9,7 @@ This directory contains scripts for local testing and development.
 Tests database migrations locally before pushing to CI/CD.
 
 **Prerequisites:**
+
 ```bash
 # Start PostgreSQL
 docker run -d --name postgres-test -p 5432:5432 \
@@ -22,11 +23,13 @@ docker run -d --name redis-test -p 6379:6379 redis:7
 ```
 
 **Usage:**
+
 ```bash
 ./scripts/test-migrations.sh
 ```
 
 **What it does:**
+
 1. Checks PostgreSQL and Redis are running
 2. Recreates test database
 3. Runs all migrations
@@ -34,6 +37,7 @@ docker run -d --name redis-test -p 6379:6379 redis:7
 5. Tests idempotency by running migrations again
 
 **Cleanup:**
+
 ```bash
 docker stop postgres-test redis-test
 docker rm postgres-test redis-test
