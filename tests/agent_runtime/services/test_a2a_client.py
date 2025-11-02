@@ -131,27 +131,45 @@ async def test_jsonrpc_call_with_error(mock_http_client):
 
 
 @pytest.mark.asyncio
-async def test_jsonrpc_call_http_error(mock_http_client):
+async def test_jsonrpc_call_http_error():
     """Test JSON-RPC call with HTTP error."""
-    mock_http_client.post.side_effect = httpx.HTTPError("Connection failed")
-
     client = A2AClient()
-    client._client = mock_http_client
 
-    with pytest.raises(A2AConnectionError, match="HTTP error"):
-        await client._call_jsonrpc("test.method")
+    # Mock httpx.AsyncClient at class level to work with async context manager
+    mock_post = AsyncMock(side_effect=httpx.HTTPError("Connection failed"))
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.post = mock_post
+        mock_client_instance.aclose = AsyncMock()
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock()
+        mock_client_class.return_value = mock_client_instance
+
+        async with client:
+            with pytest.raises(A2AClientError, match="Request failed after .* attempts"):
+                await client._call_jsonrpc("test.method")
 
 
 @pytest.mark.asyncio
-async def test_jsonrpc_call_unexpected_error(mock_http_client):
+async def test_jsonrpc_call_unexpected_error():
     """Test JSON-RPC call with unexpected error."""
-    mock_http_client.post.side_effect = Exception("Unexpected")
-
     client = A2AClient()
-    client._client = mock_http_client
 
-    with pytest.raises(A2AClientError, match="Unexpected error"):
-        await client._call_jsonrpc("test.method")
+    # Mock httpx.AsyncClient at class level to work with async context manager
+    mock_post = AsyncMock(side_effect=Exception("Unexpected"))
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.post = mock_post
+        mock_client_instance.aclose = AsyncMock()
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock()
+        mock_client_class.return_value = mock_client_instance
+
+        async with client:
+            with pytest.raises(A2AClientError, match="Request failed after .* attempts"):
+                await client._call_jsonrpc("test.method")
 
 
 # ==================== Agent Registration Tests ====================

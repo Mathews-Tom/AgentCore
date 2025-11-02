@@ -473,7 +473,7 @@ class TestContainerManager:
             security_profile=SecurityProfile(
                 profile_name="minimal",
                 read_only_filesystem=True,
-                no_new_privileges=False,  # False means add "no-new-privileges" Docker security opt
+                no_new_privileges=True,  # True means add "no-new-privileges" Docker security opt
                 user_namespace=False))
 
         container_config = container_manager._build_container_config(config)
