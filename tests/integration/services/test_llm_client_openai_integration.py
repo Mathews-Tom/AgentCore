@@ -348,5 +348,6 @@ class TestLLMClientOpenAIIntegrationPerformance:
         assert response.usage.total_tokens == (
             response.usage.prompt_tokens + response.usage.completion_tokens
         )
-        # With max_tokens=10, total should be reasonable (model may use more than requested)
-        assert response.usage.total_tokens < 200  # Generous limit for model behavior
+        # With max_tokens=10, total should be reasonable
+        # Note: prompt tokenization varies by model (gpt-5-mini uses more tokens than gpt-4)
+        assert response.usage.total_tokens < 400  # Generous limit accounting for model variations
