@@ -442,3 +442,117 @@ class TestContainerManager:
         """Test closing container manager."""
         await container_manager.close()
         mock_docker_client.close.assert_called_once()
+
+    async def test_get_container_stats_cached(
+        self,
+        container_manager: ContainerManager,
+        agent_config: AgentConfig) -> None:
+        """Test getting container stats uses cache."""
+        await container_manager.create_container(agent_config)
+
+        # First call - should fetch from container
+        stats1 = await container_manager.get_container_stats(agent_config.agent_id)
+
+        # Second call - should return cached value
+        stats2 = await container_manager.get_container_stats(agent_config.agent_id)
+
+        # Both should be identical
+        assert stats1 == stats2
+        assert stats1["cpu_percent"] == 50.0
+
+    async def test_build_container_config_minimal_security_profile(
+        self,
+        container_manager: ContainerManager) -> None:
+        """Test building container config with minimal security profile."""
+        from agentcore.agent_runtime.models.agent_config import SecurityProfile
+
+        config = AgentConfig(
+            agent_id="test-agent-minimal",
+            philosophy=AgentPhilosophy.REACT,
+            image_tag="python:3.12-slim",
+            security_profile=SecurityProfile(
+                profile_name="minimal",
+                read_only_filesystem=True,
+                no_new_privileges=False,  # False means add "no-new-privileges" Docker security opt
+                user_namespace=False))
+
+        container_config = container_manager._build_container_config(config)
+
+        # Verify security options
+        security_opts = container_config["HostConfig"]["SecurityOpt"]
+        # Check that seccomp profile is included for minimal profile
+        assert any("seccomp=" in opt for opt in security_opts)
+        assert "no-new-privileges" in security_opts
+
+    async def test_build_container_config_user_namespace(
+        self,
+        container_manager: ContainerManager) -> None:
+        """Test building container config with user namespace enabled."""
+        from agentcore.agent_runtime.models.agent_config import SecurityProfile
+
+        config = AgentConfig(
+            agent_id="test-agent-userns",
+            philosophy=AgentPhilosophy.REACT,
+            image_tag="python:3.12-slim",
+            security_profile=SecurityProfile(
+                profile_name="standard",
+                read_only_filesystem=False,
+                no_new_privileges=False,
+                user_namespace=True))
+
+        container_config = container_manager._build_container_config(config)
+
+        # Verify user namespace mapping
+        security_opts = container_config["HostConfig"]["SecurityOpt"]
+        assert "userns-remap=default" in security_opts
+        assert container_config["HostConfig"]["UsernsMode"] == "host"
+
+    async def test_parse_container_stats_zero_system_delta(
+        self,
+        container_manager: ContainerManager) -> None:
+        """Test parsing container stats with zero system delta."""
+        raw_stats = {
+            "cpu_stats": {
+                "cpu_usage": {"total_usage": 1000000000},
+                "system_cpu_usage": 2000000000,
+            },
+            "precpu_stats": {
+                "cpu_usage": {"total_usage": 1000000000},
+                "system_cpu_usage": 2000000000,  # Same as current - zero delta
+            },
+            "memory_stats": {
+                "usage": 268435456,
+                "limit": 536870912,
+            },
+        }
+
+        parsed = container_manager._parse_container_stats(raw_stats)
+
+        # CPU percent should be 0 when system delta is 0
+        assert parsed["cpu_percent"] == 0.0
+        assert parsed["memory_usage_mb"] == 256.0
+
+    async def test_parse_container_stats_zero_memory_limit(
+        self,
+        container_manager: ContainerManager) -> None:
+        """Test parsing container stats with zero memory limit."""
+        raw_stats = {
+            "cpu_stats": {
+                "cpu_usage": {"total_usage": 1000000000},
+                "system_cpu_usage": 2000000000,
+            },
+            "precpu_stats": {
+                "cpu_usage": {"total_usage": 500000000},
+                "system_cpu_usage": 1000000000,
+            },
+            "memory_stats": {
+                "usage": 268435456,
+                "limit": 0,  # Zero limit - edge case
+            },
+        }
+
+        parsed = container_manager._parse_container_stats(raw_stats)
+
+        # Memory percent should be 0 when limit is 0
+        assert parsed["memory_percent"] == 0.0
+        assert parsed["memory_usage_mb"] > 0

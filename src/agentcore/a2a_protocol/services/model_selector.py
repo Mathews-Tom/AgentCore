@@ -63,7 +63,7 @@ TIER_MODEL_MAP: dict[ModelTier, list[str]] = {
         "gemini-2.5-flash",
     ],
     ModelTier.PREMIUM: [
-        "gpt-5-pro",
+        "gpt-5-pro",  # Most capable OpenAI reasoning model
         "claude-opus-4-1-20250805",
         "gemini-2.5-pro",
     ],
@@ -208,7 +208,7 @@ class ModelSelector:
         Complexity mapping:
         - "low" → ModelTier.FAST (e.g., gpt-5-mini)
         - "medium" → ModelTier.BALANCED (e.g., gpt-5)
-        - "high" → ModelTier.PREMIUM (e.g., gpt-5)
+        - "high" → ModelTier.PREMIUM (e.g., gpt-5-pro)
 
         Args:
             complexity: Task complexity level ("low", "medium", or "high")

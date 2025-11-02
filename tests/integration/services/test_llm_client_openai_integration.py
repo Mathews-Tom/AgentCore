@@ -245,12 +245,11 @@ class TestLLMClientOpenAIIntegrationModels:
         assert "paris" in response.content.lower()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="gpt-5 not available yet, placeholder for future")
     async def test_gpt_5_model(
         self,
         openai_client: LLMClientOpenAI,
     ) -> None:
-        """Test with gpt-5 model (when available)."""
+        """Test with gpt-5 model (BALANCED tier)."""
         request = LLMRequest(
             model="gpt-5",
             messages=[{"role": "user", "content": "What is the capital of France?"}],
