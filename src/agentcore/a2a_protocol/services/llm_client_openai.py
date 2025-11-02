@@ -118,6 +118,21 @@ class LLMClientOpenAI(LLMClient):
         """
         return model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")
 
+    def _uses_responses_endpoint(self, model: str) -> bool:
+        """Check if model requires v1/responses endpoint instead of v1/chat/completions.
+
+        Some reasoning models (gpt-5-pro) use the newer v1/responses endpoint
+        which has a different request/response structure.
+
+        Args:
+            model: Model name to check
+
+        Returns:
+            True if model uses v1/responses endpoint, False otherwise
+        """
+        # gpt-5-pro requires v1/responses endpoint
+        return model in ("gpt-5-pro", "o1-pro", "o3-mini")
+
     async def complete(self, request: LLMRequest) -> LLMResponse:
         """Execute non-streaming completion request with retry logic.
 
@@ -172,11 +187,71 @@ class LLMClientOpenAI(LLMClient):
                 if extra_headers:
                     completion_params["extra_headers"] = extra_headers
 
-                response = await self.client.chat.completions.create(**completion_params)  # type: ignore[arg-type]
+                # Use appropriate endpoint based on model
+                if self._uses_responses_endpoint(request.model):
+                    # Use v1/responses endpoint for reasoning pro models
+                    # This endpoint has different parameter names: 'input' instead of 'messages'
+                    responses_params: dict[str, object] = {
+                        "model": request.model,
+                        "input": request.messages,  # v1/responses uses 'input' not 'messages'
+                    }
 
-                # Calculate latency and normalize response
-                latency_ms = int((time.perf_counter() - start_time) * 1000)
-                return self._normalize_response((response, latency_ms), request)
+                    # Add reasoning_effort if specified
+                    if request.reasoning_effort and self._is_reasoning_model(request.model):
+                        responses_params["reasoning_effort"] = request.reasoning_effort
+
+                    # Build options dict with headers if needed
+                    request_options: dict[str, object] = {}
+                    if extra_headers:
+                        request_options["headers"] = extra_headers
+
+                    try:
+                        # Call with or without options depending on whether we have headers
+                        if request_options:
+                            raw_response = await self.client.post(
+                                "/responses",
+                                body=responses_params,
+                                cast_to=object,
+                                options=request_options,
+                            )
+                        else:
+                            raw_response = await self.client.post(
+                                "/responses",
+                                body=responses_params,
+                                cast_to=object,
+                            )
+                        # Calculate latency
+                        latency_ms = int((time.perf_counter() - start_time) * 1000)
+
+                        # Convert response to dict if it's not already
+                        if hasattr(raw_response, "model_dump"):
+                            response_dict = raw_response.model_dump()  # type: ignore[union-attr]
+                        elif hasattr(raw_response, "dict"):
+                            response_dict = raw_response.dict()  # type: ignore[union-attr]
+                        elif isinstance(raw_response, dict):
+                            response_dict = raw_response
+                        else:
+                            # Try to convert to dict via __dict__
+                            response_dict = vars(raw_response) if hasattr(raw_response, "__dict__") else {}
+
+                        # Normalize v1/responses format to our LLMResponse format
+                        return self._normalize_responses_endpoint(response_dict, latency_ms, request)
+                    except Exception as e:
+                        self.logger.error(
+                            "Error calling v1/responses endpoint",
+                            extra={
+                                "model": request.model,
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                            },
+                        )
+                        raise
+                else:
+                    # Use standard v1/chat/completions endpoint
+                    response = await self.client.chat.completions.create(**completion_params)  # type: ignore[arg-type]
+                    # Calculate latency and normalize response
+                    latency_ms = int((time.perf_counter() - start_time) * 1000)
+                    return self._normalize_response((response, latency_ms), request)
 
             except APITimeoutError as e:
                 # Timeout errors should not be retried
@@ -348,6 +423,121 @@ class LLMClientOpenAI(LLMClient):
 
         except (APIConnectionError, APIError) as e:
             raise ProviderError("openai", e) from e
+
+    def _normalize_responses_endpoint(
+        self, raw_response: dict[str, object], latency_ms: int, request: LLMRequest
+    ) -> LLMResponse:
+        """Normalize v1/responses endpoint response to unified LLMResponse format.
+
+        The v1/responses endpoint used by reasoning pro models (gpt-5-pro) returns
+        a different response structure than chat/completions. This method handles
+        that format and normalizes it to our standard LLMResponse.
+
+        Args:
+            raw_response: Raw dict response from v1/responses endpoint
+            latency_ms: Request latency in milliseconds
+            request: Original LLM request for context propagation
+
+        Returns:
+            Normalized LLM response in unified format
+
+        Raises:
+            ValueError: When response is malformed or missing required fields
+        """
+        # Log response structure for debugging
+        self.logger.debug(
+            "Normalizing v1/responses response",
+            extra={
+                "response_keys": list(raw_response.keys()),
+                "model": request.model,
+            },
+        )
+
+        # Extract content - v1/responses uses different structure
+        content = ""
+
+        # Try 'output' field (can be list, string, or dict)
+        if "output" in raw_response:
+            output = raw_response["output"]
+
+            # Output is a list of reasoning steps and messages
+            if isinstance(output, list):
+                # Find the message item (type='message') with content
+                for item in output:
+                    if isinstance(item, dict):
+                        if item.get("type") == "message":
+                            # Message item found - extract content
+                            if "content" in item:
+                                item_content = item["content"]
+                                if isinstance(item_content, str):
+                                    content = item_content
+                                elif isinstance(item_content, list):
+                                    # Content can be list of content blocks
+                                    for block in item_content:
+                                        if isinstance(block, dict):
+                                            # Check for various content block types
+                                            block_type = block.get("type")
+                                            if block_type in ("text", "output_text"):
+                                                content += block.get("text", "")
+                                break
+            elif isinstance(output, str):
+                content = output
+            elif isinstance(output, dict):
+                content = str(output.get("content", ""))
+
+        # Try 'text' field (direct text output)
+        if not content and "text" in raw_response:
+            text = raw_response["text"]
+            if isinstance(text, str):
+                content = text
+
+        # Try 'choices' field (similar to chat completions)
+        if not content and "choices" in raw_response:
+            choices = raw_response["choices"]
+            if isinstance(choices, list) and choices:
+                first_choice = choices[0]
+                if isinstance(first_choice, dict):
+                    # Try message.content
+                    message = first_choice.get("message", {})
+                    if isinstance(message, dict):
+                        content = str(message.get("content", ""))
+                    # Try text field directly
+                    if not content:
+                        content = str(first_choice.get("text", ""))
+
+        # Try top-level 'content' field
+        if not content and "content" in raw_response:
+            content = str(raw_response["content"])
+
+        # Extract token usage
+        usage_data = raw_response.get("usage", {})
+        if isinstance(usage_data, dict):
+            llm_usage = LLMUsage(
+                prompt_tokens=int(usage_data.get("prompt_tokens", 0)),
+                completion_tokens=int(usage_data.get("completion_tokens", 0)),
+                total_tokens=int(usage_data.get("total_tokens", 0)),
+            )
+        else:
+            # Fallback if usage is missing
+            self.logger.warning(
+                "No usage data in v1/responses response",
+                extra={"model": request.model},
+            )
+            llm_usage = LLMUsage(
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+            )
+
+        # Build normalized response with A2A context
+        return LLMResponse(
+            content=content,
+            usage=llm_usage,
+            latency_ms=latency_ms,
+            provider="openai",
+            model=request.model,
+            trace_id=request.trace_id,
+        )
 
     def _normalize_response(
         self, raw_response: object, request: LLMRequest
