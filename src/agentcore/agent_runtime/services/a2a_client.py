@@ -313,6 +313,8 @@ class A2AClient:
             raise A2ATimeoutError(f"Request timed out after {self._max_retries} attempts")
         elif isinstance(last_error, httpx.ConnectError):
             raise A2AConnectionError(f"Connection failed after {self._max_retries} attempts: {last_error}")
+        elif isinstance(last_error, A2ARateLimitError):
+            raise last_error  # Re-raise rate limit error as-is
         else:
             raise A2AClientError(f"Request failed after {self._max_retries} attempts: {last_error}")
 
