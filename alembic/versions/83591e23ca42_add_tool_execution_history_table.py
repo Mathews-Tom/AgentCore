@@ -50,91 +50,20 @@ def upgrade() -> None:
     op.create_index(op.f('ix_tool_executions_status'), 'tool_executions', ['status'], unique=False)
     op.create_index(op.f('ix_tool_executions_timestamp'), 'tool_executions', ['timestamp'], unique=False)
     op.create_index(op.f('ix_tool_executions_tool_id'), 'tool_executions', ['tool_id'], unique=False)
-    op.alter_column('agents', 'capabilities',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False)
-    op.alter_column('agents', 'requirements',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('agents', 'agent_metadata',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('agents', 'interaction_examples',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
     op.drop_index(op.f('idx_agent_capability_embedding'), table_name='agents', postgresql_ops={'capability_embedding': 'vector_cosine_ops'}, postgresql_with={'m': '16', 'ef_construction': '64'}, postgresql_using='hnsw')
-    op.alter_column('event_subscriptions', 'event_types',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False)
-    op.alter_column('event_subscriptions', 'filters',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('message_queue', 'required_capabilities',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False)
-    op.alter_column('message_queue', 'message_data',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False)
     op.create_index(op.f('ix_message_queue_priority'), 'message_queue', ['priority'], unique=False)
-    op.alter_column('policy_checkpoints', 'policy_data',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=postgresql.JSON(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('policy_checkpoints', 'metrics',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=postgresql.JSON(astext_type=sa.Text()),
-               existing_nullable=False)
     op.drop_index(op.f('idx_policy_checkpoints_created'), table_name='policy_checkpoints')
     op.create_index('idx_policy_checkpoints_created', 'policy_checkpoints', ['created_at'], unique=False, postgresql_ops={'created_at': 'DESC'})
     op.drop_index(op.f('idx_session_created_at'), table_name='session_snapshots')
     op.create_index('idx_session_created_at', 'session_snapshots', ['created_at'], unique=False, postgresql_ops={'created_at': 'DESC'})
+    # Convert tags from JSON to JSONB to support GIN index
+    op.alter_column('session_snapshots', 'tags',
+               existing_type=sa.JSON(),
+               type_=postgresql.JSONB(astext_type=sa.Text()),
+               existing_nullable=False)
     op.create_index('idx_session_tags', 'session_snapshots', ['tags'], unique=False, postgresql_using='gin')
-    op.alter_column('tasks', 'required_capabilities',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False)
-    op.alter_column('tasks', 'parameters',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('tasks', 'depends_on',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('tasks', 'result',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('tasks', 'task_metadata',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
-    op.alter_column('training_jobs', 'config',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=postgresql.JSON(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('training_jobs', 'training_data',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=postgresql.JSON(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('training_jobs', 'metrics',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=postgresql.JSON(astext_type=sa.Text()),
-               existing_nullable=False)
     op.drop_index(op.f('idx_training_jobs_created'), table_name='training_jobs')
     op.create_index('idx_training_jobs_created', 'training_jobs', ['created_at'], unique=False, postgresql_ops={'created_at': 'DESC'})
-    op.alter_column('trajectories', 'steps',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=postgresql.JSON(astext_type=sa.Text()),
-               existing_nullable=False)
     op.drop_index(op.f('idx_trajectories_created'), table_name='trajectories')
     op.create_index('idx_trajectories_created', 'trajectories', ['created_at'], unique=False, postgresql_ops={'created_at': 'DESC'})
     # ### end Alembic commands ###
@@ -145,91 +74,20 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index('idx_trajectories_created', table_name='trajectories', postgresql_ops={'created_at': 'DESC'})
     op.create_index(op.f('idx_trajectories_created'), 'trajectories', [sa.literal_column('created_at DESC')], unique=False)
-    op.alter_column('trajectories', 'steps',
-               existing_type=postgresql.JSON(astext_type=sa.Text()),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
     op.drop_index('idx_training_jobs_created', table_name='training_jobs', postgresql_ops={'created_at': 'DESC'})
     op.create_index(op.f('idx_training_jobs_created'), 'training_jobs', [sa.literal_column('created_at DESC')], unique=False)
-    op.alter_column('training_jobs', 'metrics',
-               existing_type=postgresql.JSON(astext_type=sa.Text()),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('training_jobs', 'training_data',
-               existing_type=postgresql.JSON(astext_type=sa.Text()),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('training_jobs', 'config',
-               existing_type=postgresql.JSON(astext_type=sa.Text()),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('tasks', 'task_metadata',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('tasks', 'result',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('tasks', 'depends_on',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('tasks', 'parameters',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('tasks', 'required_capabilities',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
     op.drop_index('idx_session_tags', table_name='session_snapshots', postgresql_using='gin')
+    # Revert tags from JSONB back to JSON
+    op.alter_column('session_snapshots', 'tags',
+               existing_type=postgresql.JSONB(astext_type=sa.Text()),
+               type_=sa.JSON(),
+               existing_nullable=False)
     op.drop_index('idx_session_created_at', table_name='session_snapshots', postgresql_ops={'created_at': 'DESC'})
     op.create_index(op.f('idx_session_created_at'), 'session_snapshots', [sa.literal_column('created_at DESC')], unique=False)
     op.drop_index('idx_policy_checkpoints_created', table_name='policy_checkpoints', postgresql_ops={'created_at': 'DESC'})
     op.create_index(op.f('idx_policy_checkpoints_created'), 'policy_checkpoints', [sa.literal_column('created_at DESC')], unique=False)
-    op.alter_column('policy_checkpoints', 'metrics',
-               existing_type=postgresql.JSON(astext_type=sa.Text()),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('policy_checkpoints', 'policy_data',
-               existing_type=postgresql.JSON(astext_type=sa.Text()),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
     op.drop_index(op.f('ix_message_queue_priority'), table_name='message_queue')
-    op.alter_column('message_queue', 'message_data',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('message_queue', 'required_capabilities',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
-    op.alter_column('event_subscriptions', 'filters',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('event_subscriptions', 'event_types',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
     op.create_index(op.f('idx_agent_capability_embedding'), 'agents', ['capability_embedding'], unique=False, postgresql_ops={'capability_embedding': 'vector_cosine_ops'}, postgresql_with={'m': '16', 'ef_construction': '64'}, postgresql_using='hnsw')
-    op.alter_column('agents', 'interaction_examples',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('agents', 'agent_metadata',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('agents', 'requirements',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
-    op.alter_column('agents', 'capabilities',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False)
     op.drop_index(op.f('ix_tool_executions_tool_id'), table_name='tool_executions')
     op.drop_index(op.f('ix_tool_executions_timestamp'), table_name='tool_executions')
     op.drop_index(op.f('ix_tool_executions_status'), table_name='tool_executions')
