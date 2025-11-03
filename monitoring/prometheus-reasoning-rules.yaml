@@ -1,0 +1,182 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: reasoning-framework-alerts
+  namespace: agentcore
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: reasoning-framework
+    interval: 30s
+    rules:
+    # High error rate
+    - alert: ReasoningHighErrorRate
+      expr: |
+        rate(reasoning_bounded_context_requests_total{status="error"}[5m]) /
+        rate(reasoning_bounded_context_requests_total[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has high error rate"
+        description: "Error rate is above 10% for 5 minutes (current: {{ $value | humanizePercentage }})"
+
+    # Critical error rate
+    - alert: ReasoningCriticalErrorRate
+      expr: |
+        rate(reasoning_bounded_context_requests_total{status="error"}[5m]) /
+        rate(reasoning_bounded_context_requests_total[5m]) > 0.25
+      for: 5m
+      labels:
+        severity: critical
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has critical error rate"
+        description: "Error rate is above 25% for 5 minutes (current: {{ $value | humanizePercentage }})"
+
+    # Slow response time (p95)
+    - alert: ReasoningSlowResponseTime
+      expr: |
+        histogram_quantile(0.95, rate(reasoning_bounded_context_duration_seconds_bucket[5m])) > 30
+      for: 5m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has slow response times"
+        description: "95th percentile response time is above 30s (current: {{ $value }}s)"
+
+    # Very slow response time (p95)
+    - alert: ReasoningVerySlowResponseTime
+      expr: |
+        histogram_quantile(0.95, rate(reasoning_bounded_context_duration_seconds_bucket[5m])) > 60
+      for: 5m
+      labels:
+        severity: critical
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has very slow response times"
+        description: "95th percentile response time is above 60s (current: {{ $value }}s)"
+
+    # High LLM failure rate
+    - alert: ReasoningHighLLMFailureRate
+      expr: |
+        rate(reasoning_bounded_context_llm_failures_total[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has high LLM failure rate"
+        description: "LLM failures are above 0.1/sec for 5 minutes (current: {{ $value }})"
+
+    # Critical LLM failure rate
+    - alert: ReasoningCriticalLLMFailureRate
+      expr: |
+        rate(reasoning_bounded_context_llm_failures_total[5m]) > 0.5
+      for: 5m
+      labels:
+        severity: critical
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has critical LLM failure rate"
+        description: "LLM failures are above 0.5/sec for 5 minutes (current: {{ $value }})"
+
+    # High validation error rate
+    - alert: ReasoningHighValidationErrors
+      expr: |
+        rate(reasoning_bounded_context_errors_total{error_type="validation_error"}[5m]) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has high validation error rate"
+        description: "Validation errors are above 0.5/sec for 5 minutes (current: {{ $value }})"
+
+    # High timeout error rate
+    - alert: ReasoningHighTimeoutErrors
+      expr: |
+        rate(reasoning_bounded_context_errors_total{error_type="timeout_error"}[5m]) > 0.2
+      for: 5m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has high timeout error rate"
+        description: "Timeout errors are above 0.2/sec for 5 minutes (current: {{ $value }})"
+
+    # High token usage
+    - alert: ReasoningHighTokenUsage
+      expr: |
+        histogram_quantile(0.95, rate(reasoning_bounded_context_tokens_total_bucket[5m])) > 50000
+      for: 10m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has high token usage"
+        description: "95th percentile token usage is above 50K (current: {{ $value }})"
+
+    # Very high token usage (cost concern)
+    - alert: ReasoningVeryHighTokenUsage
+      expr: |
+        histogram_quantile(0.95, rate(reasoning_bounded_context_tokens_total_bucket[5m])) > 100000
+      for: 10m
+      labels:
+        severity: critical
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has very high token usage"
+        description: "95th percentile token usage is above 100K (current: {{ $value }}). This may indicate a cost issue."
+
+    # Low compute savings
+    - alert: ReasoningLowComputeSavings
+      expr: |
+        avg_over_time(reasoning_bounded_context_compute_savings_pct[10m]) < 20
+      for: 15m
+      labels:
+        severity: info
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has low compute savings"
+        description: "Average compute savings below 20% for 15 minutes (current: {{ $value }}%). Bounded context strategy may not be optimal."
+
+    # High iteration count
+    - alert: ReasoningHighIterationCount
+      expr: |
+        histogram_quantile(0.95, rate(reasoning_bounded_context_iterations_total_bucket[5m])) > 20
+      for: 10m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has high iteration count"
+        description: "95th percentile iteration count is above 20 (current: {{ $value }}). Consider tuning chunk size."
+
+    # No recent requests (possible service issue)
+    - alert: ReasoningNoRecentRequests
+      expr: |
+        rate(reasoning_bounded_context_requests_total[5m]) == 0
+      for: 15m
+      labels:
+        severity: info
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework has no recent requests"
+        description: "No reasoning requests in the last 15 minutes. This may be normal or indicate a service issue."
+
+    # Spike in request rate
+    - alert: ReasoningRequestSpike
+      expr: |
+        rate(reasoning_bounded_context_requests_total[5m]) >
+        avg_over_time(rate(reasoning_bounded_context_requests_total[5m])[1h]) * 3
+      for: 5m
+      labels:
+        severity: warning
+        service: reasoning-framework
+      annotations:
+        summary: "Reasoning framework experiencing request spike"
+        description: "Request rate is 3x higher than 1h average (current: {{ $value }})"

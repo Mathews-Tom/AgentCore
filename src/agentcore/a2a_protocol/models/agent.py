@@ -224,14 +224,15 @@ class AgentCard(BaseModel):
         description="Example interactions for few-shot learning (input/output pairs)",
     )
 
-    # BCR-016: Bounded reasoning capabilities
+    # BCR-016: Bounded reasoning capabilities (DEPRECATED - use capabilities list)
+    # Kept for backward compatibility
     supports_bounded_reasoning: bool = Field(
         default=False,
-        description="Whether agent supports bounded context reasoning",
+        description="DEPRECATED: Use capabilities with 'reasoning.strategy.*' names instead",
     )
     reasoning_config: dict[str, Any] | None = Field(
         None,
-        description="Optional reasoning configuration (max_iterations, chunk_size, carryover_size, temperature)",
+        description="DEPRECATED: Use capability parameters instead",
     )
 
     # Timestamps (managed by the system)
@@ -306,6 +307,63 @@ class AgentCard(BaseModel):
         # Return first endpoint if no preferred type found
         return self.endpoints[0]
 
+    def get_reasoning_strategies(self) -> list[str]:
+        """
+        Get list of supported reasoning strategies from capabilities.
+
+        Returns list of strategy names (without 'reasoning.strategy.' prefix).
+
+        Example:
+            >>> agent.get_reasoning_strategies()
+            ['bounded_context', 'chain_of_thought']
+        """
+        strategies = []
+        for cap in self.capabilities:
+            if cap.name.startswith("reasoning.strategy."):
+                strategy_name = cap.name.replace("reasoning.strategy.", "")
+                strategies.append(strategy_name)
+        return strategies
+
+    def has_reasoning_strategy(self, strategy_name: str) -> bool:
+        """
+        Check if agent supports a specific reasoning strategy.
+
+        Args:
+            strategy_name: Strategy name (e.g., 'bounded_context')
+
+        Returns:
+            bool: True if agent supports the strategy
+        """
+        capability_name = f"reasoning.strategy.{strategy_name}"
+        return self.has_capability(capability_name)
+
+    def get_reasoning_strategy_config(
+        self, strategy_name: str
+    ) -> dict[str, Any] | None:
+        """
+        Get configuration for a specific reasoning strategy.
+
+        Args:
+            strategy_name: Strategy name (e.g., 'bounded_context')
+
+        Returns:
+            dict | None: Strategy configuration parameters or None if not found
+        """
+        capability_name = f"reasoning.strategy.{strategy_name}"
+        capability = self.get_capability(capability_name)
+        if capability:
+            return capability.parameters
+        return None
+
+    def supports_any_reasoning_strategy(self) -> bool:
+        """
+        Check if agent supports any reasoning strategy.
+
+        Returns:
+            bool: True if agent has at least one reasoning.strategy.* capability
+        """
+        return len(self.get_reasoning_strategies()) > 0
+
     def to_discovery_summary(self) -> dict[str, Any]:
         """Create a summary for agent discovery."""
         primary_endpoint = self.get_primary_endpoint()
@@ -316,9 +374,11 @@ class AgentCard(BaseModel):
             "status": self.status.value,
             "description": self.description,
             "capabilities": [cap.name for cap in self.capabilities],
+            "reasoning_strategies": self.get_reasoning_strategies(),
             "primary_endpoint": str(primary_endpoint.url) if primary_endpoint else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
             "created_at": self.created_at.isoformat(),
+            # Deprecated fields (kept for backward compatibility)
             "supports_bounded_reasoning": self.supports_bounded_reasoning,
         }
 
@@ -349,8 +409,14 @@ class AgentDiscoveryQuery(BaseModel):
     tags: list[str] | None = Field(None, description="Agent tags filter")
     category: str | None = Field(None, description="Agent category filter")
     name_pattern: str | None = Field(None, description="Agent name pattern (regex)")
+    # New: Filter by specific reasoning strategies
+    reasoning_strategies: list[str] | None = Field(
+        None,
+        description="Filter by specific reasoning strategies (e.g., ['bounded_context', 'chain_of_thought'])",
+    )
+    # Deprecated but kept for backward compatibility
     has_bounded_reasoning: bool | None = Field(
-        None, description="Filter by bounded reasoning support (BCR-018)"
+        None, description="DEPRECATED: Use reasoning_strategies instead. Filter by bounded reasoning support"
     )
     limit: int = Field(
         default=50, ge=1, le=1000, description="Maximum number of results"

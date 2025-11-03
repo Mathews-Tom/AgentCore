@@ -19,4 +19,45 @@ The framework supports:
 - Compute optimization for long-form reasoning tasks
 """
 
+from .config import ReasoningConfig, reasoning_config
+from .engines import BoundedContextEngine
+from .models.reasoning_models import (
+    BoundedContextConfig,
+    ReasoningMetrics,
+    ReasoningRequest,
+    ReasoningResult,
+)
+from .protocol import ReasoningStrategy
+from .services import (
+    CarryoverGenerator,
+    LLMClient,
+    MetricsCalculator,
+    ReasoningStrategyRegistry,
+    StrategySelector,
+    registry,
+)
+
 __version__ = "0.1.0"
+
+__all__ = [
+    # Protocol
+    "ReasoningStrategy",
+    # Registry & Selection
+    "ReasoningStrategyRegistry",
+    "StrategySelector",
+    "registry",
+    # Engines
+    "BoundedContextEngine",
+    # Models
+    "ReasoningRequest",
+    "ReasoningResult",
+    "ReasoningMetrics",
+    "BoundedContextConfig",
+    # Services
+    "LLMClient",
+    "CarryoverGenerator",
+    "MetricsCalculator",
+    # Configuration
+    "ReasoningConfig",
+    "reasoning_config",
+]

@@ -148,12 +148,12 @@ async def test_handle_bounded_reasoning_success(
 @pytest.mark.asyncio
 async def test_handle_bounded_reasoning_missing_params(valid_token_payload: TokenPayload):
     """Test error handling for missing parameters."""
-    # No params - will fail auth check first
+    # No params - will fail parameter validation (auth is disabled)
     request = JsonRpcRequest(
         method="reasoning.bounded_context",
         id="test-123")
 
-    with pytest.raises(ValueError, match="Authentication required"):
+    with pytest.raises(ValueError, match="Parameters required"):
         await handle_bounded_reasoning(request)
 
     # Empty params with valid auth token

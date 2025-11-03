@@ -9,7 +9,7 @@ from typing import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 
 from agentcore.a2a_protocol.main import create_app
@@ -24,7 +24,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def test_db_engine():
     """Create test database engine."""
     # Use in-memory SQLite for fast tests
@@ -144,18 +144,28 @@ def jsonrpc_request_template():
 
 
 @pytest.fixture(scope="function")
-async def init_test_db():
+async def init_test_db(test_db_engine):
     """Initialize test database for session tests.
 
-    Note: Assumes Alembic migrations have been run on the test database.
-    Run `uv run alembic upgrade head` before running integration tests.
+    Uses in-memory SQLite instead of PostgreSQL for fast, isolated tests.
     """
-    from agentcore.a2a_protocol.database import init_db, close_db
+    from agentcore.a2a_protocol.database import connection
 
-    # Initialize database connection
-    await init_db()
+    # Override global engine and session factory with test versions
+    original_engine = connection.engine
+    original_session = connection.SessionLocal
+
+    connection.engine = test_db_engine
+    connection.SessionLocal = async_sessionmaker(
+        test_db_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
 
     yield
 
-    # Cleanup
-    await close_db()
+    # Restore original connection (if any)
+    connection.engine = original_engine
+    connection.SessionLocal = original_session
