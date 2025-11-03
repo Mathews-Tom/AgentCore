@@ -12,6 +12,13 @@ This module contains service implementations:
 from .carryover_generator import CarryoverGenerator
 from .llm_client import CircuitState, GenerationResult, LLMClient, LLMClientConfig
 from .metrics_calculator import MetricsCalculator
+from .strategy_registry import (
+    ReasoningStrategyRegistry,
+    StrategyAlreadyRegisteredError,
+    StrategyNotFoundError,
+    registry,
+)
+from .strategy_selector import StrategySelectionError, StrategySelector
 
 __all__ = [
     "LLMClient",
@@ -20,4 +27,10 @@ __all__ = [
     "CircuitState",
     "CarryoverGenerator",
     "MetricsCalculator",
+    "ReasoningStrategyRegistry",
+    "StrategyNotFoundError",
+    "StrategyAlreadyRegisteredError",
+    "StrategySelector",
+    "StrategySelectionError",
+    "registry",
 ]
