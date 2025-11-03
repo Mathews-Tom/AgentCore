@@ -1,0 +1,304 @@
+{
+  "dashboard": {
+    "title": "Reasoning Strategy Framework",
+    "tags": ["reasoning", "bounded-context", "llm", "agentcore"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "panels": [
+      {
+        "title": "Request Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_requests_total{status=\"success\"}[5m]) / rate(reasoning_bounded_context_requests_total[5m]) * 100",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Total Requests (1h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(reasoning_bounded_context_requests_total[1h])",
+            "legendFormat": "Requests"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "title": "Average Compute Savings",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(reasoning_bounded_context_compute_savings_pct)",
+            "legendFormat": "Savings"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 30, "color": "yellow"},
+                {"value": 50, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "LLM Failures (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(reasoning_bounded_context_llm_failures_total[24h])",
+            "legendFormat": "Failures"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10, "color": "yellow"},
+                {"value": 50, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Request Rate by Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_requests_total[5m])",
+            "legendFormat": "{{ status }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Response Latency (Percentiles)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(reasoning_bounded_context_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(reasoning_bounded_context_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(reasoning_bounded_context_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Token Usage Distribution",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(reasoning_bounded_context_tokens_total_bucket[5m]))",
+            "legendFormat": "p50 tokens"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(reasoning_bounded_context_tokens_total_bucket[5m]))",
+            "legendFormat": "p95 tokens"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(reasoning_bounded_context_tokens_total_bucket[5m]))",
+            "legendFormat": "p99 tokens"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "yaxes": [
+          {"format": "short", "label": "Tokens"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Average Tokens per Request",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_tokens_total_sum[5m]) / rate(reasoning_bounded_context_tokens_total_count[5m])",
+            "legendFormat": "Avg Tokens"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "yaxes": [
+          {"format": "short", "label": "Tokens"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Compute Savings Distribution",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(reasoning_bounded_context_compute_savings_pct_bucket[5m]))",
+            "legendFormat": "p50 savings"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(reasoning_bounded_context_compute_savings_pct_bucket[5m]))",
+            "legendFormat": "p95 savings"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "yaxes": [
+          {"format": "percent", "label": "Savings %"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Iterations per Request",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(reasoning_bounded_context_iterations_total_bucket[5m]))",
+            "legendFormat": "p50 iterations"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(reasoning_bounded_context_iterations_total_bucket[5m]))",
+            "legendFormat": "p95 iterations"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(reasoning_bounded_context_iterations_total_bucket[5m]))",
+            "legendFormat": "p99 iterations"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "yaxes": [
+          {"format": "short", "label": "Iterations"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Error Types Breakdown",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_errors_total[5m])",
+            "legendFormat": "{{ error_type }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+        "yaxes": [
+          {"format": "reqps", "label": "Errors/sec"},
+          {"format": "short"}
+        ],
+        "stack": true
+      },
+      {
+        "title": "LLM Failure Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_llm_failures_total[5m])",
+            "legendFormat": "LLM Failures"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+        "yaxes": [
+          {"format": "reqps", "label": "Failures/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Token Cost Estimation (GPT-4)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_tokens_total_sum[5m]) * 0.00001",
+            "legendFormat": "Estimated Cost ($/sec)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+        "yaxes": [
+          {"format": "currencyUSD", "label": "Cost"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "Request Success/Error Ratio",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(increase(reasoning_bounded_context_requests_total{status=\"success\"}[1h]))",
+            "legendFormat": "Success"
+          },
+          {
+            "expr": "sum(increase(reasoning_bounded_context_requests_total{status=\"error\"}[1h]))",
+            "legendFormat": "Error"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36}
+      },
+      {
+        "title": "Duration Heatmap",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(reasoning_bounded_context_duration_seconds_bucket[5m])",
+            "legendFormat": "{{ le }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 44},
+        "dataFormat": "tsbuckets"
+      },
+      {
+        "title": "Average Compute Savings Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg_over_time(reasoning_bounded_context_compute_savings_pct[5m])",
+            "legendFormat": "Compute Savings %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 52},
+        "yaxes": [
+          {"format": "percent", "label": "Savings %", "min": 0, "max": 100},
+          {"format": "short"}
+        ]
+      }
+    ]
+  }
+}
