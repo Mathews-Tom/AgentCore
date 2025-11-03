@@ -1,6 +1,5 @@
 """
 End-to-end integration tests for Reasoning JSON-RPC API.
-
 Tests complete JSON-RPC request/response flow including:
 - Single requests with valid parameters
 - Batch requests
@@ -8,28 +7,20 @@ Tests complete JSON-RPC request/response flow including:
 - Parameter validation
 - Response formatting
 """
-
 from __future__ import annotations
-
 from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
 from fastapi.testclient import TestClient
-
 from agentcore.a2a_protocol.main import app
 from agentcore.a2a_protocol.models.security import Permission, Role, TokenPayload
 from agentcore.reasoning.models.reasoning_models import (
     BoundedContextIterationResult,
     BoundedContextResult,
     IterationMetrics)
-
-
 @pytest.fixture
 def client():
     """Create test client."""
     return TestClient(app)
-
-
 @pytest.fixture
 def mock_reasoning_result():
     """Create mock reasoning result."""
@@ -44,7 +35,6 @@ def mock_reasoning_result():
             has_answer=True,
             carryover_generated=False,
             execution_time_ms=1250))
-
     return BoundedContextResult(
         answer="42",
         iterations=[iteration],
@@ -53,8 +43,6 @@ def mock_reasoning_result():
         compute_savings_pct=15.5,
         carryover_compressions=0,
         execution_time_ms=1250)
-
-
 @pytest.fixture
 def valid_token_payload():
     """Create valid token payload with reasoning:execute permission."""
@@ -64,20 +52,16 @@ def valid_token_payload():
         token_type="access",
         expiration_hours=24,
         agent_id="agent-test")
-
-
 def test_single_request_valid_parameters(client, mock_reasoning_result, valid_token_payload):
     """Test single JSON-RPC request with valid parameters."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        # Mock engine to return mock result without making actual LLM calls
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -93,16 +77,13 @@ def test_single_request_valid_parameters(client, mock_reasoning_result, valid_to
                 },
                 "id": 1,
             })
-
         assert response.status_code == 200
         data = response.json()
-
         # Verify JSON-RPC structure
         assert data["jsonrpc"] == "2.0"
         assert data["id"] == 1
         assert "result" in data
         assert "error" not in data
-
         # Verify result structure
         result = data["result"]
         assert result["success"] is True
@@ -112,20 +93,16 @@ def test_single_request_valid_parameters(client, mock_reasoning_result, valid_to
         assert result["compute_savings_pct"] == 15.5
         assert result["execution_time_ms"] == 1250
         assert len(result["iterations"]) == 1
-
-
 def test_single_request_minimal_parameters(client, mock_reasoning_result, valid_token_payload):
     """Test request with only required parameters."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -137,25 +114,20 @@ def test_single_request_minimal_parameters(client, mock_reasoning_result, valid_
                 },
                 "id": 2,
             })
-
         assert response.status_code == 200
         data = response.json()
         assert "result" in data
         assert data["result"]["success"] is True
-
-
 def test_batch_request(client, mock_reasoning_result, valid_token_payload):
     """Test batch JSON-RPC request."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         batch_request = [
             {
                 "jsonrpc": "2.0",
@@ -170,23 +142,17 @@ def test_batch_request(client, mock_reasoning_result, valid_token_payload):
                 "id": 2,
             },
         ]
-
         response = client.post("/api/v1/jsonrpc", json=batch_request)
-
         assert response.status_code == 200
         data = response.json()
-
         # Batch response should be array
         assert isinstance(data, list)
         assert len(data) == 2
-
         # Verify both responses
         for resp in data:
             assert resp["jsonrpc"] == "2.0"
             assert "result" in resp
             assert resp["result"]["success"] is True
-
-
 def test_error_invalid_parameters(client):
     """Test error handling for invalid parameters."""
     response = client.post(
@@ -201,16 +167,12 @@ def test_error_invalid_parameters(client):
             },
             "id": 3,
         })
-
     assert response.status_code == 200
     data = response.json()
-
     assert "error" in data
     assert "result" not in data
     assert data["error"]["code"] == -32603  # Internal error
     # Error message wrapped by JSON-RPC handler
-
-
 def test_error_missing_required_parameter(client):
     """Test error handling for missing required parameter."""
     response = client.post(
@@ -221,26 +183,20 @@ def test_error_missing_required_parameter(client):
             "params": {},  # Missing required 'query'
             "id": 4,
         })
-
     assert response.status_code == 200
     data = response.json()
-
     assert "error" in data
     assert data["error"]["code"] == -32603  # Internal error for ValueError
-
-
 def test_error_llm_failure(client):
     """Test error handling when LLM client fails."""
     with (
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(
             side_effect=RuntimeError("LLM service unavailable")
         )
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -249,15 +205,11 @@ def test_error_llm_failure(client):
                 "params": {"query": "Test query"},
                 "id": 5,
             })
-
         assert response.status_code == 200
         data = response.json()
-
         assert "error" in data
         assert data["error"]["code"] == -32603  # Internal error
         # Error message wrapped by JSON-RPC handler
-
-
 def test_error_invalid_temperature(client):
     """Test error handling for out-of-range temperature."""
     response = client.post(
@@ -271,14 +223,10 @@ def test_error_invalid_temperature(client):
             },
             "id": 6,
         })
-
     assert response.status_code == 200
     data = response.json()
-
     assert "error" in data
     assert data["error"]["code"] == -32603
-
-
 def test_error_invalid_max_iterations(client):
     """Test error handling for invalid max_iterations."""
     response = client.post(
@@ -292,26 +240,20 @@ def test_error_invalid_max_iterations(client):
             },
             "id": 7,
         })
-
     assert response.status_code == 200
     data = response.json()
-
     assert "error" in data
     assert data["error"]["code"] == -32603
-
-
 def test_notification_request(client, mock_reasoning_result, valid_token_payload):
     """Test notification request (no response expected)."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -320,24 +262,19 @@ def test_notification_request(client, mock_reasoning_result, valid_token_payload
                 "params": {"auth_token": "test-token", "query": "Notification test"},
                 # No 'id' field = notification
             })
-
         # Notifications execute but return 204 No Content
         # Note: JSON-RPC spec says notifications have no response
         assert response.status_code in (200, 204)
-
-
 def test_response_format_validation(client, mock_reasoning_result, valid_token_payload):
     """Test that response format matches expected structure."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -346,10 +283,8 @@ def test_response_format_validation(client, mock_reasoning_result, valid_token_p
                 "params": {"auth_token": "test-token", "query": "Format test"},
                 "id": 8,
             })
-
         data = response.json()
         result = data["result"]
-
         # Verify all required fields are present
         required_fields = [
             "success",
@@ -361,14 +296,11 @@ def test_response_format_validation(client, mock_reasoning_result, valid_token_p
             "execution_time_ms",
             "iterations",
         ]
-
         for field in required_fields:
             assert field in result, f"Missing required field: {field}"
-
         # Verify iterations structure
         assert isinstance(result["iterations"], list)
         assert len(result["iterations"]) > 0
-
         iteration = result["iterations"][0]
         iteration_fields = [
             "iteration",
@@ -378,23 +310,18 @@ def test_response_format_validation(client, mock_reasoning_result, valid_token_p
             "carryover_generated",
             "content_preview",
         ]
-
         for field in iteration_fields:
             assert field in iteration, f"Missing iteration field: {field}"
-
-
 def test_custom_system_prompt(client, mock_reasoning_result, valid_token_payload):
     """Test request with custom system prompt."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -407,30 +334,24 @@ def test_custom_system_prompt(client, mock_reasoning_result, valid_token_payload
                 },
                 "id": 9,
             })
-
         assert response.status_code == 200
         data = response.json()
         assert "result" in data
         assert data["result"]["success"] is True
-
         # Verify system prompt was passed to engine
         mock_engine.reason.assert_called_once()
         call_kwargs = mock_engine.reason.call_args.kwargs
         assert call_kwargs["system_prompt"] == "You are a helpful assistant."
-
-
 def test_a2a_context_in_request(client, mock_reasoning_result, valid_token_payload):
     """Test request with A2A context."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
-        patch("agentcore.reasoning.services.llm_client.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
-        mock_security.validate_token.return_value = valid_token_payload
-        mock_llm_class.return_value = MagicMock()  # Return mock instance to prevent httpx client creation
+        mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
-
         response = client.post(
             "/api/v1/jsonrpc",
             json={
@@ -445,7 +366,6 @@ def test_a2a_context_in_request(client, mock_reasoning_result, valid_token_paylo
                     "timestamp": "2025-01-01T00:00:00Z",
                 },
             })
-
         assert response.status_code == 200
         data = response.json()
         assert data["result"]["success"] is True
