@@ -65,7 +65,7 @@ Step 3: Verification - 4 is correct
     assert result.answer == "4"
     assert result.strategy_used == "chain_of_thought"
     assert result.metrics.total_tokens == 150
-    assert result.metrics.execution_time_ms > 0
+    assert result.metrics.execution_time_ms >= 0  # Can be 0 for fast mocked calls
     assert result.trace is not None
     assert len(result.trace) == 2  # reasoning + answer
     assert result.trace[0]["type"] == "reasoning"
