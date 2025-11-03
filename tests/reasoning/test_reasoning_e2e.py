@@ -17,6 +17,29 @@ from agentcore.reasoning.models.reasoning_models import (
     BoundedContextIterationResult,
     BoundedContextResult,
     IterationMetrics)
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_module_state():
+    """Reset module state before each test to prevent interference from other tests.
+
+    Note: These tests pass when run in isolation but may fail in full suite
+    due to test ordering issues. This fixture helps isolate the tests.
+    """
+    # Reload the app to ensure clean state
+    import sys
+    import importlib
+
+    # Force reload of app module to clear any cached state
+    if 'agentcore.a2a_protocol.main' in sys.modules:
+        try:
+            # Clear FastAPI app cache/state by reimporting
+            app_module = sys.modules['agentcore.a2a_protocol.main']
+            importlib.reload(app_module)
+        except Exception:
+            pass  # If reload fails, tests will still use existing app
+
+    yield
 @pytest.fixture
 def client():
     """Create test client."""
@@ -56,8 +79,11 @@ def test_single_request_valid_parameters(client, mock_reasoning_result, valid_to
     """Test single JSON-RPC request with valid parameters."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
+        # Mock LLM client to avoid Bearer token issues
+        mock_llm_class.return_value = MagicMock()
         # Mock engine to return mock result without making actual LLM calls
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
@@ -97,9 +123,10 @@ def test_single_request_minimal_parameters(client, mock_reasoning_result, valid_
     """Test request with only required parameters."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
-        
+        mock_llm_class.return_value = MagicMock()
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -122,9 +149,10 @@ def test_batch_request(client, mock_reasoning_result, valid_token_payload):
     """Test batch JSON-RPC request."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
-        
+        mock_llm_class.return_value = MagicMock()
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -248,9 +276,10 @@ def test_notification_request(client, mock_reasoning_result, valid_token_payload
     """Test notification request (no response expected)."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
-        
+        mock_llm_class.return_value = MagicMock()
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -269,9 +298,10 @@ def test_response_format_validation(client, mock_reasoning_result, valid_token_p
     """Test that response format matches expected structure."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
-        
+        mock_llm_class.return_value = MagicMock()
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -316,9 +346,10 @@ def test_custom_system_prompt(client, mock_reasoning_result, valid_token_payload
     """Test request with custom system prompt."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
-        
+        mock_llm_class.return_value = MagicMock()
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
@@ -346,9 +377,10 @@ def test_a2a_context_in_request(client, mock_reasoning_result, valid_token_paylo
     """Test request with A2A context."""
     with (
         patch("agentcore.reasoning.services.reasoning_jsonrpc.security_service") as mock_security,
+        patch("agentcore.reasoning.services.reasoning_jsonrpc.LLMClient") as mock_llm_class,
         patch("agentcore.reasoning.services.reasoning_jsonrpc.BoundedContextEngine") as mock_engine_class):
         mock_security.validate_token.return_value = valid_token_payload  # Mock auth
-        
+        mock_llm_class.return_value = MagicMock()
         mock_engine = MagicMock()
         mock_engine.reason = AsyncMock(return_value=mock_reasoning_result)
         mock_engine_class.return_value = mock_engine
