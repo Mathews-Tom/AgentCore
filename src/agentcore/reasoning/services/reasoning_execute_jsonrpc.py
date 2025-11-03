@@ -228,7 +228,86 @@ def _initialize_strategies() -> None:
                 error=str(e),
             )
 
-    # TODO: Initialize other strategies (ChainOfThought, ReAct) when implemented
+    # Initialize ChainOfThoughtEngine if enabled
+    if "chain_of_thought" in reasoning_config.enabled_strategies:
+        try:
+            from ..engines.chain_of_thought_engine import ChainOfThoughtEngine
+            from ..models.reasoning_models import ChainOfThoughtConfig
+
+            # Create shared LLM client if not already created
+            if "bounded_context" not in reasoning_config.enabled_strategies:
+                llm_config = LLMClientConfig(
+                    provider=reasoning_config.llm_provider,
+                    model=reasoning_config.llm_model,
+                    api_key=os.getenv(reasoning_config.llm_api_key_env, ""),
+                    timeout_seconds=reasoning_config.llm_timeout_seconds,
+                    max_retries=reasoning_config.llm_max_retries,
+                )
+                llm_client = LLMClient(config=llm_config)
+
+            # Create chain of thought config
+            cot_config = ChainOfThoughtConfig(
+                max_tokens=reasoning_config.chain_of_thought.default_max_tokens,
+                temperature=0.7,  # Default temperature
+                show_reasoning=True,
+            )
+
+            # Create and register engine
+            cot_engine = ChainOfThoughtEngine(llm_client=llm_client, config=cot_config)
+            registry.register(cot_engine)
+
+            logger.info(
+                "strategy_registered",
+                strategy="chain_of_thought",
+                version=cot_engine.version,
+            )
+        except Exception as e:
+            logger.error(
+                "strategy_registration_failed",
+                strategy="chain_of_thought",
+                error=str(e),
+            )
+
+    # Initialize ReActEngine if enabled
+    if "react" in reasoning_config.enabled_strategies:
+        try:
+            from ..engines.react_engine import ReActEngine
+            from ..models.reasoning_models import ReActConfig
+
+            # Create shared LLM client if not already created
+            if "bounded_context" not in reasoning_config.enabled_strategies and "chain_of_thought" not in reasoning_config.enabled_strategies:
+                llm_config = LLMClientConfig(
+                    provider=reasoning_config.llm_provider,
+                    model=reasoning_config.llm_model,
+                    api_key=os.getenv(reasoning_config.llm_api_key_env, ""),
+                    timeout_seconds=reasoning_config.llm_timeout_seconds,
+                    max_retries=reasoning_config.llm_max_retries,
+                )
+                llm_client = LLMClient(config=llm_config)
+
+            # Create ReAct config
+            react_config = ReActConfig(
+                max_iterations=reasoning_config.react.default_max_tool_calls,
+                max_tokens_per_step=reasoning_config.react.default_max_tokens,
+                temperature=0.7,  # Default temperature
+                allow_tool_use=False,  # Disabled by default for safety
+            )
+
+            # Create and register engine
+            react_engine = ReActEngine(llm_client=llm_client, config=react_config)
+            registry.register(react_engine)
+
+            logger.info(
+                "strategy_registered",
+                strategy="react",
+                version=react_engine.version,
+            )
+        except Exception as e:
+            logger.error(
+                "strategy_registration_failed",
+                strategy="react",
+                error=str(e),
+            )
 
     logger.info(
         "strategies_initialized",

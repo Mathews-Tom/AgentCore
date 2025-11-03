@@ -100,6 +100,54 @@ class BoundedContextConfig(BaseModel):
         return self
 
 
+class ChainOfThoughtConfig(BaseModel):
+    """Configuration parameters for Chain of Thought reasoning strategy."""
+
+    max_tokens: int = Field(
+        default=4096,
+        ge=100,
+        le=32768,
+        description="Maximum tokens for reasoning output",
+    )
+    temperature: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for generation",
+    )
+    show_reasoning: bool = Field(
+        default=True,
+        description="Whether to include reasoning steps in trace",
+    )
+
+
+class ReActConfig(BaseModel):
+    """Configuration parameters for ReAct (Reasoning + Acting) strategy."""
+
+    max_iterations: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum number of thought-action-observation cycles",
+    )
+    max_tokens_per_step: int = Field(
+        default=2048,
+        ge=100,
+        le=8192,
+        description="Maximum tokens per reasoning/action step",
+    )
+    temperature: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for generation",
+    )
+    allow_tool_use: bool = Field(
+        default=False,
+        description="Whether to allow external tool/API calls (requires tool registry)",
+    )
+
+
 class IterationMetrics(BaseModel):
     """Metrics for a single reasoning iteration in bounded context strategy."""
 
