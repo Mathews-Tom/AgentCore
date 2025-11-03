@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from unittest.mock import patch
 
+import fakeredis.aioredis
 import pytest
 import pytest_asyncio
 
@@ -28,7 +30,7 @@ from agentcore.llm_gateway.models import (
 
 @pytest_asyncio.fixture
 async def cache_service() -> CacheService:
-    """Create cache service for testing."""
+    """Create cache service for testing with fake Redis."""
     config = CacheConfig(
         enabled=True,
         l1_enabled=True,
@@ -40,19 +42,24 @@ async def cache_service() -> CacheService:
         mode=CacheMode.EXACT,
         stats_enabled=True)
 
-    service = CacheService(config=config)
-    await service.connect()
+    # Create fake Redis client
+    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
 
-    yield service
+    # Patch redis.asyncio.from_url to return our fake client
+    with patch('redis.asyncio.from_url', return_value=fake_redis):
+        service = CacheService(config=config)
+        await service.connect()
 
-    # Cleanup
-    await service.clear()
-    await service.close()
+        yield service
+
+        # Cleanup
+        await service.clear()
+        await service.close()
 
 
 @pytest_asyncio.fixture
 async def semantic_cache_service() -> CacheService:
-    """Create semantic cache service for testing."""
+    """Create semantic cache service for testing with fake Redis."""
     config = CacheConfig(
         enabled=True,
         l1_enabled=True,
@@ -61,14 +68,19 @@ async def semantic_cache_service() -> CacheService:
         mode=CacheMode.SEMANTIC,
         stats_enabled=True)
 
-    service = CacheService(config=config)
-    await service.connect()
+    # Create fake Redis client
+    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
 
-    yield service
+    # Patch redis.asyncio.from_url to return our fake client
+    with patch('redis.asyncio.from_url', return_value=fake_redis):
+        service = CacheService(config=config)
+        await service.connect()
 
-    # Cleanup
-    await service.clear()
-    await service.close()
+        yield service
+
+        # Cleanup
+        await service.clear()
+        await service.close()
 
 
 def create_llm_request(
