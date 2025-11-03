@@ -52,7 +52,8 @@ class JsonRpcError(BaseModel):
         if v in [e.value for e in JsonRpcErrorCode]:
             return v
         # Allow server-specific errors in the -32000 to -32099 range
-        if JsonRpcErrorCode.SERVER_ERROR_MAX <= v <= JsonRpcErrorCode.SERVER_ERROR_MIN:
+        # Note: SERVER_ERROR_MIN is -32099, SERVER_ERROR_MAX is -32000
+        if JsonRpcErrorCode.SERVER_ERROR_MIN <= v <= JsonRpcErrorCode.SERVER_ERROR_MAX:
             return v
         # Allow A2A specific errors in the -32100 to -32199 range
         if -32199 <= v <= -32100:

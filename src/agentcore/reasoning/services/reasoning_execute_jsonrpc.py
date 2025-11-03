@@ -341,11 +341,15 @@ async def handle_reasoning_execute(request: JsonRpcRequest) -> dict[str, Any]:
                 trace_id=request.a2a_context.trace_id if request.a2a_context else None,
             )
             record_reasoning_error(error_type="validation_error")
-            return create_error_response(
-                request_id=request.id,
-                error_code=-32001,  # Custom: Strategy not found
-                message=error_msg,
-            )
+            # Custom error code: Strategy not found
+            from agentcore.a2a_protocol.models.jsonrpc import JsonRpcError, JsonRpcResponse
+            return JsonRpcResponse(
+                id=request.id,
+                error=JsonRpcError(
+                    code=-32001,
+                    message=error_msg
+                )
+            ).model_dump(exclude_none=True)
 
         except StrategySelectionError as e:
             error_msg = str(e)

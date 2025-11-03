@@ -68,9 +68,9 @@ class TestReasoningExecute:
         """Set up each test with clean registry."""
         registry.clear()
 
-        # Register mock strategies
-        self.mock_strategy1 = MockStrategy(name="test_strategy1")
-        self.mock_strategy2 = MockStrategy(name="test_strategy2")
+        # Register mock strategies (using valid names: lowercase + underscores only)
+        self.mock_strategy1 = MockStrategy(name="test_strategy_one")
+        self.mock_strategy2 = MockStrategy(name="test_strategy_two")
 
         registry.register(self.mock_strategy1)
         registry.register(self.mock_strategy2)
@@ -88,7 +88,7 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "What is 2+2?",
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
             },
             id="test-1",
         )
@@ -98,8 +98,8 @@ class TestReasoningExecute:
 
         # Assert
         assert "answer" in result
-        assert result["answer"] == "Mock answer from test_strategy1"
-        assert result["strategy_used"] == "test_strategy1"
+        assert result["answer"] == "Mock answer from test_strategy_one"
+        assert result["strategy_used"] == "test_strategy_one"
         assert "metrics" in result
         assert result["metrics"]["total_tokens"] == 100
 
@@ -111,15 +111,15 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "What is the meaning of life?",
-                "strategy": "test_strategy2",
+                "strategy": "test_strategy_two",
             },
             id="test-2",
         )
 
         result = await handle_reasoning_execute(request)
 
-        assert result["answer"] == "Mock answer from test_strategy2"
-        assert result["strategy_used"] == "test_strategy2"
+        assert result["answer"] == "Mock answer from test_strategy_two"
+        assert result["strategy_used"] == "test_strategy_two"
 
     @pytest.mark.asyncio
     async def test_execute_with_strategy_config(self):
@@ -129,7 +129,7 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "Complex question",
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
                 "strategy_config": {
                     "temperature": 0.9,
                     "max_tokens": 2000,
@@ -140,7 +140,7 @@ class TestReasoningExecute:
 
         result = await handle_reasoning_execute(request)
 
-        assert result["strategy_used"] == "test_strategy1"
+        assert result["strategy_used"] == "test_strategy_one"
         assert "answer" in result
 
     @pytest.mark.asyncio
@@ -158,10 +158,15 @@ class TestReasoningExecute:
 
         result = await handle_reasoning_execute(request)
 
-        # Should return JSON-RPC error response
-        assert "error" in result
-        assert result["error"]["code"] == -32001  # Strategy not found
-        assert "not found" in result["error"]["message"].lower()
+        # Should return JSON-RPC error response (handle both dict and JsonRpcResponse)
+        if hasattr(result, 'error'):
+            assert result.error is not None
+            assert result.error.code == -32001
+            assert "not found" in result.error.message.lower()
+        else:
+            assert "error" in result
+            assert result["error"]["code"] == -32001
+            assert "not found" in result["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_execute_missing_query_returns_error(self):
@@ -170,7 +175,7 @@ class TestReasoningExecute:
             jsonrpc="2.0",
             method="reasoning.execute",
             params={
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
                 # Missing 'query' field
             },
             id="test-5",
@@ -178,8 +183,12 @@ class TestReasoningExecute:
 
         result = await handle_reasoning_execute(request)
 
-        assert "error" in result
-        assert result["error"]["code"] == -32602  # Invalid params
+        if hasattr(result, 'error'):
+            assert result.error is not None
+            assert result.error.code == -32602
+        else:
+            assert "error" in result
+            assert result["error"]["code"] == -32602
 
     @pytest.mark.asyncio
     async def test_execute_empty_query_returns_error(self):
@@ -189,38 +198,39 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "",  # Empty string
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
             },
             id="test-6",
         )
 
         result = await handle_reasoning_execute(request)
 
-        assert "error" in result
-        assert result["error"]["code"] == -32602
+        if hasattr(result, 'error'):
+            assert result.error is not None
+            assert result.error.code == -32602
+        else:
+            assert "error" in result
+            assert result["error"]["code"] == -32602
 
     @pytest.mark.asyncio
     async def test_execute_invalid_params_type_returns_error(self):
         """Test that invalid params type returns error."""
-        request = JsonRpcRequest(
-            jsonrpc="2.0",
-            method="reasoning.execute",
-            params="invalid string params",  # Should be dict
-            id="test-7",
-        )
-
-        result = await handle_reasoning_execute(request)
-
-        assert "error" in result
-        assert result["error"]["code"] == -32602
+        # JsonRpcRequest validation will fail before handler is called
+        with pytest.raises(Exception):  # Pydantic ValidationError
+            request = JsonRpcRequest(
+                jsonrpc="2.0",
+                method="reasoning.execute",
+                params="invalid string params",  # Should be dict
+                id="test-7",
+            )
 
     @pytest.mark.asyncio
-    @patch("agentcore.reasoning.config.reasoning_config")
+    @patch("agentcore.reasoning.services.reasoning_execute_jsonrpc.reasoning_config")
     async def test_execute_uses_default_strategy(self, mock_config):
         """Test that default strategy is used when none specified."""
         # Configure mock with default strategy
-        mock_config.default_strategy = "test_strategy1"
-        mock_config.enabled_strategies = ["test_strategy1", "test_strategy2"]
+        mock_config.default_strategy = "test_strategy_one"
+        mock_config.enabled_strategies = ["test_strategy_one", "test_strategy_two"]
 
         request = JsonRpcRequest(
             jsonrpc="2.0",
@@ -235,7 +245,7 @@ class TestReasoningExecute:
         result = await handle_reasoning_execute(request)
 
         assert "answer" in result
-        assert result["strategy_used"] == "test_strategy1"
+        assert result["strategy_used"] == "test_strategy_one"
 
     @pytest.mark.asyncio
     async def test_execute_with_agent_capabilities_inference(self):
@@ -246,7 +256,7 @@ class TestReasoningExecute:
             params={
                 "query": "Test query",
                 "agent_capabilities": [
-                    "reasoning.strategy.test_strategy2",
+                    "reasoning.strategy.test_strategy_two",
                     "other_capability",
                 ],
             },
@@ -255,7 +265,7 @@ class TestReasoningExecute:
 
         result = await handle_reasoning_execute(request)
 
-        assert result["strategy_used"] == "test_strategy2"
+        assert result["strategy_used"] == "test_strategy_two"
 
     @pytest.mark.asyncio
     async def test_execute_returns_trace(self):
@@ -265,7 +275,7 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "Test query",
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
             },
             id="test-10",
         )
@@ -284,7 +294,7 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "Test query",
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
             },
             id="test-11",
         )
@@ -302,12 +312,15 @@ class TestReasoningExecute:
     @pytest.mark.asyncio
     async def test_execute_with_a2a_context(self):
         """Test that A2A context is properly handled."""
+        from datetime import UTC, datetime
+
         from agentcore.a2a_protocol.models.jsonrpc import A2AContext
 
         a2a_context = A2AContext(
             trace_id="test-trace-123",
             source_agent="test-agent-1",
             target_agent="reasoning-agent",
+            timestamp=datetime.now(UTC).isoformat(),  # Must be ISO string, not datetime
         )
 
         request = JsonRpcRequest(
@@ -315,7 +328,7 @@ class TestReasoningExecute:
             method="reasoning.execute",
             params={
                 "query": "Test query",
-                "strategy": "test_strategy1",
+                "strategy": "test_strategy_one",
             },
             id="test-12",
             a2a_context=a2a_context,
@@ -350,9 +363,14 @@ class TestReasoningExecute:
 
         result = await handle_reasoning_execute(request)
 
-        assert "error" in result
-        assert result["error"]["code"] == -32603  # Internal error
-        assert "execution failed" in result["error"]["message"].lower()
+        if hasattr(result, 'error'):
+            assert result.error is not None
+            assert result.error.code == -32603
+            assert "execution failed" in result.error.message.lower()
+        else:
+            assert "error" in result
+            assert result["error"]["code"] == -32603
+            assert "execution failed" in result["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_execute_multiple_requests_sequentially(self):
@@ -365,7 +383,7 @@ class TestReasoningExecute:
                 method="reasoning.execute",
                 params={
                     "query": query,
-                    "strategy": "test_strategy1",
+                    "strategy": "test_strategy_one",
                 },
                 id=f"test-multi-{i}",
             )
@@ -373,4 +391,4 @@ class TestReasoningExecute:
             result = await handle_reasoning_execute(request)
 
             assert "answer" in result
-            assert result["strategy_used"] == "test_strategy1"
+            assert result["strategy_used"] == "test_strategy_one"
