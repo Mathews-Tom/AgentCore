@@ -333,9 +333,12 @@ class AgentManager:
         if len(capability_names) != len(set(capability_names)):
             raise ValueError("Agent capabilities must have unique names")
 
-        # BCR-017: Validate reasoning capabilities
+        # BCR-017: Validate reasoning capabilities (deprecated approach)
         if agent_card.reasoning_config:
             self._validate_reasoning_config(agent_card.reasoning_config)
+
+        # New: Validate reasoning strategy capabilities
+        self._validate_reasoning_strategy_capabilities(agent_card)
 
         # Validate endpoint URLs are accessible (future implementation)
         # This could include actual HTTP checks to endpoints
@@ -408,6 +411,81 @@ class AgentManager:
             chunk_size=reasoning_config.get("chunk_size"),
         )
 
+    def _validate_reasoning_strategy_capabilities(self, agent_card: AgentCard) -> None:
+        """
+        Validate reasoning strategy capabilities.
+
+        Validates that:
+        1. Reasoning strategy capability names follow 'reasoning.strategy.{name}' format
+        2. Strategy names are valid (lowercase, alphanumeric, underscores)
+        3. Strategy configurations are properly structured
+
+        Args:
+            agent_card: Agent card to validate
+
+        Raises:
+            ValueError: If reasoning strategy capabilities are invalid
+        """
+        reasoning_strategies = agent_card.get_reasoning_strategies()
+
+        if not reasoning_strategies:
+            # No reasoning strategies - this is valid
+            return
+
+        for strategy_name in reasoning_strategies:
+            # Validate strategy name format
+            if not re.match(r'^[a-z][a-z0-9_]*$', strategy_name):
+                raise ValueError(
+                    f"Invalid reasoning strategy name '{strategy_name}'. "
+                    "Must start with lowercase letter and contain only lowercase letters, numbers, and underscores."
+                )
+
+            # Get the capability for detailed validation
+            capability = agent_card.get_capability(f"reasoning.strategy.{strategy_name}")
+            if not capability:
+                continue  # Should not happen but be defensive
+
+            # Validate strategy-specific configuration parameters
+            if strategy_name == "bounded_context" and capability.parameters:
+                params = capability.parameters
+
+                # Validate max_iterations if present
+                if "max_iterations" in params:
+                    max_iter = params["max_iterations"]
+                    if not isinstance(max_iter, int) or max_iter < 1 or max_iter > 50:
+                        raise ValueError(
+                            f"reasoning.strategy.bounded_context: max_iterations must be between 1 and 50"
+                        )
+
+                # Validate chunk_size if present
+                if "chunk_size" in params:
+                    chunk = params["chunk_size"]
+                    if not isinstance(chunk, int) or chunk < 1024 or chunk > 32768:
+                        raise ValueError(
+                            f"reasoning.strategy.bounded_context: chunk_size must be between 1024 and 32768"
+                        )
+
+                # Validate carryover_size if present
+                if "carryover_size" in params:
+                    carryover = params["carryover_size"]
+                    if not isinstance(carryover, int) or carryover < 512 or carryover > 16384:
+                        raise ValueError(
+                            f"reasoning.strategy.bounded_context: carryover_size must be between 512 and 16384"
+                        )
+
+                # Validate carryover_size < chunk_size if both present
+                if "chunk_size" in params and "carryover_size" in params:
+                    if params["carryover_size"] >= params["chunk_size"]:
+                        raise ValueError(
+                            f"reasoning.strategy.bounded_context: carryover_size must be less than chunk_size"
+                        )
+
+        logger.debug(
+            "Reasoning strategy capabilities validation passed",
+            agent_id=agent_card.agent_id,
+            strategies=reasoning_strategies,
+        )
+
     def _filter_agents(
         self, agents: list[AgentCard], query: AgentDiscoveryQuery
     ) -> list[AgentCard]:
@@ -459,13 +537,34 @@ class AgentManager:
             except re.error:
                 logger.warning("Invalid regex pattern", pattern=query.name_pattern)
 
-        # BCR-018: Filter by bounded reasoning support
-        if query.has_bounded_reasoning is not None:
+        # New: Filter by reasoning strategies
+        if query.reasoning_strategies:
             filtered = [
                 a
                 for a in filtered
-                if a.supports_bounded_reasoning == query.has_bounded_reasoning
+                if all(
+                    a.has_reasoning_strategy(strategy)
+                    for strategy in query.reasoning_strategies
+                )
             ]
+
+        # BCR-018: Filter by bounded reasoning support (deprecated but kept for compatibility)
+        if query.has_bounded_reasoning is not None:
+            # Use new capability-based check if available, otherwise fall back to deprecated field
+            if query.has_bounded_reasoning:
+                filtered = [
+                    a
+                    for a in filtered
+                    if a.has_reasoning_strategy("bounded_context")
+                    or a.supports_bounded_reasoning
+                ]
+            else:
+                filtered = [
+                    a
+                    for a in filtered
+                    if not a.has_reasoning_strategy("bounded_context")
+                    and not a.supports_bounded_reasoning
+                ]
 
         return filtered
 
