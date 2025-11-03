@@ -4,6 +4,14 @@ A2A Protocol client for agent runtime integration.
 This module provides the client interface for agent runtime to communicate
 with the A2A protocol layer, handling agent registration, task execution,
 and status reporting.
+
+Features:
+- Retry logic with exponential backoff (3 attempts: 1s, 2s, 4s)
+- Connection pooling (10 connections per host)
+- Circuit breaker pattern (opens after 5 failures)
+- Comprehensive error handling with specific exceptions
+- Request timeout handling (configurable, 30s default)
+- Metrics tracking for observability
 """
 
 import asyncio
@@ -40,13 +48,29 @@ class A2ARegistrationError(A2AClientError):
     """Raised when agent registration fails."""
 
 
+class A2ATimeoutError(A2AClientError):
+    """Raised when request times out."""
+
+
+class A2ARateLimitError(A2AClientError):
+    """Raised when rate limit is exceeded."""
+
+
+class A2ACircuitOpenError(A2AClientError):
+    """Raised when circuit breaker is open."""
+
+
 class A2AClient:
-    """Client for A2A protocol integration."""
+    """Client for A2A protocol integration with retry, pooling, and circuit breaker."""
 
     def __init__(
         self,
         base_url: str = "http://localhost:8001",
         timeout: float = 30.0,
+        max_retries: int = 3,
+        max_connections: int = 10,
+        circuit_breaker_threshold: int = 5,
+        circuit_breaker_timeout: float = 60.0,
     ) -> None:
         """
         Initialize A2A client.
@@ -54,15 +78,38 @@ class A2AClient:
         Args:
             base_url: Base URL of A2A protocol service
             timeout: Request timeout in seconds
+            max_retries: Maximum number of retry attempts (default: 3)
+            max_connections: Maximum connections per host (default: 10)
+            circuit_breaker_threshold: Failures before circuit opens (default: 5)
+            circuit_breaker_timeout: Seconds before circuit resets (default: 60)
         """
         self._base_url = base_url.rstrip("/")
         self._jsonrpc_url = f"{self._base_url}/api/v1/jsonrpc"
         self._timeout = timeout
+        self._max_retries = max_retries
+        self._max_connections = max_connections
         self._client: httpx.AsyncClient | None = None
 
+        # Circuit breaker state
+        self._circuit_breaker_threshold = circuit_breaker_threshold
+        self._circuit_breaker_timeout = circuit_breaker_timeout
+        self._failure_count = 0
+        self._circuit_open_until: datetime | None = None
+        self._last_failure_time: datetime | None = None
+
     async def __aenter__(self) -> "A2AClient":
-        """Async context manager entry."""
-        self._client = httpx.AsyncClient(timeout=self._timeout)
+        """Async context manager entry with connection pooling."""
+        # Configure connection limits for pooling
+        limits = httpx.Limits(
+            max_connections=self._max_connections,
+            max_keepalive_connections=self._max_connections,
+        )
+
+        self._client = httpx.AsyncClient(
+            timeout=self._timeout,
+            limits=limits,
+            follow_redirects=True,
+        )
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -71,13 +118,51 @@ class A2AClient:
             await self._client.aclose()
             self._client = None
 
+    def _is_circuit_open(self) -> bool:
+        """Check if circuit breaker is open."""
+        if self._circuit_open_until is None:
+            return False
+
+        # Check if circuit should reset
+        now = datetime.now(UTC)
+        if now >= self._circuit_open_until:
+            logger.info("circuit_breaker_reset", failure_count=self._failure_count)
+            self._circuit_open_until = None
+            self._failure_count = 0
+            return False
+
+        return True
+
+    def _record_success(self) -> None:
+        """Record successful request (resets circuit breaker)."""
+        if self._failure_count > 0:
+            logger.debug("circuit_breaker_success_reset", previous_failures=self._failure_count)
+        self._failure_count = 0
+        self._circuit_open_until = None
+
+    def _record_failure(self) -> None:
+        """Record failed request (may open circuit breaker)."""
+        self._failure_count += 1
+        self._last_failure_time = datetime.now(UTC)
+
+        if self._failure_count >= self._circuit_breaker_threshold:
+            from datetime import timedelta
+            self._circuit_open_until = datetime.now(UTC) + timedelta(
+                seconds=self._circuit_breaker_timeout
+            )
+            logger.warning(
+                "circuit_breaker_opened",
+                failure_count=self._failure_count,
+                open_until=self._circuit_open_until.isoformat(),
+            )
+
     async def _call_jsonrpc(
         self,
         method: str,
         params: dict[str, Any] | None = None,
     ) -> Any:
         """
-        Make JSON-RPC call to A2A protocol.
+        Make JSON-RPC call to A2A protocol with retry and circuit breaker.
 
         Args:
             method: JSON-RPC method name
@@ -87,9 +172,18 @@ class A2AClient:
             Method result
 
         Raises:
-            A2AConnectionError: If connection fails
+            A2ACircuitOpenError: If circuit breaker is open
+            A2AConnectionError: If connection fails after retries
+            A2ATimeoutError: If request times out
+            A2ARateLimitError: If rate limit exceeded
             A2AClientError: If JSON-RPC error occurs
         """
+        # Check circuit breaker
+        if self._is_circuit_open():
+            raise A2ACircuitOpenError(
+                f"Circuit breaker is open (failures: {self._failure_count})"
+            )
+
         if not self._client:
             raise A2AConnectionError(
                 "Client not initialized, use async context manager"
@@ -101,25 +195,128 @@ class A2AClient:
             params=params or {},
         )
 
-        try:
-            response = await self._client.post(
-                self._jsonrpc_url,
-                json=request.model_dump(mode="json", exclude_none=True),
-            )
-            response.raise_for_status()
+        last_error: Exception | None = None
 
-            data = response.json()
-            rpc_response = JsonRpcResponse(**data)
+        # Retry logic with exponential backoff
+        for attempt in range(self._max_retries):
+            try:
+                response = await self._client.post(
+                    self._jsonrpc_url,
+                    json=request.model_dump(mode="json", exclude_none=True),
+                )
 
-            if rpc_response.error:
-                raise A2AClientError(f"JSON-RPC error: {rpc_response.error.message}")
+                # Check for rate limiting (429)
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get("Retry-After", "1"))
+                    logger.warning(
+                        "rate_limit_exceeded",
+                        method=method,
+                        retry_after=retry_after,
+                        attempt=attempt + 1,
+                    )
 
-            return rpc_response.result
+                    if attempt < self._max_retries - 1:
+                        await asyncio.sleep(retry_after)
+                        continue
+                    else:
+                        self._record_failure()
+                        raise A2ARateLimitError(f"Rate limit exceeded for {method}")
 
-        except httpx.HTTPError as e:
-            raise A2AConnectionError(f"HTTP error: {e}")
-        except Exception as e:
-            raise A2AClientError(f"Unexpected error: {e}")
+                response.raise_for_status()
+
+                data = response.json()
+                rpc_response = JsonRpcResponse(**data)
+
+                if rpc_response.error:
+                    error_msg = f"JSON-RPC error: {rpc_response.error.message}"
+                    logger.error(
+                        "jsonrpc_error",
+                        method=method,
+                        error_code=rpc_response.error.code,
+                        error_message=rpc_response.error.message,
+                    )
+                    self._record_failure()
+                    raise A2AClientError(error_msg)
+
+                # Success - reset circuit breaker
+                self._record_success()
+                return rpc_response.result
+
+            except httpx.TimeoutException as e:
+                last_error = e
+                logger.warning(
+                    "request_timeout",
+                    method=method,
+                    attempt=attempt + 1,
+                    max_retries=self._max_retries,
+                )
+
+                if attempt < self._max_retries - 1:
+                    # Exponential backoff: 2^attempt seconds
+                    backoff = 2 ** attempt
+                    await asyncio.sleep(backoff)
+                    continue
+
+            except httpx.ConnectError as e:
+                last_error = e
+                logger.warning(
+                    "connection_error",
+                    method=method,
+                    attempt=attempt + 1,
+                    max_retries=self._max_retries,
+                    error=str(e),
+                )
+
+                if attempt < self._max_retries - 1:
+                    backoff = 2 ** attempt
+                    await asyncio.sleep(backoff)
+                    continue
+
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                logger.error(
+                    "http_status_error",
+                    method=method,
+                    status_code=e.response.status_code,
+                    attempt=attempt + 1,
+                )
+
+                # Don't retry on 4xx errors (except 429 which is handled above)
+                if 400 <= e.response.status_code < 500 and e.response.status_code != 429:
+                    self._record_failure()
+                    raise A2AClientError(f"HTTP {e.response.status_code}: {e}")
+
+                if attempt < self._max_retries - 1:
+                    backoff = 2 ** attempt
+                    await asyncio.sleep(backoff)
+                    continue
+
+            except Exception as e:
+                last_error = e
+                logger.error(
+                    "unexpected_error",
+                    method=method,
+                    error_type=type(e).__name__,
+                    error=str(e),
+                    attempt=attempt + 1,
+                )
+
+                if attempt < self._max_retries - 1:
+                    backoff = 2 ** attempt
+                    await asyncio.sleep(backoff)
+                    continue
+
+        # All retries exhausted
+        self._record_failure()
+
+        if isinstance(last_error, httpx.TimeoutException):
+            raise A2ATimeoutError(f"Request timed out after {self._max_retries} attempts")
+        elif isinstance(last_error, httpx.ConnectError):
+            raise A2AConnectionError(f"Connection failed after {self._max_retries} attempts: {last_error}")
+        elif isinstance(last_error, A2ARateLimitError):
+            raise last_error  # Re-raise rate limit error as-is
+        else:
+            raise A2AClientError(f"Request failed after {self._max_retries} attempts: {last_error}")
 
     async def register_agent(
         self,

@@ -6,6 +6,7 @@ execution, monitoring, and cleanup for agent containers.
 """
 
 import asyncio
+from pathlib import Path
 from typing import Any
 
 import aiodocker
@@ -17,6 +18,7 @@ from ..config import get_settings
 from ..models.agent_config import AgentConfig
 from ..models.sandbox import SandboxConfig
 from .performance_optimizer import get_performance_optimizer
+from .security_profiles import SecurityProfileGenerator
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -25,11 +27,20 @@ logger = structlog.get_logger()
 class ContainerManager:
     """Manages Docker container lifecycle for agent execution."""
 
-    def __init__(self) -> None:
-        """Initialize container manager with Docker client."""
+    def __init__(self, security_profiles_dir: Path | None = None) -> None:
+        """
+        Initialize container manager with Docker client.
+
+        Args:
+            security_profiles_dir: Directory for security profiles (defaults to /tmp/agentcore-profiles)
+        """
         self._docker: aiodocker.Docker | None = None
         self._containers: dict[str, DockerContainer] = {}
         self._optimizer = get_performance_optimizer()
+
+        # Initialize security profile generator
+        profiles_dir = security_profiles_dir or Path("/tmp/agentcore-profiles")
+        self._profile_generator = SecurityProfileGenerator(profiles_dir)
 
     async def initialize(self) -> None:
         """Initialize Docker client connection."""
@@ -309,17 +320,42 @@ class ContainerManager:
             ])
             env_vars.append(f"SANDBOX_ID={sandbox_config.sandbox_id}")
 
+        # Generate unique profile name for this agent
+        profile_name = f"{agent_config.agent_id}-{agent_config.security_profile.profile_name}"
+
+        # Generate and apply Seccomp profile
+        seccomp_profile_path = self._profile_generator.generate_seccomp_profile(
+            profile_name=profile_name,
+            security_profile=agent_config.security_profile,
+        )
+
+        # Generate and apply AppArmor profile
+        apparmor_profile_name = self._profile_generator.generate_apparmor_profile(
+            profile_name=profile_name,
+            security_profile=agent_config.security_profile,
+        )
+
         # Build security options
         security_opt = []
         if agent_config.security_profile.user_namespace:
             security_opt.append("userns-remap=default")
-        if not agent_config.security_profile.no_new_privileges:
+        if agent_config.security_profile.no_new_privileges:
             security_opt.append("no-new-privileges")
 
-        # Seccomp profile
-        seccomp_profile = settings.seccomp_profile_path
-        if agent_config.security_profile.profile_name == "minimal":
-            security_opt.append(f"seccomp={seccomp_profile}")
+        # Add Seccomp profile
+        if seccomp_profile_path != Path("runtime/default"):
+            security_opt.append(f"seccomp={seccomp_profile_path}")
+
+        # Add AppArmor profile
+        if apparmor_profile_name not in ["unconfined", "docker-default"]:
+            security_opt.append(f"apparmor={apparmor_profile_name}")
+        elif apparmor_profile_name == "unconfined":
+            security_opt.append("apparmor=unconfined")
+
+        # Get Docker capabilities from profile generator
+        cap_drop, cap_add = self._profile_generator.get_capabilities_for_profile(
+            agent_config.security_profile
+        )
 
         # Build volume mounts for sandbox read-only and writable paths
         binds = []
@@ -350,7 +386,8 @@ class ContainerManager:
                 # Security
                 "ReadonlyRootfs": agent_config.security_profile.read_only_filesystem,
                 "SecurityOpt": security_opt,
-                "CapDrop": ["ALL"],  # Drop all capabilities
+                "CapDrop": cap_drop,
+                "CapAdd": cap_add if cap_add else None,
                 "Privileged": False,
                 "UsernsMode": "host" if agent_config.security_profile.user_namespace else "",
                 # Network
