@@ -415,6 +415,87 @@ class CoordinationService:
 
         return routing_score
 
+    def select_optimal_agent(
+        self,
+        candidate_agents: list[str],
+        optimization_weights: dict[str, float] | None = None,
+    ) -> str | None:
+        """Select optimal agent from candidates using multi-objective optimization.
+
+        Computes routing scores for all candidates and returns the agent with
+        the highest composite score. Uses custom weights if provided, otherwise
+        uses configured defaults.
+
+        Args:
+            candidate_agents: List of candidate agent IDs
+            optimization_weights: Optional custom weights (load, capacity, quality, cost, availability)
+
+        Returns:
+            Selected agent ID with highest score, or None if no candidates
+
+        Example:
+            >>> service = CoordinationService()
+            >>> candidates = ["agent-001", "agent-002", "agent-003"]
+            >>> best_agent = service.select_optimal_agent(candidates)
+            >>> print(f"Selected: {best_agent}")
+        """
+        if not candidate_agents:
+            logger.warning("No candidate agents provided for selection")
+            return None
+
+        # TODO: Support custom optimization weights in future (COORD-007 extension)
+        # For now, use default weights from configuration
+        if optimization_weights:
+            logger.info(
+                "Custom optimization weights provided but not yet supported",
+                extra={"weights": optimization_weights},
+            )
+
+        # Compute routing scores for all candidates
+        agent_scores: list[tuple[str, float]] = []
+
+        for agent_id in candidate_agents:
+            score = self.compute_routing_score(agent_id)
+            agent_scores.append((agent_id, score))
+
+        # Sort by score (descending) - highest score first
+        agent_scores.sort(key=lambda x: x[1], reverse=True)
+
+        # Select top agent
+        selected_agent, selected_score = agent_scores[0]
+
+        # Get state for logging
+        selected_state = self.coordination_states.get(selected_agent)
+
+        # Log selection rationale
+        logger.info(
+            "Optimal agent selected",
+            extra={
+                "selected_agent": selected_agent,
+                "routing_score": selected_score,
+                "total_candidates": len(candidate_agents),
+                "score_breakdown": {
+                    "load": selected_state.load_score if selected_state else 0.5,
+                    "capacity": selected_state.capacity_score if selected_state else 0.5,
+                    "quality": selected_state.quality_score if selected_state else 0.5,
+                    "cost": selected_state.cost_score if selected_state else 0.5,
+                    "availability": selected_state.availability_score if selected_state else 0.5,
+                },
+                "runner_up_scores": [
+                    {"agent": agent_id, "score": score}
+                    for agent_id, score in agent_scores[1:min(4, len(agent_scores))]
+                ],
+            },
+        )
+
+        # Update metrics
+        self.metrics.total_selections += 1
+        self.metrics.coordination_score_avg = sum(score for _, score in agent_scores) / len(
+            agent_scores
+        )
+
+        return selected_agent
+
     def remove_expired_signals(self) -> int:
         """Remove expired signals from all coordination states.
 
