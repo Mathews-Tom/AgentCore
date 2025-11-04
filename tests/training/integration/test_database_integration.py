@@ -201,9 +201,15 @@ async def test_checkpoint_crud_operations(init_test_db) -> None:
         await session.commit()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_foreign_key_cascade_delete(init_test_db) -> None:
-    """Test that deleting training job cascades to trajectories and checkpoints."""
+async def test_foreign_key_cascade_delete(init_real_db) -> None:
+    """Test that deleting training job cascades to trajectories and checkpoints.
+
+    CRITICAL: This test requires real PostgreSQL to properly test CASCADE DELETE behavior.
+    SQLite's foreign key handling differs from PostgreSQL, so this test is marked
+    with @pytest.mark.integration to use testcontainers PostgreSQL.
+    """
     # Setup
     config = GRPOConfig()
     queries = [

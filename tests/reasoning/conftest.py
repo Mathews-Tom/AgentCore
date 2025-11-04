@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from unittest.mock import _patch
+from unittest.mock import AsyncMock, MagicMock, _patch, patch
 
 import pytest
 from prometheus_client import REGISTRY
@@ -92,3 +92,40 @@ def reset_app_state():
 
         security_module = sys.modules["agentcore.a2a_protocol.services.security_service"]
         security_module.security_service = SecurityService()
+
+
+@pytest.fixture
+def mock_llm_http_client():
+    """Mock httpx.AsyncClient to prevent real HTTP calls in reasoning tests.
+
+    This fixture mocks the HTTP client used by LLMClient to prevent actual
+    API calls to OpenAI/other providers during testing.
+    """
+    with patch("httpx.AsyncClient") as mock_client_class:
+        # Create mock instance that won't make real HTTP calls
+        mock_instance = AsyncMock()
+
+        # Mock successful OpenAI-like response
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(
+            return_value={
+                "choices": [
+                    {
+                        "message": {"content": "Mock LLM response <answer>42</answer>"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"total_tokens": 500, "prompt_tokens": 250, "completion_tokens": 250},
+            }
+        )
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        # Mock HTTP methods
+        mock_instance.post = AsyncMock(return_value=mock_response)
+        mock_instance.aclose = AsyncMock()
+
+        # Configure AsyncClient to return our mock instance
+        mock_client_class.return_value = mock_instance
+
+        yield mock_client_class

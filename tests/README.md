@@ -1,8 +1,77 @@
-# Test Runner Documentation
+# Test Suite Documentation
 
 ## Overview
 
-The `run_tests.py` script provides comprehensive test execution with detailed metrics, coverage reporting, and performance analysis for the AgentCore test suite.
+The AgentCore test suite uses a **hybrid testing approach** with three tiers:
+
+1. **Unit Tests** - Fast, isolated tests with no external dependencies
+2. **Fast Integration Tests** - SQLite + fakeredis for rapid development feedback
+3. **Real Integration Tests** - PostgreSQL + Redis via testcontainers for definitive validation
+
+The `run_tests.py` script provides comprehensive test execution with detailed metrics, coverage reporting, and performance analysis.
+
+## Test Suite Architecture
+
+### Three-Tier Testing Strategy
+
+#### Tier 1: Unit Tests (Fast)
+- **What:** Pure business logic, no external dependencies
+- **Speed:** <2 minutes
+- **Run:** Always (on save, pre-commit)
+- **Command:** `pytest -m unit`
+
+#### Tier 2: Fast Integration Tests (Default)
+- **What:** SQLite + fakeredis for rapid feedback
+- **Speed:** ~3-5 minutes
+- **Run:** Development, rapid iteration
+- **Command:** `pytest` or `./scripts/test-fast.sh`
+- **No Docker Required**
+
+#### Tier 3: Real Integration Tests
+- **What:** Real PostgreSQL + Redis via testcontainers
+- **Speed:** ~10-15 minutes
+- **Run:** Pre-commit, CI pipeline, before migrations
+- **Command:** `pytest -m integration` or `./scripts/test-integration.sh`
+- **Requires:** Docker Desktop running
+
+### Running Tests
+
+```bash
+# Fast feedback (default) - no Docker required
+uv run pytest
+# or
+./scripts/test-fast.sh
+
+# Real integration - requires Docker
+uv run pytest -m integration
+# or
+./scripts/test-integration.sh
+
+# Full suite (runs both)
+./scripts/test-all.sh
+
+# Specific category
+pytest -m "unit"
+pytest -m "not integration and not slow"
+```
+
+### Docker Requirements
+
+Integration tests use testcontainers which requires:
+- Docker Desktop running
+- Sufficient resources (4GB RAM recommended)
+- Docker socket accessible
+
+If Docker is not available, integration tests are skipped automatically.
+
+### Test Markers
+
+Tests can be marked with:
+- `@pytest.mark.unit` - Unit tests (no dependencies)
+- `@pytest.mark.integration` - Real integration tests (requires Docker)
+- `@pytest.mark.slow` - Slow running tests
+- `@pytest.mark.load` - Load tests
+- `@pytest.mark.performance` - Performance tests
 
 ## Features
 
@@ -12,6 +81,7 @@ The `run_tests.py` script provides comprehensive test execution with detailed me
 - 📈 **Coverage tracking** - Per-component and overall coverage reporting
 - 📄 **JSON export** - Save results in machine-readable format
 - 🎨 **Beautiful reports** - Clean, readable console output with emojis and formatting
+- 🐳 **Hybrid testing** - Fast tests (SQLite) + Real tests (PostgreSQL/Redis)
 
 ## Quick Start
 
