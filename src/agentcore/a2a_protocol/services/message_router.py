@@ -17,6 +17,7 @@ import structlog
 from agentcore.a2a_protocol.models.agent import AgentStatus
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest, MessageEnvelope
 from agentcore.a2a_protocol.services.agent_manager import agent_manager
+from agentcore.a2a_protocol.services.coordination_service import coordination_service
 from agentcore.a2a_protocol.services.session_manager import session_manager
 
 logger = structlog.get_logger()
@@ -31,6 +32,7 @@ class RoutingStrategy(str, Enum):
     CAPABILITY_MATCH = "capability_match"
     SEMANTIC_MATCH = "semantic_match"  # A2A-016
     COST_OPTIMIZED = "cost_optimized"  # A2A-017
+    RIPPLE_COORDINATION = "ripple_coordination"  # COORD-011
 
 
 class MessagePriority(str, Enum):
@@ -290,6 +292,9 @@ class MessageRouter:
         elif strategy == RoutingStrategy.COST_OPTIMIZED:
             return await self._cost_optimized_select(candidates)
 
+        elif strategy == RoutingStrategy.RIPPLE_COORDINATION:
+            return await self._ripple_coordination_select(candidates)
+
         elif strategy == RoutingStrategy.SEMANTIC_MATCH:
             # Semantic matching handled earlier in routing logic
             # If we get here, just return first candidate
@@ -383,6 +388,67 @@ class MessageRouter:
             self._routing_stats.get("cost_optimized", 0) + 1
         )
         return selected
+
+    async def _ripple_coordination_select(self, candidates: list[str]) -> str:
+        """
+        Agent selection using Ripple Effect Protocol coordination (COORD-011).
+
+        Uses CoordinationService to select the optimal agent based on multi-objective
+        optimization of load, capacity, quality, cost, and availability signals.
+
+        Falls back to RANDOM selection if coordination service fails.
+
+        Args:
+            candidates: List of candidate agent IDs
+
+        Returns:
+            Selected agent ID
+
+        Raises:
+            ValueError: If no candidates provided
+        """
+        if not candidates:
+            raise ValueError("No candidates for ripple coordination selection")
+
+        try:
+            # Use coordination service for intelligent selection
+            selected = coordination_service.select_optimal_agent(candidates)
+
+            if selected:
+                self._routing_stats["coordination_routing_selections_total"] = (
+                    self._routing_stats.get("coordination_routing_selections_total", 0) + 1
+                )
+
+                self.logger.info(
+                    "Ripple coordination selection completed",
+                    selected_agent=selected,
+                    candidates_count=len(candidates),
+                    routing_score=coordination_service.get_coordination_state(selected).routing_score
+                    if coordination_service.get_coordination_state(selected)
+                    else None,
+                )
+
+                return selected
+            else:
+                # Fallback to RANDOM if coordination returns None
+                self.logger.warning(
+                    "Coordination service returned None, falling back to RANDOM",
+                    candidates_count=len(candidates),
+                )
+                import random
+
+                return random.choice(candidates)
+
+        except Exception as e:
+            # Fallback to RANDOM on any coordination error
+            self.logger.error(
+                "Ripple coordination selection failed, falling back to RANDOM",
+                error=str(e),
+                candidates_count=len(candidates),
+            )
+            import random
+
+            return random.choice(candidates)
 
     async def _deliver_message(self, envelope: MessageEnvelope, agent_id: str) -> None:
         """
