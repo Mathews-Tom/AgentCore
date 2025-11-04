@@ -208,6 +208,40 @@ class CoordinationService:
 
         return history
 
+    def get_active_signals(self, agent_id: str) -> dict[SignalType, SensitivitySignal]:
+        """Get active (non-expired) signals for an agent.
+
+        Filters out expired signals based on current time. Only returns signals
+        that are still within their TTL.
+
+        Args:
+            agent_id: Agent identifier
+
+        Returns:
+            Dictionary of active signals by type
+
+        Example:
+            >>> service = CoordinationService()
+            >>> active = service.get_active_signals("agent-001")
+            >>> for signal_type, signal in active.items():
+            ...     print(f"{signal_type}: {signal.value}")
+        """
+        state = self.coordination_states.get(agent_id)
+
+        if not state:
+            return {}
+
+        current_time = datetime.now(timezone.utc)
+
+        # Filter expired signals
+        active_signals = {
+            signal_type: signal
+            for signal_type, signal in state.signals.items()
+            if not signal.is_expired(current_time)
+        }
+
+        return active_signals
+
     def compute_individual_scores(self, agent_id: str) -> None:
         """Compute individual scores for an agent from active signals.
 

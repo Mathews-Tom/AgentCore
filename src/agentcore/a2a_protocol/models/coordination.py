@@ -115,7 +115,12 @@ class SensitivitySignal(BaseModel):
     def decay_factor(self, current_time: datetime | None = None) -> float:
         """Calculate temporal decay factor for aging signals.
 
-        Uses linear decay: factor = 1.0 - (age / ttl)
+        Uses exponential decay: factor = e^(-age / ttl)
+
+        This provides smooth degradation of signal confidence over time:
+        - Age = 0: factor = 1.0 (full confidence)
+        - Age = ttl: factor ≈ 0.368 (36.8% confidence)
+        - Age > ttl: factor = 0.0 (expired, no confidence)
 
         Args:
             current_time: Reference time (UTC), defaults to now
@@ -130,7 +135,10 @@ class SensitivitySignal(BaseModel):
             current_time = datetime.now(timezone.utc)
 
         age_seconds = (current_time - self.timestamp).total_seconds()
-        decay = 1.0 - (age_seconds / self.ttl_seconds)
+
+        # Exponential decay: e^(-age / ttl)
+        import math
+        decay = math.exp(-age_seconds / self.ttl_seconds)
         return max(0.0, min(1.0, decay))
 
     class Config:

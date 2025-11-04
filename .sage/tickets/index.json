@@ -6904,7 +6904,7 @@
       "id": "COORD-006",
       "title": "Signal History & TTL Management",
       "component": "coordination-service",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "Story",
       "effort": 5,
@@ -6915,7 +6915,17 @@
         "COORD-005"
       ],
       "created": "2025-10-24T23:01:28.714880+00:00",
-      "updated": "2025-10-24T23:01:28.714880+00:00"
+      "updated": "2025-11-04T21:12:15Z",
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-04T21:10:09Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-04T21:12:15Z"
+        }
+      ]
     },
     {
       "id": "COORD-007",
