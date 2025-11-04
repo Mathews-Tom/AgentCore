@@ -24,6 +24,7 @@ from agentcore.a2a_protocol.services.coordination_service import coordination_se
 # Import JSON-RPC methods to register them
 from agentcore.a2a_protocol.services import (
     agent_jsonrpc,
+    coordination_jsonrpc,
     event_jsonrpc,
     health_jsonrpc,
     llm_jsonrpc,
