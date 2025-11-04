@@ -1,4 +1,9 @@
-"""Integration test fixtures for training module."""
+"""Integration test fixtures for training module.
+
+Provides fast SQLite fixtures for default testing.
+Real PostgreSQL fixtures are auto-discovered from tests/integration/fixtures/
+when tests are marked with @pytest.mark.integration.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +12,27 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from agentcore.a2a_protocol.database.connection import Base
 
+# Import testcontainer fixtures for integration tests
+# These fixtures are only used when tests are marked with @pytest.mark.integration
+from tests.integration.fixtures.database import (
+    postgres_container,
+    real_db_engine,
+    init_real_db,
+)
+from tests.integration.fixtures.cache import (
+    redis_container,
+    real_redis_client,
+    real_cache_service,
+)
+
 
 @pytest.fixture(scope="function")
 async def test_db_engine():
-    """Create test database engine."""
+    """Create test database engine (fast mode with SQLite).
+
+    This is the default fixture for fast integration tests.
+    Uses in-memory SQLite for rapid feedback without Docker.
+    """
     # Use in-memory SQLite for fast tests
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
@@ -27,10 +49,10 @@ async def test_db_engine():
 
 
 @pytest.fixture(scope="function")
-async def init_test_db(test_db_engine):
-    """Initialize test database for training integration tests.
+async def init_test_db_fast(test_db_engine):
+    """Initialize test database for training integration tests (fast mode).
 
-    Uses in-memory SQLite instead of PostgreSQL for fast, isolated tests.
+    Uses in-memory SQLite for rapid feedback without Docker.
     """
     from agentcore.a2a_protocol.database import connection
 
@@ -52,3 +74,16 @@ async def init_test_db(test_db_engine):
     # Restore original connection (if any)
     connection.engine = original_engine
     connection.SessionLocal = original_session
+
+
+@pytest.fixture(scope="function")
+async def init_test_db(init_test_db_fast):
+    """Initialize test database for training integration tests (fast mode with SQLite).
+
+    This is the default fixture using SQLite for fast feedback.
+
+    Tests that need real PostgreSQL should:
+    1. Mark with @pytest.mark.integration
+    2. Use init_real_db fixture directly (auto-discovered from tests/integration/fixtures/database.py)
+    """
+    return init_test_db_fast

@@ -35,7 +35,7 @@ class CircuitState(str, Enum):
 class LLMClientConfig(BaseModel):
     """Configuration for LLM client adapter."""
 
-    api_key: str = Field(..., description="LLM provider API key", repr=False)
+    api_key: str = Field(default="", description="LLM provider API key (empty for testing/mocking)", repr=False)
     base_url: str = Field(
         default="https://api.openai.com/v1",
         description="LLM API base URL",
@@ -110,12 +110,15 @@ class LLMClient:
             max_keepalive_connections=config.connection_pool_size,
             max_connections=config.connection_pool_size,
         )
+
+        # Build headers - only include Authorization if API key is provided
+        headers = {"Content-Type": "application/json"}
+        if config.api_key and config.api_key.strip():
+            headers["Authorization"] = f"Bearer {config.api_key}"
+
         self.client = httpx.AsyncClient(
             base_url=config.base_url,
-            headers={
-                "Authorization": f"Bearer {config.api_key}",
-                "Content-Type": "application/json",
-            },
+            headers=headers,
             timeout=config.timeout_seconds,
             limits=limits,
         )
