@@ -16,6 +16,7 @@ Based on: Ripple Effect Protocol (REP) research paper
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import statistics
 from collections import defaultdict
@@ -51,6 +52,8 @@ class CoordinationService:
         self.coordination_states: dict[str, AgentCoordinationState] = {}
         self.signal_history: dict[str, list[SensitivitySignal]] = defaultdict(list)
         self.metrics = CoordinationMetrics()
+        self._cleanup_task: asyncio.Task[None] | None = None
+        self._shutdown_event = asyncio.Event()
 
         logger.info(
             "CoordinationService initialized",
@@ -58,6 +61,7 @@ class CoordinationService:
                 "enable_rep": settings.COORDINATION_ENABLE_REP,
                 "signal_ttl": settings.COORDINATION_SIGNAL_TTL,
                 "max_history_size": settings.COORDINATION_MAX_HISTORY_SIZE,
+                "cleanup_interval": settings.COORDINATION_CLEANUP_INTERVAL,
             },
         )
 
@@ -621,19 +625,29 @@ class CoordinationService:
 
         return (will_overload, probability)
 
-    def remove_expired_signals(self) -> int:
+    def remove_expired_signals(self) -> dict[str, int]:
         """Remove expired signals from all coordination states.
 
+        Performs cleanup of expired signals and removes stale agent states.
+        Recomputes routing scores for remaining agents after cleanup.
+
         Returns:
-            Number of signals removed
+            Dictionary with cleanup statistics:
+                - signals_removed: Number of expired signals removed
+                - agents_removed: Number of agent states removed
+                - agents_remaining: Number of active agents after cleanup
 
         Example:
             >>> service = CoordinationService()
-            >>> removed_count = service.remove_expired_signals()
-            >>> print(f"Removed {removed_count} expired signals")
+            >>> stats = service.remove_expired_signals()
+            >>> print(f"Removed {stats['signals_removed']} signals")
         """
-        removed_count = 0
+        signals_removed = 0
+        agents_removed = 0
         current_time = datetime.now(timezone.utc)
+
+        # Track agents that need score recomputation
+        agents_to_recompute: list[str] = []
 
         for agent_id, state in list(self.coordination_states.items()):
             # Remove expired signals from state
@@ -643,31 +657,51 @@ class CoordinationService:
                 if signal.is_expired(current_time)
             ]
 
-            for signal_type in expired_types:
-                del state.signals[signal_type]
-                removed_count += 1
+            if expired_types:
+                for signal_type in expired_types:
+                    del state.signals[signal_type]
+                    signals_removed += 1
+
+                # Mark agent for score recomputation (signals changed)
+                agents_to_recompute.append(agent_id)
 
             # Remove agent state if no active signals remain
             if not state.signals:
                 del self.coordination_states[agent_id]
+                agents_removed += 1
+                # Remove from recomputation list (agent deleted)
+                if agent_id in agents_to_recompute:
+                    agents_to_recompute.remove(agent_id)
+
                 logger.debug(
                     "Removed coordination state (no active signals)",
                     extra={"agent_id": agent_id},
                 )
 
-        if removed_count > 0:
-            self.metrics.expired_signals_cleaned += removed_count
+        # Recompute scores for agents with changed signals
+        for agent_id in agents_to_recompute:
+            self.compute_routing_score(agent_id)
+
+        # Update metrics
+        if signals_removed > 0 or agents_removed > 0:
+            self.metrics.expired_signals_cleaned += signals_removed
             self.metrics.agents_tracked = len(self.coordination_states)
 
             logger.info(
-                "Expired signals removed",
+                "Cleanup completed",
                 extra={
-                    "removed_count": removed_count,
-                    "active_agents": len(self.coordination_states),
+                    "signals_removed": signals_removed,
+                    "agents_removed": agents_removed,
+                    "agents_remaining": len(self.coordination_states),
+                    "scores_recomputed": len(agents_to_recompute),
                 },
             )
 
-        return removed_count
+        return {
+            "signals_removed": signals_removed,
+            "agents_removed": agents_removed,
+            "agents_remaining": len(self.coordination_states),
+        }
 
     def get_metrics(self) -> CoordinationMetrics:
         """Get current coordination metrics.
@@ -693,6 +727,100 @@ class CoordinationService:
         self.metrics = CoordinationMetrics()
 
         logger.warning("Coordination state cleared (all signals removed)")
+
+    async def _periodic_cleanup_task(self) -> None:
+        """Background task for periodic cleanup of expired signals.
+
+        Runs continuously until shutdown, cleaning up expired signals at
+        intervals defined by COORDINATION_CLEANUP_INTERVAL.
+        """
+        cleanup_interval = settings.COORDINATION_CLEANUP_INTERVAL
+
+        logger.info(
+            "Periodic cleanup task started",
+            extra={"cleanup_interval_seconds": cleanup_interval},
+        )
+
+        while not self._shutdown_event.is_set():
+            try:
+                # Wait for cleanup interval or shutdown event
+                await asyncio.wait_for(
+                    self._shutdown_event.wait(), timeout=cleanup_interval
+                )
+                # If we get here, shutdown was signaled
+                break
+            except asyncio.TimeoutError:
+                # Timeout expired - perform cleanup
+                try:
+                    stats = self.remove_expired_signals()
+
+                    if stats["signals_removed"] > 0 or stats["agents_removed"] > 0:
+                        logger.info(
+                            "Periodic cleanup executed",
+                            extra={
+                                "signals_removed": stats["signals_removed"],
+                                "agents_removed": stats["agents_removed"],
+                                "agents_remaining": stats["agents_remaining"],
+                            },
+                        )
+                except Exception as e:
+                    logger.error(
+                        "Periodic cleanup failed",
+                        exc_info=e,
+                        extra={"error": str(e)},
+                    )
+
+        logger.info("Periodic cleanup task stopped")
+
+    def start_cleanup_task(self) -> None:
+        """Start the background cleanup task.
+
+        Creates and starts an asyncio task that periodically cleans up
+        expired signals and stale agent states.
+
+        Example:
+            >>> service = CoordinationService()
+            >>> service.start_cleanup_task()
+        """
+        if self._cleanup_task is not None and not self._cleanup_task.done():
+            logger.warning("Cleanup task already running")
+            return
+
+        # Reset shutdown event
+        self._shutdown_event.clear()
+
+        # Create and start cleanup task
+        self._cleanup_task = asyncio.create_task(self._periodic_cleanup_task())
+
+        logger.info("Cleanup task started")
+
+    async def stop_cleanup_task(self) -> None:
+        """Stop the background cleanup task gracefully.
+
+        Signals the cleanup task to stop and waits for it to complete.
+
+        Example:
+            >>> service = CoordinationService()
+            >>> await service.stop_cleanup_task()
+        """
+        if self._cleanup_task is None or self._cleanup_task.done():
+            logger.warning("Cleanup task not running")
+            return
+
+        # Signal shutdown
+        self._shutdown_event.set()
+
+        # Wait for task to complete
+        try:
+            await asyncio.wait_for(self._cleanup_task, timeout=5.0)
+            logger.info("Cleanup task stopped successfully")
+        except asyncio.TimeoutError:
+            logger.warning("Cleanup task did not stop within timeout, cancelling")
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                logger.info("Cleanup task cancelled")
 
 
 # Global coordination service instance

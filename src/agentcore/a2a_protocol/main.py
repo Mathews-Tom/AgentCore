@@ -19,6 +19,7 @@ from agentcore.a2a_protocol.config import settings
 from agentcore.a2a_protocol.database import close_db, init_db
 from agentcore.a2a_protocol.middleware import setup_middleware
 from agentcore.a2a_protocol.routers import health, jsonrpc, websocket, wellknown
+from agentcore.a2a_protocol.services.coordination_service import coordination_service
 
 # Import JSON-RPC methods to register them
 from agentcore.a2a_protocol.services import (
@@ -62,11 +63,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await init_db()
         logger.info("Database initialized")
 
+        # Start coordination service cleanup task
+        if settings.COORDINATION_ENABLE_REP:
+            coordination_service.start_cleanup_task()
+            logger.info("Coordination cleanup task started")
+
         # TODO: Initialize Redis connection
         # TODO: Setup WebSocket manager
         yield
     finally:
         logger.info("Shutting down A2A Protocol Layer")
+
+        # Stop coordination service cleanup task
+        if settings.COORDINATION_ENABLE_REP:
+            await coordination_service.stop_cleanup_task()
+            logger.info("Coordination cleanup task stopped")
 
         # Cleanup database connections
         await close_db()
