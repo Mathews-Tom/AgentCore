@@ -208,6 +208,179 @@ class CoordinationService:
 
         return history
 
+    def compute_individual_scores(self, agent_id: str) -> None:
+        """Compute individual scores for an agent from active signals.
+
+        Updates the agent's coordination state with computed scores:
+        - load_score: Inverted load (1.0 - load_value)
+        - capacity_score: Direct capacity value
+        - quality_score: Direct quality value
+        - cost_score: Direct cost value (normalized, lower=better)
+        - availability_score: Direct availability value
+
+        Agents without signals receive default score of 0.5 for each metric.
+        Expired signals are automatically filtered out.
+
+        Args:
+            agent_id: Agent identifier
+
+        Example:
+            >>> service = CoordinationService()
+            >>> service.compute_individual_scores("agent-001")
+            >>> state = service.get_coordination_state("agent-001")
+            >>> print(f"Load score: {state.load_score}")
+        """
+        state = self.coordination_states.get(agent_id)
+
+        if not state:
+            # Agent not found - create default state
+            self.coordination_states[agent_id] = AgentCoordinationState(agent_id=agent_id)
+            logger.debug(
+                "Created default coordination state for unknown agent",
+                extra={"agent_id": agent_id},
+            )
+            return
+
+        current_time = datetime.now(timezone.utc)
+
+        # Compute load score (inverted: high load = low score)
+        if SignalType.LOAD in state.signals:
+            load_signal = state.signals[SignalType.LOAD]
+            if not load_signal.is_expired(current_time):
+                decay = load_signal.decay_factor(current_time)
+                # Invert load: 1.0 - value (high load = low routing preference)
+                state.load_score = 1.0 - (load_signal.value * load_signal.confidence * decay)
+            else:
+                state.load_score = 0.5  # Expired signal, use default
+        else:
+            state.load_score = 0.5  # No signal, use default
+
+        # Compute capacity score (direct)
+        if SignalType.CAPACITY in state.signals:
+            capacity_signal = state.signals[SignalType.CAPACITY]
+            if not capacity_signal.is_expired(current_time):
+                decay = capacity_signal.decay_factor(current_time)
+                state.capacity_score = capacity_signal.value * capacity_signal.confidence * decay
+            else:
+                state.capacity_score = 0.5
+        else:
+            state.capacity_score = 0.5
+
+        # Compute quality score (direct)
+        if SignalType.QUALITY in state.signals:
+            quality_signal = state.signals[SignalType.QUALITY]
+            if not quality_signal.is_expired(current_time):
+                decay = quality_signal.decay_factor(current_time)
+                state.quality_score = quality_signal.value * quality_signal.confidence * decay
+            else:
+                state.quality_score = 0.5
+        else:
+            state.quality_score = 0.5
+
+        # Compute cost score (direct, normalized to 0-1 where higher=better)
+        if SignalType.COST in state.signals:
+            cost_signal = state.signals[SignalType.COST]
+            if not cost_signal.is_expired(current_time):
+                decay = cost_signal.decay_factor(current_time)
+                state.cost_score = cost_signal.value * cost_signal.confidence * decay
+            else:
+                state.cost_score = 0.5
+        else:
+            state.cost_score = 0.5
+
+        # Compute availability score (direct)
+        if SignalType.AVAILABILITY in state.signals:
+            availability_signal = state.signals[SignalType.AVAILABILITY]
+            if not availability_signal.is_expired(current_time):
+                decay = availability_signal.decay_factor(current_time)
+                state.availability_score = (
+                    availability_signal.value * availability_signal.confidence * decay
+                )
+            else:
+                state.availability_score = 0.5
+        else:
+            state.availability_score = 0.5
+
+        state.last_updated = current_time
+
+        logger.debug(
+            "Individual scores computed",
+            extra={
+                "agent_id": agent_id,
+                "load_score": state.load_score,
+                "capacity_score": state.capacity_score,
+                "quality_score": state.quality_score,
+                "cost_score": state.cost_score,
+                "availability_score": state.availability_score,
+            },
+        )
+
+    def compute_routing_score(self, agent_id: str) -> float:
+        """Compute composite routing score for agent selection.
+
+        Applies weighted averaging of individual scores using configured weights.
+        Automatically computes individual scores if not already computed.
+
+        Formula:
+            routing_score = Σ(weight_i × score_i) for all score dimensions
+
+        Args:
+            agent_id: Agent identifier
+
+        Returns:
+            Composite routing score [0.0, 1.0], higher is better
+
+        Example:
+            >>> service = CoordinationService()
+            >>> score = service.compute_routing_score("agent-001")
+            >>> print(f"Routing score: {score:.3f}")
+        """
+        # Ensure individual scores are computed
+        self.compute_individual_scores(agent_id)
+
+        state = self.coordination_states.get(agent_id)
+
+        if not state:
+            # Should not happen after compute_individual_scores, but defensive
+            logger.warning(
+                "Agent state missing after score computation",
+                extra={"agent_id": agent_id},
+            )
+            return 0.5
+
+        # Apply weighted averaging
+        routing_score = (
+            settings.ROUTING_WEIGHT_LOAD * state.load_score
+            + settings.ROUTING_WEIGHT_CAPACITY * state.capacity_score
+            + settings.ROUTING_WEIGHT_QUALITY * state.quality_score
+            + settings.ROUTING_WEIGHT_COST * state.cost_score
+            + settings.ROUTING_WEIGHT_AVAILABILITY * state.availability_score
+        )
+
+        # Ensure score is in valid range [0.0, 1.0]
+        routing_score = max(0.0, min(1.0, routing_score))
+
+        # Update state
+        state.routing_score = routing_score
+        state.last_updated = datetime.now(timezone.utc)
+
+        logger.debug(
+            "Routing score computed",
+            extra={
+                "agent_id": agent_id,
+                "routing_score": routing_score,
+                "weights": {
+                    "load": settings.ROUTING_WEIGHT_LOAD,
+                    "capacity": settings.ROUTING_WEIGHT_CAPACITY,
+                    "quality": settings.ROUTING_WEIGHT_QUALITY,
+                    "cost": settings.ROUTING_WEIGHT_COST,
+                    "availability": settings.ROUTING_WEIGHT_AVAILABILITY,
+                },
+            },
+        )
+
+        return routing_score
+
     def remove_expired_signals(self) -> int:
         """Remove expired signals from all coordination states.
 
