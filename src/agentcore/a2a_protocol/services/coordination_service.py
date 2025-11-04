@@ -17,6 +17,7 @@ Based on: Ripple Effect Protocol (REP) research paper
 from __future__ import annotations
 
 import logging
+import statistics
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
@@ -495,6 +496,130 @@ class CoordinationService:
         )
 
         return selected_agent
+
+    def predict_overload(
+        self, agent_id: str, forecast_seconds: int = 60, threshold: float = 0.8
+    ) -> tuple[bool, float]:
+        """Predict if agent will overload within forecast window using trend analysis.
+
+        Uses simple linear regression on recent load signals to forecast future load.
+        Returns prediction and probability based on trend confidence.
+
+        Args:
+            agent_id: Agent identifier
+            forecast_seconds: Time window to forecast (default: 60 seconds)
+            threshold: Load threshold for overload (default: 0.8)
+
+        Returns:
+            Tuple of (will_overload: bool, probability: float)
+                - will_overload: True if predicted load exceeds threshold
+                - probability: Predicted load value or 0.0 if insufficient data
+
+        Example:
+            >>> service = CoordinationService()
+            >>> will_overload, prob = service.predict_overload("agent-001", forecast_seconds=60)
+            >>> if will_overload:
+            ...     print(f"Agent will overload with {prob:.2f} probability")
+        """
+        # Retrieve recent load signals (last 10)
+        recent_loads = self.get_signal_history(
+            agent_id, signal_type=SignalType.LOAD, limit=10
+        )
+
+        # Need at least 3 signals for trend analysis
+        if len(recent_loads) < 3:
+            logger.debug(
+                "Insufficient data for overload prediction",
+                extra={
+                    "agent_id": agent_id,
+                    "signal_count": len(recent_loads),
+                    "required": 3,
+                },
+            )
+            return (False, 0.0)
+
+        # Sort by timestamp (oldest first for regression)
+        recent_loads = sorted(recent_loads, key=lambda s: s.timestamp)
+
+        # Simple linear regression: y = mx + b
+        # x = time offset from first signal (seconds), y = load value
+        first_time = recent_loads[0].timestamp
+        x_values = [(sig.timestamp - first_time).total_seconds() for sig in recent_loads]
+        y_values = [sig.value for sig in recent_loads]
+
+        n = len(recent_loads)
+        x_mean = statistics.mean(x_values)
+        y_mean = statistics.mean(y_values)
+
+        # Calculate slope (m)
+        numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, y_values))
+        denominator = sum((x - x_mean) ** 2 for x in x_values)
+
+        if denominator == 0:
+            # No trend (all signals at same time or flat load)
+            current_load = recent_loads[-1].value
+            will_overload = current_load > threshold
+            # For flat load, probability is current load (represents certainty of current state)
+            probability = current_load
+
+            logger.debug(
+                "No load trend detected (flat load)",
+                extra={
+                    "agent_id": agent_id,
+                    "current_load": current_load,
+                    "threshold": threshold,
+                    "will_overload": will_overload,
+                },
+            )
+
+            return (will_overload, probability)
+
+        slope = numerator / denominator
+
+        # Predict load at forecast time
+        # forecast_x = current time offset + forecast_seconds
+        forecast_x = x_values[-1] + forecast_seconds
+        predicted_load = slope * (forecast_x - x_mean) + y_mean
+
+        # Clamp to 0.0-1.0 range
+        predicted_load = max(0.0, min(1.0, predicted_load))
+
+        # Determine overload
+        will_overload = predicted_load > threshold
+
+        # Probability is the predicted load value
+        # For positive trends, this represents the likelihood of overload
+        # For flat or negative trends, it represents the current/predicted state
+        probability = predicted_load
+
+        # Log prediction
+        if will_overload:
+            logger.warning(
+                "Overload predicted for agent",
+                extra={
+                    "agent_id": agent_id,
+                    "current_load": recent_loads[-1].value,
+                    "predicted_load": predicted_load,
+                    "forecast_seconds": forecast_seconds,
+                    "threshold": threshold,
+                    "slope": slope,
+                    "probability": probability,
+                },
+            )
+        else:
+            logger.debug(
+                "No overload predicted",
+                extra={
+                    "agent_id": agent_id,
+                    "current_load": recent_loads[-1].value,
+                    "predicted_load": predicted_load,
+                    "forecast_seconds": forecast_seconds,
+                    "threshold": threshold,
+                    "slope": slope,
+                },
+            )
+
+        return (will_overload, probability)
 
     def remove_expired_signals(self) -> int:
         """Remove expired signals from all coordination states.
