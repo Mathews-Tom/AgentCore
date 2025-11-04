@@ -4,6 +4,8 @@ A2A Protocol Layer Configuration
 Environment-based configuration management for the A2A protocol layer.
 """
 
+from typing import Any
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
@@ -202,7 +204,7 @@ class Settings(BaseSettings):
 
     @field_validator("ROUTING_WEIGHT_AVAILABILITY")
     @classmethod
-    def validate_weights_sum_to_one(cls, v: float, info) -> float:
+    def validate_weights_sum_to_one(cls, v: float, info: Any) -> float:
         """Ensure routing weights sum to 1.0 (±0.01 tolerance)."""
         # Get all weight values from the validation context
         weights = [
