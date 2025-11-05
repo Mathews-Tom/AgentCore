@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from agentcore.a2a_protocol.config import settings
+from agentcore.a2a_protocol.metrics import coordination_metrics
 from agentcore.a2a_protocol.models.coordination import (
     AgentCoordinationState,
     CoordinationMetrics,
@@ -87,59 +88,67 @@ class CoordinationService:
             ... )
             >>> service.register_signal(signal)
         """
-        # Validation is handled by Pydantic model
-        # Additional business logic validation here
+        # Track signal registration duration
+        with coordination_metrics.track_signal_registration(signal.signal_type.value):
+            # Validation is handled by Pydantic model
+            # Additional business logic validation here
 
-        # Ensure signal is not expired on registration
-        if signal.is_expired():
-            raise ValueError(
-                f"Cannot register expired signal: {signal.signal_id} "
-                f"(timestamp: {signal.timestamp}, ttl: {signal.ttl_seconds}s)"
+            # Ensure signal is not expired on registration
+            if signal.is_expired():
+                raise ValueError(
+                    f"Cannot register expired signal: {signal.signal_id} "
+                    f"(timestamp: {signal.timestamp}, ttl: {signal.ttl_seconds}s)"
+                )
+
+            # Normalize signal value (ensure 0.0-1.0 range - already validated by Pydantic)
+            # This is defensive programming
+            if not (0.0 <= signal.value <= 1.0):
+                raise ValueError(
+                    f"Signal value must be in range [0.0, 1.0], got {signal.value}"
+                )
+
+            # Get or create coordination state for agent
+            if signal.agent_id not in self.coordination_states:
+                self.coordination_states[signal.agent_id] = AgentCoordinationState(
+                    agent_id=signal.agent_id
+                )
+                logger.info(
+                    "Created coordination state for new agent",
+                    extra={"agent_id": signal.agent_id},
+                )
+
+            state = self.coordination_states[signal.agent_id]
+
+            # Update state with new signal
+            state.signals[signal.signal_type] = signal
+            state.last_updated = datetime.now(timezone.utc)
+
+            # Store signal in history
+            self._store_signal_history(signal)
+
+            # Update metrics
+            self.metrics.total_signals += 1
+            self.metrics.signals_by_type[signal.signal_type] = (
+                self.metrics.signals_by_type.get(signal.signal_type, 0) + 1
             )
+            self.metrics.agents_tracked = len(self.coordination_states)
 
-        # Normalize signal value (ensure 0.0-1.0 range - already validated by Pydantic)
-        # This is defensive programming
-        if not (0.0 <= signal.value <= 1.0):
-            raise ValueError(
-                f"Signal value must be in range [0.0, 1.0], got {signal.value}"
+            # Update Prometheus metrics
+            coordination_metrics.increment_signal_count(
+                signal.agent_id, signal.signal_type.value
             )
+            coordination_metrics.set_active_agents(len(self.coordination_states))
 
-        # Get or create coordination state for agent
-        if signal.agent_id not in self.coordination_states:
-            self.coordination_states[signal.agent_id] = AgentCoordinationState(
-                agent_id=signal.agent_id
+            logger.debug(
+                "Signal registered",
+                extra={
+                    "signal_id": str(signal.signal_id),
+                    "agent_id": signal.agent_id,
+                    "signal_type": signal.signal_type.value,
+                    "value": signal.value,
+                    "confidence": signal.confidence,
+                },
             )
-            logger.info(
-                "Created coordination state for new agent",
-                extra={"agent_id": signal.agent_id},
-            )
-
-        state = self.coordination_states[signal.agent_id]
-
-        # Update state with new signal
-        state.signals[signal.signal_type] = signal
-        state.last_updated = datetime.now(timezone.utc)
-
-        # Store signal in history
-        self._store_signal_history(signal)
-
-        # Update metrics
-        self.metrics.total_signals += 1
-        self.metrics.signals_by_type[signal.signal_type] = (
-            self.metrics.signals_by_type.get(signal.signal_type, 0) + 1
-        )
-        self.metrics.agents_tracked = len(self.coordination_states)
-
-        logger.debug(
-            "Signal registered",
-            extra={
-                "signal_id": str(signal.signal_id),
-                "agent_id": signal.agent_id,
-                "signal_type": signal.signal_type.value,
-                "value": signal.value,
-                "confidence": signal.confidence,
-            },
-        )
 
     def _store_signal_history(self, signal: SensitivitySignal) -> None:
         """Store signal in history for trend analysis.
@@ -444,62 +453,67 @@ class CoordinationService:
             >>> best_agent = service.select_optimal_agent(candidates)
             >>> print(f"Selected: {best_agent}")
         """
-        if not candidate_agents:
-            logger.warning("No candidate agents provided for selection")
-            return None
+        # Track agent selection duration
+        with coordination_metrics.track_agent_selection("ripple_coordination"):
+            if not candidate_agents:
+                logger.warning("No candidate agents provided for selection")
+                return None
 
-        # TODO: Support custom optimization weights in future (COORD-007 extension)
-        # For now, use default weights from configuration
-        if optimization_weights:
+            # TODO: Support custom optimization weights in future (COORD-007 extension)
+            # For now, use default weights from configuration
+            if optimization_weights:
+                logger.info(
+                    "Custom optimization weights provided but not yet supported",
+                    extra={"weights": optimization_weights},
+                )
+
+            # Compute routing scores for all candidates
+            agent_scores: list[tuple[str, float]] = []
+
+            for agent_id in candidate_agents:
+                score = self.compute_routing_score(agent_id)
+                agent_scores.append((agent_id, score))
+
+            # Sort by score (descending) - highest score first
+            agent_scores.sort(key=lambda x: x[1], reverse=True)
+
+            # Select top agent
+            selected_agent, selected_score = agent_scores[0]
+
+            # Get state for logging
+            selected_state = self.coordination_states.get(selected_agent)
+
+            # Log selection rationale
             logger.info(
-                "Custom optimization weights provided but not yet supported",
-                extra={"weights": optimization_weights},
+                "Optimal agent selected",
+                extra={
+                    "selected_agent": selected_agent,
+                    "routing_score": selected_score,
+                    "total_candidates": len(candidate_agents),
+                    "score_breakdown": {
+                        "load": selected_state.load_score if selected_state else 0.5,
+                        "capacity": selected_state.capacity_score if selected_state else 0.5,
+                        "quality": selected_state.quality_score if selected_state else 0.5,
+                        "cost": selected_state.cost_score if selected_state else 0.5,
+                        "availability": selected_state.availability_score if selected_state else 0.5,
+                    },
+                    "runner_up_scores": [
+                        {"agent": agent_id, "score": score}
+                        for agent_id, score in agent_scores[1:min(4, len(agent_scores))]
+                    ],
+                },
             )
 
-        # Compute routing scores for all candidates
-        agent_scores: list[tuple[str, float]] = []
+            # Update metrics
+            self.metrics.total_selections += 1
+            self.metrics.coordination_score_avg = sum(score for _, score in agent_scores) / len(
+                agent_scores
+            )
 
-        for agent_id in candidate_agents:
-            score = self.compute_routing_score(agent_id)
-            agent_scores.append((agent_id, score))
+            # Update Prometheus metrics
+            coordination_metrics.increment_routing_selection("ripple_coordination")
 
-        # Sort by score (descending) - highest score first
-        agent_scores.sort(key=lambda x: x[1], reverse=True)
-
-        # Select top agent
-        selected_agent, selected_score = agent_scores[0]
-
-        # Get state for logging
-        selected_state = self.coordination_states.get(selected_agent)
-
-        # Log selection rationale
-        logger.info(
-            "Optimal agent selected",
-            extra={
-                "selected_agent": selected_agent,
-                "routing_score": selected_score,
-                "total_candidates": len(candidate_agents),
-                "score_breakdown": {
-                    "load": selected_state.load_score if selected_state else 0.5,
-                    "capacity": selected_state.capacity_score if selected_state else 0.5,
-                    "quality": selected_state.quality_score if selected_state else 0.5,
-                    "cost": selected_state.cost_score if selected_state else 0.5,
-                    "availability": selected_state.availability_score if selected_state else 0.5,
-                },
-                "runner_up_scores": [
-                    {"agent": agent_id, "score": score}
-                    for agent_id, score in agent_scores[1:min(4, len(agent_scores))]
-                ],
-            },
-        )
-
-        # Update metrics
-        self.metrics.total_selections += 1
-        self.metrics.coordination_score_avg = sum(score for _, score in agent_scores) / len(
-            agent_scores
-        )
-
-        return selected_agent
+            return selected_agent
 
     def predict_overload(
         self, agent_id: str, forecast_seconds: int = 60, threshold: float = 0.8
@@ -622,6 +636,9 @@ class CoordinationService:
                     "slope": slope,
                 },
             )
+
+        # Update Prometheus metrics
+        coordination_metrics.increment_overload_prediction(agent_id, will_overload)
 
         return (will_overload, probability)
 
