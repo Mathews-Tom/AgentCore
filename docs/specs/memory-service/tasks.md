@@ -1,9 +1,12 @@
-# Tasks: Memory System (COMPASS-Enhanced Context Manager)
+# Tasks: Memory System (Hybrid: Mem0 + COMPASS + Graph)
 
-**From:** `spec.md` v2.0 + `plan.md` v2.0 (COMPASS-Enhanced)
-**Timeline:** 10 weeks, 5 sprints (2-week sprints)
+**⚠️ NEEDS REGENERATION:** This task breakdown is based on the old PGVector-only architecture. It must be regenerated to reflect the hybrid architecture (Qdrant + Neo4j + ECL Pipeline + Memify) using `/sage.tasks memory-service`.
+
+**From:** `spec.md` v3.0 (Hybrid Architecture) + `plan.md` v3.0
+**Timeline:** 8 weeks (updated from 10 weeks)
 **Team:** 1 senior backend engineer (full-time)
 **Created:** 2025-10-23
+**Last Updated:** 2025-11-06 (Marked for regeneration)
 
 ---
 
