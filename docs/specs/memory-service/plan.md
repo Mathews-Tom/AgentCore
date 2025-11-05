@@ -1,9 +1,10 @@
-# Memory Service Implementation Blueprint (PRP)
+# Memory Service Implementation Blueprint (PRP) - Hybrid Architecture
 
 **Format:** Product Requirements Prompt (Context Engineering)
 **Generated:** 2025-10-25
-**Specification:** `docs/specs/memory-service/spec.md` + `docs/specs/memory-system/spec.md`
-**Research:** `docs/research/evolving-memory-system.md`
+**Last Updated:** 2025-11-06 (Hybrid Architecture)
+**Specification:** `docs/specs/memory-service/spec.md` (Hybrid: Mem0 + COMPASS + Graph)
+**Research:** `docs/research/evolving-memory-system.md`, `docs/architecture/MEMORY_SYSTEM_ENHANCEMENT_ANALYSIS.md`
 **Component ID:** MEM
 **Priority:** P0 (HIGH - Phase 2)
 
@@ -33,6 +34,15 @@
    - Test-time scaling with mini models for 70-80% cost reduction
    - Error tracking and ACE integration for meta-cognitive monitoring
    - Enhanced targets: 95%+ retrieval precision, 80%+ context reduction, 20% accuracy improvement
+
+4. **Hybrid Architecture Update (2025-11-06):** `docs/architecture/MEMORY_SYSTEM_ARCHITECTURE_COMPARISON.md`
+   - Analyzed Cognee repository (7.9k stars) for knowledge graph enhancements
+   - Added Neo4j graph database for entity relationships and knowledge graphs
+   - Added ECL Pipeline (Extract, Cognify, Load) for modular task-based processing
+   - Added Memify operation for graph optimization (consolidation, pruning, pattern detection)
+   - Added hybrid search combining vector similarity (Qdrant) + graph relationships (Neo4j)
+   - Timeline updated from 9 weeks to 6-8 weeks with focused phases
+   - Technology stack: Qdrant + Neo4j + Redis + PostgreSQL (hybrid storage)
 
 ### Related Documentation
 
@@ -98,14 +108,15 @@
 - **Compression:** gpt-4.1-mini for test-time scaling (per CLAUDE.md governance)
 - **Framework:** Python 3.12+, FastAPI, Pydantic 2.5+, SQLAlchemy async
 
-**Implementation Strategy:** Phased approach over 9-10 weeks
+**Implementation Strategy:** Phased approach over 8 weeks (Hybrid Architecture)
 
-1. **Phase 1 (Weeks 1-2):** Foundation - Database, models, basic operations
-2. **Phase 2 (Week 3):** Core operations - Vector search, retrieval, JSON-RPC
-3. **Phase 3 (Weeks 4-5):** COMPASS stage management and compression
-4. **Phase 4 (Week 6):** Error tracking and pattern detection
-5. **Phase 5 (Week 7):** Enhanced retrieval with criticality scoring
-6. **Phase 6 (Weeks 8-9):** Integration, optimization, validation
+1. **Phase 1 (Weeks 1-2):** Foundation - Database, models, basic operations (Qdrant + Neo4j deployment)
+2. **Phase 2 (Week 3):** Stage management + ECL pipeline foundation
+3. **Phase 3 (Week 4):** Compression pipeline + entity extraction
+4. **Phase 4 (Week 5):** Graph storage + relationship detection (Neo4j integration)
+5. **Phase 5 (Week 6):** Hybrid retrieval (vector + graph)
+6. **Phase 6 (Week 7):** Memify optimization + error tracking
+7. **Phase 7 (Week 8):** Integration, testing, validation
 
 ### Key Success Metrics
 
@@ -253,9 +264,10 @@ Since `.sage/agent/examples/` is empty (new project), this implementation will *
 |-----------|------------|---------|-----------|
 | Runtime | Python | 3.12+ | Existing AgentCore standard, built-in generics per CLAUDE.md |
 | Framework | FastAPI | 0.104.0+ | Existing infrastructure, async support |
-| Database | PostgreSQL | 14+ | Existing (A2A-009), ACID guarantees, vector extension |
-| Vector DB | PGVector | 0.4.1+ | **Already in dependencies**, simpler than Qdrant, sufficient for 1M vectors |
-| Cache | Redis | 6+ | Existing cluster with streams, TTL support |
+| Database | PostgreSQL | 14+ | Existing (A2A-009), ACID guarantees, metadata storage |
+| Vector DB | Qdrant | Latest | High-performance vector search, 1M+ vectors, horizontal scaling |
+| Graph DB | Neo4j | 5.15+ | Knowledge graphs, entity relationships, graph traversal (Hybrid architecture) |
+| Cache | Redis | 6+ | Existing cluster with streams, TTL support, working memory |
 | Memory Library | Mem0 | ^0.1.0 | **Need to add**, extraction and fact recognition |
 | Embeddings (Local) | SentenceTransformers | 5.1.1+ | **Already in dependencies**, free, 384-768 dims |
 | Embeddings (Cloud) | OpenAI text-embedding-3-small | Latest | Optional for critical memories, 1536 dims, $0.02/1M tokens |
@@ -266,14 +278,16 @@ Since `.sage/agent/examples/` is empty (new project), this implementation will *
 
 ### Key Technology Decisions
 
-**Decision 1: PGVector instead of Qdrant (Modified from Spec)**
+**Decision 1: Hybrid Storage (Qdrant + Neo4j) - Updated 2025-11-06**
 
-- **Rationale from Research:** Research recommended Qdrant, Pinecone, Weaviate, or PGVector
-- **Architectural Alignment:** PGVector already in AgentCore dependencies (pgvector>=0.4.1)
-- **Operational Simplicity:** No separate service to deploy, manage, or scale
-- **Performance Validation:** PGVector proven at 1M vectors with <100ms retrieval using IVFFlat index
-- **Tradeoff:** Qdrant has better performance at 10M+ scale, but AgentCore targets 1M memories per agent
-- **Fallback Plan:** Can migrate to Qdrant later if needed (compatible semantic search interface)
+- **Rationale:** Combine vector similarity search (Qdrant) with graph relationships (Neo4j) for comprehensive memory retrieval
+- **Cognee Analysis:** Analyzed cognee repository (7.9k stars) and validated hybrid approach effectiveness
+- **Architecture Benefits:**
+  - Qdrant: High-performance vector search (semantic similarity, 1M+ vectors)
+  - Neo4j: Entity relationships, knowledge graphs, multi-hop traversal
+  - Hybrid search: Merge results from both databases with relationship-based scoring
+- **Tradeoff:** Increased operational complexity (2 databases) vs significantly enhanced retrieval capabilities
+- **Validation:** Comparison matrix showed hybrid approach wins on 9/11 criteria vs single-database approaches
 
 **Decision 2: Hybrid Embeddings (Cost Optimization)**
 
@@ -475,15 +489,16 @@ Memory Service belongs to the **Core Layer** and integrates with:
 
 **1. MemoryManager (Orchestration)**
 
-- **Purpose:** Coordinate all memory operations, manage layer transitions
+- **Purpose:** Coordinate all memory operations, manage layer transitions, orchestrate hybrid storage
 - **Technology:** Python 3.12, async/await
 - **Pattern:** Facade pattern over memory services
 - **Interfaces:**
-  - `add_interaction(interaction: Interaction) -> str` - Store new memory
-  - `get_relevant_context(query: str, task_id: str, max_tokens: int) -> str` - Retrieve formatted context
+  - `add_interaction(interaction: Interaction) -> str` - Store new memory (triggers ECL pipeline)
+  - `get_relevant_context(query: str, task_id: str, max_tokens: int) -> str` - Retrieve formatted context (hybrid search)
   - `retrieve_memories(query: str, memory_layers: list[str], k: int) -> list[MemoryRecord]` - Search memories
   - `complete_stage(stage_id: str) -> StageMemory` - Trigger stage compression
-- **Dependencies:** All memory services, stage manager, error tracker
+  - `run_memify_optimization() -> MemifyResult` - Run graph optimization
+- **Dependencies:** All memory services, stage manager, error tracker, graph memory service, ECL pipeline
 
 **2. WorkingMemoryService (Redis Layer)**
 
@@ -566,6 +581,63 @@ Memory Service belongs to the **Core Layer** and integrates with:
   - `get_error_history(filters: dict, limit: int) -> list[ErrorRecord]`
   - `get_error_aware_context(query: str, recent_errors: list[ErrorRecord]) -> str`
 - **Dependencies:** ErrorRepository, LLM service
+
+**9. GraphMemoryService (Neo4j Layer) - NEW (Hybrid Architecture)**
+
+- **Purpose:** Store and query entity relationships in knowledge graph
+- **Technology:** Neo4j 5.15+, neo4j-driver (async)
+- **Pattern:** Repository pattern with graph traversal
+- **Interfaces:**
+  - `store_entities_and_relationships(entities: list[EntityNode], relationships: list[RelationshipEdge]) -> str`
+  - `traverse_graph(entity_id: str, depth: int) -> GraphSubset`
+  - `find_related_memories(memory_id: str, relationship_types: list[str]) -> list[MemoryRecord]`
+  - `get_entity_connections(entity_id: str) -> list[EntityNode]`
+- **Dependencies:** Neo4j driver, entity models
+
+**10. ECLPipeline (Extract, Cognify, Load) - NEW (Hybrid Architecture)**
+
+- **Purpose:** Modular task-based processing for memory ingestion
+- **Technology:** Task registry pattern, async task execution
+- **Pattern:** Pipeline pattern with pluggable tasks
+- **Interfaces:**
+  - `execute_pipeline(data: dict) -> PipelineResult`
+  - `register_task(task: TaskBase)`
+  - `extract(data: dict) -> ExtractionResult`
+  - `cognify(extraction: ExtractionResult) -> CognifyResult` (entities, relationships, patterns)
+  - `load(cognify_result: CognifyResult)` (multi-backend storage)
+- **Dependencies:** EntityExtractor, RelationshipDetector, VectorMemoryService, GraphMemoryService
+
+**11. EntityExtractor (Entity Extraction Task) - NEW (Hybrid Architecture)**
+
+- **Purpose:** Extract entities (people, concepts, tools, constraints) from memories
+- **Technology:** LLM-based extraction (gpt-4.1-mini)
+- **Pattern:** Strategy pattern (multiple extraction strategies)
+- **Interfaces:**
+  - `extract_entities(content: str) -> list[EntityNode]`
+  - `classify_entity_type(entity: str) -> EntityType`
+- **Dependencies:** LLM service
+
+**12. RelationshipDetector (Relationship Detection Task) - NEW (Hybrid Architecture)**
+
+- **Purpose:** Detect connections between entities
+- **Technology:** LLM-based detection + pattern matching
+- **Pattern:** Strategy pattern
+- **Interfaces:**
+  - `detect_relationships(entities: list[EntityNode], context: str) -> list[RelationshipEdge]`
+  - `classify_relationship_type(rel: str) -> RelationshipType`
+- **Dependencies:** LLM service
+
+**13. MemifyOptimizer (Graph Optimization) - NEW (Hybrid Architecture)**
+
+- **Purpose:** Optimize knowledge graph through consolidation and pruning
+- **Technology:** Graph algorithms, similarity scoring
+- **Pattern:** Batch processing with scheduled execution
+- **Interfaces:**
+  - `consolidate_entities(similarity_threshold: float) -> ConsolidationResult`
+  - `prune_relationships(min_access_count: int) -> PruningResult`
+  - `detect_patterns() -> list[GraphPattern]`
+  - `optimize_indexes() -> IndexOptimizationResult`
+- **Dependencies:** GraphMemoryService, similarity scoring
 
 ### Data Flow & Boundaries
 
@@ -1718,19 +1790,21 @@ async def test_memory_persistence_across_restart():
 
 ### Timeline Summary
 
-**Total Implementation:** 9 weeks (realistic with COMPASS enhancements)
+**Total Implementation:** 8 weeks (Hybrid Architecture with graph enhancements)
 
 **Dependencies:**
 
 - A2A-009 (PostgreSQL Integration) must complete before Phase 1
 - A2A-004 (Task Management) and A2A-002 (JSON-RPC Core) must complete before Phase 2
-- ACE component optional for Phase 4 (can stub for testing)
+- Qdrant and Neo4j deployment required for Phase 1
+- ACE component optional for Phase 6 (can stub for testing)
 
 **Parallel Work:**
 
 - Unit tests developed alongside each phase
 - Documentation updated continuously
 - Performance benchmarks run at end of each phase
+- Graph query optimization during Neo4j integration
 
 ---
 
