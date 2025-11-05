@@ -1,44 +1,28 @@
 # CLI-R003: Service Layer Implementation
 
+## Metadata
+
+**ID:** CLI-R003
 **State:** UNPROCESSED
 **Priority:** P0
 **Type:** implementation
-**Effort:** 4 story points (0.5 days)
-**Phase:** 1 - Foundation
-**Owner:** Senior Python Developer
-
-## Description
-
-Implement service layer (facade) that provides high-level business operations and abstracts JSON-RPC details from CLI commands.
-
-## Acceptance Criteria
-
-- [ ] AgentService with all agent operations
-- [ ] TaskService with all task operations
-- [ ] SessionService with all session operations
-- [ ] WorkflowService with all workflow operations
-- [ ] Parameter validation in all services
-- [ ] Domain-specific error handling
-- [ ] No JSON-RPC knowledge in services
-- [ ] 100% test coverage with 20 unit tests
-- [ ] mypy passes in strict mode
+**Component:** unknown
+**Effort:** 4 story points (0.5 days) points
 
 ## Dependencies
 
-- CLI-R002 (Protocol Layer)
+- CLI-R002
 
-## Files to Create
+## Description
 
-- `src/agentcore_cli/services/__init__.py`
-- `src/agentcore_cli/services/agent.py`
-- `src/agentcore_cli/services/task.py`
-- `src/agentcore_cli/services/session.py`
-- `src/agentcore_cli/services/workflow.py`
-- `tests/services/test_agent.py`
-- `tests/services/test_task.py`
+No description provided.
 
-## Progress
+## Git Information
 
-**State:** Not started
-**Created:** 2025-10-22
-**Updated:** 2025-10-22
+**Commits:** d17868a
+**Last Commit:** d17868a (2025-10-22T11:33:08.113625+00:00)
+
+---
+
+*Created: 2025-10-22T00:00:00Z*
+*Updated: 2025-10-22T11:33:08.113409+00:00*

@@ -1,35 +1,24 @@
 # GATE-006: Request/Response Middleware
 
+## Metadata
+
+**ID:** GATE-006
 **State:** UNPROCESSED
 **Priority:** P1
 **Type:** implementation
-**Effort:** 5 story points (3-5 days)
+**Component:** gateway-layer
+**Effort:** 5 points
 **Sprint:** 2
-**Owner:** Mid-level Developer
-
-## Description
-
-CORS, validation, transformation, and compression middleware
-
-## Acceptance Criteria
-
-- [ ] CORS handling and security headers
-- [ ] Request validation and transformation
-- [ ] Response compression and caching
-- [ ] Logging and tracing integration
 
 ## Dependencies
 
-- #GATE-001 (parent)
+- GATE-001
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T18:03:40Z*

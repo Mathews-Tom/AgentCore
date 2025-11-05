@@ -1,35 +1,24 @@
 # GATE-012: API Documentation & Developer Experience
 
+## Metadata
+
+**ID:** GATE-012
 **State:** UNPROCESSED
 **Priority:** P2
 **Type:** documentation
-**Effort:** 2 story points (1-2 days)
+**Component:** gateway-layer
+**Effort:** 2 points
 **Sprint:** 3
-**Owner:** Mid-level Developer
-
-## Description
-
-OpenAPI documentation with developer portal and SDK generation
-
-## Acceptance Criteria
-
-- [ ] Comprehensive OpenAPI documentation
-- [ ] Developer portal with examples
-- [ ] SDK generation for popular languages
-- [ ] Interactive API explorer
 
 ## Dependencies
 
-- #GATE-007 (parent)
+- GATE-007
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T18:34:58Z*

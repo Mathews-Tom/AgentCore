@@ -1,35 +1,24 @@
 # GATE-007: Backend Service Routing
 
+## Metadata
+
+**ID:** GATE-007
 **State:** UNPROCESSED
 **Priority:** P0
 **Type:** implementation
-**Effort:** 8 story points (5-8 days)
+**Component:** gateway-layer
+**Effort:** 8 points
 **Sprint:** 2
-**Owner:** Senior Developer
-
-## Description
-
-Intelligent routing to backend services with service discovery
-
-## Acceptance Criteria
-
-- [ ] Service discovery integration
-- [ ] Intelligent routing algorithms
-- [ ] Request transformation and proxying
-- [ ] Backend service health monitoring
 
 ## Dependencies
 
-- #GATE-006 (parent)
+- GATE-006
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T19:25:42Z*

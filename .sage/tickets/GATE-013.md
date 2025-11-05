@@ -1,35 +1,24 @@
 # GATE-013: Security Testing
 
+## Metadata
+
+**ID:** GATE-013
 **State:** UNPROCESSED
 **Priority:** P1
 **Type:** testing
-**Effort:** 5 story points (3-5 days)
+**Component:** gateway-layer
+**Effort:** 5 points
 **Sprint:** 2
-**Owner:** Mid-level Developer
-
-## Description
-
-Security audit and comprehensive testing
-
-## Acceptance Criteria
-
-- [ ] Security audit passed
-- [ ] Penetration testing completed
-- [ ] OWASP Top 10 validation
-- [ ] OAuth flows tested with real providers
 
 ## Dependencies
 
-- #GATE-004 (parent)
+- GATE-004
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T19:25:42Z*

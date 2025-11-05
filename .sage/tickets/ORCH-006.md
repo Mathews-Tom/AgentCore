@@ -1,35 +1,24 @@
 # ORCH-006: Handoff Pattern Implementation
 
+## Metadata
+
+**ID:** ORCH-006
 **State:** UNPROCESSED
 **Priority:** P1
 **Type:** implementation
-**Effort:** 5 story points (3-5 days)
+**Component:** orchestration-engine
+**Effort:** 5 points
 **Sprint:** 3
-**Owner:** Mid-level Developer
-
-## Description
-
-Sequential task handoff with context preservation and quality gates
-
-## Acceptance Criteria
-
-- [ ] Sequential task handoff mechanisms
-- [ ] Context preservation during transfers
-- [ ] Quality gates and validation
-- [ ] Rollback capabilities
 
 ## Dependencies
 
-- #ORCH-004 (parent)
+- ORCH-004
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-19T23:25:17Z*

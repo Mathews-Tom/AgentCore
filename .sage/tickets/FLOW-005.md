@@ -1,31 +1,23 @@
 # FLOW-005: GRPO Trainer Core
 
+## Metadata
+
+**ID:** FLOW-005
 **State:** UNPROCESSED
 **Priority:** P0
-**Type:** Story
+**Type:** story
+**Component:** unknown
 **Sprint:** 1
-**Effort:** 8 SP
 
 ## Dependencies
 
-**Parent:** #FLOW-001
-**Requires:**
-- #FLOW-004
+- FLOW-004
 
-**Blocks:**
-- #FLOW-006
-- #FLOW-012
-- #FLOW-015
+## Description
 
-## Context
+No description provided.
 
-Specs: `docs/specs/flow-based-optimization/spec.md`
-Tasks: `docs/specs/flow-based-optimization/tasks.md` (see FLOW-005 section)
+---
 
-## Owner
-
-Eng-2
-
-## Status
-
-Ready for `/sage.implement FLOW-005`
+*Created: unknown*
+*Updated: 2025-10-16T23:23:31Z*

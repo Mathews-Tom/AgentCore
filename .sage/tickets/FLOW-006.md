@@ -1,29 +1,23 @@
 # FLOW-006: Policy Updater
 
+## Metadata
+
+**ID:** FLOW-006
 **State:** UNPROCESSED
 **Priority:** P0
-**Type:** Story
+**Type:** story
+**Component:** unknown
 **Sprint:** 1
-**Effort:** 5 SP
 
 ## Dependencies
 
-**Parent:** #FLOW-001
-**Requires:**
-- #FLOW-005
+- FLOW-005
 
-**Blocks:**
-- #FLOW-008
+## Description
 
-## Context
+No description provided.
 
-Specs: `docs/specs/flow-based-optimization/spec.md`
-Tasks: `docs/specs/flow-based-optimization/tasks.md` (see FLOW-006 section)
+---
 
-## Owner
-
-Eng-1
-
-## Status
-
-Ready for `/sage.implement FLOW-006`
+*Created: unknown*
+*Updated: 2025-10-16T23:26:31Z*

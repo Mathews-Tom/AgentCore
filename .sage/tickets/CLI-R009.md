@@ -1,29 +1,23 @@
 # CLI-R009: Migrate All Session Commands
 
+## Metadata
+
+**ID:** CLI-R009
 **State:** COMPLETED
 **Priority:** P1
 **Type:** feature
-**Effort:** 2 story points (0.5 days)
-**Phase:** 3 - Full Migration
-**Owner:** Senior Python Developer
-
-## Description
-
-Migrate all session commands (create, list, info, delete, restore) to new architecture.
-
-## Acceptance Criteria
-
-- [ ] All session commands use SessionService
-- [ ] All tests updated
-- [ ] E2E tests pass
-- [ ] 100% coverage maintained
+**Component:** unknown
+**Effort:** 2 story points (0.5 days) points
 
 ## Dependencies
 
 - CLI-R008
 
-## Progress
+## Description
 
-**State:** Not started
-**Created:** 2025-10-22
-**Updated:** 2025-10-22
+No description provided.
+
+---
+
+*Created: 2025-10-22T00:00:00Z*
+*Updated: 2025-10-22T00:00:00Z*

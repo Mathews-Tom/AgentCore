@@ -1,35 +1,20 @@
 # ORCH-013: Unit Test Framework
 
+## Metadata
+
+**ID:** ORCH-013
 **State:** COMPLETED
 **Priority:** P0
 **Type:** testing
-**Effort:** 3 story points (2-3 days)
+**Component:** orchestration-engine
+**Effort:** 3 points
 **Sprint:** 1
-**Owner:** Mid-level Developer
 
 ## Description
 
-Comprehensive unit tests for orchestration components
+No description provided.
 
-## Acceptance Criteria
+---
 
-- [ ] 90%+ code coverage required
-- [ ] All orchestration patterns tested
-- [ ] Redis Streams testing
-- [ ] Graph algorithm validation
-
-## Dependencies
-
-- None
-
-## Context
-
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/tasks.md`
-
-## Progress
-
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-21T13:50:37.689777+00:00*

@@ -1,35 +1,24 @@
 # ORCH-016: Chaos Engineering
 
+## Metadata
+
+**ID:** ORCH-016
 **State:** COMPLETED
 **Priority:** P1
-**Type:** implementation
-**Effort:** 5 story points (3-5 days)
+**Type:** testing
+**Component:** orchestration-engine
+**Effort:** 5 points
 **Sprint:** 4
-**Owner:** Senior Developer
-
-## Description
-
-Fault tolerance validation through chaos engineering
-
-## Acceptance Criteria
-
-- [x] Chaos engineering scenarios defined
-- [x] Fault injection testing
-- [x] Recovery validation
-- [x] Resilience benchmarks met
 
 ## Dependencies
 
-- #ORCH-009 (parent)
+- ORCH-009
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-21T14:14:43.470958+00:00*

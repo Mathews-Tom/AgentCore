@@ -1,36 +1,25 @@
 # ORCH-003: Supervisor Pattern Implementation
 
+## Metadata
+
+**ID:** ORCH-003
 **State:** UNPROCESSED
 **Priority:** P0
 **Type:** implementation
-**Effort:** 5 story points (3-5 days)
+**Component:** orchestration-engine
+**Effort:** 5 points
 **Sprint:** 2
-**Owner:** Mid-level Developer
-
-## Description
-
-Master-worker coordination with task distribution and monitoring
-
-## Acceptance Criteria
-
-- [ ] Master-worker coordination logic
-- [ ] Task distribution and monitoring
-- [ ] Worker failure handling and recovery
-- [ ] Load balancing strategies
 
 ## Dependencies
 
-- #ORCH-001 (parent)
-- #ORCH-002 (parent)
+- ORCH-001
+- ORCH-002
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/orchestration-engine/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-19T22:48:16Z*

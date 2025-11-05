@@ -1,35 +1,24 @@
 # GATE-004: Rate Limiting & Security
 
+## Metadata
+
+**ID:** GATE-004
 **State:** UNPROCESSED
 **Priority:** P0
 **Type:** implementation
-**Effort:** 8 story points (5-8 days)
+**Component:** gateway-layer
+**Effort:** 8 points
 **Sprint:** 2
-**Owner:** Senior Developer
-
-## Description
-
-Redis-based distributed rate limiting with DDoS protection
-
-## Acceptance Criteria
-
-- [ ] Redis-based distributed rate limiting
-- [ ] Sliding window algorithms
-- [ ] Per-client and per-endpoint limits
-- [ ] DDoS protection mechanisms
 
 ## Dependencies
 
-- #GATE-001 (parent)
+- GATE-001
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T17:07:33Z*

@@ -1,35 +1,24 @@
 # GATE-011: Security Hardening
 
+## Metadata
+
+**ID:** GATE-011
 **State:** UNPROCESSED
 **Priority:** P0
 **Type:** implementation
-**Effort:** 5 story points (3-5 days)
+**Component:** gateway-layer
+**Effort:** 5 points
 **Sprint:** 3
-**Owner:** Senior Developer
-
-## Description
-
-TLS 1.3, security headers, and comprehensive input validation
-
-## Acceptance Criteria
-
-- [ ] TLS 1.3 configuration with HSTS
-- [ ] Comprehensive security headers
-- [ ] Input validation preventing injection
-- [ ] Security audit and penetration testing
 
 ## Dependencies
 
-- #GATE-003 (parent)
+- GATE-003
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-19T19:38:29Z*

@@ -1,35 +1,24 @@
 # GATE-002: JWT Authentication System
 
+## Metadata
+
+**ID:** GATE-002
 **State:** UNPROCESSED
 **Priority:** P0
 **Type:** implementation
-**Effort:** 8 story points (5-8 days)
+**Component:** gateway-layer
+**Effort:** 8 points
 **Sprint:** 1
-**Owner:** Senior Developer
-
-## Description
-
-JWT token generation, validation, and session management
-
-## Acceptance Criteria
-
-- [ ] JWT token generation and validation
-- [ ] RSA-256 signing with key rotation
-- [ ] User session management
-- [ ] Token refresh mechanisms
 
 ## Dependencies
 
-- #GATE-001 (parent)
+- GATE-001
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T14:48:09Z*

@@ -1,35 +1,24 @@
 # GATE-005: WebSocket & SSE Support
 
+## Metadata
+
+**ID:** GATE-005
 **State:** UNPROCESSED
 **Priority:** P1
 **Type:** implementation
-**Effort:** 5 story points (3-5 days)
+**Component:** gateway-layer
+**Effort:** 5 points
 **Sprint:** 2
-**Owner:** Mid-level Developer
-
-## Description
-
-WebSocket connection management and server-sent events
-
-## Acceptance Criteria
-
-- [ ] WebSocket connection management
-- [ ] Server-sent events implementation
-- [ ] Real-time event broadcasting
-- [ ] Connection scaling and optimization
 
 ## Dependencies
 
-- #GATE-001 (parent)
+- GATE-001
 
-## Context
+## Description
 
-**Specs:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/spec.md`
-**Plans:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/plan.md`
-**Tasks:** `/Users/druk/WorkSpace/AetherForge/AgentCore/docs/specs/gateway-layer/tasks.md`
+No description provided.
 
-## Progress
+---
 
-**State:** Not started
-**Created:** 2025-09-27
-**Updated:** 2025-09-27
+*Created: 2025-09-27T00:00:00Z*
+*Updated: 2025-10-18T17:51:21Z*
