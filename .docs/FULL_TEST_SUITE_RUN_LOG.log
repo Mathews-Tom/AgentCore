@@ -1,0 +1,789 @@
+$ ./scripts/test-integration.sh
+
+🔬 Running Real Integration Tests
+==================================
+
+Uses: PostgreSQL (testcontainer) + Redis (testcontainer)
+Requires: Docker Desktop running
+
+📦 Starting testcontainers (PostgreSQL + Redis)...
+=================================================================================== test session starts ====================================================================================
+platform darwin -- Python 3.12.8, pytest-8.4.2, pluggy-1.6.0 -- /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /Users/druk/WorkSpace/AetherForge/AgentCore
+configfile: pytest.ini
+testpaths: tests
+plugins: asyncio-1.2.0, respx-0.21.1, anyio-4.11.0, timeout-2.4.0, locust-2.41.2, benchmark-5.1.0, cov-7.0.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting 1516 items                                                                                                                                                                      
+----------------------------------------------------------------------------------- live log collection ------------------------------------------------------------------------------------
+2025-11-04 21:42:23 [INFO] HTTP Request: GET https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json "HTTP/1.1 200 OK"
+collecting 1766 items                                                                                                                                                                      2025-11-04 21:42:27 [INFO] FastAPI application instrumented with OpenTelemetry
+collected 5215 items / 5191 deselected / 24 selected                                                                                                                                       
+
+tests/integration/test_llm_integration.py::TestProviderIntegrationOpenAI::test_openai_complete_basic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:33 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:42:33 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [  4%]
+tests/integration/test_llm_integration.py::TestProviderIntegrationOpenAI::test_openai_stream_basic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:33 [INFO] LLM streaming started
+2025-11-04 21:42:36 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:42:36 [INFO] LLM streaming completed
+PASSED                                                                                                                                                                               [  8%]
+tests/integration/test_llm_integration.py::TestProviderIntegrationOpenAI::test_openai_multi_turn_conversation 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:41 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:42:41 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 12%]
+tests/integration/test_llm_integration.py::TestProviderIntegrationAnthropic::test_anthropic_complete_basic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:43 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:42:43 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 16%]
+tests/integration/test_llm_integration.py::TestProviderIntegrationAnthropic::test_anthropic_stream_basic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:43 [INFO] LLM streaming started
+2025-11-04 21:42:44 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:42:44 [INFO] LLM streaming completed
+PASSED                                                                                                                                                                               [ 20%]
+tests/integration/test_llm_integration.py::TestProviderIntegrationGemini::test_gemini_complete_basic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:45 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 25%]
+tests/integration/test_llm_integration.py::TestProviderIntegrationGemini::test_gemini_stream_basic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:45 [INFO] LLM streaming started
+2025-11-04 21:42:47 [INFO] LLM streaming completed
+PASSED                                                                                                                                                                               [ 29%]
+tests/integration/test_llm_integration.py::TestA2AContextPropagation::test_trace_id_propagation_openai 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:49 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:42:49 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 33%]
+tests/integration/test_llm_integration.py::TestA2AContextPropagation::test_trace_id_propagation_anthropic 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:51 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:42:51 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 37%]
+tests/integration/test_llm_integration.py::TestA2AContextPropagation::test_trace_id_propagation_gemini 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:52 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 41%]
+tests/integration/test_llm_integration.py::TestA2AContextPropagation::test_trace_id_without_context 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:52 [ERROR] Task exception was never retrieved
+future: <Task finished name='Task-43' coro=<AsyncClient.aclose() done, defined at /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py:1967> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1974, in aclose
+    await self._transport.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 365, in aclose
+    await self._pool.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 314, in aclose
+    await connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 166, in aclose
+    await self._connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 241, in aclose
+    await self._network_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 54, in aclose
+    await self._stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 234, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1323, in aclose
+    self._transport.close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1210, in close
+    super().close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 794, in call_soon
+    self._check_closed()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 540, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+2025-11-04 21:42:54 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:42:54 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 45%]
+tests/integration/test_llm_integration.py::TestErrorHandling::test_invalid_model_error 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:54 [WARNING] AUDIT: Model governance violation - disallowed model
+PASSED                                                                                                                                                                               [ 50%]
+tests/integration/test_llm_integration.py::TestErrorHandling::test_timeout_error_handling 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:54 [INFO] Retrying request to /chat/completions in 0.469769 seconds
+2025-11-04 21:42:55 [INFO] Retrying request to /chat/completions in 0.790363 seconds
+2025-11-04 21:42:55 [ERROR] LLM completion failed
+PASSED                                                                                                                                                                               [ 54%]
+tests/integration/test_llm_integration.py::TestRetryLogic::test_retry_configuration PASSED                                                                                           [ 58%]
+tests/integration/test_llm_integration.py::TestRetryLogic::test_successful_request_no_retry 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:58 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:42:58 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 62%]
+tests/integration/test_llm_integration.py::TestConcurrentRequests::test_concurrent_requests_100_openai 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:42:59 [ERROR] Task exception was never retrieved
+future: <Task finished name='Task-164' coro=<AsyncClient.aclose() done, defined at /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py:1967> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1974, in aclose
+    await self._transport.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 365, in aclose
+    await self._pool.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 314, in aclose
+    await connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 166, in aclose
+    await self._connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 241, in aclose
+    await self._network_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 54, in aclose
+    await self._stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 234, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1323, in aclose
+    self._transport.close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1210, in close
+    super().close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 794, in call_soon
+    self._check_closed()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 540, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+2025-11-04 21:42:59 [ERROR] Task exception was never retrieved
+future: <Task finished name='Task-165' coro=<AsyncClient.aclose() done, defined at /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py:1967> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1974, in aclose
+    await self._transport.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 365, in aclose
+    await self._pool.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 314, in aclose
+    await connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 166, in aclose
+    await self._connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 241, in aclose
+    await self._network_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 54, in aclose
+    await self._stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 234, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1323, in aclose
+    self._transport.close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1210, in close
+    super().close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 794, in call_soon
+    self._check_closed()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 540, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+2025-11-04 21:42:59 [ERROR] Task exception was never retrieved
+future: <Task finished name='Task-167' coro=<AsyncClient.aclose() done, defined at /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py:1967> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1974, in aclose
+    await self._transport.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 365, in aclose
+    await self._pool.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 314, in aclose
+    await connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 166, in aclose
+    await self._connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 241, in aclose
+    await self._network_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 54, in aclose
+    await self._stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 234, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1323, in aclose
+    self._transport.close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1210, in close
+    super().close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 794, in call_soon
+    self._check_closed()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 540, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:01 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:01 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:02 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:02 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] LLM completion succeeded
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:03 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:04 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:04 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:05 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:05 [INFO] LLM completion succeeded
+2025-11-04 21:43:07 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:07 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 66%]
+tests/integration/test_llm_integration.py::TestConcurrentRequests::test_concurrent_requests_multi_provider 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:08 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:08 [INFO] LLM completion succeeded
+2025-11-04 21:43:09 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:09 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:10 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:10 [INFO] LLM completion succeeded
+2025-11-04 21:43:11 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:11 [INFO] LLM completion succeeded
+2025-11-04 21:43:11 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:11 [INFO] LLM completion succeeded
+2025-11-04 21:43:14 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:14 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 70%]
+tests/integration/test_llm_integration.py::TestRateLimitHandling::test_rate_limit_graceful_handling 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:43:16 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:16 [INFO] LLM completion succeeded
+2025-11-04 21:43:19 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:19 [INFO] LLM completion succeeded
+2025-11-04 21:43:21 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:21 [INFO] LLM completion succeeded
+2025-11-04 21:43:23 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:23 [INFO] LLM completion succeeded
+2025-11-04 21:43:26 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:26 [INFO] LLM completion succeeded
+2025-11-04 21:43:29 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:29 [INFO] LLM completion succeeded
+2025-11-04 21:43:31 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:31 [INFO] LLM completion succeeded
+2025-11-04 21:43:35 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:35 [INFO] LLM completion succeeded
+2025-11-04 21:43:38 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:38 [INFO] LLM completion succeeded
+2025-11-04 21:43:40 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:40 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 75%]
+tests/integration/test_llm_integration.py::TestMultiProviderE2E::test_all_providers_complete_workflow 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:43:42 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:42 [INFO] LLM completion succeeded
+2025-11-04 21:43:43 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:43 [INFO] LLM completion succeeded
+2025-11-04 21:43:44 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 79%]
+tests/integration/test_llm_integration.py::TestMultiProviderE2E::test_all_providers_streaming_workflow 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:43:44 [INFO] LLM streaming started
+2025-11-04 21:43:44 [ERROR] Task exception was never retrieved
+future: <Task finished name='Task-406' coro=<AsyncClient.aclose() done, defined at /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py:1967> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1974, in aclose
+    await self._transport.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 365, in aclose
+    await self._pool.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 314, in aclose
+    await connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 166, in aclose
+    await self._connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 241, in aclose
+    await self._network_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 54, in aclose
+    await self._stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 234, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1323, in aclose
+    self._transport.close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1210, in close
+    super().close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 794, in call_soon
+    self._check_closed()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 540, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+2025-11-04 21:43:47 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:47 [INFO] LLM streaming completed
+2025-11-04 21:43:47 [INFO] LLM streaming started
+2025-11-04 21:43:49 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-04 21:43:49 [INFO] LLM streaming completed
+2025-11-04 21:43:49 [INFO] LLM streaming started
+2025-11-04 21:43:50 [INFO] LLM streaming completed
+PASSED                                                                                                                                                                               [ 83%]
+tests/integration/test_llm_integration.py::TestMultiProviderE2E::test_global_singleton_instance PASSED                                                                               [ 87%]
+tests/integration/test_llm_integration.py::TestPerformanceMetrics::test_latency_tracking_accuracy 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:43:50 [ERROR] Task exception was never retrieved
+future: <Task finished name='Task-417' coro=<AsyncClient.aclose() done, defined at /Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py:1967> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1974, in aclose
+    await self._transport.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 365, in aclose
+    await self._pool.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 314, in aclose
+    await connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 166, in aclose
+    await self._connection.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 241, in aclose
+    await self._network_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 54, in aclose
+    await self._stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 234, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/druk/WorkSpace/AetherForge/AgentCore/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1323, in aclose
+    self._transport.close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1210, in close
+    super().close()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 794, in call_soon
+    self._check_closed()
+  File "/Users/druk/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 540, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+2025-11-04 21:43:52 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:52 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 91%]
+tests/integration/test_llm_integration.py::TestPerformanceMetrics::test_token_usage_accuracy 
+-------------------------------------------------------------------------------------- live log call ---------------------------------------------------------------------------------------
+2025-11-04 21:43:56 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-04 21:43:56 [INFO] LLM completion succeeded
+PASSED                                                                                                                                                                               [ 95%]
+tests/training/integration/test_database_integration.py::test_foreign_key_cascade_delete ERROR                                                                                       [100%]
+ERROR: Coverage failure: total of 35 is less than fail-under=85
+
+
+========================================================================================== ERRORS ==========================================================================================
+____________________________________________________________________ ERROR at setup of test_foreign_key_cascade_delete _____________________________________________________________________
+file /Users/druk/WorkSpace/AetherForge/AgentCore/tests/training/integration/test_database_integration.py, line 204
+  @pytest.mark.integration
+  @pytest.mark.asyncio
+  async def test_foreign_key_cascade_delete(init_real_db) -> None:
+      """Test that deleting training job cascades to trajectories and checkpoints.
+
+      CRITICAL: This test requires real PostgreSQL to properly test CASCADE DELETE behavior.
+      SQLite's foreign key handling differs from PostgreSQL, so this test is marked
+      with @pytest.mark.integration to use testcontainers PostgreSQL.
+      """
+      # Setup
+      config = GRPOConfig()
+      queries = [
+          TrainingQuery(query=f"Q{i}", expected_outcome={"a": True}) for i in range(100)
+      ]
+
+      from agentcore.training.models import (
+          PolicyCheckpoint,
+          TrainingJob,
+          Trajectory,
+          TrajectoryStep)
+
+      job = TrainingJob(
+          agent_id="test-agent-cascade",
+          config=config,
+          training_data=queries,
+          total_iterations=100,
+          budget_usd=Decimal("50.00"))
+
+      async with get_session() as session:
+          job_db = await TrainingJobRepository.create(session, job)
+          await session.commit()
+          job_id = job_db.job_id
+
+      # Create trajectory
+      step = TrajectoryStep(
+          state={},
+          action={},
+          result={},
+          timestamp=datetime.now(UTC),
+          duration_ms=10)
+      trajectory = Trajectory(
+          job_id=job_id,
+          agent_id="test-agent-cascade",
+          query="Test",
+          steps=[step])
+
+      async with get_session() as session:
+          traj_db = await TrajectoryRepository.create(session, trajectory)
+          await session.commit()
+          traj_id = traj_db.trajectory_id
+
+      # Create checkpoint
+      checkpoint = PolicyCheckpoint(
+          agent_id="test-agent-cascade",
+          job_id=job_id,
+          iteration=5,
+          validation_score=0.75)
+
+      async with get_session() as session:
+          cp_db = await CheckpointRepository.create(session, checkpoint)
+          await session.commit()
+          cp_id = cp_db.checkpoint_id
+
+      # Delete training job (should cascade)
+      async with get_session() as session:
+          await TrainingJobRepository.delete(session, job_id)
+          await session.commit()
+
+      # Verify cascade deletion
+      async with get_session() as session:
+          # Job should be deleted
+          job_db = await TrainingJobRepository.get_by_id(session, job_id)
+          assert job_db is None
+
+          # Trajectory should be deleted
+          traj_db = await TrajectoryRepository.get_by_id(session, traj_id)
+          assert traj_db is None
+
+          # Checkpoint should be deleted
+          cp_db = await CheckpointRepository.get_by_id(session, cp_id)
+          assert cp_db is None
+E       fixture 'init_real_db' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, benchmark, benchmark_weave, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, fastsession, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, init_test_db, init_test_db_fast, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, session, test_db_engine, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/druk/WorkSpace/AetherForge/AgentCore/tests/training/integration/test_database_integration.py:204
+====================================================================================== tests coverage ======================================================================================
+_____________________________________________________________________ coverage: platform darwin, python 3.12.8-final-0 _____________________________________________________________________
+
+Name                                                              Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------------
+src/agentcore/a2a_protocol/__init__.py                                0      0   100%
+src/agentcore/a2a_protocol/config.py                                 48      0   100%
+src/agentcore/a2a_protocol/database/__init__.py                       2      0   100%
+src/agentcore/a2a_protocol/database/connection.py                    61     44    28%   34-40, 50-88, 99-106, 121-132, 142-151
+src/agentcore/a2a_protocol/database/models.py                       173      3    98%   30-33
+src/agentcore/a2a_protocol/database/repositories.py                 194    110    43%   38-58, 63-64, 71-75, 88-97, 104-109, 116-125, 130-135, 140-141, 146-149, 166-171, 196-235, 244-261, 266-267, 276-287, 294-304, 315-326, 331-332, 337-340, 347-353, 371-384, 391-397, 403-423, 428-434, 447-449, 454-457, 464-491, 498-501, 506-529, 534-537, 544-551, 558-565, 570-585, 592-601, 608-624, 629-631
+src/agentcore/a2a_protocol/main.py                                   45     13    71%   48-50, 56-73, 119-121
+src/agentcore/a2a_protocol/metrics/__init__.py                        2      0   100%
+src/agentcore/a2a_protocol/metrics/llm_metrics.py                   124     37    70%   32, 38-44, 55, 63-69, 77, 83-89, 228-234, 255-262, 337, 348, 379, 381, 383, 385, 387, 389, 391, 393
+src/agentcore/a2a_protocol/middleware.py                             41     24    41%   44-85, 92-120
+src/agentcore/a2a_protocol/models/__init__.py                         0      0   100%
+src/agentcore/a2a_protocol/models/agent.py                          187     64    66%   62-66, 87-101, 135-141, 251-255, 261-263, 268-269, 273-274, 278, 282, 286-289, 293-308, 320-325, 337-338, 352-356, 365, 369-370
+src/agentcore/a2a_protocol/models/events.py                         116     21    82%   79, 122-132, 137-144, 148-150, 176, 180-181
+src/agentcore/a2a_protocol/models/jsonrpc.py                         91     22    76%   52-61, 88-92, 97, 109-112, 123-125, 153-170, 185
+src/agentcore/a2a_protocol/models/llm.py                             62     15    76%   72-74, 111-120, 175-179
+src/agentcore/a2a_protocol/models/security.py                       100     28    72%   96-98, 127-136, 149-151, 155, 171, 189-191, 195-196, 200-201, 210-216, 220, 224-225
+src/agentcore/a2a_protocol/models/session.py                        171     67    61%   134-138, 143, 148, 157-159, 164, 169-171, 176, 180-201, 205-208, 212-215, 219-222, 226-230, 234-240, 244-248, 252-253, 257-258, 262, 266-268, 272-274, 278-280, 284-290, 294-296, 300
+src/agentcore/a2a_protocol/models/task.py                           207     75    64%   82-94, 164-171, 177-181, 187-191, 195, 253, 258, 263, 268, 273, 278, 287, 297-299, 303-321, 325-330, 334-339, 347-355, 359-378, 382-386, 392-397, 407-410, 414
+src/agentcore/a2a_protocol/routers/__init__.py                        0      0   100%
+src/agentcore/a2a_protocol/routers/health.py                         57     33    42%   46-48, 66-109, 120
+src/agentcore/a2a_protocol/routers/jsonrpc.py                        32     17    47%   39-83, 98, 110
+src/agentcore/a2a_protocol/routers/websocket.py                      36     27    25%   33-123
+src/agentcore/a2a_protocol/routers/wellknown.py                      43     25    42%   29-80, 91-100, 117-126, 136-150, 160-175
+src/agentcore/a2a_protocol/services/__init__.py                       0      0   100%
+src/agentcore/a2a_protocol/services/agent_jsonrpc.py                151    124    18%   43-81, 96-111, 135-163, 179-202, 219-241, 259-294, 309-319, 334-349, 365-391
+src/agentcore/a2a_protocol/services/agent_manager.py                215    186    13%   62-105, 122-125, 137-140, 154-187, 204-213, 226-244, 256-262, 271, 275, 279-285, 297-316, 332-346, 358-408, 429-483, 502-569, 573-599, 603-608
+src/agentcore/a2a_protocol/services/context_chain.py                 76     45    41%   85-88, 118-148, 157, 169-172, 181, 190, 199-207, 216, 228, 246-253, 257, 277, 293, 309
+src/agentcore/a2a_protocol/services/embedding_service.py             65     53    18%   30-32, 36-52, 68-82, 98-119, 137-157, 175-180, 195-197
+src/agentcore/a2a_protocol/services/event_jsonrpc.py                122     95    22%   43-88, 106-144, 159-186, 201-216, 236-256, 275-289, 308-335, 349-353, 367-377
+src/agentcore/a2a_protocol/services/event_manager.py                216    170    21%   37-42, 54-67, 71-81, 85-89, 156-188, 196-214, 229-267, 271-279, 285-286, 310-342, 356-379, 393-401, 416-435, 439-456, 464, 472-481, 490, 503-548, 565-570, 576-588, 592-604, 608
+src/agentcore/a2a_protocol/services/health_jsonrpc.py                85     58    32%   34-47, 66-70, 93-108, 127-131, 149-153, 169-208, 223-238, 269-281
+src/agentcore/a2a_protocol/services/health_monitor.py               120     91    24%   67-74, 82-96, 100-106, 115-140, 155-246, 252-257, 270-271, 275, 283-288
+src/agentcore/a2a_protocol/services/jsonrpc_handler.py              119     79    34%   74-76, 80, 92-126, 140-150, 159-187, 193-240, 258-287, 316, 326, 332-335
+src/agentcore/a2a_protocol/services/llm_client_anthropic.py         134     61    54%   148, 191, 209, 221-296, 333, 335, 348, 364-399, 429, 433, 435, 440
+src/agentcore/a2a_protocol/services/llm_client_base.py               14      3    79%   171, 228, 280
+src/agentcore/a2a_protocol/services/llm_client_gemini.py            116     47    59%   153, 157-159, 222-293, 354-388, 419, 423, 428
+src/agentcore/a2a_protocol/services/llm_client_openai.py            202    130    36%   119, 185, 194-248, 260-331, 364, 366, 378, 390-425, 448-533, 565, 569, 571, 576, 583-586, 589
+src/agentcore/a2a_protocol/services/llm_jsonrpc.py                   88     70    20%   46-140, 164-170, 193-204, 224-294
+src/agentcore/a2a_protocol/services/llm_service.py                  137     41    70%   144, 149, 169-170, 198-209, 219-230, 240-251, 259, 395-404, 450-470, 550-568, 573-582, 632-676
+src/agentcore/a2a_protocol/services/message_router.py               257    197    23%   56-63, 67, 71, 75, 135-198, 211-233, 246-256, 273-299, 311-322, 326-331, 335-337, 358-385, 396-400, 423-441, 459-505, 514-534, 543-551, 565-566, 577-578, 582-584, 602-604, 636-720, 737-747
+src/agentcore/a2a_protocol/services/model_selector.py                59     46    22%   115-116, 145-199, 229-251, 272-304, 327-358
+src/agentcore/a2a_protocol/services/routing_jsonrpc.py               92     68    26%   38-84, 99-120, 135-150, 164-168, 182-190, 205-220, 235-250, 265-280
+src/agentcore/a2a_protocol/services/security_jsonrpc.py             160    129    19%   41-76, 91-109, 125-149, 164-184, 200-229, 244-273, 290-331, 346-364, 383-407, 421-425, 440-456
+src/agentcore/a2a_protocol/services/security_service.py             163    120    26%   96-126, 138-165, 178-182, 197-222, 235-249, 264-300, 313-377, 399-419, 423, 427-430, 449-462, 475-486, 502-543, 550-557, 561
+src/agentcore/a2a_protocol/services/session_jsonrpc.py              296    245    17%   47-93, 108-120, 135-151, 170-186, 205-223, 242-260, 280-301, 322-336, 357-374, 395-409, 425-439, 461-478, 498-516, 544-601, 615-632, 646-663, 679-700, 721-739, 759-786, 802-821, 841-870
+src/agentcore/a2a_protocol/services/session_manager.py              395    347    12%   69-111, 128-142, 154-181, 193-224, 236-263, 275-307, 320-352, 365-377, 393-410, 425-429, 442-454, 467-479, 495-504, 516-530, 543-594, 608-637, 646-662, 675-719, 731-759, 774-801, 819-883, 898-929, 944-1013, 1019-1021, 1025-1026, 1031-1038, 1043-1051, 1055-1057, 1061-1066
+src/agentcore/a2a_protocol/services/task_jsonrpc.py                 243    202    17%   44-83, 98-119, 135-156, 176-192, 213-258, 275-316, 331-347, 368-385, 416-472, 487-502, 516-522, 537-562, 577-597, 616-645, 666-685, 704-723
+src/agentcore/a2a_protocol/services/task_manager.py                 273    230    16%   72-105, 115, 128-173, 185-219, 238-267, 283-310, 322-347, 363-382, 405-425, 437-441, 455-464, 477-531, 548, 560-567, 579-610, 616-618, 622-625, 629-640, 647-661, 667-680, 684-694, 698-710, 719-720, 725-743
+src/agentcore/agent_runtime/__init__.py                               1      0   100%
+src/agentcore/agent_runtime/config/__init__.py                        2      0   100%
+src/agentcore/agent_runtime/config/settings.py                       71      1    99%   110
+src/agentcore/agent_runtime/engines/__init__.py                       8      0   100%
+src/agentcore/agent_runtime/engines/autonomous_engine.py            141    113    20%   45-75, 79, 86, 107-172, 184-230, 234-278, 296-328, 338-371, 388, 403-426, 441, 458, 479-480, 494, 507-510, 521-533
+src/agentcore/agent_runtime/engines/autonomous_models.py             86      0   100%
+src/agentcore/agent_runtime/engines/base.py                          14      2    86%   20-21
+src/agentcore/agent_runtime/engines/cot_engine.py                   137    111    19%   38-68, 72, 79, 100-180, 189-209, 221-239, 252-265, 284-326, 341-348, 357-360, 369-377, 393-402, 414-420, 433-440, 452-460
+src/agentcore/agent_runtime/engines/cot_models.py                    41      0   100%
+src/agentcore/agent_runtime/engines/react_engine.py                 124    100    19%   39-42, 46, 53, 74-154, 163-187, 196-203, 207-214, 224-232, 244, 256-259, 272-287, 303-335, 347-350
+src/agentcore/agent_runtime/engines/react_models.py                  37      0   100%
+src/agentcore/agent_runtime/jsonrpc/__init__.py                       2      0   100%
+src/agentcore/agent_runtime/jsonrpc/tools_jsonrpc.py                177    147    17%   35-40, 59-121, 139-145, 158-204, 223-236, 261-299, 319-320, 346-385, 419-429, 446-511, 544-554, 571-649, 678-687, 704-757
+src/agentcore/agent_runtime/main.py                                  67     34    49%   39-103, 137, 143, 149, 157-159
+src/agentcore/agent_runtime/middleware/__init__.py                    2      0   100%
+src/agentcore/agent_runtime/middleware/security_middleware.py        92     78    15%   37-38, 61-134, 151-200, 221-275, 299-337
+src/agentcore/agent_runtime/models/__init__.py                        5      0   100%
+src/agentcore/agent_runtime/models/agent_config.py                   47      8    83%   133-135, 141-145
+src/agentcore/agent_runtime/models/agent_state.py                    23      0   100%
+src/agentcore/agent_runtime/models/error_types.py                    70      0   100%
+src/agentcore/agent_runtime/models/plugin.py                        119     17    86%   147-151, 157-161, 289-292, 304-308, 321-327
+src/agentcore/agent_runtime/models/sandbox.py                        85      8    91%   196, 245-247, 261-264
+src/agentcore/agent_runtime/models/state_persistence.py              83      6    93%   19, 24-27, 35
+src/agentcore/agent_runtime/models/tool_integration.py              101      9    91%   141-147, 221, 226
+src/agentcore/agent_runtime/routers/__init__.py                       0      0   100%
+src/agentcore/agent_runtime/routers/agents.py                        86     50    42%   29-34, 73-90, 104-116, 130-142, 159-167, 181-187, 201-202, 216-231, 243-244
+src/agentcore/agent_runtime/routers/monitoring.py                   173     71    59%   135-140, 155-158, 176-179, 194-200, 214-220, 231-232, 255-263, 277-292, 310-318, 336-344, 364-367, 378-379, 391-394, 410-420, 445-473, 491
+src/agentcore/agent_runtime/security/__init__.py                      0      0   100%
+src/agentcore/agent_runtime/services/__init__.py                      4      0   100%
+src/agentcore/agent_runtime/services/a2a_client.py                  171    137    20%   86-98, 103-113, 117-119, 123-134, 138-141, 145-153, 182-319, 339-374, 389-396, 418-433, 455-471, 491-505, 525-539, 561-576, 598-614, 626-630
+src/agentcore/agent_runtime/services/agent_lifecycle.py             150    126    16%   48-51, 69-129, 142-183, 196-222, 239-288, 303, 312, 329-331, 348-352, 371-372, 387-389, 398-449
+src/agentcore/agent_runtime/services/alerting_service.py            249    191    23%   74-87, 96-99, 108-111, 115-116, 125, 172-181, 190-194, 206-213, 221-222, 227, 236-243, 264-265, 282-318, 336-368, 380-381, 406-435, 458-512, 524-549, 566-583, 600-627, 644-660, 677-683, 692, 710, 714-716, 720-727, 731-741, 751-753
+src/agentcore/agent_runtime/services/audit_logger.py                132    112    15%   34-43, 47-52, 60-76, 86-97, 133-155, 174-210, 214-229, 237-256, 269-283, 299-330
+src/agentcore/agent_runtime/services/circuit_breaker.py             121     85    30%   56-66, 75, 80, 103-125, 129-137, 145-169, 178-210, 218-224, 233, 255-256, 273-276, 285-287, 291-293, 302, 311, 326-328
+src/agentcore/agent_runtime/services/container_manager.py           162    134    17%   37-43, 47-52, 56-58, 78-107, 120-133, 151-168, 182-200, 216-231, 251-260, 272-280, 298-407, 419-424, 437-456
+src/agentcore/agent_runtime/services/distributed_tracing.py         171    118    31%   69-80, 90, 100-105, 121-126, 140-142, 151-153, 162, 196-199, 209, 221, 230, 247, 269-274, 295-299, 308-311, 330-361, 377-388, 408-416, 427, 445, 457-460, 472-480, 497-504, 537-586, 596-598
+src/agentcore/agent_runtime/services/error_recovery.py              184    153    17%   48-51, 81-185, 197-244, 256-290, 300-301, 323-346, 361-380, 395, 418-429, 459-476, 490-498, 515-518, 533-534, 543-546, 555-573, 595-597
+src/agentcore/agent_runtime/services/llm_service.py                 101     69    32%   54-64, 98-170, 197-249, 253-254, 276-283, 297-298, 304-306
+src/agentcore/agent_runtime/services/metrics_collector.py           148    100    32%   48-63, 68-100, 110-147, 156-206, 215-255, 264-279, 288-303, 321-322, 336-337, 351, 367, 385, 407-411, 429-437, 453-455, 471-476, 494-498, 512, 526, 539, 549, 558, 567, 577, 586, 595-596, 605, 626-646, 658, 667-689, 706-714, 723, 733-735
+src/agentcore/agent_runtime/services/multi_agent_coordinator.py     209    124    41%   125-129, 139-143, 152-156, 165-181, 203-221, 233-261, 277-294, 306-350, 369-423, 435-441, 454-467, 486-515, 528-539, 549-559, 568, 580, 595-597
+src/agentcore/agent_runtime/services/parallel_executor.py            93     73    22%   43, 60-180, 197-209, 230-247, 274-296
+src/agentcore/agent_runtime/services/performance_optimizer.py       240    189    21%   36-40, 44, 48-50, 64-68, 80-91, 103-111, 120-121, 125-127, 136-139, 149-151, 155-162, 176-180, 197-227, 241-254, 274-296, 309-323, 336-337, 351-356, 371-386, 402-403, 427-458, 467-469, 473-480, 497-519, 529-530, 542-549, 563-564, 576-583, 598-602, 617, 626-649, 664-685, 689-705, 715-717
+src/agentcore/agent_runtime/services/plugin_loader.py               209    183    12%   45-54, 70-112, 135-238, 254-286, 303-312, 329-345, 357-368, 383-386, 403-411, 420-464, 469-494, 498-509, 519-542, 552-574
+src/agentcore/agent_runtime/services/plugin_registry.py             150    124    17%   48-57, 87-140, 163-251, 272-287, 299-308, 317-338, 350-376, 384-395, 406-424, 428-436, 440
+src/agentcore/agent_runtime/services/plugin_validator.py            161    140    13%   71-75, 99-185, 189-216, 220-243, 249-274, 280-302, 308-373, 377-401
+src/agentcore/agent_runtime/services/plugin_version_manager.py       96     81    16%   25-27, 42-61, 78-83, 103-122, 137-152, 167-170, 183-190, 206-241, 257-271
+src/agentcore/agent_runtime/services/rate_limiter.py                 94     75    20%   35-39, 90-92, 96-102, 106-109, 129-196, 225-255, 273-282, 299-304
+src/agentcore/agent_runtime/services/resource_manager.py            246    170    31%   69-77, 106-107, 125-131, 140-144, 150-157, 169, 184-189, 201-206, 223-226, 242-264, 274-279, 289-346, 374-399, 409-413, 437-441, 458-468, 485-499, 513-516, 532, 552-564, 572-574, 578-580, 596-624, 638, 647-649, 661, 670-694, 709-711, 723-724, 733, 742-763, 780-782
+src/agentcore/agent_runtime/services/retry_handler.py                88     69    22%   44-48, 59-78, 103-151, 184-191, 218-224, 246-281, 285-288
+src/agentcore/agent_runtime/services/sandbox_service.py             145    116    20%   20, 54-61, 76-118, 130-166, 194-288, 311-404, 421-454, 473-476, 495-553, 557, 561, 575
+src/agentcore/agent_runtime/services/security_profiles.py            73     56    23%   118-123, 141-195, 212-235, 239-247, 256-333, 349-369
+src/agentcore/agent_runtime/services/state_migration.py              83     67    19%   23-31, 51-65, 87-97, 117-177, 194-227, 234-239, 258-260
+src/agentcore/agent_runtime/services/state_persistence.py           134    114    15%   61-73, 102-159, 182-241, 261-322, 345-360, 377-392, 405-429, 433, 437-447
+src/agentcore/agent_runtime/services/state_serializer.py             71     49    31%   42, 64-104, 126-148, 162, 175-176, 189-202, 215-228, 238-240
+src/agentcore/agent_runtime/services/task_handler.py                 67     52    22%   42-44, 66-99, 115-180, 195-213, 222, 226-244
+src/agentcore/agent_runtime/services/tool_executor.py               160    131    18%   68-80, 93, 102, 111, 123-265, 269-276, 284-291, 299-306, 329-332, 352-403, 427-499, 524-534
+src/agentcore/agent_runtime/services/tool_executor_factory.py        28     20    29%   28-92
+src/agentcore/agent_runtime/services/tool_registry.py               150    120    20%   23, 45-51, 65-83, 98-118, 130, 139, 151-152, 164-165, 177-181, 203-231, 240-253, 271-329, 350-360, 370, 383, 393-414, 420-485
+src/agentcore/agent_runtime/tools/__init__.py                         5      0   100%
+src/agentcore/agent_runtime/tools/api_tools.py                       79     67    15%   40-105, 124-131, 150-158, 179-208, 219-399
+src/agentcore/agent_runtime/tools/code_execution_tools.py            78     65    17%   32-116, 129-169, 185-230, 241-350
+src/agentcore/agent_runtime/tools/search_tools.py                    58     46    21%   34-41, 67-125, 143-187, 198-305
+src/agentcore/agent_runtime/tools/utility_tools.py                   33     25    24%   32-56, 81-99, 118-123, 139-236
+-----------------------------------------------------------------------------------------------
+TOTAL                                                             11727   7598    35%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+FAIL Required test coverage of 85% not reached. Total coverage: 35.21%
+================================================================================= short test summary info ==================================================================================
+ERROR tests/training/integration/test_database_integration.py::test_foreign_key_cascade_delete
+================================================================= 23 passed, 5191 deselected, 1 error in 100.84s (0:01:40) =================================================================
