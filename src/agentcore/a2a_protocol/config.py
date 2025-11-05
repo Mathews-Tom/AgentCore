@@ -4,7 +4,9 @@ A2A Protocol Layer Configuration
 Environment-based configuration management for the A2A protocol layer.
 """
 
-from pydantic import Field
+from typing import Any
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -168,6 +170,60 @@ class Settings(BaseSettings):
     LLM_RATE_LIMIT_QUEUE_SIZE: int = Field(
         default=100, ge=0, description="Maximum queue size for rate-limited requests (>=0)"
     )
+
+    # Coordination Service (Ripple Effect Protocol)
+    COORDINATION_ENABLE_REP: bool = Field(
+        default=True, description="Enable Ripple Effect Protocol coordination"
+    )
+    COORDINATION_SIGNAL_TTL: int = Field(
+        default=60, gt=0, description="Default signal time-to-live in seconds (must be >0)"
+    )
+    COORDINATION_MAX_HISTORY_SIZE: int = Field(
+        default=100, ge=1, description="Maximum signal history size per agent (>=1)"
+    )
+    COORDINATION_CLEANUP_INTERVAL: int = Field(
+        default=300, gt=0, description="Signal cleanup interval in seconds (must be >0)"
+    )
+
+    # Routing Optimization Weights (must sum to 1.0)
+    ROUTING_WEIGHT_LOAD: float = Field(
+        default=0.25, ge=0.0, le=1.0, description="Weight for load score (0.0-1.0)"
+    )
+    ROUTING_WEIGHT_CAPACITY: float = Field(
+        default=0.25, ge=0.0, le=1.0, description="Weight for capacity score (0.0-1.0)"
+    )
+    ROUTING_WEIGHT_QUALITY: float = Field(
+        default=0.20, ge=0.0, le=1.0, description="Weight for quality score (0.0-1.0)"
+    )
+    ROUTING_WEIGHT_COST: float = Field(
+        default=0.15, ge=0.0, le=1.0, description="Weight for cost score (0.0-1.0)"
+    )
+    ROUTING_WEIGHT_AVAILABILITY: float = Field(
+        default=0.15, ge=0.0, le=1.0, description="Weight for availability score (0.0-1.0)"
+    )
+
+    @field_validator("ROUTING_WEIGHT_AVAILABILITY")
+    @classmethod
+    def validate_weights_sum_to_one(cls, v: float, info: Any) -> float:
+        """Ensure routing weights sum to 1.0 (±0.01 tolerance)."""
+        # Get all weight values from the validation context
+        weights = [
+            info.data.get("ROUTING_WEIGHT_LOAD", 0.25),
+            info.data.get("ROUTING_WEIGHT_CAPACITY", 0.25),
+            info.data.get("ROUTING_WEIGHT_QUALITY", 0.20),
+            info.data.get("ROUTING_WEIGHT_COST", 0.15),
+            v,  # ROUTING_WEIGHT_AVAILABILITY (current field)
+        ]
+        total = sum(weights)
+
+        # Allow small tolerance for floating point precision
+        if not (0.99 <= total <= 1.01):
+            raise ValueError(
+                f"Routing weights must sum to 1.0 (got {total:.3f}). "
+                f"Weights: load={weights[0]}, capacity={weights[1]}, "
+                f"quality={weights[2]}, cost={weights[3]}, availability={weights[4]}"
+            )
+        return v
 
     model_config = {
         "env_file": ".env",
