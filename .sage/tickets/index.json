@@ -2,8 +2,8 @@
   "version": "1.0",
   "generated": "2025-11-04T20:22:37Z",
   "total_tickets": 344,
-  "completed_tickets": 146,
-  "unprocessed_tickets": 181,
+  "completed_tickets": 147,
+  "unprocessed_tickets": 180,
   "components": {
     "a2a-protocol": {
       "total": 17,
@@ -7154,7 +7154,7 @@
       "id": "COORD-015",
       "title": "Performance Benchmarks",
       "component": "coordination-service",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "Story",
       "effort": 5,
@@ -7165,7 +7165,18 @@
         "COORD-013"
       ],
       "created": "2025-10-24T23:01:28.714880+00:00",
-      "updated": "2025-10-24T23:01:28.714880+00:00"
+      "updated": "2025-11-05T01:28:30Z",
+      "completed": "2025-11-05T01:28:30Z",
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-05T01:28:30Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-05T01:28:30Z"
+        }
+      ]
     },
     {
       "id": "COORD-016",
