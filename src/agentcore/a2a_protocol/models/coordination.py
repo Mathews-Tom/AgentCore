@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SignalType(str, Enum):
@@ -141,8 +141,8 @@ class SensitivitySignal(BaseModel):
         decay = math.exp(-age_seconds / self.ttl_seconds)
         return max(0.0, min(1.0, decay))
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "signal_id": "550e8400-e29b-41d4-a716-446655440000",
                 "agent_id": "agent-001",
@@ -154,6 +154,7 @@ class SensitivitySignal(BaseModel):
                 "trace_id": "trace-abc123"
             }
         }
+    )
 
 
 class AgentCoordinationState(BaseModel):
@@ -202,8 +203,8 @@ class AgentCoordinationState(BaseModel):
         description="Last update timestamp (UTC)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "agent_id": "agent-001",
                 "signals": {},
@@ -216,6 +217,7 @@ class AgentCoordinationState(BaseModel):
                 "last_updated": "2025-01-15T10:30:00Z"
             }
         }
+    )
 
 
 class CoordinationMetrics(BaseModel):
@@ -257,8 +259,8 @@ class CoordinationMetrics(BaseModel):
     )
     agents_tracked: int = Field(default=0, ge=0, description="Agents with coordination state")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "total_signals": 1500,
                 "signals_by_type": {
@@ -276,3 +278,4 @@ class CoordinationMetrics(BaseModel):
                 "agents_tracked": 10
             }
         }
+    )
