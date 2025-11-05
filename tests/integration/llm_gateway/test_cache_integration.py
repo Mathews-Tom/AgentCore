@@ -26,6 +26,7 @@ from agentcore.llm_gateway.cache_models import (
     EvictionPolicy,
 )
 from agentcore.llm_gateway.cache_service import CacheService, L1Cache, L2Cache
+from agentcore.llm_gateway.models import LLMRequest, LLMResponse
 
 
 pytestmark = pytest.mark.integration
@@ -205,8 +206,12 @@ class TestL2CacheIntegration:
 
         cache_key = "test:ttl:key"
 
+        # Create entry without TTL so cache's TTL is used
+        entry = sample_cache_entry.model_copy(deep=True)
+        entry.ttl_seconds = None  # Let cache set the TTL
+
         try:
-            await cache.set(cache_key, sample_cache_entry)
+            await cache.set(cache_key, entry)
 
             # Immediately retrieve - should exist
             assert await cache.get(cache_key) is not None
@@ -292,7 +297,7 @@ class TestCacheServiceIntegration:
     async def test_cache_service_initialization(self, cache_config: CacheConfig) -> None:
         """Test cache service initialization."""
         service = CacheService(config=cache_config)
-        await service.initialize()
+        await service.connect()
 
         assert service.l1_cache is not None
         assert service.l2_cache is not None
@@ -301,144 +306,127 @@ class TestCacheServiceIntegration:
     async def test_cache_service_lookup_l1_hit(self, cache_config: CacheConfig) -> None:
         """Test cache service L1 hit."""
         service = CacheService(config=cache_config)
-        await service.initialize()
+        await service.connect()
 
-        # Create cache key and entry
-        cache_key = CacheKey(
+        # Create request and response
+        request = LLMRequest(
             model="gpt-4",
             messages=[{"role": "user", "content": "Test"}],
         )
 
-        entry = CacheEntry(
-            cache_key=cache_key.to_hash(),
-            response_id="resp_123",
+        response = LLMResponse(
+            id="resp_123",
             model="gpt-4",
             provider="openai",
-            choices=[{"message": {"content": "Test response"}}],
-            created_at=datetime.now(UTC),
-            access_count=1,
-            last_accessed=datetime.now(UTC),
+            choices=[{"message": {"role": "assistant", "content": "Test response"}, "index": 0}],
+            usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
         )
 
-        # Set in L1 directly
-        if service.l1_cache:
-            service.l1_cache.set(cache_key.to_hash(), entry)
+        # Store in cache
+        await service.set(request, response)
 
         # Lookup should hit L1
-        result = await service.lookup(cache_key)
+        result, cache_level = await service.get(request)
         assert result is not None
-        assert result.cache_key == entry.cache_key
+        assert cache_level == "l1"
+        assert result.id == "resp_123"
 
     @pytest.mark.asyncio
     async def test_cache_service_lookup_miss(self, cache_config: CacheConfig) -> None:
         """Test complete cache miss (not in L1 or L2)."""
         service = CacheService(config=cache_config)
-        await service.initialize()
+        await service.connect()
 
-        cache_key = CacheKey(
+        request = LLMRequest(
             model="gpt-4",
             messages=[{"role": "user", "content": "Nonexistent"}],
         )
 
-        result = await service.lookup(cache_key)
+        result, cache_level = await service.get(request)
         assert result is None
+        assert cache_level is None
 
     @pytest.mark.asyncio
     async def test_cache_service_store(self, cache_config: CacheConfig) -> None:
         """Test cache service store operation."""
         service = CacheService(config=cache_config)
-        await service.initialize()
+        await service.connect()
 
-        cache_key = CacheKey(
+        request = LLMRequest(
             model="gpt-4",
             messages=[{"role": "user", "content": "Test store"}],
         )
 
-        entry = CacheEntry(
-            cache_key=cache_key.to_hash(),
-            response_id="resp_store",
+        response = LLMResponse(
+            id="resp_store",
             model="gpt-4",
             provider="openai",
-            choices=[{"message": {"content": "Stored response"}}],
-            created_at=datetime.now(UTC),
-            access_count=1,
-            last_accessed=datetime.now(UTC),
+            choices=[{"message": {"role": "assistant", "content": "Stored response"}, "index": 0}],
+            usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
         )
 
-        try:
-            # Store entry
-            await service.store(cache_key, entry)
+        # Store entry
+        await service.set(request, response)
 
-            # Verify stored in L1
-            if service.l1_cache:
-                l1_result = service.l1_cache.get(cache_key.to_hash())
-                assert l1_result is not None
-
-            # Verify lookup works
-            result = await service.lookup(cache_key)
-            assert result is not None
-            assert result.response_id == "resp_store"
-        finally:
-            # Cleanup
-            await service.invalidate(cache_key)
+        # Verify lookup works
+        result, cache_level = await service.get(request)
+        assert result is not None
+        assert result.id == "resp_store"
+        assert cache_level in ("l1", "l2")  # Could be in either cache
 
     @pytest.mark.asyncio
     async def test_cache_service_invalidate(self, cache_config: CacheConfig) -> None:
         """Test cache service invalidate operation."""
         service = CacheService(config=cache_config)
-        await service.initialize()
+        await service.connect()
 
-        cache_key = CacheKey(
+        request = LLMRequest(
             model="gpt-4",
             messages=[{"role": "user", "content": "Test invalidate"}],
         )
 
-        entry = CacheEntry(
-            cache_key=cache_key.to_hash(),
-            response_id="resp_invalidate",
+        response = LLMResponse(
+            id="resp_invalidate",
             model="gpt-4",
             provider="openai",
-            choices=[{"message": {"content": "To be invalidated"}}],
-            created_at=datetime.now(UTC),
-            access_count=1,
-            last_accessed=datetime.now(UTC),
+            choices=[{"message": {"role": "assistant", "content": "To be invalidated"}, "index": 0}],
+            usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
         )
 
         # Store and verify
-        await service.store(cache_key, entry)
-        assert await service.lookup(cache_key) is not None
+        await service.set(request, response)
+        result, _ = await service.get(request)
+        assert result is not None
 
         # Invalidate
-        await service.invalidate(cache_key)
+        await service.invalidate(request)
 
         # Should not exist
-        assert await service.lookup(cache_key) is None
+        result, cache_level = await service.get(request)
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_cache_service_clear(self, cache_config: CacheConfig) -> None:
         """Test cache service clear all operation."""
         service = CacheService(config=cache_config)
-        await service.initialize()
+        await service.connect()
 
         # Add multiple entries
         for i in range(5):
-            cache_key = CacheKey(
+            request = LLMRequest(
                 model="gpt-4",
                 messages=[{"role": "user", "content": f"Test {i}"}],
             )
 
-            entry = CacheEntry(
-                cache_key=cache_key.to_hash(),
-                response_id=f"resp_{i}",
+            response = LLMResponse(
+                id=f"resp_{i}",
                 model="gpt-4",
                 provider="openai",
-                choices=[{"message": {"content": f"Response {i}"}}],
-                created_at=datetime.now(UTC),
-                access_count=1,
-                last_accessed=datetime.now(UTC),
+                choices=[{"message": {"role": "assistant", "content": f"Response {i}"}, "index": 0}],
+                usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
             )
 
-            await service.store(cache_key, entry)
+            await service.set(request, response)
 
         # Clear all
         await service.clear()
