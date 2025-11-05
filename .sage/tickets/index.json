@@ -2,8 +2,8 @@
   "version": "1.0",
   "generated": "2025-11-04T20:22:37Z",
   "total_tickets": 344,
-  "completed_tickets": 147,
-  "unprocessed_tickets": 180,
+  "completed_tickets": 149,
+  "unprocessed_tickets": 178,
   "components": {
     "a2a-protocol": {
       "total": 17,
@@ -7182,7 +7182,7 @@
       "id": "COORD-016",
       "title": "Documentation and Examples",
       "component": "coordination-service",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P1",
       "type": "Story",
       "effort": 3,
@@ -7193,13 +7193,24 @@
         "COORD-013"
       ],
       "created": "2025-10-24T23:01:28.714880+00:00",
-      "updated": "2025-10-24T23:01:28.714880+00:00"
+      "updated": "2025-11-05T01:31:11Z",
+      "completed": "2025-11-05T01:31:11Z",
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-05T01:31:11Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-05T01:31:11Z"
+        }
+      ]
     },
     {
       "id": "COORD-017",
       "title": "Effectiveness Validation",
       "component": "coordination-service",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "Story",
       "effort": 2,
@@ -7210,7 +7221,18 @@
         "COORD-015"
       ],
       "created": "2025-10-24T23:01:28.714880+00:00",
-      "updated": "2025-10-24T23:01:28.714880+00:00"
+      "updated": "2025-11-05T01:34:15Z",
+      "completed": "2025-11-05T01:34:15Z",
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-05T01:34:15Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-05T01:34:15Z"
+        }
+      ]
     }
   ],
   "metadata": {
