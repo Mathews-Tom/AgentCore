@@ -10,23 +10,12 @@ import time
 from collections.abc import Callable
 
 from fastapi import Request, Response
-from prometheus_client import Counter, Gauge, Histogram
 
-# Prometheus metrics
-REQUEST_COUNT = Counter(
-    "gateway_http_requests_total",
-    "Total number of HTTP requests",
-    ["method", "endpoint", "status_code"],
-)
-
-REQUEST_DURATION = Histogram(
-    "gateway_http_request_duration_seconds",
-    "HTTP request duration in seconds",
-    ["method", "endpoint"],
-)
-
-ACTIVE_REQUESTS = Gauge(
-    "gateway_http_requests_active", "Number of active HTTP requests"
+# Import metrics from central location to avoid duplication
+from gateway.monitoring.metrics import (
+    ACTIVE_REQUESTS,
+    REQUEST_COUNT,
+    REQUEST_DURATION,
 )
 
 

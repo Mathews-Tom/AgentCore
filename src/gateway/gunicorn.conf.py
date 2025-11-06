@@ -14,7 +14,10 @@ bind = f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '8080')}"
 backlog = 4096  # Increased from default 2048 for high concurrency
 
 # Worker Processes
-workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2 + 1))
+# Note: Set to 1 for development due to Prometheus multiprocess mode requirements
+# For production, use Prometheus multiprocess mode or disable metrics
+# See: https://github.com/prometheus/client_python#multiprocess-mode-eg-gunicorn
+workers = int(os.getenv("GUNICORN_WORKERS", 1))  # Default to 1 worker for dev
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000  # Max concurrent connections per worker
 max_requests = 10000  # Restart worker after N requests (prevents memory leaks)
