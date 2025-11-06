@@ -24,7 +24,63 @@ router = APIRouter()
 logger = structlog.get_logger()
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Comprehensive health check",
+    description="""
+Check overall system health including dependencies and components.
+
+**Health Status:**
+- `healthy`: All systems operational
+- `degraded`: Some non-critical services down
+- `unhealthy`: Critical services unavailable
+
+**Components Checked:**
+- Redis: Session storage and rate limiting
+- Backend Services: A2A Protocol, Agent Runtime
+- JWT Manager: Token signing and validation
+- Session Manager: Session lifecycle management
+
+**Use Cases:**
+- Monitoring system health checks
+- Load balancer health probes
+- Operational dashboards
+- Alerting and incident response
+
+**Monitoring Integration:**
+```bash
+# Prometheus format
+curl http://localhost:8080/metrics
+
+# JSON health check
+curl http://localhost:8080/health
+
+# Parse with jq
+curl -s http://localhost:8080/health | jq '.status'
+```
+
+**No authentication required** - public endpoint for monitoring.
+    """,
+    responses={
+        200: {
+            "description": "Health check successful",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "version": "0.1.0",
+                        "timestamp": "2025-10-18T10:30:00Z",
+                        "checks": {
+                            "redis": {"status": "healthy", "details": "Connected"},
+                            "jwt": {"status": "healthy", "details": "Keys loaded"},
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
 async def health_check(request: Request) -> HealthResponse:
     """
     Comprehensive health check endpoint with metrics.
@@ -61,7 +117,64 @@ async def health_check(request: Request) -> HealthResponse:
     )
 
 
-@router.get("/ready", response_model=ReadinessResponse)
+@router.get(
+    "/ready",
+    response_model=ReadinessResponse,
+    summary="Service readiness check",
+    description="""
+Check if service is ready to accept traffic.
+
+**Difference from /health:**
+- `/health`: Overall system health (may be unhealthy but recovering)
+- `/ready`: Ready to serve requests right now
+
+**Kubernetes Integration:**
+```yaml
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 3
+```
+
+**Use Cases:**
+- Load balancer routing decisions
+- Kubernetes readiness probes
+- Rolling deployment health gates
+- Traffic shifting during deployments
+
+**Returns 503 if not ready** - prevents routing traffic to unhealthy instances.
+
+**No authentication required** - public endpoint for orchestration.
+    """,
+    responses={
+        200: {
+            "description": "Service is ready",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "ready",
+                        "ready": True,
+                        "checks": {
+                            "redis": True,
+                            "backend_services": True,
+                        },
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service not ready",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Service not ready"}
+                }
+            },
+        },
+    },
+)
 async def readiness_check(request: Request) -> ReadinessResponse:
     """
     Readiness check endpoint with dependency validation.
@@ -107,7 +220,42 @@ async def readiness_check(request: Request) -> ReadinessResponse:
     return ReadinessResponse(status="ready", ready=all_ready, checks=checks)
 
 
-@router.get("/live", response_model=LivenessResponse)
+@router.get(
+    "/live",
+    response_model=LivenessResponse,
+    summary="Service liveness check",
+    description="""
+Simple liveness probe - is the process running?
+
+**Purpose:**
+- Detect deadlocks and infinite loops
+- Restart crashed or frozen instances
+- Basic process health verification
+
+**Kubernetes Integration:**
+```yaml
+livenessProbe:
+  httpGet:
+    path: /live
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 3
+```
+
+**Always returns 200 OK** unless process is completely dead.
+
+**No authentication required** - public endpoint for orchestration.
+    """,
+    responses={
+        200: {
+            "description": "Service is alive",
+            "content": {
+                "application/json": {"example": {"status": "alive"}}
+            },
+        },
+    },
+)
 async def liveness_check() -> LivenessResponse:
     """
     Liveness check endpoint.

@@ -77,7 +77,84 @@ async def authenticate_user(username: str, password: str) -> User | None:
     )
 
 
-@router.post("/token", response_model=TokenResponse)
+@router.post(
+    "/token",
+    response_model=TokenResponse,
+    summary="Generate JWT access and refresh tokens",
+    description="""
+Generate JWT access and refresh tokens using various authentication methods.
+
+**Supported Grant Types:**
+- `password`: Username/password authentication for user accounts
+- `client_credentials`: Service account authentication for machine-to-machine communication
+- `refresh_token`: Token refresh flow (use `/auth/refresh` endpoint instead)
+
+**Authentication Flow:**
+1. Submit credentials with appropriate grant type
+2. Receive access token (expires in 60 minutes) and refresh token (expires in 7 days)
+3. Use access token in Authorization header: `Bearer YOUR_ACCESS_TOKEN`
+4. When access token expires, use refresh token to get new access token
+
+**Security:**
+- Passwords are validated securely (use strong passwords in production)
+- Tokens are RS256-signed JWTs containing user claims
+- Failed authentication attempts are logged for security monitoring
+- Rate limiting applied to prevent brute force attacks
+
+**Demo Credentials:**
+- User: `user` / `user123` (roles: user)
+- Admin: `admin` / `admin123` (roles: admin, user)
+- Service: `service` / `service123` (roles: service)
+    """,
+    responses={
+        200: {
+            "description": "Authentication successful, tokens generated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "Bearer",
+                        "expires_in": 3600,
+                        "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "scope": "user:read user:write",
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Bad request - invalid parameters or unsupported grant type",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Username and password required for password grant"
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Authentication failed - invalid credentials",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid username or password"}
+                }
+            },
+        },
+        429: {
+            "description": "Rate limit exceeded",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": "RATE_LIMIT_EXCEEDED",
+                            "message": "Too many authentication attempts",
+                            "details": {"retry_after": 60},
+                        }
+                    }
+                }
+            },
+        },
+    },
+)
 async def create_token(
     request: Request,
     token_request: TokenRequest,
@@ -222,7 +299,53 @@ async def create_token(
         ) from e
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    summary="Refresh access token",
+    description="""
+Refresh an expired access token using a valid refresh token.
+
+**When to Use:**
+- Access token has expired (401 Unauthorized with expired token)
+- Proactively refresh before expiration for uninterrupted service
+- Maintain long-lived sessions without re-authentication
+
+**Token Lifecycle:**
+- Access tokens expire in 60 minutes
+- Refresh tokens expire in 7 days
+- Both tokens share the same session
+- Logout invalidates both tokens
+
+**Security:**
+- Refresh tokens are single-use in some implementations
+- Session validation ensures token hasn't been revoked
+- Failed refresh attempts are logged for security monitoring
+    """,
+    responses={
+        200: {
+            "description": "Token refreshed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "Bearer",
+                        "expires_in": 3600,
+                        "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Invalid or expired refresh token",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid or expired refresh token"}
+                }
+            },
+        },
+    },
+)
 async def refresh_token(
     request: Request,
     refresh_token: str,
@@ -308,7 +431,40 @@ async def refresh_token(
         ) from e
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    summary="Logout and invalidate session",
+    description="""
+Logout the current user and invalidate their session.
+
+**What Happens:**
+- Current session is terminated
+- Access token becomes invalid immediately
+- Refresh token can no longer be used
+- User must re-authenticate to access protected endpoints
+
+**Security:**
+- Always logout when done to prevent unauthorized access
+- Client should delete stored tokens after logout
+- Session is removed from server-side storage
+
+**Authentication Required:** Bearer token in Authorization header
+    """,
+    responses={
+        200: {
+            "description": "Logout successful",
+            "content": {
+                "application/json": {"example": {"message": "Successfully logged out"}}
+            },
+        },
+        401: {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+                "application/json": {"example": {"detail": "Could not validate credentials"}}
+            },
+        },
+    },
+)
 async def logout(
     user: Annotated[User, Depends(require_auth)],
     request: Request,
@@ -343,7 +499,51 @@ async def logout(
     return {"message": "Successfully logged out"}
 
 
-@router.get("/me", response_model=User)
+@router.get(
+    "/me",
+    response_model=User,
+    summary="Get current user information",
+    description="""
+Retrieve information about the currently authenticated user.
+
+**Returns:**
+- User ID and username
+- Email address
+- Roles and permissions
+- Account status (active/inactive)
+- Additional user metadata
+
+**Use Cases:**
+- Display user profile in application
+- Check user permissions before operations
+- Verify authentication status
+
+**Authentication Required:** Bearer token in Authorization header
+    """,
+    responses={
+        200: {
+            "description": "User information retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "00000000-0000-0000-0000-000000000002",
+                        "username": "user",
+                        "email": "user@agentcore.ai",
+                        "roles": ["user"],
+                        "is_active": True,
+                        "metadata": {},
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+                "application/json": {"example": {"detail": "Could not validate credentials"}}
+            },
+        },
+    },
+)
 async def get_current_user_info(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
@@ -359,7 +559,53 @@ async def get_current_user_info(
     return user
 
 
-@router.get("/sessions")
+@router.get(
+    "/sessions",
+    summary="List user sessions",
+    description="""
+Retrieve all active sessions for the current user.
+
+**Session Information:**
+- Session ID and creation time
+- Expiration time and last activity
+- IP address and user agent
+- Session metadata
+
+**Use Cases:**
+- Security monitoring - detect unauthorized access
+- Device management - see where you're logged in
+- Session cleanup - terminate inactive sessions
+
+**Authentication Required:** Bearer token in Authorization header
+    """,
+    responses={
+        200: {
+            "description": "Sessions retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "sessions": [
+                            {
+                                "session_id": "550e8400-e29b-41d4-a716-446655440000",
+                                "created_at": "2025-10-18T10:00:00Z",
+                                "expires_at": "2025-10-25T10:00:00Z",
+                                "last_activity": "2025-10-18T10:30:00Z",
+                                "ip_address": "192.168.1.100",
+                                "user_agent": "Mozilla/5.0...",
+                            }
+                        ]
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+                "application/json": {"example": {"detail": "Could not validate credentials"}}
+            },
+        },
+    },
+)
 async def get_user_sessions(
     user: Annotated[User, Depends(require_auth)],
 ) -> dict[str, list[dict]]:
@@ -389,7 +635,47 @@ async def get_user_sessions(
     }
 
 
-@router.delete("/sessions/{session_id}")
+@router.delete(
+    "/sessions/{session_id}",
+    summary="Delete user session",
+    description="""
+Delete a specific session for the current user.
+
+**Use Cases:**
+- Logout from a specific device
+- Security - terminate suspicious sessions
+- Force re-authentication on a device
+
+**Notes:**
+- Cannot delete your own current session (use `/auth/logout` instead)
+- Only sessions belonging to the current user can be deleted
+- Session deletion is immediate and irreversible
+
+**Authentication Required:** Bearer token in Authorization header
+    """,
+    responses={
+        200: {
+            "description": "Session deleted successfully",
+            "content": {
+                "application/json": {
+                    "example": {"message": "Session deleted successfully"}
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+                "application/json": {"example": {"detail": "Could not validate credentials"}}
+            },
+        },
+        404: {
+            "description": "Session not found or doesn't belong to user",
+            "content": {
+                "application/json": {"example": {"detail": "Session not found"}}
+            },
+        },
+    },
+)
 async def delete_user_session(
     session_id: str,
     user: Annotated[User, Depends(require_auth)],

@@ -32,7 +32,53 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/oauth", tags=["oauth"])
 
 
-@router.get("/authorize/{provider}")
+@router.get(
+    "/authorize/{provider}",
+    summary="Initiate OAuth authorization",
+    description="""
+Start OAuth authorization flow with selected provider.
+
+**Supported Providers:**
+- `google`: Google OAuth 2.0
+- `github`: GitHub OAuth 2.0
+- `microsoft`: Microsoft OAuth 2.0 (Azure AD)
+
+**Security Features:**
+- PKCE (Proof Key for Code Exchange) for enhanced security
+- CSRF protection via state parameter
+- Automatic state management and validation
+
+**Flow:**
+1. User clicks "Login with {Provider}"
+2. Redirect to this endpoint with chosen provider
+3. Redirect to provider's authorization page
+4. User approves access
+5. Provider redirects back to callback endpoint
+6. Session created and user logged in
+
+**Scopes:**
+Request specific permissions using space-separated scope parameter.
+See `/oauth/scopes` endpoint for available scopes.
+
+**Example:**
+```
+GET /oauth/authorize/google?scope=user:read user:write&redirect_after_login=/dashboard
+```
+    """,
+    responses={
+        302: {
+            "description": "Redirect to OAuth provider authorization page",
+        },
+        404: {
+            "description": "Provider not found or disabled",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "OAuth provider 'unknown' not found or disabled"}
+                }
+            },
+        },
+    },
+)
 async def oauth_authorize(
     provider: OAuthProvider,
     request: Request,
@@ -115,7 +161,44 @@ async def oauth_authorize(
     return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/callback/{provider}")
+@router.get(
+    "/callback/{provider}",
+    summary="OAuth callback handler",
+    description="""
+OAuth provider callback endpoint - handles authorization code exchange.
+
+**Automatic Processing:**
+- Validates state parameter (CSRF protection)
+- Exchanges authorization code for access token
+- Retrieves user information from provider
+- Creates or updates user account
+- Establishes authenticated session
+- Redirects to application
+
+**Error Handling:**
+- If authorization denied: redirects with error message
+- If state invalid: prevents CSRF attacks
+- If token exchange fails: logs error and redirects
+
+**Note:** This endpoint is called automatically by OAuth providers.
+Users should not access this endpoint directly.
+    """,
+    responses={
+        302: {
+            "description": "Redirect to application with authentication token",
+        },
+        400: {
+            "description": "OAuth callback error or invalid parameters",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "OAuth authorization failed: access_denied - User denied access"
+                    }
+                }
+            },
+        },
+    },
+)
 async def oauth_callback(
     provider: OAuthProvider,
     request: Request,
@@ -327,7 +410,59 @@ async def oauth_client_credentials(
         )
 
 
-@router.get("/providers")
+@router.get(
+    "/providers",
+    summary="List OAuth providers",
+    description="""
+Get list of enabled OAuth authentication providers.
+
+**Provider Information:**
+- Provider identifier (google, github, microsoft)
+- Display name for UI
+- Authorization URL for initiating OAuth flow
+
+**Use Cases:**
+- Display "Login with..." buttons in UI
+- Dynamically build authentication options
+- Check which providers are available
+
+**Example Response:**
+```json
+{
+  "providers": [
+    {
+      "provider": "google",
+      "name": "Google",
+      "authorize_url": "/oauth/authorize/google"
+    }
+  ]
+}
+```
+    """,
+    responses={
+        200: {
+            "description": "List of enabled OAuth providers",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "providers": [
+                            {
+                                "provider": "google",
+                                "name": "Google",
+                                "authorize_url": "/oauth/authorize/google",
+                            },
+                            {
+                                "provider": "github",
+                                "name": "Github",
+                                "authorize_url": "/oauth/authorize/github",
+                            },
+                        ]
+                    }
+                }
+            },
+        },
+    },
+)
 async def list_oauth_providers() -> dict[str, list[dict[str, str]]]:
     """
     List available OAuth providers.
@@ -349,7 +484,61 @@ async def list_oauth_providers() -> dict[str, list[dict[str, str]]]:
     return {"providers": providers_info}
 
 
-@router.get("/scopes")
+@router.get(
+    "/scopes",
+    summary="List OAuth scopes",
+    description="""
+Get list of available OAuth scopes with descriptions.
+
+**Scope Format:** `resource:permission` (e.g., `user:read`, `agent:write`)
+
+**Resources:**
+- `user`: User account and profile operations
+- `agent`: Agent management and monitoring
+- `task`: Task creation and execution
+- `admin`: Administrative operations
+
+**Permissions:**
+- `read`: View resource information
+- `write`: Create and modify resources
+- `execute`: Execute operations (agents, tasks)
+
+**Use Cases:**
+- Display scope descriptions during OAuth authorization
+- Validate requested scopes before authorization
+- Document API permissions for developers
+
+**Example:**
+```
+GET /oauth/scopes?resource=agent
+```
+
+Returns all agent-related scopes.
+    """,
+    responses={
+        200: {
+            "description": "List of OAuth scopes",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "scopes": [
+                            {
+                                "scope": "user:read",
+                                "description": "Read user information",
+                                "resource": "user",
+                            },
+                            {
+                                "scope": "agent:execute",
+                                "description": "Execute agent workflows",
+                                "resource": "agent",
+                            },
+                        ]
+                    }
+                }
+            },
+        },
+    },
+)
 async def list_oauth_scopes(
     resource: str | None = Query(None, description="Filter by resource type"),
 ) -> dict[str, list[dict]]:
