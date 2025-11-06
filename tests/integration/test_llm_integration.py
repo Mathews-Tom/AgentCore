@@ -20,6 +20,13 @@ Run with:
     uv run pytest tests/integration/test_llm_integration.py -v -m integration
 
 Target: >95% success rate for production release
+
+Flaky Test Handling:
+All Gemini-related tests are marked with @pytest.mark.flaky(reruns=N, reruns_delay=S)
+due to occasional Google Gemini API 500 internal server errors. This ensures transient
+API issues don't block CI/CD pipelines while still validating functionality.
+- Gemini-specific tests: 3 reruns with 2s delay
+- Multi-provider tests: 2 reruns with 3s delay
 """
 
 from __future__ import annotations
@@ -213,12 +220,16 @@ class TestProviderIntegrationGemini:
         ProviderRegistry._instances = {}
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY"),
         reason="GEMINI_API_KEY not configured",
     )
     async def test_gemini_complete_basic(self) -> None:
-        """Test basic Gemini completion with real API."""
+        """Test basic Gemini completion with real API.
+
+        Note: Marked as flaky due to occasional Gemini API 500 errors.
+        """
         service = LLMService(timeout=30.0)
 
         request = LLMRequest(
@@ -239,12 +250,16 @@ class TestProviderIntegrationGemini:
         assert response.latency_ms > 0
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY"),
         reason="GEMINI_API_KEY not configured",
     )
     async def test_gemini_stream_basic(self) -> None:
-        """Test basic Gemini streaming with real API."""
+        """Test basic Gemini streaming with real API.
+
+        Note: Marked as flaky due to occasional Gemini API 500 errors.
+        """
         service = LLMService()
 
         request = LLMRequest(
@@ -317,12 +332,16 @@ class TestA2AContextPropagation:
         assert response.trace_id == trace_id
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     @pytest.mark.skipif(
         not os.getenv("GEMINI_API_KEY"),
         reason="GEMINI_API_KEY not configured",
     )
     async def test_trace_id_propagation_gemini(self) -> None:
-        """Test trace_id propagates through Gemini request/response."""
+        """Test trace_id propagates through Gemini request/response.
+
+        Note: Marked as flaky due to occasional Gemini API 500 errors.
+        """
         service = LLMService()
 
         trace_id = "trace-a2a-gemini-abcde"
@@ -489,6 +508,7 @@ class TestConcurrentRequests:
         assert success_rate >= 95.0, f"Success rate {success_rate}% below 95% threshold"
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=2, reruns_delay=3)
     @pytest.mark.skipif(
         not all(
             [
@@ -500,7 +520,11 @@ class TestConcurrentRequests:
         reason="All API keys not configured",
     )
     async def test_concurrent_requests_multi_provider(self) -> None:
-        """Test concurrent requests across all 3 providers."""
+        """Test concurrent requests across all 3 providers.
+
+        Note: Marked as flaky due to occasional Gemini API 500 errors
+        that can affect the overall success rate threshold.
+        """
         service = LLMService(timeout=30.0, max_retries=3)
 
         providers_config = [
@@ -586,6 +610,7 @@ class TestMultiProviderE2E:
         ProviderRegistry._instances = {}
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=2, reruns_delay=3)
     @pytest.mark.skipif(
         not all(
             [
@@ -597,7 +622,10 @@ class TestMultiProviderE2E:
         reason="All API keys not configured",
     )
     async def test_all_providers_complete_workflow(self) -> None:
-        """Test complete workflow with all 3 providers."""
+        """Test complete workflow with all 3 providers.
+
+        Note: Marked as flaky due to occasional Gemini API 500 errors.
+        """
         service = LLMService(timeout=30.0, max_retries=3)
 
         test_cases = [
@@ -625,6 +653,7 @@ class TestMultiProviderE2E:
             assert response.trace_id == f"e2e-{expected_provider}"
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=2, reruns_delay=3)
     @pytest.mark.skipif(
         not all(
             [
@@ -636,7 +665,10 @@ class TestMultiProviderE2E:
         reason="All API keys not configured",
     )
     async def test_all_providers_streaming_workflow(self) -> None:
-        """Test streaming workflow with all 3 providers."""
+        """Test streaming workflow with all 3 providers.
+
+        Note: Marked as flaky due to occasional Gemini API 500 errors.
+        """
         service = LLMService(timeout=30.0)
 
         test_cases = [

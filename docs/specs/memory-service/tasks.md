@@ -1,78 +1,127 @@
-# Tasks: Memory System (COMPASS-Enhanced Context Manager)
+# Tasks: Memory Service (Hybrid: Mem0 + COMPASS + Graph)
 
-**From:** `spec.md` v2.0 + `plan.md` v2.0 (COMPASS-Enhanced)
-**Timeline:** 10 weeks, 5 sprints (2-week sprints)
+**From:** `spec.md` v3.0 (Hybrid Architecture) + `plan.md` v3.0
+**Timeline:** 8 weeks, 4 sprints (2-week sprints)
 **Team:** 1 senior backend engineer (full-time)
 **Created:** 2025-10-23
+**Last Updated:** 2025-11-06 (Regenerated for hybrid architecture)
 
 ---
 
 ## Summary
 
-- **Total tasks:** 35 story tasks (MEM-002 through MEM-036)
-- **Estimated effort:** 165 story points (~10 weeks)
-- **Critical path duration:** 10 weeks (sequential phases)
+- **Total tasks:** 27 story tasks (MEM-002 through MEM-028)
+- **Estimated effort:** 175 story points (~8 weeks)
+- **Critical path duration:** 8 weeks (60 SP critical tasks)
 - **Key risks:**
-  1. PGVector performance at scale (mitigation: early load testing)
-  2. Compression quality validation (mitigation: COMPASS benchmarks)
-  3. ACE integration timing (mitigation: mock interface first)
+  1. Neo4j integration complexity (mitigation: early deployment in Sprint 1)
+  2. Hybrid search performance (mitigation: benchmark in Sprint 3)
+  3. Memify algorithm effectiveness (mitigation: quality metrics validation)
 
-**COMPASS Targets:**
+**Hybrid Architecture Targets:**
 
-- 60-80% context efficiency
+- 60-80% context efficiency (COMPASS compression)
 - 20% performance improvement on long-horizon tasks
 - 70-80% cost reduction via test-time scaling
 - 95%+ compression information retention
+- <200ms graph traversal (p95, 2-hop)
+- <300ms hybrid search (p95)
+- 80%+ entity extraction accuracy
+- 75%+ relationship detection accuracy
+- 90%+ Memify consolidation accuracy
 
 ---
 
 ## Phase Breakdown
 
-### Phase 1: Foundation + Hierarchical Organization (Sprint 1-2, 58 SP)
+### Phase 1: Infrastructure & Core (Sprint 1, Weeks 1-2, 39 SP)
 
-**Goal:** Establish COMPASS-enhanced database schema, models, and hierarchical stage management
-**Deliverable:** Working stage-aware memory storage with 3-level hierarchy
+**Goal:** Deploy hybrid storage infrastructure (Qdrant + Neo4j) and establish foundational models
+**Deliverable:** All databases operational, models defined, repositories functional
 
-#### Week 1: Core Infrastructure (26 SP)
+#### Week 1: Infrastructure Deployment (18 SP)
 
-**MEM-002: Create COMPASS-Enhanced Database Migration**
+**MEM-002: Deploy Qdrant Vector Database**
 
-- **Description:** Implement Alembic migration for stage_memories, task_contexts, error_records, compression_metrics tables with PGVector extension
+- **Description:** Deploy Qdrant for vector similarity search (episodic, semantic, procedural memories)
 - **Acceptance:**
-  - [ ] PGVector extension added to PostgreSQL
-  - [ ] All 5 COMPASS tables created (memories, stage_memories, task_contexts, error_records, compression_metrics)
-  - [ ] Composite indexes created for stage + agent + task queries
-  - [ ] IVFFlat vector indexes configured for embedding similarity
+  - [ ] Qdrant deployed via Docker Compose (dev) and K8s (prod)
+  - [ ] Collections created for memory layers
+  - [ ] Vector similarity search operational
+  - [ ] Testcontainers integration for tests
+  - [ ] <100ms vector search latency (p95)
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** None
+- **Priority:** P0 (Blocker for vector memory)
+- **Files:**
+  - `docker-compose.dev.yml` (Qdrant service)
+  - `k8s/qdrant-deployment.yaml`
+  - `tests/fixtures/qdrant_container.py`
+
+**MEM-003: Deploy Neo4j Graph Database**
+
+- **Description:** Deploy Neo4j for entity relationships and knowledge graphs with APOC + Graph Data Science plugins
+- **Acceptance:**
+  - [ ] Neo4j deployed via Docker Compose (dev) and K8s (prod)
+  - [ ] APOC and Graph Data Science plugins installed
+  - [ ] Graph schema defined (Memory, Entity, Concept nodes)
+  - [ ] Testcontainers integration for tests
+  - [ ] Connection pooling configured (neo4j-driver async)
+  - [ ] <200ms graph traversal (p95, 2-hop queries)
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** None
+- **Priority:** P0 (Blocker for graph integration, HIGH RISK - front-loaded)
+- **Files:**
+  - `docker-compose.dev.yml` (Neo4j service)
+  - `k8s/neo4j-statefulset.yaml`
+  - `src/agentcore/memory/graph/schema.cypher`
+  - `tests/fixtures/neo4j_container.py`
+
+**MEM-004: Create Hybrid Database Migration**
+
+- **Description:** Implement Alembic migration for stage_memories, task_contexts, error_records, compression_metrics tables
+- **Acceptance:**
+  - [ ] All 4 tables created (memories, stage_memories, task_contexts, error_records)
+  - [ ] Compression_metrics table for cost tracking
+  - [ ] Composite indexes for stage + agent + task queries
+  - [ ] Vector indexes configured for Qdrant coordination
   - [ ] Migration reversible (downgrade tested)
   - [ ] Seed data loads successfully
 - **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-001 (epic)
-- **Priority:** P0 (Blocker for all phases)
+- **Dependencies:** None
+- **Priority:** P0 (Blocker for all data access)
 - **Files:**
-  - `alembic/versions/XXX_add_compass_memory_tables.py`
-  - `docker-compose.dev.yml` (add PGVector to PostgreSQL)
+  - `alembic/versions/XXX_add_hybrid_memory_tables.py`
+  - `scripts/seed_memory_data.py`
 
-**MEM-003: Implement COMPASS Pydantic Models**
+#### Week 2: Models & Repositories (21 SP)
 
-- **Description:** Create Pydantic models for MemoryRecord, StageMemory, TaskContext, ErrorRecord, CompressionConfig with COMPASS enhancements
+**MEM-005: Implement Hybrid Pydantic Models**
+
+- **Description:** Create Pydantic models for MemoryRecord, StageMemory, TaskContext, ErrorRecord, EntityNode, RelationshipEdge
 - **Acceptance:**
-  - [ ] StageMemory model with stage_type enum validation
-  - [ ] TaskContext model with performance_metrics dict
-  - [ ] ErrorRecord model with severity scoring (0-1)
-  - [ ] CompressionConfig model with test-time scaling parameters
+  - [ ] MemoryRecord with layer, stage, criticality fields
+  - [ ] StageMemory with compression metrics
+  - [ ] TaskContext with performance tracking
+  - [ ] ErrorRecord with severity scoring (0-1)
+  - [ ] EntityNode model for graph entities (NEW)
+  - [ ] RelationshipEdge model for graph relationships (NEW)
   - [ ] All models support JSON serialization
-  - [ ] Modern typing (use `list[]`, `dict[]`, `|` unions)
+  - [ ] Modern typing (`list[]`, `dict[]`, `|` unions)
 - **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-002
+- **Dependencies:** MEM-004
 - **Priority:** P0
 - **Files:**
   - `src/agentcore/memory/models.py`
+  - `src/agentcore/memory/graph/models.py` (NEW)
 
-**MEM-004: Implement SQLAlchemy ORM Models**
+**MEM-006: Implement SQLAlchemy ORM Models**
 
-- **Description:** Create SQLAlchemy models matching database schema with async support and COMPASS columns
+- **Description:** Create SQLAlchemy models matching database schema with async support
 - **Acceptance:**
   - [ ] StageMemoryModel with JSONB for raw_memory_refs
   - [ ] TaskContextModel with foreign key to stage_memories
@@ -82,685 +131,528 @@
   - [ ] Relationships configured (task → stages → memories)
 - **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-003
+- **Dependencies:** MEM-005
 - **Priority:** P0
 - **Files:**
   - `src/agentcore/memory/database/models.py`
 
-**MEM-005: Implement Repository Layer**
+**MEM-007: Implement Repository Layer with Graph Support**
 
-- **Description:** Create async repositories for Memory, StageMemory, TaskContext, Error with COMPASS query patterns
+- **Description:** Create async repositories for Memory, StageMemory, TaskContext, Error, and Graph (Neo4j)
 - **Acceptance:**
   - [ ] MemoryRepository with stage_id filtering
   - [ ] StageMemoryRepository with get_by_task_and_stage()
   - [ ] TaskContextRepository with current_stage tracking
   - [ ] ErrorRepository with pattern detection queries
+  - [ ] GraphRepository for Neo4j operations (NEW)
   - [ ] All methods use async/await
   - [ ] Unit tests for each repository (90%+ coverage)
 - **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-004
+- **Dependencies:** MEM-006
 - **Priority:** P0
 - **Files:**
   - `src/agentcore/memory/database/repositories.py`
-  - `tests/memory/unit/test_repositories.py`
+  - `src/agentcore/memory/graph/repository.py` (NEW)
+  - `tests/unit/test_repositories.py`
 
-#### Week 2: Stage Management (MEM-1) (18 SP)
+---
 
-**MEM-006: Implement StageManager Core**
+### Phase 2: Stage Management & ECL Pipeline (Sprint 2, Weeks 3-4, 50 SP)
 
-- **Description:** Create StageManager class for stage lifecycle (create, add, complete) with stage type validation
+**Goal:** Implement COMPASS stage-aware context management and ECL pipeline foundation
+**Deliverable:** Stage detection operational, ECL pipeline processing memories, entity extraction working
+
+#### Week 3: Stage & ECL Foundation (21 SP)
+
+**MEM-008: Implement StageManager Core**
+
+- **Description:** Implement StageManager for COMPASS hierarchical organization with stage detection
 - **Acceptance:**
-  - [ ] create_stage(task_id, stage_type) validates stage enum
-  - [ ] add_to_stage(stage_id, memory_id) links memory to stage
-  - [ ] complete_stage(stage_id) triggers compression preparation
-  - [ ] Stage transitions tracked in TaskContext.current_stage_id
-  - [ ] Stage type enum: planning, execution, reflection, verification
-  - [ ] Unit tests for stage lifecycle (95%+ coverage)
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-005
-- **Priority:** P0
-- **Files:**
-  - `src/agentcore/memory/stage_manager.py`
-  - `tests/memory/unit/test_stage_operations.py`
-
-**MEM-007: Implement Stage Detection Logic**
-
-- **Description:** Add automatic stage transition detection based on agent actions and time heuristics
-- **Acceptance:**
-  - [ ] Action pattern analysis (tool usage classification)
-  - [ ] Time-based default stage duration (configurable)
-  - [ ] Explicit stage markers from agent honored
-  - [ ] Stage transitions logged with rationale
-  - [ ] Integration with agent action stream
-  - [ ] Integration tests for stage detection
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-006
-- **Priority:** P1
-- **Files:**
-  - `src/agentcore/memory/stage_detector.py`
-  - `tests/memory/integration/test_stage_detection.py`
-
-**MEM-008: Integrate StageManager with MemoryManager**
-
-- **Description:** Update MemoryManager to be stage-aware and orchestrate stage operations
-- **Acceptance:**
-  - [ ] add_interaction() assigns memories to current stage
-  - [ ] get_stage_context() retrieves stage-filtered memories
-  - [ ] complete_stage() delegates to StageManager
-  - [ ] Stage transitions trigger appropriate hooks
-  - [ ] Backwards compatible with non-stage-aware agents
-  - [ ] Integration tests for stage-aware workflows
+  - [ ] Stage creation and lifecycle management
+  - [ ] Stage type enum (planning, execution, reflection, verification)
+  - [ ] Link memories to stages
+  - [ ] Trigger compression on stage completion
+  - [ ] Stage context retrieval
+  - [ ] Unit tests (90%+ coverage)
 - **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-007
-- **Priority:** P0
+- **Priority:** P0 (COMPASS core feature)
 - **Files:**
-  - `src/agentcore/memory/manager.py`
-  - `tests/memory/integration/test_stage_manager.py`
+  - `src/agentcore/memory/stage_manager.py`
+  - `tests/unit/test_stage_manager.py`
 
-#### Week 3: Basic Retrieval + EmbeddingService Integration (14 SP)
+**MEM-009: Implement Stage Detection Logic**
 
-**MEM-009: Implement Basic Stage-Aware Retrieval**
-
-- **Description:** Create retrieval service with stage filtering and embedding similarity
+- **Description:** Implement automatic stage transition detection based on agent action patterns
 - **Acceptance:**
-  - [ ] retrieve_stage_aware(query, current_stage, k) returns top-k memories
-  - [ ] Stage filtering applied before similarity search
-  - [ ] PGVector cosine similarity used for ranking
-  - [ ] Query embeddings generated via EmbeddingService
-  - [ ] Retrieval latency <100ms (p95) for 10K memories
-  - [ ] Unit tests for retrieval logic
+  - [ ] Detect stage from tool usage patterns
+  - [ ] Support explicit stage markers from agent
+  - [ ] Time-based heuristics for default transitions
+  - [ ] ACE intervention signal handling
+  - [ ] 90%+ detection accuracy
+  - [ ] Integration tests with sample workflows
 - **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-008
 - **Priority:** P0
 - **Files:**
-  - `src/agentcore/memory/retrieval.py`
-  - `tests/memory/unit/test_basic_retrieval.py`
+  - `src/agentcore/memory/stage_detection.py`
+  - `tests/integration/test_stage_detection.py`
 
-**MEM-010: Integrate with Existing EmbeddingService**
+**MEM-010: Implement ECL Pipeline Base Classes**
 
-- **Description:** Connect memory storage to existing embedding_service.py for vector generation
+- **Description:** Implement Extract, Cognify, Load pipeline base classes with task registry (Cognee-inspired)
 - **Acceptance:**
-  - [ ] Memory creation triggers embedding generation
-  - [ ] Embeddings stored in memories.embedding column
-  - [ ] Batch embedding generation for multiple memories
-  - [ ] Embedding failures handled gracefully (retry logic)
-  - [ ] Embedding cost tracked per agent
-  - [ ] Integration tests with mocked OpenAI API
+  - [ ] TaskBase abstract class with execute() method
+  - [ ] Pipeline class for task composition
+  - [ ] Extract phase supports multiple data sources
+  - [ ] Cognify phase interface for knowledge extraction
+  - [ ] Load phase coordinates multi-backend storage
+  - [ ] Async task execution support
+  - [ ] Unit tests for pipeline framework
 - **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-009
-- **Priority:** P0
+- **Dependencies:** MEM-007
+- **Priority:** P0 (NEW architecture pattern)
 - **Files:**
-  - `src/agentcore/memory/embedding_integration.py`
-  - `tests/memory/integration/test_embedding_service.py`
+  - `src/agentcore/memory/ecl/pipeline.py` (NEW)
+  - `src/agentcore/memory/ecl/task_base.py` (NEW)
+  - `tests/unit/test_ecl_pipeline.py`
 
-**MEM-011: Implement JSON-RPC Handlers for Phase 1**
+**MEM-011: Implement Task Registry and Composition**
 
-- **Description:** Register JSON-RPC methods for memory.add, memory.retrieve, memory.get_stage_context
+- **Description:** Implement task registry for discovering and composing ECL tasks
 - **Acceptance:**
-  - [ ] memory.add(interaction) creates memory with embedding
-  - [ ] memory.retrieve(query, k) returns relevant memories
-  - [ ] memory.get_stage_context(task_id, stage) returns stage summary
-  - [ ] memory.complete_stage(task_id, stage_id) triggers completion
-  - [ ] A2A context (agent_id, task_id) handled correctly
-  - [ ] JSON-RPC error handling for invalid params
-- **Effort:** 4 story points (1-2 days)
+  - [ ] Task registry with registration decorator
+  - [ ] Discover available tasks dynamically
+  - [ ] Compose tasks into pipelines
+  - [ ] Parallel execution where dependencies allow
+  - [ ] Task-level error handling and retry logic
+  - [ ] Unit tests for registry
+- **Effort:** 3 story points (1-2 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-010
 - **Priority:** P0
 - **Files:**
-  - `src/agentcore/memory/jsonrpc_handlers.py`
-  - `tests/memory/integration/test_jsonrpc.py`
+  - `src/agentcore/memory/ecl/registry.py` (NEW)
+  - `tests/unit/test_task_registry.py`
 
----
+#### Week 4: Compression & Entity Extraction (29 SP)
 
-### Phase 2: Test-Time Scaling Compression (Sprint 2-3, 32 SP)
+**MEM-012: Implement ContextCompressor with Test-Time Scaling**
 
-**Goal:** Implement COMPASS-validated compression with gpt-4o-mini (70-80% cost reduction)
-**Deliverable:** Stage and task compression with quality validation
-
-#### Week 4: Compression Infrastructure (MEM-2) (18 SP)
-
-**MEM-012: Implement ContextCompressor Core**
-
-- **Description:** Create ContextCompressor with gpt-4o-mini integration for stage compression (10:1 target)
+- **Description:** Implement progressive compression using gpt-4.1-mini for cost optimization
 - **Acceptance:**
-  - [ ] compress_stage(stage_memories, stage_type) returns StageMemory
-  - [ ] Uses gpt-4o-mini (NOT gpt-4.1) for compression
-  - [ ] Target 10:1 compression ratio (9-11x acceptable)
-  - [ ] Compression prompt preserves critical information
-  - [ ] Stage insights extracted (key learnings)
-  - [ ] Unit tests for compression logic
+  - [ ] Stage compression (10:1 ratio target)
+  - [ ] Task compression (5:1 ratio target)
+  - [ ] Use gpt-4.1-mini for all compression (test-time scaling)
+  - [ ] Critical fact extraction
+  - [ ] Compression prompt optimization
+  - [ ] <5s compression latency (p95)
+  - [ ] Unit tests with mocked LLM
 - **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-011
-- **Priority:** P0
+- **Dependencies:** MEM-008
+- **Priority:** P0 (COMPASS core feature)
 - **Files:**
   - `src/agentcore/memory/compression.py`
-  - `tests/memory/unit/test_compression.py`
+  - `src/agentcore/memory/prompts/compression.py`
+  - `tests/unit/test_compression.py`
 
-**MEM-013: Integrate tiktoken for Token Counting**
+**MEM-013: Implement Compression Quality Validation**
 
-- **Description:** Add token counting for compression ratio validation and cost tracking
+- **Description:** Implement quality metrics for compression validation (fact retention, coherence)
 - **Acceptance:**
-  - [ ] count_tokens(text) uses tiktoken
-  - [ ] Token counts recorded in CompressionMetrics
-  - [ ] Compression ratio computed: original_tokens / compressed_tokens
-  - [ ] Target ratio validation (warn if <8x or >12x)
-  - [ ] Cost estimation per compression operation
-  - [ ] Unit tests for token counting
-- **Effort:** 3 story points (1-2 days)
+  - [ ] Critical fact retention tracking (target: ≥95%)
+  - [ ] Compression ratio validation (10:1, 5:1)
+  - [ ] Coherence score (no contradictions)
+  - [ ] Quality degradation alerts
+  - [ ] Fallback to less aggressive compression if quality drops
+  - [ ] Integration tests with real compression
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-012
 - **Priority:** P0
 - **Files:**
-  - `src/agentcore/memory/token_counter.py`
-  - `tests/memory/unit/test_token_counter.py`
+  - `src/agentcore/memory/quality_metrics.py`
+  - `tests/integration/test_compression_quality.py`
 
-**MEM-014: Implement Compression Quality Validation**
+**MEM-014: Implement Cost Tracking for Compression**
 
-- **Description:** Add information retention scoring to validate 95%+ quality target
+- **Description:** Implement token counting and cost tracking for compression operations
 - **Acceptance:**
-  - [ ] validate_compression_quality(original, compressed) returns score
-  - [ ] Fact extraction and preservation checking
-  - [ ] Score >0.95 required (COMPASS target)
-  - [ ] Quality metrics logged to compression_metrics table
-  - [ ] Alert on quality degradation (<0.90)
-  - [ ] Unit tests for validation algorithms
-- **Effort:** 5 story points (2-3 days)
+  - [ ] Track tokens per compression operation
+  - [ ] Calculate cost using gpt-4.1-mini pricing
+  - [ ] Monthly budget tracking
+  - [ ] Alert at 75% budget consumption
+  - [ ] Cost metrics stored in compression_metrics table
+  - [ ] Dashboard query support
+- **Effort:** 3 story points (1-2 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-013
-- **Priority:** P0
-- **Files:**
-  - `src/agentcore/memory/quality_validator.py`
-  - `tests/memory/unit/test_quality_validation.py`
-
-**MEM-015: Implement Cost Tracking**
-
-- **Description:** Track compression costs per agent and enforce budget limits
-- **Acceptance:**
-  - [ ] Cost computed: tokens * model_price_per_1M
-  - [ ] Cost recorded in compression_metrics.cost_usd
-  - [ ] Monthly budget tracking per agent
-  - [ ] Alert at 75% budget threshold
-  - [ ] Hard cap prevents budget overrun
-  - [ ] Cost reports exportable for analysis
-- **Effort:** 2 story points (1 day)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-014
+- **Dependencies:** MEM-012
 - **Priority:** P1
 - **Files:**
   - `src/agentcore/memory/cost_tracker.py`
-  - `tests/memory/unit/test_cost_tracker.py`
+  - `tests/unit/test_cost_tracking.py`
 
-#### Week 5: Task-Level Compression + Optimization (14 SP)
+**MEM-015: Implement Entity Extraction Task**
 
-**MEM-016: Implement Task-Level Compression**
-
-- **Description:** Add compress_task() for progressive task summarization (5:1 target from stage summaries)
+- **Description:** Implement ECL Cognify task for extracting entities (people, concepts, tools, constraints)
 - **Acceptance:**
-  - [ ] compress_task(stage_summaries, task_goal) returns TaskContext
-  - [ ] Uses gpt-4o-mini for task compression
-  - [ ] Target 5:1 compression ratio (4-6x acceptable)
-  - [ ] Task progress summary includes all completed stages
-  - [ ] Critical constraints preserved
-  - [ ] Integration tests for task compression
+  - [ ] Extract entities from memory content using gpt-4.1-mini
+  - [ ] Entity classification (person, concept, tool, constraint)
+  - [ ] Entity normalization and deduplication
+  - [ ] 80%+ extraction accuracy (target)
+  - [ ] Integration with ECL pipeline
+  - [ ] Unit tests with sample memories
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-010, MEM-011
+- **Priority:** P0 (NEW feature for graph)
+- **Files:**
+  - `src/agentcore/memory/ecl/tasks/entity_extractor.py` (NEW)
+  - `src/agentcore/memory/prompts/entity_extraction.py` (NEW)
+  - `tests/unit/test_entity_extraction.py`
+
+**MEM-016: Implement Entity Classification**
+
+- **Description:** Implement entity type classification and confidence scoring
+- **Acceptance:**
+  - [ ] Classify entities by type (person, concept, tool, constraint, other)
+  - [ ] Confidence scores for classifications
+  - [ ] Handle ambiguous entities
+  - [ ] Support custom entity types
+  - [ ] Validation tests with diverse entity types
 - **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-015
-- **Priority:** P0
-- **Files:**
-  - Enhanced `src/agentcore/memory/compression.py`
-  - `tests/memory/integration/test_task_compression.py`
-
-**MEM-017: Add Compression Caching in Redis**
-
-- **Description:** Cache compressed summaries in Redis (24h TTL) to reduce repeated compressions
-- **Acceptance:**
-  - [ ] Stage summaries cached by stage_id
-  - [ ] Task summaries cached by task_id
-  - [ ] Cache TTL configurable (default 24h)
-  - [ ] Cache invalidation on stage/task updates
-  - [ ] Cache hit rate tracked (target >60%)
-  - [ ] Integration tests with Redis
-- **Effort:** 3 story points (1-2 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-016
 - **Priority:** P1
 - **Files:**
-  - `src/agentcore/memory/compression_cache.py`
-  - `tests/memory/integration/test_compression_cache.py`
+  - `src/agentcore/memory/ecl/tasks/entity_classifier.py` (NEW)
+  - `tests/unit/test_entity_classification.py`
 
-**MEM-018: Optimize Compression Prompts**
+---
 
-- **Description:** Refine prompts for gpt-4o-mini to improve compression quality and consistency
+### Phase 3: Graph Storage & Hybrid Retrieval (Sprint 3, Weeks 5-6, 47 SP)
+
+**Goal:** Integrate Neo4j graph storage, implement relationship detection, and create hybrid search
+**Deliverable:** Graph memory operational, hybrid search combining vector + graph
+
+#### Week 5: Graph Storage & Relationships (26 SP)
+
+**MEM-017: Implement GraphMemoryService (Neo4j Integration)**
+
+- **Description:** Implement Neo4j integration for storing entities and relationships in knowledge graph
 - **Acceptance:**
-  - [ ] Stage-specific prompts (planning vs execution vs reflection)
-  - [ ] Prompt includes compression ratio target
-  - [ ] Prompt emphasizes critical information preservation
-  - [ ] JSON output format for structured data
-  - [ ] A/B testing shows >95% quality retention
-  - [ ] Prompt templates versioned
-- **Effort:** 3 story points (1-2 days)
+  - [ ] Store Memory, Entity, Concept nodes
+  - [ ] Create MENTIONS, RELATES_TO, PART_OF relationships
+  - [ ] Support temporal relationships (FOLLOWS, PRECEDES)
+  - [ ] Index entities by type and properties
+  - [ ] Traverse graph with depth 1-3 multi-hop queries
+  - [ ] <200ms graph traversal (p95, 2-hop)
+  - [ ] Async Neo4j driver integration
+  - [ ] Unit tests with mocked Neo4j
+  - [ ] Integration tests with real Neo4j (testcontainers)
+- **Effort:** 13 story points (5-6 days) [HIGH COMPLEXITY]
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-003, MEM-007, MEM-010
+- **Priority:** P0 (NEW critical feature, highest complexity)
+- **Files:**
+  - `src/agentcore/memory/graph/service.py` (NEW)
+  - `src/agentcore/memory/graph/queries.cypher` (NEW)
+  - `tests/unit/test_graph_service.py`
+  - `tests/integration/test_neo4j_integration.py`
+
+**MEM-018: Implement Relationship Detection Task**
+
+- **Description:** Implement ECL Cognify task for detecting connections between entities
+- **Acceptance:**
+  - [ ] Detect relationships using LLM analysis
+  - [ ] Pattern matching for common relationships
+  - [ ] Relationship type classification (MENTIONS, RELATES_TO, PART_OF, etc.)
+  - [ ] Relationship strength scoring
+  - [ ] 75%+ detection accuracy (target)
+  - [ ] Integration with ECL pipeline
+  - [ ] Unit tests with sample entity pairs
+- **Effort:** 8 story points (3-4 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-015, MEM-017
+- **Priority:** P0 (NEW feature for graph)
+- **Files:**
+  - `src/agentcore/memory/ecl/tasks/relationship_detector.py` (NEW)
+  - `src/agentcore/memory/prompts/relationship_detection.py` (NEW)
+  - `tests/unit/test_relationship_detection.py`
+
+**MEM-019: Implement Graph Query Patterns**
+
+- **Description:** Implement common Cypher query patterns for graph traversal and analysis
+- **Acceptance:**
+  - [ ] 1-hop neighbor queries
+  - [ ] 2-hop relationship queries
+  - [ ] 3-hop path finding
+  - [ ] Entity similarity queries
+  - [ ] Relationship strength aggregation
+  - [ ] Query performance optimization (indexes)
+  - [ ] Unit tests for each query pattern
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-017
 - **Priority:** P1
 - **Files:**
-  - `src/agentcore/memory/prompts.py`
-  - `tests/memory/integration/test_prompt_quality.py`
+  - `src/agentcore/memory/graph/queries.py` (NEW)
+  - `tests/unit/test_graph_queries.py`
 
-**MEM-019: Performance Benchmarking**
+#### Week 6: Hybrid Retrieval (21 SP)
 
-- **Description:** Benchmark compression latency, cost, and quality across 1000 compressions
+**MEM-020: Implement Enhanced Retrieval Service**
+
+- **Description:** Implement multi-factor importance scoring with stage relevance
 - **Acceptance:**
-  - [ ] Latency: <5s (p95) for stage compression
-  - [ ] Cost: <$0.01 per stage compression (gpt-4o-mini pricing)
-  - [ ] Quality: >95% information retention (COMPASS target)
-  - [ ] Compression ratio: 9-11x for stages, 4-6x for tasks
-  - [ ] Load tests with 100 concurrent compressions
-  - [ ] Performance report generated
+  - [ ] Embedding similarity scoring (35% weight)
+  - [ ] Recency decay scoring (15% weight)
+  - [ ] Frequency scoring (10% weight)
+  - [ ] Stage relevance scoring (20% weight)
+  - [ ] Criticality boost (10% weight)
+  - [ ] Error correction relevance (10% weight)
+  - [ ] Configurable scoring weights
+  - [ ] Unit tests for scoring algorithms
+- **Effort:** 5 story points (2-3 days)
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-007
+- **Priority:** P0 (COMPASS core feature)
+- **Files:**
+  - `src/agentcore/memory/retrieval.py`
+  - `tests/unit/test_retrieval_scoring.py`
+
+**MEM-021: Implement Hybrid Search (Vector + Graph)**
+
+- **Description:** Implement hybrid search combining Qdrant vector search with Neo4j graph traversal
+- **Acceptance:**
+  - [ ] Vector search in Qdrant for semantic similarity
+  - [ ] Graph traversal in Neo4j for contextual relationships
+  - [ ] Merge and rank results from both databases
+  - [ ] Relationship-based relevance boosting
+  - [ ] Graph proximity scoring
+  - [ ] <300ms hybrid search latency (p95)
+  - [ ] 90%+ retrieval precision (target)
+  - [ ] Integration tests with both databases
+- **Effort:** 13 story points (5-6 days) [HIGH COMPLEXITY, novel approach]
+- **Owner:** Backend Engineer
+- **Dependencies:** MEM-002, MEM-017, MEM-020
+- **Priority:** P0 (NEW critical feature)
+- **Files:**
+  - `src/agentcore/memory/hybrid_search.py` (NEW)
+  - `tests/integration/test_hybrid_search.py`
+
+**MEM-022: Implement Graph-Aware Context Expansion**
+
+- **Description:** Implement context expansion using graph relationships for retrieval results
+- **Acceptance:**
+  - [ ] For each vector result, traverse Neo4j for related entities
+  - [ ] Include 1-hop neighbors (direct connections)
+  - [ ] Include 2-hop neighbors for critical memories
+  - [ ] Preserve graph structure in context
+  - [ ] Entity → relationship → entity format
+  - [ ] Integration tests with hybrid search
 - **Effort:** 3 story points (1-2 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-018
-- **Priority:** P1
-- **Files:**
-  - `tests/memory/load/test_compression_performance.py`
-  - `docs/memory-compression-performance-report.md`
-
----
-
-### Phase 3: Error Tracking (Sprint 3, 14 SP)
-
-**Goal:** Implement error memory and pattern detection (MEM-3)
-**Deliverable:** Error tracking preventing compounding mistakes
-
-#### Week 6: Error Memory + Pattern Detection (14 SP)
-
-**MEM-020: Implement ErrorTracker Core**
-
-- **Description:** Create ErrorTracker for recording errors with full context and severity
-- **Acceptance:**
-  - [ ] record_error(error_record) stores error with context
-  - [ ] Error severity computed (0-1 scale)
-  - [ ] Error linked to task_id and stage_id
-  - [ ] Recovery actions recorded
-  - [ ] get_error_history(task_id) retrieves recent errors
-  - [ ] Unit tests for error recording
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-019
-- **Priority:** P0
-- **Files:**
-  - `src/agentcore/memory/error_tracker.py`
-  - `tests/memory/unit/test_error_tracker.py`
-
-**MEM-021: Implement Error Pattern Detection**
-
-- **Description:** Add pattern detection to identify recurring error types (2+ occurrences)
-- **Acceptance:**
-  - [ ] detect_patterns(task_id, lookback_stages) groups errors
-  - [ ] Common context extraction from error descriptions
-  - [ ] Pattern severity: avg(error_severity) * occurrences
-  - [ ] Recommendations generated for pattern mitigation
-  - [ ] Compounding error detection (related errors in sequence)
-  - [ ] Unit tests for pattern detection algorithms
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-020
-- **Priority:** P0
-- **Files:**
-  - `src/agentcore/memory/pattern_detector.py`
-  - `tests/memory/unit/test_pattern_detector.py`
-
-**MEM-022: Integrate Error Tracking with MemoryManager**
-
-- **Description:** Connect error tracking to memory retrieval for error-aware context
-- **Acceptance:**
-  - [ ] Errors trigger memory tagging (is_critical flag)
-  - [ ] Error-related memories boosted in retrieval (30% boost)
-  - [ ] Error patterns surfaced in get_stage_context()
-  - [ ] Error recovery context provided to agents
-  - [ ] Integration tests for error workflows
-- **Effort:** 4 story points (1-2 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-021
-- **Priority:** P0
+- **Priority:** P1 (NEW feature)
 - **Files:**
-  - Enhanced `src/agentcore/memory/manager.py`
-  - `tests/memory/integration/test_error_workflows.py`
+  - `src/agentcore/memory/context_expansion.py` (NEW)
+  - `tests/unit/test_context_expansion.py`
 
 ---
 
-### Phase 4: Enhanced Retrieval (Sprint 4, 24 SP)
+### Phase 4: Optimization & Integration (Sprint 4, Weeks 7-8, 39 SP)
 
-**Goal:** Implement multi-factor importance scoring (MEM-4)
-**Deliverable:** Stage-aware retrieval with criticality boosting
+**Goal:** Implement Memify graph optimization, error tracking, and complete system integration
+**Deliverable:** Production-ready memory service with all acceptance criteria met
 
-#### Week 7: Multi-Factor Scoring + Stage Awareness (24 SP)
+#### Week 7: Memify & Error Tracking (18 SP)
 
-**MEM-023: Implement Enhanced Importance Scoring**
+**MEM-023: Implement Memify Graph Optimizer**
 
-- **Description:** Add 5-factor importance scoring (embedding, recency, frequency, stage, criticality)
+- **Description:** Implement Memify operation for graph optimization (consolidation, pruning, pattern detection)
 - **Acceptance:**
-  - [ ] Embedding similarity (40% weight)
-  - [ ] Recency (20% weight, exponential decay 24h half-life)
-  - [ ] Frequency (15% weight, access count normalized)
-  - [ ] Stage relevance (15% weight, boost current stage)
-  - [ ] Criticality boost (10% weight, is_critical flag)
-  - [ ] Unit tests for each factor
-- **Effort:** 8 story points (3-4 days)
+  - [ ] Entity consolidation: Merge similar entities with >90% similarity
+  - [ ] Relationship pruning: Remove low-value edges (access count < 2)
+  - [ ] Pattern detection: Identify frequently traversed paths
+  - [ ] Index optimization: Update Neo4j indexes based on query patterns
+  - [ ] Quality metrics: Track connectivity, relationship density
+  - [ ] <5s optimization per 1000 entities
+  - [ ] 90%+ consolidation accuracy
+  - [ ] <5% duplicate entities after optimization
+  - [ ] Scheduled execution support (cron)
+  - [ ] Unit tests for algorithms
+- **Effort:** 13 story points (5-6 days) [HIGH COMPLEXITY, graph algorithms]
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-022
-- **Priority:** P0
+- **Dependencies:** MEM-017, MEM-019
+- **Priority:** P0 (NEW critical feature)
 - **Files:**
-  - Enhanced `src/agentcore/memory/retrieval.py`
-  - `tests/memory/unit/test_enhanced_scoring.py`
+  - `src/agentcore/memory/memify_optimizer.py` (NEW)
+  - `src/agentcore/memory/memify/consolidation.py` (NEW)
+  - `src/agentcore/memory/memify/pruning.py` (NEW)
+  - `src/agentcore/memory/memify/patterns.py` (NEW)
+  - `tests/unit/test_memify.py`
 
-**MEM-024: Implement Stage Relevance Calculation**
+**MEM-024: Implement ErrorTracker**
 
-- **Description:** Add stage_relevance_map to memories for cross-stage importance
+- **Description:** Implement error tracking and pattern detection for COMPASS learning
 - **Acceptance:**
-  - [ ] Stage relevance computed per memory
-  - [ ] Memories tagged with relevant stages (JSONB map)
-  - [ ] Current stage memories boosted (1.5x multiplier)
-  - [ ] Cross-stage references preserved
-  - [ ] Stage transitions update relevance scores
-  - [ ] Unit tests for relevance calculation
+  - [ ] Record errors with full context
+  - [ ] Error type classification (hallucination, missing_info, incorrect_action, context_degradation)
+  - [ ] Severity scoring (0-1)
+  - [ ] Pattern detection: frequency, sequence, context correlation
+  - [ ] Error history queries
+  - [ ] Error-aware retrieval integration
+  - [ ] ACE integration signals (error rate >30%)
+  - [ ] 100% error capture rate
+  - [ ] 80%+ pattern detection accuracy
+  - [ ] Unit tests for pattern algorithms
 - **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-023
-- **Priority:** P1
+- **Dependencies:** MEM-007
+- **Priority:** P0 (COMPASS core feature)
 - **Files:**
-  - `src/agentcore/memory/stage_relevance.py`
-  - `tests/memory/unit/test_stage_relevance.py`
+  - `src/agentcore/memory/error_tracker.py`
+  - `tests/unit/test_error_tracker.py`
 
-**MEM-025: Implement Criticality Boosting**
+#### Week 8: Integration & Testing (21 SP)
 
-- **Description:** Add is_critical flag and criticality_reason for important memories
+**MEM-025: Implement Service Integrations**
+
+- **Description:** Integrate memory service with SessionManager, MessageRouter, TaskManager
 - **Acceptance:**
-  - [ ] Critical memories flagged during storage
-  - [ ] Criticality boost: 1.5x importance score
-  - [ ] Error-related memories auto-flagged as critical
-  - [ ] Agent-specified critical constraints preserved
-  - [ ] Critical memory ratio tracked (target <10%)
-  - [ ] Integration tests for criticality
-- **Effort:** 3 story points (1-2 days)
+  - [ ] SessionManager memory integration (session context)
+  - [ ] MessageRouter memory-aware routing
+  - [ ] TaskManager artifact storage
+  - [ ] ACE strategic context interface
+  - [ ] All cross-component contracts satisfied
+  - [ ] Integration tests with each service
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
-- **Dependencies:** MEM-024
-- **Priority:** P1
+- **Dependencies:** MEM-020, MEM-021, MEM-024
+- **Priority:** P0
 - **Files:**
-  - `src/agentcore/memory/criticality.py`
-  - `tests/memory/integration/test_criticality.py`
+  - `src/agentcore/memory/integrations/session.py`
+  - `src/agentcore/memory/integrations/router.py`
+  - `src/agentcore/memory/integrations/task.py`
+  - `src/agentcore/memory/integrations/ace.py`
+  - `tests/integration/test_service_integrations.py`
 
-**MEM-026: Implement Stage-Specific Context Formatting**
+**MEM-026: Implement JSON-RPC Methods**
 
-- **Description:** Format retrieved context based on current reasoning stage
+- **Description:** Implement JSON-RPC methods for memory service API
 - **Acceptance:**
-  - [ ] Planning stage: goals, constraints, strategies
-  - [ ] Execution stage: actions, tools, immediate context
-  - [ ] Reflection stage: outcomes, learnings, insights
-  - [ ] Verification stage: results, validations, comparisons
-  - [ ] Format includes stage headers and structure
-  - [ ] Unit tests for formatting logic
+  - [ ] memory.store - Store new memory
+  - [ ] memory.retrieve - Semantic search
+  - [ ] memory.get_context - Formatted context retrieval
+  - [ ] memory.complete_stage - Trigger compression
+  - [ ] memory.record_error - Track error
+  - [ ] memory.get_strategic_context - ACE interface
+  - [ ] memory.run_memify - Trigger optimization (NEW)
+  - [ ] All methods registered with @register_jsonrpc_method
+  - [ ] Request/response validation with Pydantic
+  - [ ] Unit tests for each method
 - **Effort:** 3 story points (1-2 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-025
-- **Priority:** P1
+- **Priority:** P0
 - **Files:**
-  - `src/agentcore/memory/context_formatter.py`
-  - `tests/memory/unit/test_context_formatting.py`
+  - `src/agentcore/memory/jsonrpc.py`
+  - `tests/unit/test_memory_jsonrpc.py`
 
-**MEM-027: A/B Testing vs Baseline Retrieval**
+**MEM-027: Implement Integration Tests**
 
-- **Description:** Compare enhanced retrieval (5-factor) against baseline (embedding-only)
+- **Description:** Implement comprehensive integration tests for hybrid architecture
 - **Acceptance:**
-  - [ ] Test dataset: 1000 queries with ground truth
-  - [ ] Metrics: precision@5, recall@10, NDCG@10
-  - [ ] Enhanced retrieval shows >10% improvement
-  - [ ] Latency overhead <20ms per query
-  - [ ] A/B test report with statistical significance
-- **Effort:** 5 story points (2-3 days)
+  - [ ] Real Qdrant instance (testcontainers)
+  - [ ] Real Neo4j instance (testcontainers)
+  - [ ] Test vector + graph coordination
+  - [ ] Test ECL pipeline end-to-end
+  - [ ] Test Memify operations
+  - [ ] Test hybrid search accuracy
+  - [ ] Test memory persistence across restarts
+  - [ ] Test stage compression pipeline
+  - [ ] Test error tracking workflow
+  - [ ] 90%+ code coverage
+  - [ ] All acceptance criteria validated
+- **Effort:** 8 story points (3-4 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-026
-- **Priority:** P1
+- **Priority:** P0
 - **Files:**
-  - `tests/memory/integration/test_enhanced_retrieval.py`
-  - `docs/memory-retrieval-comparison-report.md`
+  - `tests/integration/test_hybrid_memory_service.py`
+  - `tests/integration/test_ecl_pipeline_e2e.py`
+  - `tests/integration/test_graph_vector_coordination.py`
 
----
+**MEM-028: Implement Performance Validation**
 
-### Phase 5: ACE Integration Layer (Sprint 4, 16 SP)
-
-**Goal:** Implement Meta-Thinker interface for ACE coordination
-**Deliverable:** Strategic context queries and intervention tracking
-
-#### Week 8: Meta-Thinker Interface (MEM-5) (16 SP)
-
-**MEM-028: Implement ACE Integration Methods**
-
-- **Description:** Create ACEMemoryInterface for strategic context queries
+- **Description:** Validate all performance targets and conduct benchmarking
 - **Acceptance:**
-  - [ ] get_strategic_context(query) returns StrategicContext
-  - [ ] Query types: strategic_decision, error_analysis, capability_evaluation, context_refresh
-  - [ ] Strategic context includes: stage summaries, critical facts, error patterns, successful patterns
-  - [ ] Context health score computed (0-1)
-  - [ ] Query latency <150ms (p95)
-  - [ ] Unit tests for ACE methods
-- **Effort:** 8 story points (3-4 days)
+  - [ ] Vector search: <100ms (p95) with 1M vectors
+  - [ ] Graph traversal: <200ms (p95, 2-hop) with 100K nodes
+  - [ ] Hybrid search: <300ms (p95) combined
+  - [ ] Stage compression: <5s (p95)
+  - [ ] Memify optimization: <5s per 1000 entities
+  - [ ] Context efficiency: 60-80% reduction validated
+  - [ ] Cost reduction: 70-80% validated
+  - [ ] Entity extraction: 80%+ accuracy
+  - [ ] Relationship detection: 75%+ accuracy
+  - [ ] Memify consolidation: 90%+ accuracy
+  - [ ] Load testing: 100+ concurrent operations
+  - [ ] Performance benchmarks documented
+- **Effort:** 5 story points (2-3 days)
 - **Owner:** Backend Engineer
 - **Dependencies:** MEM-027
 - **Priority:** P0
 - **Files:**
-  - `src/agentcore/memory/ace_integration.py`
-  - `tests/memory/unit/test_ace_integration.py`
-
-**MEM-029: Implement Intervention Outcome Tracking**
-
-- **Description:** Track ACE intervention effectiveness in memory system
-- **Acceptance:**
-  - [ ] record_intervention_outcome(intervention_id, success, delta)
-  - [ ] Intervention outcomes linked to memories
-  - [ ] Pre/post metrics tracked for effectiveness
-  - [ ] Learning updates stage relevance weights
-  - [ ] Intervention history queryable
-  - [ ] Integration tests with mocked ACE
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-028
-- **Priority:** P1
-- **Files:**
-  - Enhanced `src/agentcore/memory/ace_integration.py`
-  - `tests/memory/integration/test_ace_interventions.py`
-
-**MEM-030: Add JSON-RPC Handlers for ACE Methods**
-
-- **Description:** Register JSON-RPC methods for ACE-MEM coordination
-- **Acceptance:**
-  - [ ] memory.get_strategic_context(query) exposed
-  - [ ] memory.record_intervention_outcome(intervention) exposed
-  - [ ] memory.get_context_health(task_id) exposed
-  - [ ] memory.request_context_refresh(task_id) exposed
-  - [ ] A2A context handled correctly
-  - [ ] Integration tests for JSON-RPC ACE methods
-- **Effort:** 3 story points (1-2 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-029
-- **Priority:** P0
-- **Files:**
-  - Enhanced `src/agentcore/memory/jsonrpc_handlers.py`
-  - `tests/memory/integration/test_ace_jsonrpc.py`
-
----
-
-### Phase 6: Optimization + COMPASS Validation (Sprint 5, 21 SP)
-
-**Goal:** Production-ready system with COMPASS validation
-**Deliverable:** Validated, monitored, documented memory system
-
-#### Week 9: Production Optimization (12 SP)
-
-**MEM-031: Tune PGVector Indexes**
-
-- **Description:** Optimize IVFFlat indexes for retrieval performance at 1M scale
-- **Acceptance:**
-  - [ ] IVFFlat list count tuned (target sqrt(N) lists)
-  - [ ] Index build time <10 minutes for 1M vectors
-  - [ ] Query latency <100ms (p95) at 1M scale
-  - [ ] Index size <30% of vector data size
-  - [ ] EXPLAIN ANALYZE validates index usage
-  - [ ] Performance report with benchmarks
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-030
-- **Priority:** P1
-- **Files:**
-  - Database index tuning scripts
-  - `tests/memory/load/test_1m_scale.py`
-
-**MEM-032: Optimize Database Queries**
-
-- **Description:** Identify and optimize slow queries using EXPLAIN ANALYZE
-- **Acceptance:**
-  - [ ] All critical path queries <50ms
-  - [ ] No table scans on large tables
-  - [ ] Composite indexes for common filters
-  - [ ] Connection pooling configured (min 10, max 50)
-  - [ ] Query plan cache enabled
-  - [ ] Slow query log analyzed
-- **Effort:** 3 story points (1-2 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-031
-- **Priority:** P1
-- **Files:**
-  - Database configuration updates
-  - `docs/memory-query-optimization.md`
-
-**MEM-033: Stress Test Compression Service**
-
-- **Description:** Load test compression with 100 concurrent requests
-- **Acceptance:**
-  - [ ] 100 concurrent compressions without errors
-  - [ ] Queue processing time <10s per batch
-  - [ ] Memory usage <500MB under load
-  - [ ] CPU usage <80% under load
-  - [ ] Rate limiting prevents gpt-4o-mini quota exhaustion
-  - [ ] Load test report generated
-- **Effort:** 4 story points (1-2 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-032
-- **Priority:** P1
-- **Files:**
-  - `tests/memory/load/test_compression_stress.py`
-  - `docs/memory-load-test-report.md`
-
-#### Week 10: COMPASS Validation + Documentation (9 SP)
-
-**MEM-034: COMPASS Validation Testing**
-
-- **Description:** Validate against COMPASS benchmarks (context efficiency, accuracy, cost)
-- **Acceptance:**
-  - [ ] Context efficiency: 60-80% reduction achieved
-  - [ ] Long-horizon accuracy: +20% improvement on GAIA-style tasks
-  - [ ] Cost reduction: 70-80% via test-time scaling validated
-  - [ ] Compression quality: 95%+ information retention
-  - [ ] All COMPASS targets met or exceeded
-  - [ ] Validation report with statistical analysis
-- **Effort:** 5 story points (2-3 days)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-033
-- **Priority:** P0
-- **Files:**
-  - `tests/memory/validation/test_compass_benchmarks.py`
-  - `docs/memory-compass-validation-report.md`
-
-**MEM-035: Set Up Monitoring and Alerting**
-
-- **Description:** Configure Prometheus metrics and Grafana dashboards
-- **Acceptance:**
-  - [ ] Metrics: retrieval latency, compression cost, memory count, error rate
-  - [ ] Grafana dashboard for memory system health
-  - [ ] Alerts: high latency, budget exhaustion, quality degradation
-  - [ ] Metric retention: 30 days
-  - [ ] Alert routing to on-call engineer
-- **Effort:** 2 story points (1 day)
-- **Owner:** Backend Engineer + DevOps
-- **Dependencies:** MEM-034
-- **Priority:** P1
-- **Files:**
-  - `prometheus/memory_metrics.yml`
-  - `grafana/memory_dashboard.json`
-
-**MEM-036: Write Operational Documentation**
-
-- **Description:** Create runbook and API documentation for operations and developers
-- **Acceptance:**
-  - [ ] Runbook: deployment, troubleshooting, common issues
-  - [ ] API docs: JSON-RPC methods, examples, error codes
-  - [ ] Architecture diagram: component interactions
-  - [ ] Configuration guide: all settings explained
-  - [ ] COMPASS validation results included
-  - [ ] Production readiness checklist completed
-- **Effort:** 2 story points (1 day)
-- **Owner:** Backend Engineer
-- **Dependencies:** MEM-035
-- **Priority:** P0
-- **Files:**
-  - `docs/memory-system-runbook.md`
-  - `docs/memory-system-api.md`
-  - `docs/memory-architecture.md`
+  - `tests/performance/test_memory_benchmarks.py`
+  - `tests/load/test_memory_load.py`
+  - `docs/performance/memory-service-benchmarks.md`
 
 ---
 
 ## Critical Path
 
 ```plaintext
-Foundation (Week 1-3):
-MEM-002 → MEM-003 → MEM-004 → MEM-005 → MEM-006 → MEM-007 → MEM-008 → MEM-009 → MEM-010 → MEM-011
-  (3d)     (2d)       (2d)       (3d)       (2d)       (2d)       (3d)       (2d)       (2d)       (1d)
-                                        [22 days]
-
-Compression (Week 4-5):
-MEM-012 → MEM-013 → MEM-014 → MEM-015 → MEM-016 → MEM-017 → MEM-018 → MEM-019
-  (3d)      (1d)      (2d)       (1d)      (2d)       (1d)       (1d)       (1d)
-                                        [12 days]
-
-Error + Retrieval (Week 6-7):
-MEM-020 → MEM-021 → MEM-022 → MEM-023 → MEM-024 → MEM-025 → MEM-026 → MEM-027
-  (2d)      (2d)      (1d)       (3d)       (2d)       (1d)       (1d)       (2d)
-                                        [14 days]
-
-ACE + Production (Week 8-10):
-MEM-028 → MEM-029 → MEM-030 → MEM-031 → MEM-032 → MEM-033 → MEM-034 → MEM-035 → MEM-036
-  (3d)      (2d)      (1d)       (2d)       (1d)       (1d)       (2d)       (1d)       (1d)
-                                        [14 days]
-
-Total Critical Path: 62 days (~10 weeks)
+MEM-004 → MEM-007 → MEM-010 → MEM-017 → MEM-021 → MEM-027
+  (8d)      (8d)      (5d)       (13d)      (13d)      (8d)
+              [55 days total ~8 weeks with parallelization]
 ```
 
 **Bottlenecks:**
 
-- **MEM-008 (StageManager Integration)**: Complex orchestration (8 SP, highest risk)
-- **MEM-023 (Enhanced Scoring)**: Multiple algorithms (8 SP, complexity risk)
-- **MEM-034 (COMPASS Validation)**: External benchmark dependency (5 SP)
+- MEM-017: GraphMemoryService (13 SP, highest complexity, NEW technology)
+- MEM-021: Hybrid search (13 SP, novel approach, performance critical)
+- MEM-023: Memify optimizer (13 SP, complex graph algorithms)
 
 **Parallel Tracks:**
 
-- **Testing**: Unit tests can be written concurrently with implementation
-- **Documentation**: API docs can be written as features complete
-- **Monitoring**: Metrics setup can happen alongside Week 9 optimization
+- Vector memory (MEM-002, MEM-012, MEM-020) can develop in parallel with graph (MEM-003, MEM-017)
+- Entity extraction (MEM-015) parallel with compression (MEM-012)
+- Error tracking (MEM-024) parallel with Memify (MEM-023)
 
 ---
 
-## Quick Wins (Week 1-2)
+## Quick Wins (Weeks 1-2)
 
-1. **MEM-002 (Database Migration)** - Unblocks all development
-2. **MEM-003/004 (Models)** - Enables parallel repository work
-3. **MEM-005 (Repositories)** - Core data access ready early
+1. **MEM-002: Qdrant deployment** (5 SP, Week 1)
+   - Unblocks vector memory development
+   - Well-documented, low risk
+   - Early validation of vector search
+
+2. **MEM-005: Pydantic models** (5 SP, Week 1)
+   - Unblocks all service development
+   - Demonstrates hybrid architecture (EntityNode, RelationshipEdge)
+
+3. **MEM-003: Neo4j deployment** (8 SP, Week 1)
+   - Front-loads highest risk
+   - Early derisking of graph integration
+   - Validates APOC plugin setup
 
 ---
 
@@ -768,11 +660,10 @@ Total Critical Path: 62 days (~10 weeks)
 
 | Task | Risk | Mitigation | Contingency |
 |------|------|------------|-------------|
-| MEM-008 | Stage detection complexity | Early integration testing, mock data | Simplify to manual stage markers initially |
-| MEM-012 | gpt-4o-mini quality issues | COMPASS benchmarks validate approach | Fall back to gpt-4.1 with budget increase |
-| MEM-023 | Enhanced scoring performance | Profile and optimize early | Use simpler 3-factor scoring (embed, recency, stage) |
-| MEM-031 | PGVector scaling issues | Load test at 100K before 1M | Consider external vector DB (Pinecone, Weaviate) |
-| MEM-034 | COMPASS validation fails | Iterative tuning with benchmark feedback | Document deviations, target 80% of goals |
+| MEM-003 | Neo4j deployment complexity | Front-load to Week 1, early validation | Fall back to simpler graph DB if issues |
+| MEM-017 | GraphMemoryService complexity | Week 3 spike for Cypher patterns, testcontainers | Simplify to 1-hop only if needed |
+| MEM-021 | Hybrid search performance | Benchmark in Sprint 3, optimize indexes | Fallback to vector-only with graph enrichment |
+| MEM-023 | Memify algorithm effectiveness | Validate with quality metrics, iterate | Manual consolidation if algorithms fail |
 
 ---
 
@@ -780,82 +671,134 @@ Total Critical Path: 62 days (~10 weeks)
 
 ### Automated Testing Tasks
 
-- **MEM-005, MEM-006, MEM-009, etc.** - Unit tests embedded in each story (target 95% coverage)
-- **MEM-008, MEM-010, MEM-022** - Integration tests for component interactions
-- **MEM-019, MEM-033** - Load tests for performance validation
-- **MEM-034** - COMPASS validation tests (benchmark suite)
+- **Unit Tests** (ongoing, embedded in each task) - 90%+ coverage required
+- **MEM-027: Integration Tests** (8 SP) - Sprint 4, Week 8
+- **MEM-028: Performance Validation** (5 SP) - Sprint 4, Week 8
 
 ### Quality Gates
 
-- **90%+ test coverage** for all memory components
-- **All critical paths have integration tests** (stage workflows, compression, retrieval)
-- **Performance tests validate SLOs** (<100ms retrieval, 10:1 compression ratio)
-- **COMPASS benchmarks met** (60-80% context reduction, +20% accuracy, 70-80% cost reduction)
+- 90%+ code coverage (unit + integration)
+- All critical paths have integration tests
+- Performance tests validate all SLOs
+- Graph + vector coordination validated
+- Hybrid search accuracy ≥90%
 
----
+### Testing Infrastructure
 
-## Team Allocation
-
-**Backend Engineer (1 FTE):**
-
-- Database and models (Week 1)
-- Stage management (Week 2)
-- Retrieval and embedding (Week 3)
-- Compression infrastructure (Week 4-5)
-- Error tracking (Week 6)
-- Enhanced retrieval (Week 7)
-- ACE integration (Week 8)
-- Optimization and validation (Week 9-10)
-
-**DevOps Support (0.2 FTE):**
-
-- PGVector setup (Week 1)
-- Redis configuration (Week 5)
-- Monitoring setup (Week 10)
+- **Testcontainers**: Qdrant, Neo4j, PostgreSQL, Redis
+- **pytest-asyncio**: All async test support
+- **pytest-benchmark**: Performance testing
+- **Locust**: Load testing (100+ concurrent operations)
 
 ---
 
 ## Sprint Planning
 
-**2-week sprints, 32-35 SP velocity (1 engineer)**
+**2-week sprints, 175 SP total (~43.75 SP/sprint)**
 
 | Sprint | Focus | Story Points | Key Deliverables |
 |--------|-------|--------------|------------------|
-| Sprint 1 (Week 1-2) | Foundation + Stage Mgmt | 32 SP | Database, models, StageManager |
-| Sprint 2 (Week 3-4) | Retrieval + Compression Start | 32 SP | Basic retrieval, compression core |
-| Sprint 3 (Week 5-6) | Compression + Error Tracking | 33 SP | Task compression, error patterns |
-| Sprint 4 (Week 7-8) | Enhanced Retrieval + ACE | 35 SP | Multi-factor scoring, ACE interface |
-| Sprint 5 (Week 9-10) | Optimization + Validation | 33 SP | Performance tuning, COMPASS validation |
+| Sprint 1 (Weeks 1-2) | Infrastructure | 39 SP | Qdrant + Neo4j deployed, models defined, repositories functional |
+| Sprint 2 (Weeks 3-4) | Stage & ECL | 50 SP | StageManager operational, ECL pipeline processing, entity extraction working |
+| Sprint 3 (Weeks 5-6) | Graph & Hybrid | 47 SP | Graph storage operational, hybrid search functional, performance validated |
+| Sprint 4 (Weeks 7-8) | Optimization | 39 SP | Memify operational, error tracking complete, production-ready |
 
-**Total: 165 SP over 10 weeks**
+**Velocity assumption**: 1 senior backend engineer, 40-45 SP per 2-week sprint
+
+---
+
+## Team Allocation
+
+**Backend (1 senior engineer)**
+
+- All implementation tasks
+- Architecture decisions (graph schema, hybrid search)
+- Performance optimization
+
+**QA (shared, 0.25 engineer)**
+
+- Test review (MEM-027, MEM-028)
+- Performance validation
+- Load testing coordination
+
+**DevOps (shared, 0.1 engineer)**
+
+- Infrastructure deployment (MEM-002, MEM-003)
+- K8s manifests
+- CI/CD pipeline updates
+
+---
+
+## Task Import Format
+
+CSV export for project management tools:
+
+```csv
+ID,Title,Description,Estimate,Priority,Dependencies,Sprint
+MEM-002,Deploy Qdrant,Deploy Qdrant vector database,5,P0,,1
+MEM-003,Deploy Neo4j,Deploy Neo4j graph database with plugins,8,P0,,1
+MEM-004,Database Migration,Create hybrid database schema,8,P0,,1
+MEM-005,Pydantic Models,Implement hybrid Pydantic models,5,P0,MEM-004,1
+MEM-006,SQLAlchemy Models,Implement ORM models,5,P0,MEM-005,1
+MEM-007,Repository Layer,Implement repositories with graph support,8,P0,MEM-006,1
+MEM-008,StageManager,Implement COMPASS stage management,8,P0,MEM-007,2
+MEM-009,Stage Detection,Implement stage transition detection,5,P0,MEM-008,2
+MEM-010,ECL Pipeline Base,Implement ECL pipeline framework,5,P0,MEM-007,2
+MEM-011,Task Registry,Implement task registry and composition,3,P0,MEM-010,2
+MEM-012,ContextCompressor,Implement compression with test-time scaling,8,P0,MEM-008,2
+MEM-013,Compression Validation,Implement quality metrics,5,P0,MEM-012,2
+MEM-014,Cost Tracking,Implement cost tracking,3,P1,MEM-012,2
+MEM-015,Entity Extraction,Implement entity extraction task,8,P0,"MEM-010,MEM-011",2
+MEM-016,Entity Classification,Implement entity classification,5,P1,MEM-015,2
+MEM-017,GraphMemoryService,Implement Neo4j integration,13,P0,"MEM-003,MEM-007,MEM-010",3
+MEM-018,Relationship Detection,Implement relationship detection task,8,P0,"MEM-015,MEM-017",3
+MEM-019,Graph Query Patterns,Implement Cypher query patterns,5,P1,MEM-017,3
+MEM-020,Enhanced Retrieval,Implement multi-factor scoring,5,P0,MEM-007,3
+MEM-021,Hybrid Search,Implement vector + graph hybrid search,13,P0,"MEM-002,MEM-017,MEM-020",3
+MEM-022,Graph Context Expansion,Implement context expansion with graph,3,P1,MEM-021,3
+MEM-023,Memify Optimizer,Implement graph optimization,13,P0,"MEM-017,MEM-019",4
+MEM-024,ErrorTracker,Implement error tracking,5,P0,MEM-007,4
+MEM-025,Service Integrations,Integrate with other services,5,P0,"MEM-020,MEM-021,MEM-024",4
+MEM-026,JSON-RPC Methods,Implement API methods,3,P0,MEM-025,4
+MEM-027,Integration Tests,Comprehensive integration testing,8,P0,MEM-026,4
+MEM-028,Performance Validation,Validate all performance targets,5,P0,MEM-027,4
+```
 
 ---
 
 ## Appendix
 
-**Estimation Method:** Fibonacci story points based on complexity and effort
-**Story Point Scale:** 1 (trivial), 2 (simple), 3 (moderate), 5 (complex), 8 (very complex), 13 (epic-size)
-
+**Estimation Method:** Planning Poker with sequential thinking analysis
+**Story Point Scale:** Fibonacci (1, 2, 3, 5, 8, 13, 21)
 **Definition of Done:**
 
-- Code implemented and reviewed
-- Unit tests written (90%+ coverage for task)
-- Integration tests passing
-- Documentation updated (inline + API docs)
-- Deployed to staging environment
-- Performance validated (if applicable)
-- COMPASS targets met (if applicable)
+- Code reviewed and approved
+- Unit tests written and passing (90%+ coverage)
+- Integration tests passing where applicable
+- Performance targets validated
+- Documentation updated (docstrings, architecture docs)
+- Deployed to staging and smoke tested
 
-**COMPASS Validation Commitment:**
+**NEW Components (Hybrid Architecture)**:
 
-All tasks contributing to COMPASS targets (MEM-012 through MEM-034) will be validated against benchmarks:
+- Neo4j graph database integration
+- ECL Pipeline (Extract, Cognify, Load)
+- Entity extraction and classification
+- Relationship detection
+- GraphMemoryService
+- Hybrid search (vector + graph)
+- Memify graph optimizer
+- Graph-aware context expansion
 
-- Context efficiency measured on 50-turn conversations
-- Cost reduction validated via actual gpt-4o-mini vs gpt-4.1 comparison
-- Compression quality validated via fact retention tests
-- Long-horizon accuracy validated on GAIA-style evaluation dataset
+**Technology Stack**:
 
----
-
-**Document Status:** ✅ Ready for Ticket Generation
-**Next Steps:** Generate story tickets (MEM-002 through MEM-036) in `.sage/tickets/`
+- Vector DB: Qdrant
+- Graph DB: Neo4j 5.15+ with APOC + Graph Data Science
+- Cache: Redis
+- Database: PostgreSQL
+- Memory Framework: Mem0 ^0.1.0
+- Embeddings: OpenAI text-embedding-3-small
+- Compression: gpt-4.1-mini (test-time scaling)
+- ORM: SQLAlchemy 2.0+ (async)
+- Models: Pydantic 2.5+
+- Testing: pytest + testcontainers

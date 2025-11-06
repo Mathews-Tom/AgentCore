@@ -1,9 +1,9 @@
-# Memory Service Specification (Mem0 + COMPASS Enhanced)
+# Memory Service Specification (Hybrid: Mem0 + COMPASS + Graph)
 
 **Component ID:** MEM
 **Status:** Ready for Implementation
 **Priority:** P0 (HIGH - Phase 2)
-**Effort:** 4-5 weeks
+**Effort:** 6-8 weeks
 **Owner:** Backend Team
 **Source:** Merged from memory-service (Mem0) + memory-system (COMPASS)
 
@@ -50,6 +50,22 @@ Implement a comprehensive memory service combining:
 - 70-80% cost reduction via test-time scaling
 - 95%+ information retention in compression
 
+**Knowledge Graph Enhancements (Cognee-Inspired):**
+
+- Entity and relationship extraction from memories
+- Graph-based contextual traversal (Neo4j)
+- Knowledge consolidation across sessions
+- Memify operation for graph optimization
+- Hybrid search combining vector similarity + graph relationships
+- Cross-memory semantic connections
+
+**ECL Pipeline Architecture:**
+
+- Modular task-based processing (Extract, Cognify, Load)
+- Pluggable entity extractors and relationship detectors
+- Multi-backend storage coordination
+- Continuous graph optimization (Memify)
+
 ### Success Metrics
 
 **Context Efficiency (COMPASS):**
@@ -83,6 +99,21 @@ Implement a comprehensive memory service combining:
 
 - 1M+ memories per agent without degradation
 - <100ms retrieval at 1M+ scale
+
+**Graph Performance (Hybrid Architecture):**
+
+- <200ms for graph traversal queries (p95, 2-hop)
+- <300ms for hybrid search (vector + graph) (p95)
+- <5s for Memify optimization per 1000 entities
+- 90%+ entity consolidation accuracy
+- 95%+ relationship relevance after pruning
+
+**Knowledge Graph Quality:**
+
+- 80%+ entity extraction accuracy
+- 75%+ relationship detection accuracy
+- 3+ average connections per entity
+- <5% duplicate entities after Memify
 
 ### Target Users
 
@@ -299,12 +330,13 @@ The system SHALL validate retrieval quality:
 **FR-6.4** The system SHALL support task-level memory (task-specific context and stages)
 **FR-6.5** The system SHALL link memories across scope levels using Mem0
 
-### FR-7: Memory Storage and Retrieval (Mem0 + Qdrant)
+### FR-7: Memory Storage and Retrieval (Hybrid: Mem0 + Qdrant + Neo4j)
 
-**FR-7.1 Storage Backend**
+**FR-7.1 Hybrid Storage Backend**
 
 - The system SHALL use Redis for working memory (fast access, TTL-based)
 - The system SHALL use Qdrant for episodic, semantic, and procedural memory (vector storage)
+- The system SHALL use Neo4j for entity relationships and knowledge graphs (graph storage)
 - The system SHALL use PostgreSQL for memory metadata, stage summaries, and relationships
 - The system SHALL ensure eventual consistency across storage layers
 
@@ -329,6 +361,22 @@ The system SHALL validate retrieval quality:
 - The system SHALL support artifact retrieval by session_id and stage_id
 - The system SHALL track participant agents in session memories
 
+**FR-7.5 Knowledge Graph Storage (Neo4j)**
+
+- The system SHALL use Neo4j to store entity nodes and relationship edges
+- The system SHALL create Memory, Entity, and Concept nodes
+- The system SHALL link memories through MENTIONS, RELATES_TO, and PART_OF relationships
+- The system SHALL support temporal relationships (FOLLOWS, PRECEDES) between memories
+- The system SHALL index entities by type and properties for fast traversal
+
+**FR-7.6 Hybrid Search and Retrieval**
+
+- The system SHALL perform vector search in Qdrant for semantic similarity
+- The system SHALL perform graph traversal in Neo4j for contextual relationships
+- The system SHALL merge and rank results from both vector and graph queries
+- The system SHALL use graph proximity to boost importance scores
+- The system SHALL support multi-hop relationship queries (depth 1-3)
+
 ### FR-8: ACE Integration (COMPASS Meta-Thinker Interface)
 
 **FR-8.1 Strategic Context Retrieval**
@@ -348,6 +396,93 @@ The system SHALL validate retrieval quality:
 - The system SHALL track performance metrics in TaskContext
 - The system SHALL signal ACE when error rates exceed thresholds
 - The system SHALL provide context degradation warnings
+
+### FR-9: ECL Pipeline Architecture (Cognee-Inspired)
+
+**FR-9.1 Extract Phase (Data Ingestion)**
+
+The system SHALL support multiple data sources:
+
+- Agent interactions (messages, tool calls, responses)
+- Session context (conversation history)
+- Task artifacts (files, outputs, results)
+- Error records and recovery actions
+
+**FR-9.2 Cognify Phase (Knowledge Extraction)**
+
+The system SHALL process memories through modular tasks:
+
+- **Entity Extraction Task**: Identify entities (people, concepts, tools, constraints)
+- **Relationship Detection Task**: Detect connections between entities
+- **Critical Fact Extraction Task**: Mark must-remember information
+- **Pattern Recognition Task**: Identify recurring themes and workflows
+
+**FR-9.3 Load Phase (Multi-Backend Storage)**
+
+The system SHALL coordinate storage across backends:
+
+- Store memory content and embeddings in Qdrant (vector search)
+- Store entities and relationships in Neo4j (graph traversal)
+- Store metadata and stage summaries in PostgreSQL (relational queries)
+- Update working memory cache in Redis (fast access)
+
+**FR-9.4 Memify Operation (Graph Optimization)**
+
+The system SHALL optimize knowledge graphs through:
+
+- **Consolidation**: Merge similar entities with >90% similarity
+- **Pruning**: Remove low-value relationships (access count < 2)
+- **Pattern Detection**: Identify frequently traversed paths
+- **Index Optimization**: Update Neo4j indexes based on query patterns
+- **Quality Metrics**: Track graph connectivity and relationship density
+
+**FR-9.5 Task Registry and Composition**
+
+The system SHALL provide extensible task pipeline:
+
+- Task base class with execute() method
+- Task registry for discovering available tasks
+- Pipeline composition for chaining tasks
+- Parallel task execution where dependencies allow
+- Task-level error handling and retry logic
+
+### FR-10: Knowledge Graph Retrieval (Hybrid Search)
+
+**FR-10.1 Graph-Aware Context Expansion**
+
+The system SHALL enhance vector search results with graph context:
+
+- For each vector search result, traverse Neo4j to find related entities
+- Include 1-hop neighbors (direct connections) in context
+- Include 2-hop neighbors for critical memories
+- Preserve graph structure in returned context (entity → relationship → entity)
+
+**FR-10.2 Relationship-Based Relevance Scoring**
+
+The system SHALL boost importance scores using graph features:
+
+- **Connection degree**: Entities with more relationships score higher
+- **Path distance**: Entities closer in graph to query entities score higher
+- **Relationship strength**: Frequently co-occurring entities score higher
+- **Temporal proximity**: Recently created relationships score higher
+
+**FR-10.3 Cross-Session Knowledge Discovery**
+
+The system SHALL leverage graph for cross-session insights:
+
+- Find similar past situations by entity overlap
+- Identify recurring patterns across multiple tasks
+- Surface contradictory information from different sessions
+- Recommend related memories from other agents (with permissions)
+
+**FR-10.4 Memify-Enhanced Search Performance**
+
+The system SHALL use Memify optimization results:
+
+- Pre-compute common query paths in graph
+- Cache frequently accessed relationship patterns
+- Index consolidated entities for faster retrieval
+- Track and optimize slow graph queries
 
 ### User Stories
 
@@ -584,6 +719,7 @@ The system SHALL validate retrieval quality:
 
 - [ ] Mem0 integrated with AgentCore services
 - [ ] Qdrant vector database deployed and operational
+- [ ] Neo4j graph database deployed with APOC and Graph Data Science plugins
 - [ ] PostgreSQL schema with stage_memories, task_contexts, error_records tables
 - [ ] Redis working memory cache operational
 
@@ -594,6 +730,10 @@ The system SHALL validate retrieval quality:
 - [ ] Test-time scaling compression with gpt-4.1-mini functional
 - [ ] Error tracking and pattern detection working
 - [ ] Enhanced retrieval with multi-factor scoring operational
+- [ ] Neo4j graph storage with entity and relationship models functional
+- [ ] ECL pipeline (Extract, Cognify, Load) operational
+- [ ] Memify graph optimization running on schedule
+- [ ] Hybrid search (vector + graph) operational
 
 **Integration:**
 
@@ -605,8 +745,11 @@ The system SHALL validate retrieval quality:
 **Quality:**
 
 - [ ] Unit tests achieving 90%+ coverage
-- [ ] Integration tests with Qdrant and Mem0 passing
+- [ ] Integration tests with Qdrant, Neo4j, and Mem0 passing
 - [ ] COMPASS validation tests passing (60-80% context reduction, 70-80% cost reduction, 95%+ fact retention)
+- [ ] Graph query performance tests passing (p95 <200ms for 2-hop queries)
+- [ ] Memify optimization validation (entity consolidation, relationship pruning)
+- [ ] Hybrid search quality tests (vector + graph relevance scoring)
 - [ ] Performance targets validated (p95 <100ms search, <5s compression)
 
 **Operations:**
@@ -631,17 +774,26 @@ The system SHALL validate retrieval quality:
 **Integration Testing**:
 
 - Real Qdrant instance with testcontainers
+- Real Neo4j instance with testcontainers
 - Real Mem0 integration
 - Test memory persistence across restarts
 - Test semantic search accuracy
+- Test graph traversal and relationship queries
+- Test hybrid search (vector + graph)
+- Test entity extraction and relationship detection
+- Test Memify optimization operations
 - Test stage compression pipeline
 - Test error tracking workflow
 - Test multi-scope hierarchy
+- Test ECL pipeline end-to-end
 
 **Performance Testing**:
 
 - Benchmark memory addition latency
 - Benchmark Mem0 search latency with 10K+ memories
+- Benchmark Neo4j graph traversal (1-hop, 2-hop, 3-hop queries)
+- Benchmark hybrid search (vector + graph merge) latency
+- Benchmark Memify optimization performance
 - Benchmark compression throughput and cost
 - Test cache hit rates
 - Load test 1000 concurrent operations
@@ -673,6 +825,7 @@ The system SHALL validate retrieval quality:
 - **Core**: Python 3.12+, FastAPI, Pydantic, asyncio
 - **Memory Layer**: mem0 ^0.1.0
 - **Vector DB**: Qdrant (via qdrant-client)
+- **Graph DB**: Neo4j 5.15+ (via neo4j-driver)
 - **Cache**: Redis (existing AgentCore infrastructure)
 - **Database**: PostgreSQL (existing AgentCore infrastructure)
 - **Embeddings**: OpenAI text-embedding-3-small (via Mem0)
@@ -693,6 +846,14 @@ The system SHALL validate retrieval quality:
 - Embedder: OpenAI text-embedding-3-small
 - Config: Integrated with AgentCore settings
 
+**Neo4j**: Knowledge graph database for entities and relationships
+
+- Connection: `NEO4J_URI` (bolt://localhost:7687 for dev)
+- Auth: `NEO4J_USER` and `NEO4J_PASSWORD`
+- Database: `NEO4J_DATABASE` (agentcore)
+- Driver: neo4j-driver ^5.15.0 (async support)
+- Plugins: APOC (graph algorithms), Graph Data Science
+
 **OpenAI**: Embeddings and compression
 
 - API Key: `OPENAI_API_KEY`
@@ -706,6 +867,14 @@ The system SHALL validate retrieval quality:
 - Storage: Persistent volume (20GB minimum)
 - Resources: 2GB RAM, 1 CPU core
 - Ports: 6333 (HTTP), 6334 (gRPC)
+
+**Neo4j Deployment**: Docker container or K8s deployment
+
+- Storage: Persistent volume (50GB minimum)
+- Resources: 8GB RAM, 4 CPU cores
+- Ports: 7474 (HTTP), 7687 (Bolt)
+- Plugins: APOC, Graph Data Science
+- Version: 5.15+ Community or Enterprise
 
 **Redis**: Existing AgentCore Redis instance
 
@@ -745,7 +914,8 @@ The system SHALL validate retrieval quality:
 src/agentcore/a2a_protocol/
 ├── models/
 │   └── memory.py                  # MemoryLayer enum, MemoryRecord, StageMemory,
-│                                  # TaskContext, ErrorRecord, MemorySearchQuery
+│                                  # TaskContext, ErrorRecord, MemorySearchQuery,
+│                                  # EntityNode, RelationshipEdge (Neo4j)
 ├── services/
 │   ├── memory/
 │   │   ├── manager.py             # MemoryManager (orchestration, Mem0 integration)
@@ -755,7 +925,12 @@ src/agentcore/a2a_protocol/
 │   │   ├── error_tracker.py       # ErrorTracker (pattern detection)
 │   │   ├── working_memory.py      # WorkingMemoryService (Redis)
 │   │   ├── mem0_client.py         # Mem0Client (wrapper for mem0 library)
-│   │   └── cost_tracker.py        # CostTracker (compression cost monitoring)
+│   │   ├── cost_tracker.py        # CostTracker (compression cost monitoring)
+│   │   ├── graph_memory.py        # GraphMemoryService (Neo4j integration)
+│   │   ├── ecl_pipeline.py        # ECL pipeline (Extract, Cognify, Load)
+│   │   ├── entity_extractor.py    # Entity extraction task
+│   │   ├── relationship_detector.py # Relationship detection task
+│   │   └── memify_optimizer.py    # Memify graph optimization
 │   └── memory_jsonrpc.py          # JSON-RPC methods (memory.*)
 ├── cache/
 │   └── memory_cache.py            # Redis cache adapter
@@ -773,6 +948,12 @@ src/agentcore/a2a_protocol/
 QDRANT_URL: str = "http://localhost:6333"
 QDRANT_API_KEY: str | None = None
 QDRANT_COLLECTION_NAME: str = "agentcore_memories"
+
+# Neo4j (Knowledge Graph layer)
+NEO4J_URI: str = "bolt://localhost:7687"
+NEO4J_USER: str = "neo4j"
+NEO4J_PASSWORD: str | None = None
+NEO4J_DATABASE: str = "agentcore"
 
 # Redis (Working Memory layer)
 REDIS_MEMORY_DB: int = 1  # Separate DB for memory cache
@@ -813,6 +994,19 @@ ERROR_PATTERN_DETECTION_THRESHOLD: int = 2  # Min occurrences
 # Cost Control
 MONTHLY_TOKEN_BUDGET_USD: float = 1000.0
 ALERT_THRESHOLD_PCT: float = 75.0
+
+# ECL Pipeline Configuration
+ECL_ENTITY_EXTRACTION_ENABLED: bool = True
+ECL_RELATIONSHIP_DETECTION_ENABLED: bool = True
+ECL_PARALLEL_TASK_EXECUTION: bool = True
+ECL_MAX_PARALLEL_TASKS: int = 4
+
+# Memify Graph Optimization
+MEMIFY_ENABLED: bool = True
+MEMIFY_SCHEDULE_HOURS: int = 24  # Run every 24 hours
+MEMIFY_ENTITY_SIMILARITY_THRESHOLD: float = 0.90  # 90% similarity for merge
+MEMIFY_RELATIONSHIP_MIN_ACCESS: int = 2  # Min access count to keep
+MEMIFY_MAX_GRAPH_DEPTH: int = 3  # Max depth for multi-hop queries
 ```
 
 ### Infrastructure Setup
@@ -827,62 +1021,103 @@ qdrant:
     - "6334:6334"
   volumes:
     - qdrant_data:/qdrant/storage
+
+neo4j:
+  image: neo4j:5.15-community
+  ports:
+    - "7474:7474"  # HTTP
+    - "7687:7687"  # Bolt
+  environment:
+    NEO4J_AUTH: neo4j/password
+    NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+  volumes:
+    - neo4j_data:/data
+    - neo4j_logs:/logs
 ```
 
 **Kubernetes (prod)**:
 
+**Qdrant:**
 - StatefulSet with persistent volume
 - Service exposing ports 6333, 6334
 - PVC with 20GB storage
 - Resource limits: 4GB RAM, 2 CPU
 
+**Neo4j:**
+- StatefulSet with persistent volume
+- Service exposing ports 7474 (HTTP), 7687 (Bolt)
+- PVC with 50GB storage
+- Resource limits: 8GB RAM, 4 CPU
+- Enable APOC and Graph Data Science plugins
+
 ### Timeline
 
 **Week 1-2: Infrastructure & Core (P0)**
 
-- Qdrant deployment and Mem0 integration
+- Qdrant and Neo4j deployment
+- Mem0 integration and Neo4j driver setup
 - Database schema (stage_memories, task_contexts, error_records)
-- Basic memory models and repositories
+- Basic memory models and repositories (including EntityNode, RelationshipEdge)
 - Redis working memory cache implementation
 - MemoryManager orchestration layer
 
-**Week 3: Stage Management (P0 - COMPASS MEM-1)**
+**Week 3: Stage Management & ECL Pipeline Foundation (P0 - COMPASS MEM-1)**
 
 - StageManager implementation
 - Stage detection and transitions
 - Stage-to-memory linking
+- ECL pipeline base classes (Extract, Cognify, Load)
+- Task registry and composition framework
 - Basic stage compression preparation
 
-**Week 4: Compression Pipeline (P0 - COMPASS MEM-2)**
+**Week 4: Compression Pipeline & Entity Extraction (P0 - COMPASS MEM-2)**
 
 - ContextCompressor with gpt-4.1-mini
 - Stage compression (10:1 ratio)
 - Task compression (5:1 ratio)
 - Compression quality validation
 - Cost tracking
+- Entity Extraction Task implementation
 
-**Week 5: Enhanced Retrieval (P0 - COMPASS MEM-4)**
+**Week 5: Graph Storage & Relationship Detection (P0)**
 
-- Multi-factor importance scoring
+- GraphMemoryService (Neo4j integration)
+- Entity and concept node creation
+- Relationship Detection Task implementation
+- MENTIONS, RELATES_TO, PART_OF relationships
+- Temporal relationships (FOLLOWS, PRECEDES)
+- Graph indexing strategy
+
+**Week 6: Hybrid Retrieval (P0 - COMPASS MEM-4)**
+
+- Multi-factor importance scoring (updated with graph features)
 - Stage-aware retrieval
 - Critical memory identification
-- Retrieval quality validation
-- Integration with Mem0 search
+- Hybrid search (vector + graph)
+- Graph-aware context expansion
+- Relationship-based relevance scoring
+- Integration with Mem0 + Neo4j
 
-**Week 6: Error Tracking (P1 - COMPASS MEM-3)**
+**Week 7: Memify & Error Tracking (P1 - COMPASS MEM-3)**
 
+- Memify optimizer implementation
+- Entity consolidation (>90% similarity)
+- Relationship pruning (low-value edges)
+- Pattern detection and path optimization
 - ErrorTracker implementation
-- Pattern detection algorithms
+- Error pattern detection algorithms
 - Error-aware retrieval
 - ACE integration interface
 
-**Week 7-8: Integration & Testing**
+**Week 8: Integration & Testing**
 
 - Service integrations (SessionManager, MessageRouter, TaskManager)
 - JSON-RPC methods and CLI commands
-- Integration testing with Mem0 and Qdrant
+- Integration testing with Mem0, Qdrant, and Neo4j
 - Performance validation and optimization
 - COMPASS validation (context reduction, cost savings, quality)
+- Graph query performance testing
+- Memify optimization validation
 - Documentation and deployment
 
 ---
@@ -895,11 +1130,16 @@ qdrant:
 - `docs/specs/memory-system/spec.md` - COMPASS enhancement spec
 - `docs/research/evolving-memory-system.md` - Four-layer architecture research
 - `.docs/research/compass-enhancement-analysis.md` - COMPASS paper analysis
+- `docs/architecture/MEMORY_SYSTEM_ENHANCEMENT_ANALYSIS.md` - Cognee analysis and hybrid approach
+- `docs/architecture/MEMORY_SYSTEM_ARCHITECTURE_COMPARISON.md` - Architecture comparison and decision matrix
 
 **External Documentation:**
 
 - Mem0 Documentation: <https://docs.mem0.ai/>
 - Qdrant Documentation: <https://qdrant.tech/documentation/>
+- Neo4j Documentation: <https://neo4j.com/docs/>
+- Neo4j Python Driver: <https://neo4j.com/docs/api/python-driver/>
+- Cognee Repository: <https://github.com/topoteretes/cognee>
 - COMPASS Paper: <https://arxiv.org/abs/2510.08790>
 - OpenAI Embeddings: <https://platform.openai.com/docs/guides/embeddings>
 - OpenAI Models (Pricing): <https://openai.com/api/pricing/>
