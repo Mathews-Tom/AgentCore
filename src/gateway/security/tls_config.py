@@ -103,21 +103,19 @@ def create_ssl_context(config: TLSConfig) -> ssl.SSLContext:
     context.maximum_version = config.max_version
 
     # Configure cipher suites
+    # Note: TLS 1.3 ciphers are configured automatically and cannot be set via set_ciphers()
+    # Only configure ciphers if TLS 1.2 is allowed or if custom ciphers are specified for TLS 1.2
     if config.cipher_suites:
-        # Use custom cipher suites
-        cipher_string = ":".join(config.cipher_suites)
-        context.set_ciphers(cipher_string)
+        # Use custom cipher suites (only for TLS 1.2)
+        if config.min_version < ssl.TLSVersion.TLSv1_3:
+            cipher_string = ":".join(config.cipher_suites)
+            context.set_ciphers(cipher_string)
     else:
-        # Use recommended cipher suites
-        if config.min_version >= ssl.TLSVersion.TLSv1_3:
-            # TLS 1.3 only
-            cipher_string = ":".join(TLS13_CIPHER_SUITES)
-        else:
-            # TLS 1.2 + 1.3
-            all_ciphers = TLS12_CIPHER_SUITES + TLS13_CIPHER_SUITES
-            cipher_string = ":".join(all_ciphers)
-
-        context.set_ciphers(cipher_string)
+        # Use recommended cipher suites for TLS 1.2 if enabled
+        if config.min_version < ssl.TLSVersion.TLSv1_3:
+            cipher_string = ":".join(TLS12_CIPHER_SUITES)
+            context.set_ciphers(cipher_string)
+        # TLS 1.3 ciphers are handled automatically by Python's ssl module
 
     # Client certificate verification
     if config.verify_client:
