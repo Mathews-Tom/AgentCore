@@ -168,7 +168,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             read_timeout=30.0,
             write_timeout=30.0,
             pool_timeout=5.0,
-            http2=False,  # Disabled: requires httpx[http2] package
+            http2=True,  # HTTP/2 enabled for better performance (multiplexing)
             retries=3,
         )
         http_connection_pool = HTTPConnectionPool(config=http_pool_config)
