@@ -153,7 +153,6 @@ class DeploymentConfig:
             f"--max-requests {cls.WORKER_MAX_REQUESTS} "
             f"--max-requests-jitter {cls.WORKER_MAX_REQUESTS_JITTER} "
             f"--keep-alive {cls.KEEPALIVE_TIMEOUT} "
-            f"--preload "
             f"--reuse-port "
             f"--config src/gateway/gunicorn.conf.py "
             f"--bind 0.0.0.0:8080"

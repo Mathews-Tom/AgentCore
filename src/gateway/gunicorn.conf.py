@@ -24,7 +24,9 @@ graceful_timeout = 15  # Graceful shutdown timeout
 keepalive = 5  # Keep-alive connections timeout
 
 # Performance Tuning
-preload_app = True  # Load app before forking (saves memory, faster startup)
+# Note: preload_app disabled due to Prometheus metric duplication in workers
+# See: https://github.com/prometheus/client_python#multiprocess-mode-eg-gunicorn
+preload_app = False  # Disabled to avoid Prometheus metric duplication
 reuse_port = True  # Enable SO_REUSEPORT for better load balancing across workers
 
 # Logging
@@ -61,7 +63,6 @@ def on_starting(server):
     print(f"Backlog: {backlog}")
     print(f"Worker connections: {worker_connections}")
     print(f"Max requests per worker: {max_requests}")
-    print(f"Preload app: {preload_app}")
     print(f"Reuse port: {reuse_port}")
 
 
