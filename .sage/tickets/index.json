@@ -1716,6 +1716,9 @@
         ],
         "milestone": null,
         "assignees": []
+      },
+      "git": {
+        "branch": "feature/gate-component"
       }
     },
     {
@@ -1754,7 +1757,8 @@
           "fc654f8",
           "d65db8b",
           "0d202b1"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -1817,7 +1821,8 @@
           "435dbf8",
           "ec2e505",
           "0d202b1"
-        ]
+        ],
+        "branch": "feature/gate-component"
       }
     },
     {
@@ -1856,7 +1861,8 @@
           "fb73a22",
           "fa93a86",
           "ac2225c"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -1905,7 +1911,8 @@
         "commits": [
           "d0c89c7",
           "c73f664"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -1953,7 +1960,8 @@
       "git": {
         "commits": [
           "8d00b92"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -2002,7 +2010,8 @@
         "commits": [
           "f59488d",
           "8d00b92"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -2036,7 +2045,8 @@
         "commits": [
           "43e08a4",
           "5ecae46"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -2105,14 +2115,15 @@
           "54fe7bc",
           "049f16a",
           "8d5e71c"
-        ]
+        ],
+        "branch": "feature/gate-component"
       }
     },
     {
       "id": "GATE-010",
       "title": "Performance Optimization",
       "component": "gateway-layer",
-      "state": "UNPROCESSED",
+      "state": "IN_PROGRESS",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -2121,7 +2132,7 @@
         "GATE-008"
       ],
       "created": "2025-09-27T00:00:00Z",
-      "updated": "2025-11-06T09:26:38Z",
+      "updated": "2025-11-06T22:15:32Z",
       "git": {
         "commits": [
           "903ce8a"
@@ -2159,7 +2170,8 @@
         "commits": [
           "65938db",
           "a63a086"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -2216,7 +2228,8 @@
           "7d4b5ba",
           "ecaecf6",
           "65520af"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -2260,7 +2273,8 @@
       "git": {
         "commits": [
           "bd1bf12"
-        ]
+        ],
+        "branch": "feature/gate-component"
       },
       "validation_type": "generic",
       "github": {
@@ -11632,7 +11646,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:27Z",
-      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task \u2192 stages \u2192 memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task → stages → memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 173,
@@ -11835,7 +11849,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:48Z",
-      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: \u226595%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: ≥95%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 180,
@@ -12102,7 +12116,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:39:16Z",
-      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity \u2192 relationship \u2192 entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity → relationship → entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 189,
