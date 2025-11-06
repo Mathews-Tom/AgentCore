@@ -19,7 +19,7 @@ Cognee is an advanced AI memory system that combines **vector search** with **gr
 
 ### 1.1 ECL Pipeline Pattern
 
-```
+```plaintext
 Extract → Cognify → Load
    ↓         ↓        ↓
 Ingest   Generate   Store
@@ -41,6 +41,7 @@ Data     Knowledge  with
 - **Memify Operation**: Memory optimization algorithms
 
 **AgentCore Implementation:**
+
 ```python
 # Proposed architecture
 memory_system/
@@ -91,6 +92,7 @@ memory_system/
 - AWS Neptune Analytics for hybrid queries
 
 **Recommendation for AgentCore:**
+
 ```python
 # Priority order
 1. Neo4j (mature, feature-rich)
@@ -112,6 +114,7 @@ memory_system/
 ### 2.3 Database Abstraction Layer
 
 **Pattern from Cognee:**
+
 ```python
 # Abstract interface for multiple backends
 class VectorDBInterface:
@@ -130,6 +133,7 @@ def create_vector_engine(provider: str) -> VectorDBInterface:
 ```
 
 **AgentCore Implementation:**
+
 ```python
 # memory_system/storage/base.py
 from abc import ABC, abstractmethod
@@ -190,6 +194,7 @@ def create_memory_store(
 - `update()` - Incremental updates
 
 **AgentCore Adaptation:**
+
 ```python
 # memory_system/service.py
 class MemoryService:
@@ -289,6 +294,7 @@ async def update_memory(
 ### 4.1 Task-Based Processing
 
 **Cognee's Pattern:**
+
 ```python
 # Extensible task system
 tasks/
@@ -307,6 +313,7 @@ tasks/
 ```
 
 **AgentCore Adaptation:**
+
 ```python
 # memory_system/tasks/
 from abc import ABC, abstractmethod
@@ -381,6 +388,7 @@ result = await pipeline.execute({"text": "User interaction..."})
 **AgentCore has:** llm_gateway (17 files, 100% complete)
 
 **Integration Point:**
+
 ```python
 # Reuse existing LLM gateway
 from agentcore.llm_gateway import LLMService
@@ -410,6 +418,7 @@ class MemoryLLMService:
 ### 5.2 A2A Protocol Integration
 
 **Memory as A2A JSON-RPC Methods:**
+
 ```python
 # memory_system/jsonrpc/memory_jsonrpc.py
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
@@ -458,6 +467,7 @@ async def optimize_memory(request: JsonRpcRequest) -> dict:
 ### 5.3 Coordination Service Integration
 
 **Use existing coordination for memory routing:**
+
 ```python
 # Route memory queries to optimal storage backend
 from agentcore.a2a_protocol.services.coordination_service import CoordinationService
