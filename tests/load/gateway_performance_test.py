@@ -65,16 +65,16 @@ class GatewayHealthUser(HttpUser):
     @task(10)
     def health_check(self):
         """Basic health endpoint (should be fast, no auth required)."""
-        with self.client.get("/health", name="/health", catch_response=True) as response:
+        with self.client.get("/api/v1/health", name="/health", catch_response=True) as response:
             if response.status_code == 200:
                 response.success()
             else:
                 response.failure(f"HTTP {response.status_code}")
 
     @task(1)
-    def readiness_check(self):
-        """Readiness endpoint for load balancers."""
-        with self.client.get("/health/ready", name="/health/ready", catch_response=True) as response:
+    def metrics_check(self):
+        """Metrics endpoint for monitoring."""
+        with self.client.get("/metrics", name="/metrics", catch_response=True) as response:
             if response.status_code == 200:
                 response.success()
             else:
@@ -193,7 +193,7 @@ class GatewayBurstTrafficUser(HttpUser):
     @task
     def burst_requests(self):
         """Rapid-fire requests to test burst handling."""
-        with self.client.get("/health", name="/health (burst)", catch_response=True) as response:
+        with self.client.get("/api/v1/health", name="/health (burst)", catch_response=True) as response:
             if response.status_code == 200:
                 response.success()
             elif response.status_code == 429:
