@@ -7,17 +7,48 @@ examples, descriptions, and proper response specifications.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
-from gateway.main import create_app
+# Set environment variables before any gateway imports to ensure OAuth is enabled
+os.environ["GATEWAY_OAUTH_ENABLED"] = "true"
+os.environ["GATEWAY_REALTIME_ENABLED"] = "true"
+
+# Note: We don't import create_app here because other gateway tests may have
+# already imported gateway modules with OAuth disabled. The client fixture below
+# will handle the import after clearing the module cache.
 
 
-@pytest.fixture
-def client() -> TestClient:
-    """Create test client."""
+@pytest.fixture(scope="module")
+def client(monkeypatch_module) -> TestClient:
+    """Create test client with OAuth and real-time enabled for doc tests."""
+    # Monkeypatch settings to enable OAuth and realtime for these tests
+    # This avoids the need to reload modules which causes Prometheus metric conflicts
+    from gateway.config import settings
+
+    monkeypatch_module.setattr(settings, "OAUTH_ENABLED", True)
+    monkeypatch_module.setattr(settings, "REALTIME_ENABLED", True)
+
+    # Import and initialize OAuth providers since they're initialized at startup
+    from gateway.auth.oauth.registry import initialize_oauth_providers
+    initialize_oauth_providers()
+
+    # Now create the app - it will see OAuth as enabled
+    from gateway.main import create_app
     app = create_app()
     return TestClient(app)
+
+
+@pytest.fixture(scope="module")
+def monkeypatch_module():
+    """Module-scoped monkeypatch fixture."""
+    from _pytest.monkeypatch import MonkeyPatch
+
+    m = MonkeyPatch()
+    yield m
+    m.undo()
 
 
 @pytest.fixture
@@ -253,16 +284,23 @@ def test_protected_endpoints_have_security(openapi_schema: dict) -> None:
     """Test that protected endpoints specify security requirements."""
     paths = openapi_schema["paths"]
 
-    # Public endpoints (no auth required)
+    # Public endpoints (no auth required or use alternative auth)
     public_endpoints = [
         ("/health", "get"),
         ("/ready", "get"),
         ("/live", "get"),
+        ("/metrics", "get"),  # Prometheus metrics endpoint
+        ("/metrics-info", "get"),  # Public endpoint for metrics information
         ("/auth/token", "post"),
+        ("/auth/refresh", "post"),  # Uses refresh token, not Bearer auth
         ("/oauth/providers", "get"),
         ("/oauth/scopes", "get"),
         ("/oauth/authorize/{provider}", "get"),
         ("/oauth/callback/{provider}", "get"),
+        ("/oauth/token/client_credentials", "post"),  # Client credentials flow
+        ("/realtime/events", "get"),  # SSE endpoint with optional token query param
+        ("/realtime/stats", "get"),  # Public stats endpoint
+        ("/realtime/health", "get"),  # Public health endpoint
     ]
 
     for path, methods in paths.items():

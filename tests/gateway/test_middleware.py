@@ -69,7 +69,7 @@ def test_metrics_middleware_counts_requests(app_with_middleware):
     # Get initial count
     initial_count = REQUEST_COUNT.labels(
         method="GET",
-        endpoint="/test",
+        path="/test",
         status_code=200
     )._value.get()
 
@@ -80,7 +80,7 @@ def test_metrics_middleware_counts_requests(app_with_middleware):
     # Check count increased
     final_count = REQUEST_COUNT.labels(
         method="GET",
-        endpoint="/test",
+        path="/test",
         status_code=200
     )._value.get()
 

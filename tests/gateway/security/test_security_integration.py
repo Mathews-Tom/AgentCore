@@ -7,22 +7,11 @@ and HSTS configuration in the complete FastAPI application.
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
 from gateway.config import settings
-from gateway.main import create_app
 
-
-@pytest.fixture
-def client():
-    """Create test client with security middleware enabled."""
-    # Ensure security features are enabled
-    settings.SECURITY_HSTS_ENABLED = True
-    settings.SECURITY_CSP_ENABLED = True
-    settings.VALIDATION_ENABLED = True
-
-    app = create_app()
-    return TestClient(app)
+# Note: The 'client' fixture is provided by tests/gateway/security/conftest.py
+# which creates a secure_client with validation and security features enabled
 
 
 class TestSecurityHeadersIntegration:
