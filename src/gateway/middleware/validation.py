@@ -141,7 +141,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
             if pattern.search(value):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Potential {attack_type} attack detected",
+                    detail="Invalid input: Request contains potentially malicious content",
                 )
 
     def _validate_value(self, value: Any, name: str = "parameter") -> None:
@@ -194,8 +194,23 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
             HTTPException: If validation fails
         """
         for name, value in headers.items():
-            # Skip standard headers that may contain special chars
-            if name.lower() in {"authorization", "cookie", "user-agent"}:
+            # Skip standard headers that may contain special chars or technical values
+            # that shouldn't be validated for injection attacks
+            skip_headers = {
+                "authorization",
+                "cookie",
+                "user-agent",
+                "accept",  # Can contain */*, multipart/* etc
+                "accept-encoding",  # Can contain *
+                "accept-language",
+                "content-type",  # Can contain */*, multipart/* etc
+                "x-trace-id",  # UUIDs contain dashes
+                "x-request-id",  # UUIDs contain dashes
+                "x-correlation-id",  # UUIDs contain dashes
+                "traceparent",  # W3C trace context
+                "tracestate",  # W3C trace context
+            }
+            if name.lower() in skip_headers:
                 continue
 
             # Check header length
@@ -244,10 +259,17 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
 
-        except HTTPException:
-            raise
+        except HTTPException as e:
+            # Convert HTTPException to JSONResponse
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"detail": e.detail},
+            )
         except Exception as e:
-            raise HTTPException(
+            # Log unexpected validation errors
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Validation error: {str(e)}",
+                content={"detail": f"Validation error: {str(e)}"},
             )

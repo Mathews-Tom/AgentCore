@@ -34,12 +34,12 @@ async def metrics_middleware(request: Request, call_next: Callable) -> Response:
         # Record metrics
         REQUEST_COUNT.labels(
             method=request.method,
-            endpoint=request.url.path,
+            path=request.url.path,
             status_code=response.status_code,
         ).inc()
 
         REQUEST_DURATION.labels(
-            method=request.method, endpoint=request.url.path
+            method=request.method, path=request.url.path
         ).observe(time.time() - start_time)
 
         return response
@@ -47,11 +47,11 @@ async def metrics_middleware(request: Request, call_next: Callable) -> Response:
     except Exception as exc:
         # Record error metrics
         REQUEST_COUNT.labels(
-            method=request.method, endpoint=request.url.path, status_code=500
+            method=request.method, path=request.url.path, status_code=500
         ).inc()
 
         REQUEST_DURATION.labels(
-            method=request.method, endpoint=request.url.path
+            method=request.method, path=request.url.path
         ).observe(time.time() - start_time)
 
         raise
