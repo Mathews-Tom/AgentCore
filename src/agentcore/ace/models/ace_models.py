@@ -224,6 +224,32 @@ class CreatePlaybookResponse(BaseModel):
     message: str = Field(default="Playbook created successfully")
 
 
+class PlaybookCreateRequest(BaseModel):
+    """Request to create a new playbook."""
+
+    agent_id: str = Field(..., description="Agent identifier", min_length=1, max_length=255)
+    context: dict[str, Any] = Field(..., description="Initial context data")
+    metadata: dict[str, Any] | None = Field(None, description="Optional metadata")
+
+
+class PlaybookUpdateRequest(BaseModel):
+    """Request to update playbook context."""
+
+    context: dict[str, Any] = Field(..., description="Updated context data")
+
+
+class PlaybookResponse(BaseModel):
+    """Response containing playbook data."""
+
+    playbook_id: UUID
+    agent_id: str
+    context: dict[str, Any]
+    version: int
+    created_at: datetime
+    updated_at: datetime
+    metadata: dict[str, Any]
+
+
 class ApplyDeltaRequest(BaseModel):
     """Request to apply a context delta."""
 
