@@ -13,7 +13,9 @@ from testcontainers.redis import RedisContainer
 # Disable input validation middleware for tests BEFORE any imports
 # This must happen at module level to ensure settings load with correct values
 # Note: env_prefix is "GATEWAY_" so we need GATEWAY_VALIDATION_ENABLED
-os.environ["GATEWAY_VALIDATION_ENABLED"] = "false"
+# Validation is disabled by default for tests to avoid blocking test payloads
+# Security tests that need validation enabled should use pytest markers
+os.environ.setdefault("GATEWAY_VALIDATION_ENABLED", "false")
 
 
 def pytest_configure(config):

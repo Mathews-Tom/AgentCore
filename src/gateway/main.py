@@ -51,6 +51,8 @@ from gateway.middleware.validation import InputValidationMiddleware
 from gateway.monitoring.health import HealthChecker
 from gateway.monitoring.metrics import set_gateway_info
 from gateway.monitoring.tracing import configure_tracing, instrument_fastapi
+from gateway.performance.connection_pool import ConnectionPoolConfig, HTTPConnectionPool
+from gateway.performance.response_cache import CachePolicy, ResponseCache
 from gateway.realtime.connection_pool import connection_pool
 from gateway.realtime.event_bus import event_bus
 from gateway.routes import auth, health, oauth, realtime
@@ -157,7 +159,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             app.state.event_bus = event_bus
             logger.info("Event bus initialized")
 
-        # Future: Initialize backend service connections
+        # Initialize HTTP connection pool for backend services
+        http_pool_config = ConnectionPoolConfig(
+            max_connections=1000,
+            max_keepalive_connections=500,
+            keepalive_expiry=30.0,
+            connect_timeout=5.0,
+            read_timeout=30.0,
+            write_timeout=30.0,
+            pool_timeout=5.0,
+            http2=True,  # HTTP/2 enabled for better performance (multiplexing)
+            retries=3,
+        )
+        http_connection_pool = HTTPConnectionPool(config=http_pool_config)
+        app.state.http_pool = http_connection_pool
+        logger.info("HTTP connection pool for backend services initialized")
+
+        # Initialize response cache for high-traffic endpoints
+        if settings.CACHE_CONTROL_ENABLED:
+            cache_policy = CachePolicy(
+                enabled=True,
+                ttl=300,  # 5 minutes default TTL
+                max_size=10000,  # Cache up to 10k responses
+                strategy="lru",  # Least Recently Used eviction
+                cache_methods=["GET"],  # Only cache GET requests
+                cache_status_codes=[200, 301, 302],  # Cache successful responses
+            )
+            response_cache = ResponseCache(policy=cache_policy)
+            app.state.response_cache = response_cache
+            logger.info("Response cache initialized")
 
         yield
     finally:
@@ -181,6 +211,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.OAUTH_ENABLED:
             await oauth_state_manager.close()
             logger.info("OAuth state manager closed")
+
+        # Cleanup HTTP connection pool
+        if hasattr(app.state, "http_pool"):
+            await app.state.http_pool.close()
+            logger.info("HTTP connection pool closed")
 
         # Cleanup real-time communication
         if settings.REALTIME_ENABLED:
@@ -267,6 +302,8 @@ def create_app() -> FastAPI:
             routes=app.routes,
             servers=OPENAPI_SERVERS,
             tags=OPENAPI_TAGS,
+            license_info=OPENAPI_LICENSE,
+            contact=OPENAPI_CONTACT,
         )
 
         # Add security schemes
