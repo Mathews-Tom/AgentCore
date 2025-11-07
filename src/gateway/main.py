@@ -302,6 +302,8 @@ def create_app() -> FastAPI:
             routes=app.routes,
             servers=OPENAPI_SERVERS,
             tags=OPENAPI_TAGS,
+            license_info=OPENAPI_LICENSE,
+            contact=OPENAPI_CONTACT,
         )
 
         # Add security schemes
