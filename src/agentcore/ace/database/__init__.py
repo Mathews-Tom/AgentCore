@@ -1,6 +1,6 @@
 """ACE Database Package.
 
-SQLAlchemy ORM models for ACE system.
+SQLAlchemy ORM models and repositories for ACE system.
 """
 
 from agentcore.ace.database.ace_orm import (
@@ -9,10 +9,22 @@ from agentcore.ace.database.ace_orm import (
     EvolutionStatusDB,
     ExecutionTraceDB,
 )
+from agentcore.ace.database.repositories import (
+    DeltaRepository,
+    EvolutionStatusRepository,
+    PlaybookRepository,
+    TraceRepository,
+)
 
 __all__ = [
+    # ORM Models
     "ContextPlaybookDB",
     "ContextDeltaDB",
     "ExecutionTraceDB",
     "EvolutionStatusDB",
+    # Repositories
+    "PlaybookRepository",
+    "DeltaRepository",
+    "TraceRepository",
+    "EvolutionStatusRepository",
 ]
