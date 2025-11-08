@@ -1,1 +1,1 @@
-"""ACE Integration Tests"""
+"""Integration tests for ACE components."""
