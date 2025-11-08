@@ -2,7 +2,7 @@
   "version": "1.0",
   "generated": "2025-11-05T15:04:09.830130+00:00",
   "total_tickets": 344,
-  "completed_tickets": 205,
+  "completed_tickets": 206,
   "unprocessed_tickets": 130,
   "components": {
     "a2a-protocol": {
@@ -42,9 +42,9 @@
     },
     "ace-integration": {
       "total": 33,
-      "completed": 0,
+      "completed": 1,
       "unprocessed": 32,
-      "in_progress": 1
+      "in_progress": 0
     },
     "bounded-context-reasoning": {
       "total": 32,
@@ -4511,7 +4511,7 @@
       "id": "ACE-010",
       "title": "Implement Baseline Tracker",
       "component": "ace-integration",
-      "state": "IN_PROGRESS",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -4520,7 +4520,7 @@
         "ACE-009"
       ],
       "created": "2025-10-12T00:00:00Z",
-      "updated": "2025-11-08T09:40:17.802647+00:00",
+      "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
       "notes": "Baseline tracking enables intervention triggers\n\n---\n\n*Created: 2025-10-12T00:00:00Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
@@ -4534,13 +4534,19 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "COMPLETED",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+      ]
     },
     {
       "id": "ACE-011",
       "title": "Implement Error Accumulator",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -4549,7 +4555,7 @@
         "ACE-010"
       ],
       "created": "2025-10-12T00:00:00Z",
-      "updated": "2025-11-06T07:30:11Z",
+      "updated": "2025-11-08T10:57:17.492766Z",
       "notes": "Critical for COMPASS 90%+ error recall target\n\n---\n\n*Created: 2025-10-12T00:00:00Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
@@ -4563,7 +4569,17 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-08T10:52:39.599113Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-08T10:57:17.493153Z"
+        }
+      ]
     },
     {
       "id": "ACE-012",
