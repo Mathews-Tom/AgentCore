@@ -3,7 +3,7 @@
   "generated": "2025-11-05T15:04:09.830130+00:00",
   "total_tickets": 344,
   "completed_tickets": 205,
-  "unprocessed_tickets": 131,
+  "unprocessed_tickets": 130,
   "components": {
     "a2a-protocol": {
       "total": 17,
@@ -43,7 +43,8 @@
     "ace-integration": {
       "total": 33,
       "completed": 0,
-      "unprocessed": 33
+      "unprocessed": 32,
+      "in_progress": 1
     },
     "bounded-context-reasoning": {
       "total": 32,
@@ -4432,7 +4433,7 @@
       "id": "ACE-008",
       "title": "Implement Simple Curator",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 3,
@@ -4441,7 +4442,7 @@
         "ACE-007"
       ],
       "created": "2025-10-12T00:00:00Z",
-      "updated": "2025-11-06T07:30:01Z",
+      "updated": "2025-11-08T08:47:34.902630Z",
       "notes": "Simple Curator replaces full reflection loop:\n- Confidence-threshold filtering (Phase 1 approach)\n- Default threshold: 0.8 (80% confidence)\n- Rejected deltas logged for analysis\n- Phase 2 may add advanced curation\n\n---\n\n*Created: 2025-10-12T00:00:00Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
@@ -4455,13 +4456,23 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-08T08:42:07.073803Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-08T08:47:34.902630Z"
+        }
+      ]
     },
     {
       "id": "ACE-009",
       "title": "Implement PerformanceMonitor Core",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -4470,7 +4481,7 @@
         "ACE-008"
       ],
       "created": "2025-10-12T00:00:00Z",
-      "updated": "2025-11-06T07:30:05Z",
+      "updated": "2025-11-08T08:57:36.995150Z",
       "notes": "COMPASS ACE-1 implementation:\n- Stage-aware performance tracking\n- Real-time metrics computation\n- TimescaleDB optimized storage\n\n---\n\n*Created: 2025-10-12T00:00:00Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
@@ -4484,13 +4495,23 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-08T08:49:20.201412Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-08T08:57:36.995150Z"
+        }
+      ]
     },
     {
       "id": "ACE-010",
       "title": "Implement Baseline Tracker",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "IN_PROGRESS",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -4499,7 +4520,7 @@
         "ACE-009"
       ],
       "created": "2025-10-12T00:00:00Z",
-      "updated": "2025-11-06T07:30:08Z",
+      "updated": "2025-11-08T09:40:17.802647+00:00",
       "notes": "Baseline tracking enables intervention triggers\n\n---\n\n*Created: 2025-10-12T00:00:00Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
