@@ -967,3 +967,106 @@ class MemoryQueryResult(BaseModel):
         if v < 0:
             raise ValueError(f"query_latency_ms must be >= 0, got {v}")
         return v
+
+
+# Intervention Outcome Tracking (COMPASS ACE-2 - ACE-023)
+
+
+class InterventionOutcome(BaseModel):
+    """Intervention outcome for COMPASS learning loop (COMPASS ACE-2 - ACE-023).
+
+    Captures before/after metrics, computes improvement deltas, and stores
+    outcomes for meta-learning and threshold updates.
+    """
+
+    outcome_id: UUID = Field(default_factory=uuid4, description="Unique outcome ID")
+    intervention_id: UUID = Field(..., description="Intervention identifier")
+    success: bool = Field(..., description="Whether intervention was successful")
+
+    # Before/after metrics
+    pre_metrics: PerformanceMetrics = Field(
+        ..., description="Performance metrics before intervention"
+    )
+    post_metrics: PerformanceMetrics = Field(
+        ..., description="Performance metrics after intervention"
+    )
+
+    # Delta computation
+    delta_velocity: float = Field(
+        ..., description="Velocity change (percentage change)", ge=-1.0, le=1.0
+    )
+    delta_success_rate: float = Field(
+        ..., description="Success rate change (absolute change)", ge=-1.0, le=1.0
+    )
+    delta_error_rate: float = Field(
+        ..., description="Error rate change (absolute change, positive = improvement)", ge=-1.0, le=1.0
+    )
+    overall_improvement: float = Field(
+        ..., description="Overall improvement score (-1 to 1)", ge=-1.0, le=1.0
+    )
+
+    # Learning data
+    learning_data: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Learning data for threshold updates",
+    )
+
+    recorded_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Recording timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "outcome_id": "110e8400-e29b-41d4-a716-446655440012",
+                "intervention_id": "bb0e8400-e29b-41d4-a716-446655440006",
+                "success": True,
+                "pre_metrics": {
+                    "metric_id": "880e8400-e29b-41d4-a716-446655440003",
+                    "task_id": "990e8400-e29b-41d4-a716-446655440004",
+                    "agent_id": "agent-001",
+                    "stage": "execution",
+                    "stage_success_rate": 0.70,
+                    "stage_error_rate": 0.30,
+                    "stage_duration_ms": 3000,
+                    "stage_action_count": 10,
+                    "overall_progress_velocity": 3.0,
+                    "error_accumulation_rate": 0.5,
+                    "context_staleness_score": 0.4,
+                },
+                "post_metrics": {
+                    "metric_id": "990e8400-e29b-41d4-a716-446655440005",
+                    "task_id": "990e8400-e29b-41d4-a716-446655440004",
+                    "agent_id": "agent-001",
+                    "stage": "execution",
+                    "stage_success_rate": 0.85,
+                    "stage_error_rate": 0.15,
+                    "stage_duration_ms": 2500,
+                    "stage_action_count": 12,
+                    "overall_progress_velocity": 4.2,
+                    "error_accumulation_rate": 0.3,
+                    "context_staleness_score": 0.2,
+                },
+                "delta_velocity": 0.40,
+                "delta_success_rate": 0.15,
+                "delta_error_rate": 0.15,
+                "overall_improvement": 0.35,
+                "learning_data": {
+                    "trigger_type": "performance_degradation",
+                    "intervention_type": "replan",
+                    "effectiveness": 0.35,
+                    "context_conditions": {"stage": "execution", "task_type": "data_analysis"},
+                    "time_to_improvement_ms": 5000,
+                },
+            }
+        }
+    )
+
+    @field_validator("delta_velocity", "delta_success_rate", "delta_error_rate", "overall_improvement")
+    @classmethod
+    def validate_delta_range(cls, v: float) -> float:
+        """Validate delta values are in valid range."""
+        if not -1.0 <= v <= 1.0:
+            raise ValueError(f"Delta value must be in [-1, 1], got {v}")
+        return v
