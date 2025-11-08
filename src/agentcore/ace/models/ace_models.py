@@ -637,3 +637,132 @@ class InterventionRecord(BaseModel):
         if not v:
             raise ValueError("At least one trigger signal required")
         return v
+
+
+class StrategicContext(BaseModel):
+    """Strategic context for intervention decision making (COMPASS ACE-2).
+
+    Provides context from COMPASS stages for informed intervention decisions.
+    Used by DecisionMaker to select appropriate intervention type.
+    """
+
+    relevant_stage_summaries: list[str] = Field(
+        default_factory=list,
+        description="Summaries from relevant COMPASS stages",
+    )
+    critical_facts: list[str] = Field(
+        default_factory=list,
+        description="Critical facts extracted from context",
+    )
+    error_patterns: list[str] = Field(
+        default_factory=list,
+        description="Error patterns identified in execution",
+    )
+    successful_patterns: list[str] = Field(
+        default_factory=list,
+        description="Successful patterns identified in execution",
+    )
+    context_health_score: float = Field(
+        ..., description="Context health score (0-1, higher is better)", ge=0.0, le=1.0
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "relevant_stage_summaries": [
+                    "Planning stage completed with 85% confidence",
+                    "Execution stage showing 2x error rate increase",
+                ],
+                "critical_facts": [
+                    "Task requires data transformation capabilities",
+                    "Agent has limited data processing tools",
+                ],
+                "error_patterns": [
+                    "Repeated file parsing failures",
+                    "Memory retrieval returning stale results",
+                ],
+                "successful_patterns": [
+                    "API calls completing successfully",
+                    "Context refresh improved performance",
+                ],
+                "context_health_score": 0.65,
+            }
+        }
+    )
+
+    @field_validator("context_health_score")
+    @classmethod
+    def validate_health_score(cls, v: float) -> float:
+        """Validate health score is in valid range."""
+        if not 0.0 <= v <= 1.0:
+            raise ValueError(f"context_health_score must be in [0, 1], got {v}")
+        return v
+
+
+class InterventionDecision(BaseModel):
+    """Intervention decision from DecisionMaker (COMPASS ACE-2).
+
+    Represents the LLM-generated decision for which intervention to execute
+    based on trigger signals and strategic context.
+    """
+
+    intervention_type: InterventionType = Field(
+        ..., description="Selected intervention type"
+    )
+    rationale: str = Field(
+        ..., description="Reasoning for intervention decision", min_length=10
+    )
+    confidence: float = Field(
+        ..., description="Decision confidence (0-1)", ge=0.0, le=1.0
+    )
+    expected_impact: str = Field(
+        ..., description="Predicted outcome description", min_length=10
+    )
+    alternative_interventions: list[str] = Field(
+        default_factory=list,
+        description="Considered alternative interventions",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional decision context",
+    )
+    decided_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Decision timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "intervention_type": "replan",
+                "rationale": "Task velocity dropped 50% with 2x error rate increase. Replanning will help agent reassess approach and break down tasks differently.",
+                "confidence": 0.88,
+                "expected_impact": "Velocity should return to baseline levels within 2-3 stages after replanning. Error rate should drop to <15%.",
+                "alternative_interventions": [
+                    "reflect - considered but less urgent than replan",
+                    "context_refresh - useful but won't address root planning issues",
+                ],
+                "metadata": {
+                    "trigger_confidence": 0.92,
+                    "context_health": 0.65,
+                    "decision_latency_ms": 145,
+                },
+            }
+        }
+    )
+
+    @field_validator("rationale")
+    @classmethod
+    def validate_rationale(cls, v: str) -> str:
+        """Validate rationale has minimum length."""
+        if len(v.strip()) < 10:
+            raise ValueError("Decision rationale must be at least 10 characters")
+        return v.strip()
+
+    @field_validator("expected_impact")
+    @classmethod
+    def validate_expected_impact(cls, v: str) -> str:
+        """Validate expected impact has minimum length."""
+        if len(v.strip()) < 10:
+            raise ValueError("Expected impact must be at least 10 characters")
+        return v.strip()
