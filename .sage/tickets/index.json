@@ -4711,7 +4711,7 @@
       "id": "ACE-015",
       "title": "Implement InterventionEngine Core",
       "component": "ace-integration",
-      "state": "IN_PROGRESS",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -4720,7 +4720,7 @@
         "ACE-014"
       ],
       "created": "2025-10-12T00:00:00Z",
-      "updated": "2025-11-08T16:45:00Z",
+      "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
       "notes": "COMPASS ACE-2: Strategic intervention orchestration\n\n---\n\n*Created: 2025-10-12T00:00:00Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
@@ -4734,7 +4734,13 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "COMPLETED",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+      ]
     },
     {
       "id": "BCR-001",
@@ -9435,7 +9441,7 @@
       "id": "ACE-016",
       "title": "Implement Trigger Detection",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -9444,7 +9450,7 @@
         "ACE-015"
       ],
       "created": "2025-10-23T18:14:02.120449Z",
-      "updated": "2025-11-06T07:30:26Z",
+      "updated": "2025-11-08T00:00:00Z",
       "notes": "Four trigger types for COMPASS Meta-Thinker\n\n---\n\n*Created: 2025-10-23T18:14:02.120449Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {

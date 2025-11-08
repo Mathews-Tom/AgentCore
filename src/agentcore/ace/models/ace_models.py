@@ -482,6 +482,66 @@ class ExecutionStatus(str, Enum):
     PENDING = "pending"
 
 
+class TriggerSignal(BaseModel):
+    """Intervention trigger signal (COMPASS ACE-2).
+
+    Represents a detected signal that may trigger strategic intervention.
+    Used by TriggerDetector to communicate detected conditions.
+    """
+
+    trigger_type: TriggerType = Field(..., description="Type of trigger signal")
+    signals: list[str] = Field(
+        ..., description="Specific signals detected", min_length=1
+    )
+    rationale: str = Field(
+        ..., description="Human-readable rationale for trigger", min_length=10
+    )
+    confidence: float = Field(
+        ..., description="Detection confidence (0-1)", ge=0.0, le=1.0
+    )
+    metric_values: dict[str, float] = Field(
+        default_factory=dict,
+        description="Metric values that triggered detection",
+    )
+    detected_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Detection timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "trigger_type": "performance_degradation",
+                "signals": ["velocity_drop_50pct", "error_rate_2x"],
+                "rationale": "Task velocity dropped 50% below baseline (0.6 -> 0.3 actions/min) and error rate increased 2x (0.1 -> 0.2)",
+                "confidence": 0.92,
+                "metric_values": {
+                    "velocity_ratio": 0.5,
+                    "error_rate_ratio": 2.0,
+                    "baseline_velocity": 0.6,
+                    "current_velocity": 0.3,
+                },
+            }
+        }
+    )
+
+    @field_validator("rationale")
+    @classmethod
+    def validate_rationale(cls, v: str) -> str:
+        """Validate rationale has minimum length."""
+        if len(v.strip()) < 10:
+            raise ValueError("Trigger rationale must be at least 10 characters")
+        return v.strip()
+
+    @field_validator("signals")
+    @classmethod
+    def validate_signals(cls, v: list[str]) -> list[str]:
+        """Validate signals list is not empty."""
+        if not v:
+            raise ValueError("At least one signal required")
+        return v
+
+
 class InterventionRecord(BaseModel):
     """Record of strategic intervention (COMPASS ACE-2).
 
