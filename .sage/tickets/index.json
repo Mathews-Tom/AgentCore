@@ -9528,7 +9528,7 @@
       "id": "ACE-019",
       "title": "Integrate with Agent Runtime",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 3,
@@ -9537,7 +9537,7 @@
         "ACE-018"
       ],
       "created": "2025-10-23T18:14:02.120449Z",
-      "updated": "2025-11-06T07:30:35Z",
+      "updated": "2025-11-08T18:49:24.618958+00:00",
       "notes": "Connects ACE to Agent Runtime\n\n---\n\n*Created: 2025-10-23T18:14:02.120449Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {
@@ -9557,7 +9557,7 @@
       "id": "ACE-020",
       "title": "Integration Tests for Intervention Workflows",
       "component": "ace-integration",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 3,
@@ -9566,7 +9566,7 @@
         "ACE-019"
       ],
       "created": "2025-10-23T18:14:02.120449Z",
-      "updated": "2025-11-06T07:30:38Z",
+      "updated": "2025-11-08T18:56:42.828805+00:00",
       "notes": "Completes Phase 3 milestone\n\n---\n\n*Created: 2025-10-23T18:14:02.120449Z*\n*Updated: 2025-10-23T18:14:02.120449Z*",
       "validation_type": "generic",
       "github": {

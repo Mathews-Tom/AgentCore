@@ -491,6 +491,15 @@ class InterventionState(str, Enum):
     FAILED = "failed"
 
 
+class QueryType(str, Enum):
+    """MEM strategic context query types (COMPASS ACE-3)."""
+
+    STRATEGIC_DECISION = "strategic_decision"
+    ERROR_ANALYSIS = "error_analysis"
+    CAPABILITY_EVALUATION = "capability_evaluation"
+    CONTEXT_REFRESH = "context_refresh"
+
+
 class TriggerSignal(BaseModel):
     """Intervention trigger signal (COMPASS ACE-2).
 
@@ -838,3 +847,123 @@ class RuntimeIntervention(BaseModel):
         if not v or not v.strip():
             raise ValueError("agent_id cannot be empty")
         return v.strip()
+
+
+# MEM Integration Models (COMPASS ACE-3 - ACE-021)
+
+
+class MemoryQuery(BaseModel):
+    """Query to MEM for strategic context (COMPASS ACE-3).
+
+    Used by ACEMemoryInterface to request strategic context from MEM
+    for intervention decision making.
+    """
+
+    query_id: UUID = Field(default_factory=uuid4, description="Unique query ID")
+    query_type: QueryType = Field(..., description="Type of strategic context query")
+    agent_id: str = Field(..., description="Agent identifier", min_length=1, max_length=255)
+    task_id: UUID = Field(..., description="Task identifier")
+    context: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional context for query",
+    )
+    max_context_tokens: int = Field(
+        default=2000,
+        description="Maximum context tokens to return",
+        ge=100,
+        le=10000,
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Query creation timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "query_id": "ff0e8400-e29b-41d4-a716-446655440010",
+                "query_type": "strategic_decision",
+                "agent_id": "agent-001",
+                "task_id": "000e8400-e29b-41d4-a716-446655440011",
+                "context": {"intervention_type": "replan"},
+                "max_context_tokens": 2000,
+            }
+        }
+    )
+
+    @field_validator("agent_id")
+    @classmethod
+    def validate_agent_id(cls, v: str) -> str:
+        """Validate agent_id is not empty."""
+        if not v or not v.strip():
+            raise ValueError("agent_id cannot be empty")
+        return v.strip()
+
+
+class MemoryQueryResult(BaseModel):
+    """Result from MEM strategic context query (COMPASS ACE-3).
+
+    Contains strategic context with health score, relevance score,
+    and query performance metrics.
+    """
+
+    query_id: UUID = Field(..., description="Query identifier")
+    strategic_context: StrategicContext = Field(
+        ..., description="Strategic context from MEM"
+    )
+    relevance_score: float = Field(
+        ..., description="Context relevance score (0-1)", ge=0.0, le=1.0
+    )
+    query_latency_ms: int = Field(
+        ..., description="Query execution latency in milliseconds", ge=0
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional query metadata",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "query_id": "ff0e8400-e29b-41d4-a716-446655440010",
+                "strategic_context": {
+                    "relevant_stage_summaries": [
+                        "Planning completed with 85% confidence",
+                        "Execution showing 2x error increase",
+                    ],
+                    "critical_facts": [
+                        "Task requires data transformation",
+                        "Agent has limited processing tools",
+                    ],
+                    "error_patterns": [
+                        "Repeated file parsing failures",
+                        "Memory retrieval returning stale results",
+                    ],
+                    "successful_patterns": [
+                        "API calls completing successfully",
+                        "Context refresh improved performance",
+                    ],
+                    "context_health_score": 0.75,
+                },
+                "relevance_score": 0.88,
+                "query_latency_ms": 125,
+                "metadata": {"source": "mem_stage_summaries", "token_count": 1850},
+            }
+        }
+    )
+
+    @field_validator("relevance_score")
+    @classmethod
+    def validate_relevance_score(cls, v: float) -> float:
+        """Validate relevance score is in valid range."""
+        if not 0.0 <= v <= 1.0:
+            raise ValueError(f"relevance_score must be in [0, 1], got {v}")
+        return v
+
+    @field_validator("query_latency_ms")
+    @classmethod
+    def validate_latency(cls, v: int) -> int:
+        """Validate latency is non-negative."""
+        if v < 0:
+            raise ValueError(f"query_latency_ms must be >= 0, got {v}")
+        return v
