@@ -450,3 +450,130 @@ class PerformanceBaseline(BaseModel):
                 f"Stage must be one of {allowed_stages}, got '{v}'"
             )
         return v
+
+
+# COMPASS-Enhanced Models (Strategic Intervention - ACE-2)
+
+
+class TriggerType(str, Enum):
+    """Intervention trigger types (COMPASS ACE-2)."""
+
+    PERFORMANCE_DEGRADATION = "performance_degradation"
+    ERROR_ACCUMULATION = "error_accumulation"
+    CONTEXT_STALENESS = "context_staleness"
+    CAPABILITY_MISMATCH = "capability_mismatch"
+
+
+class InterventionType(str, Enum):
+    """Intervention action types (COMPASS ACE-2)."""
+
+    CONTEXT_REFRESH = "context_refresh"
+    REPLAN = "replan"
+    REFLECT = "reflect"
+    CAPABILITY_SWITCH = "capability_switch"
+
+
+class ExecutionStatus(str, Enum):
+    """Intervention execution status."""
+
+    SUCCESS = "success"
+    FAILURE = "failure"
+    PARTIAL = "partial"
+    PENDING = "pending"
+
+
+class InterventionRecord(BaseModel):
+    """Record of strategic intervention (COMPASS ACE-2).
+
+    Tracks intervention trigger, decision, execution, and outcome
+    for meta-learning and effectiveness analysis.
+    """
+
+    intervention_id: UUID = Field(default_factory=uuid4, description="Unique intervention ID")
+    task_id: UUID = Field(..., description="Task identifier")
+    agent_id: str = Field(..., description="Agent identifier", min_length=1, max_length=255)
+
+    # Trigger information
+    trigger_type: TriggerType = Field(..., description="Type of trigger signal")
+    trigger_signals: list[str] = Field(
+        ..., description="Specific signals that triggered intervention", min_length=1
+    )
+    trigger_metric_id: UUID | None = Field(
+        None, description="Performance metric that triggered intervention"
+    )
+
+    # Decision information
+    intervention_type: InterventionType = Field(..., description="Type of intervention to execute")
+    intervention_rationale: str = Field(
+        ..., description="Reasoning for intervention decision", min_length=10
+    )
+    decision_confidence: float = Field(
+        ..., description="Confidence in decision (0-1)", ge=0.0, le=1.0
+    )
+
+    # Execution information
+    executed_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Execution timestamp",
+    )
+    execution_duration_ms: int = Field(
+        default=0, description="Execution duration in milliseconds", ge=0
+    )
+    execution_status: ExecutionStatus = Field(
+        default=ExecutionStatus.PENDING, description="Execution status"
+    )
+    execution_error: str | None = Field(None, description="Error message if execution failed")
+
+    # Outcome tracking
+    pre_metric_id: UUID | None = Field(
+        None, description="Performance metric before intervention"
+    )
+    post_metric_id: UUID | None = Field(
+        None, description="Performance metric after intervention"
+    )
+    effectiveness_delta: float | None = Field(
+        None, description="Improvement score (-1 to 1)", ge=-1.0, le=1.0
+    )
+
+    # Metadata
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Creation timestamp",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Last update timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "intervention_id": "bb0e8400-e29b-41d4-a716-446655440006",
+                "task_id": "cc0e8400-e29b-41d4-a716-446655440007",
+                "agent_id": "agent-001",
+                "trigger_type": "performance_degradation",
+                "trigger_signals": ["velocity_drop_50pct", "error_rate_2x"],
+                "intervention_type": "replan",
+                "intervention_rationale": "Task velocity dropped 50% below baseline with 2x error rate increase",
+                "decision_confidence": 0.92,
+                "execution_status": "success",
+                "effectiveness_delta": 0.35,
+            }
+        }
+    )
+
+    @field_validator("intervention_rationale")
+    @classmethod
+    def validate_rationale(cls, v: str) -> str:
+        """Validate rationale has minimum length."""
+        if len(v.strip()) < 10:
+            raise ValueError("Intervention rationale must be at least 10 characters")
+        return v.strip()
+
+    @field_validator("trigger_signals")
+    @classmethod
+    def validate_signals(cls, v: list[str]) -> list[str]:
+        """Validate trigger signals list is not empty."""
+        if not v:
+            raise ValueError("At least one trigger signal required")
+        return v

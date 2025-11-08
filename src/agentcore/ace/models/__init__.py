@@ -14,9 +14,15 @@ from agentcore.ace.models.ace_models import (
     CreatePlaybookResponse,
     EvolutionStatus,
     EvolutionStatusType,
+    ExecutionStatus,
     ExecutionTrace,
+    InterventionRecord,
+    InterventionType,
+    PerformanceBaseline,
+    PerformanceMetrics,
     TriggerEvolutionRequest,
     TriggerEvolutionResponse,
+    TriggerType,
 )
 
 __all__ = [
@@ -26,6 +32,14 @@ __all__ = [
     "ExecutionTrace",
     "EvolutionStatus",
     "EvolutionStatusType",
+    # COMPASS ACE-1 (Performance Monitoring)
+    "PerformanceMetrics",
+    "PerformanceBaseline",
+    # COMPASS ACE-2 (Strategic Intervention)
+    "InterventionRecord",
+    "TriggerType",
+    "InterventionType",
+    "ExecutionStatus",
     # Request Models
     "CreatePlaybookRequest",
     "ApplyDeltaRequest",

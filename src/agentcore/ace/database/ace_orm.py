@@ -315,3 +315,118 @@ class PerformanceMetricsDB(Base):
             postgresql_ops={"recorded_at": "DESC"},
         ),
     )
+
+
+class InterventionRecordDB(Base):
+    """Intervention Record ORM model (COMPASS ACE-2).
+
+    Stores strategic intervention records for tracking effectiveness.
+    """
+
+    __tablename__ = "intervention_records"
+
+    intervention_id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default="gen_random_uuid()",
+    )
+    task_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    agent_id = Column(
+        String(255),
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Trigger information
+    trigger_type = Column(String(50), nullable=False)
+    trigger_signals = Column(JSONB, nullable=False)
+    trigger_metric_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("performance_metrics.metric_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Decision information
+    intervention_type = Column(String(50), nullable=False)
+    intervention_rationale = Column(Text, nullable=False)
+    decision_confidence = Column(Float, nullable=False)
+
+    # Execution information
+    executed_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+    )
+    execution_duration_ms = Column(Integer, nullable=False, default=0, server_default="0")
+    execution_status = Column(String(20), nullable=False, default="pending", server_default="'pending'")
+    execution_error = Column(Text, nullable=True)
+
+    # Outcome tracking
+    pre_metric_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("performance_metrics.metric_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    post_metric_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("performance_metrics.metric_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    effectiveness_delta = Column(Float, nullable=True)
+
+    # Metadata
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default="NOW()",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "decision_confidence >= 0.0 AND decision_confidence <= 1.0",
+            name="check_decision_confidence_range",
+        ),
+        CheckConstraint(
+            "effectiveness_delta IS NULL OR (effectiveness_delta >= -1.0 AND effectiveness_delta <= 1.0)",
+            name="check_effectiveness_delta_range",
+        ),
+        CheckConstraint(
+            "trigger_type IN ('performance_degradation', 'error_accumulation', 'context_staleness', 'capability_mismatch')",
+            name="check_trigger_type_values",
+        ),
+        CheckConstraint(
+            "intervention_type IN ('context_refresh', 'replan', 'reflect', 'capability_switch')",
+            name="check_intervention_type_values",
+        ),
+        CheckConstraint(
+            "execution_status IN ('success', 'failure', 'partial', 'pending')",
+            name="check_execution_status_values",
+        ),
+        Index("idx_intervention_task", "task_id"),
+        Index("idx_intervention_agent", "agent_id"),
+        Index("idx_intervention_trigger_type", "trigger_type"),
+        Index("idx_intervention_type", "intervention_type"),
+        Index(
+            "idx_intervention_executed",
+            "executed_at",
+            postgresql_ops={"executed_at": "DESC"},
+        ),
+        Index(
+            "idx_intervention_agent_task",
+            "agent_id",
+            "task_id",
+            "executed_at",
+            postgresql_ops={"executed_at": "DESC"},
+        ),
+    )

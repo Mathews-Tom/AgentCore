@@ -634,3 +634,205 @@ class MetricsRepository:
             )
         )
         return result.rowcount
+
+
+class InterventionRepository:
+    """Repository for intervention record database operations (COMPASS ACE-2)."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession,
+        task_id: UUID,
+        agent_id: str,
+        trigger_type: str,
+        trigger_signals: list[str],
+        intervention_type: str,
+        intervention_rationale: str,
+        decision_confidence: float,
+        trigger_metric_id: UUID | None = None,
+        pre_metric_id: UUID | None = None,
+    ) -> "InterventionRecordDB":
+        """Create a new intervention record."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        intervention = InterventionRecordDB(
+            task_id=task_id,
+            agent_id=agent_id,
+            trigger_type=trigger_type,
+            trigger_signals=trigger_signals,
+            trigger_metric_id=trigger_metric_id,
+            intervention_type=intervention_type,
+            intervention_rationale=intervention_rationale,
+            decision_confidence=decision_confidence,
+            pre_metric_id=pre_metric_id,
+            executed_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        session.add(intervention)
+        await session.flush()
+        return intervention
+
+    @staticmethod
+    async def get_by_id(
+        session: AsyncSession, intervention_id: UUID
+    ) -> "InterventionRecordDB | None":
+        """Get intervention by ID."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        result = await session.execute(
+            select(InterventionRecordDB).where(
+                InterventionRecordDB.intervention_id == intervention_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_by_agent(
+        session: AsyncSession,
+        agent_id: str,
+        limit: int = 10,
+    ) -> list["InterventionRecordDB"]:
+        """List interventions for an agent, ordered by most recent."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        result = await session.execute(
+            select(InterventionRecordDB)
+            .where(InterventionRecordDB.agent_id == agent_id)
+            .order_by(desc(InterventionRecordDB.executed_at))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_by_task(
+        session: AsyncSession,
+        task_id: UUID,
+        limit: int = 10,
+    ) -> list["InterventionRecordDB"]:
+        """List interventions for a task, ordered by most recent."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        result = await session.execute(
+            select(InterventionRecordDB)
+            .where(InterventionRecordDB.task_id == task_id)
+            .order_by(desc(InterventionRecordDB.executed_at))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_recent_for_task(
+        session: AsyncSession,
+        task_id: UUID,
+        agent_id: str,
+        minutes: int = 60,
+    ) -> list["InterventionRecordDB"]:
+        """Get recent interventions for a task within time window (for cooldown checks)."""
+        from datetime import timedelta
+
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=minutes)
+        result = await session.execute(
+            select(InterventionRecordDB)
+            .where(
+                InterventionRecordDB.task_id == task_id,
+                InterventionRecordDB.agent_id == agent_id,
+                InterventionRecordDB.executed_at >= cutoff_time,
+            )
+            .order_by(desc(InterventionRecordDB.executed_at))
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def update_execution_status(
+        session: AsyncSession,
+        intervention_id: UUID,
+        execution_status: str,
+        execution_duration_ms: int,
+        execution_error: str | None = None,
+    ) -> bool:
+        """Update intervention execution status."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        result = await session.execute(
+            update(InterventionRecordDB)
+            .where(InterventionRecordDB.intervention_id == intervention_id)
+            .values(
+                execution_status=execution_status,
+                execution_duration_ms=execution_duration_ms,
+                execution_error=execution_error,
+                updated_at=datetime.now(UTC),
+            )
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def update_outcome(
+        session: AsyncSession,
+        intervention_id: UUID,
+        post_metric_id: UUID,
+        effectiveness_delta: float,
+    ) -> bool:
+        """Update intervention outcome metrics."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        result = await session.execute(
+            update(InterventionRecordDB)
+            .where(InterventionRecordDB.intervention_id == intervention_id)
+            .values(
+                post_metric_id=post_metric_id,
+                effectiveness_delta=effectiveness_delta,
+                updated_at=datetime.now(UTC),
+            )
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def count_by_agent(
+        session: AsyncSession,
+        agent_id: str,
+        intervention_type: str | None = None,
+    ) -> int:
+        """Count interventions for an agent, optionally filtered by type."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        query = select(func.count(InterventionRecordDB.intervention_id)).where(
+            InterventionRecordDB.agent_id == agent_id
+        )
+        if intervention_type:
+            query = query.where(InterventionRecordDB.intervention_type == intervention_type)
+        result = await session.execute(query)
+        return result.scalar_one()
+
+    @staticmethod
+    async def get_effectiveness_stats(
+        session: AsyncSession,
+        agent_id: str,
+        intervention_type: str | None = None,
+    ) -> dict[str, float]:
+        """Get intervention effectiveness statistics for an agent."""
+        from agentcore.ace.database.ace_orm import InterventionRecordDB
+
+        query = select(
+            func.avg(InterventionRecordDB.effectiveness_delta).label("mean"),
+            func.count(InterventionRecordDB.intervention_id).label("count"),
+        ).where(
+            InterventionRecordDB.agent_id == agent_id,
+            InterventionRecordDB.effectiveness_delta.isnot(None),
+        )
+
+        if intervention_type:
+            query = query.where(InterventionRecordDB.intervention_type == intervention_type)
+
+        result = await session.execute(query)
+        row = result.one_or_none()
+
+        if not row or row.count == 0:
+            return {"mean_effectiveness": 0.0, "total_interventions": 0}
+
+        return {
+            "mean_effectiveness": float(row.mean) if row.mean else 0.0,
+            "total_interventions": int(row.count),
+        }
