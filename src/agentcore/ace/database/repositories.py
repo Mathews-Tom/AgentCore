@@ -17,6 +17,7 @@ from agentcore.ace.database.ace_orm import (
     ContextPlaybookDB,
     EvolutionStatusDB,
     ExecutionTraceDB,
+    PerformanceMetricsDB,
 )
 from agentcore.ace.models.ace_models import EvolutionStatusType
 
@@ -454,3 +455,182 @@ class EvolutionStatusRepository:
             select(func.sum(EvolutionStatusDB.total_cost))
         )
         return result.scalar_one() or 0.0
+
+
+class MetricsRepository:
+    """Repository for performance metrics database operations (COMPASS ACE-1)."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession,
+        task_id: UUID,
+        agent_id: str,
+        stage: str,
+        stage_success_rate: float,
+        stage_error_rate: float,
+        stage_duration_ms: int,
+        stage_action_count: int,
+        overall_progress_velocity: float,
+        error_accumulation_rate: float,
+        context_staleness_score: float,
+        intervention_effectiveness: float | None = None,
+        baseline_delta: dict | None = None,
+    ) -> PerformanceMetricsDB:
+        """Create a new performance metric record."""
+        metric = PerformanceMetricsDB(
+            task_id=task_id,
+            agent_id=agent_id,
+            stage=stage,
+            stage_success_rate=stage_success_rate,
+            stage_error_rate=stage_error_rate,
+            stage_duration_ms=stage_duration_ms,
+            stage_action_count=stage_action_count,
+            overall_progress_velocity=overall_progress_velocity,
+            error_accumulation_rate=error_accumulation_rate,
+            context_staleness_score=context_staleness_score,
+            intervention_effectiveness=intervention_effectiveness,
+            baseline_delta=baseline_delta or {},
+            recorded_at=datetime.now(UTC),
+        )
+        session.add(metric)
+        await session.flush()
+        return metric
+
+    @staticmethod
+    async def bulk_create(
+        session: AsyncSession,
+        metrics: list[dict],
+    ) -> int:
+        """Bulk insert performance metrics for batching.
+
+        Args:
+            session: Database session
+            metrics: List of metric dictionaries with all required fields
+
+        Returns:
+            Number of metrics inserted
+        """
+        if not metrics:
+            return 0
+
+        # Add recorded_at timestamp if not present
+        for metric in metrics:
+            if "recorded_at" not in metric:
+                metric["recorded_at"] = datetime.now(UTC)
+            if "baseline_delta" not in metric:
+                metric["baseline_delta"] = {}
+
+        # Convert to ORM instances
+        db_metrics = [PerformanceMetricsDB(**metric) for metric in metrics]
+        session.add_all(db_metrics)
+        await session.flush()
+
+        return len(db_metrics)
+
+    @staticmethod
+    async def get_by_id(
+        session: AsyncSession, metric_id: UUID
+    ) -> PerformanceMetricsDB | None:
+        """Get metric by ID."""
+        result = await session.execute(
+            select(PerformanceMetricsDB).where(
+                PerformanceMetricsDB.metric_id == metric_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_latest_by_task(
+        session: AsyncSession,
+        task_id: UUID,
+        agent_id: str,
+    ) -> PerformanceMetricsDB | None:
+        """Get latest metric for a task and agent."""
+        result = await session.execute(
+            select(PerformanceMetricsDB)
+            .where(
+                PerformanceMetricsDB.task_id == task_id,
+                PerformanceMetricsDB.agent_id == agent_id,
+            )
+            .order_by(desc(PerformanceMetricsDB.recorded_at))
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def list_by_task(
+        session: AsyncSession,
+        task_id: UUID,
+        limit: int = 100,
+    ) -> list[PerformanceMetricsDB]:
+        """List metrics for a task."""
+        result = await session.execute(
+            select(PerformanceMetricsDB)
+            .where(PerformanceMetricsDB.task_id == task_id)
+            .order_by(desc(PerformanceMetricsDB.recorded_at))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_by_agent_stage(
+        session: AsyncSession,
+        agent_id: str,
+        stage: str,
+        limit: int = 50,
+    ) -> list[PerformanceMetricsDB]:
+        """List metrics for an agent and stage (for baseline computation)."""
+        result = await session.execute(
+            select(PerformanceMetricsDB)
+            .where(
+                PerformanceMetricsDB.agent_id == agent_id,
+                PerformanceMetricsDB.stage == stage,
+            )
+            .order_by(desc(PerformanceMetricsDB.recorded_at))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def count_by_agent(
+        session: AsyncSession, agent_id: str
+    ) -> int:
+        """Count metrics for an agent."""
+        result = await session.execute(
+            select(func.count(PerformanceMetricsDB.metric_id)).where(
+                PerformanceMetricsDB.agent_id == agent_id
+            )
+        )
+        return result.scalar_one()
+
+    @staticmethod
+    async def delete_old_metrics(
+        session: AsyncSession,
+        agent_id: str,
+        keep_count: int = 1000,
+    ) -> int:
+        """Delete old metrics, keeping only the most recent N."""
+        # Get the cutoff metric_id
+        cutoff_result = await session.execute(
+            select(PerformanceMetricsDB.metric_id)
+            .where(PerformanceMetricsDB.agent_id == agent_id)
+            .order_by(desc(PerformanceMetricsDB.recorded_at))
+            .offset(keep_count)
+            .limit(1)
+        )
+        cutoff_metric = cutoff_result.scalar_one_or_none()
+
+        if not cutoff_metric:
+            return 0
+
+        # Delete metrics older than cutoff
+        result = await session.execute(
+            delete(PerformanceMetricsDB).where(
+                PerformanceMetricsDB.agent_id == agent_id,
+                PerformanceMetricsDB.recorded_at
+                < select(PerformanceMetricsDB.recorded_at).where(
+                    PerformanceMetricsDB.metric_id == cutoff_metric
+                ),
+            )
+        )
+        return result.rowcount

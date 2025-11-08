@@ -231,3 +231,87 @@ class EvolutionStatusDB(Base):
             postgresql_ops={"last_evolution": "DESC"},
         ),
     )
+
+
+class PerformanceMetricsDB(Base):
+    """Performance Metrics ORM model (COMPASS ACE-1).
+
+    Stores stage-aware performance metrics for agents.
+    Optimized for TimescaleDB hypertable storage.
+    """
+
+    __tablename__ = "performance_metrics"
+
+    metric_id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default="gen_random_uuid()",
+    )
+    task_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    agent_id = Column(String(255), nullable=False, index=True)
+    stage = Column(String(50), nullable=False, index=True)
+
+    # Stage-specific metrics
+    stage_success_rate = Column(Float, nullable=False)
+    stage_error_rate = Column(Float, nullable=False)
+    stage_duration_ms = Column(Integer, nullable=False)
+    stage_action_count = Column(Integer, nullable=False)
+
+    # Cross-stage metrics
+    overall_progress_velocity = Column(Float, nullable=False)
+    error_accumulation_rate = Column(Float, nullable=False)
+    context_staleness_score = Column(Float, nullable=False)
+    intervention_effectiveness = Column(Float, nullable=True)
+
+    # Baseline comparison
+    baseline_delta = Column(
+        JSONB, nullable=False, default=dict, server_default="'{}'::jsonb"
+    )
+
+    recorded_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+        index=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "stage_success_rate >= 0.0 AND stage_success_rate <= 1.0",
+            name="check_success_rate_range",
+        ),
+        CheckConstraint(
+            "stage_error_rate >= 0.0 AND stage_error_rate <= 1.0",
+            name="check_error_rate_range",
+        ),
+        CheckConstraint(
+            "context_staleness_score >= 0.0 AND context_staleness_score <= 1.0",
+            name="check_staleness_range",
+        ),
+        CheckConstraint(
+            "intervention_effectiveness IS NULL OR "
+            "(intervention_effectiveness >= 0.0 AND intervention_effectiveness <= 1.0)",
+            name="check_intervention_effectiveness_range",
+        ),
+        CheckConstraint(
+            "stage IN ('planning', 'execution', 'reflection', 'verification')",
+            name="check_stage_values",
+        ),
+        Index("idx_metrics_task", "task_id"),
+        Index("idx_metrics_agent", "agent_id"),
+        Index("idx_metrics_stage", "stage"),
+        Index(
+            "idx_metrics_recorded",
+            "recorded_at",
+            postgresql_ops={"recorded_at": "DESC"},
+        ),
+        Index(
+            "idx_metrics_agent_stage",
+            "agent_id",
+            "stage",
+            "recorded_at",
+            postgresql_ops={"recorded_at": "DESC"},
+        ),
+    )

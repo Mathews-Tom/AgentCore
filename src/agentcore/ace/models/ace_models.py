@@ -297,3 +297,156 @@ class TriggerEvolutionResponse(BaseModel):
     status: EvolutionStatus
     deltas_generated: int = Field(..., description="Number of new deltas generated")
     message: str = Field(default="Evolution triggered successfully")
+
+
+# COMPASS-Enhanced Models (Performance Monitoring)
+
+
+class PerformanceMetrics(BaseModel):
+    """Stage-aware performance metrics (COMPASS ACE-1).
+
+    Tracks agent performance across reasoning stages (planning, execution,
+    reflection, verification) with baseline comparison capabilities.
+    """
+
+    metric_id: UUID = Field(default_factory=uuid4, description="Unique metric ID")
+    task_id: UUID = Field(..., description="Task identifier")
+    agent_id: str = Field(..., description="Agent identifier", min_length=1, max_length=255)
+    stage: str = Field(..., description="Reasoning stage", min_length=1, max_length=50)
+
+    # Stage-specific metrics
+    stage_success_rate: float = Field(..., description="Stage success rate (0-1)", ge=0.0, le=1.0)
+    stage_error_rate: float = Field(..., description="Stage error rate (0-1)", ge=0.0, le=1.0)
+    stage_duration_ms: int = Field(..., description="Stage duration in milliseconds", ge=0)
+    stage_action_count: int = Field(..., description="Number of actions in stage", ge=0)
+
+    # Cross-stage metrics
+    overall_progress_velocity: float = Field(
+        ..., description="Actions per minute", ge=0.0
+    )
+    error_accumulation_rate: float = Field(
+        ..., description="Errors per stage", ge=0.0
+    )
+    context_staleness_score: float = Field(
+        ..., description="Context staleness (0-1, higher = staler)", ge=0.0, le=1.0
+    )
+    intervention_effectiveness: float | None = Field(
+        None, description="Effectiveness of last intervention (0-1)", ge=0.0, le=1.0
+    )
+
+    # Baseline comparison
+    baseline_delta: dict[str, float] = Field(
+        default_factory=dict,
+        description="Deviation from baseline (metric_name -> delta)",
+    )
+
+    recorded_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Recording timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "metric_id": "880e8400-e29b-41d4-a716-446655440003",
+                "task_id": "990e8400-e29b-41d4-a716-446655440004",
+                "agent_id": "agent-001",
+                "stage": "execution",
+                "stage_success_rate": 0.85,
+                "stage_error_rate": 0.15,
+                "stage_duration_ms": 2500,
+                "stage_action_count": 12,
+                "overall_progress_velocity": 4.8,
+                "error_accumulation_rate": 0.3,
+                "context_staleness_score": 0.2,
+                "intervention_effectiveness": 0.75,
+                "baseline_delta": {"stage_success_rate": -0.05, "error_rate": 0.03},
+            }
+        }
+    )
+
+    @field_validator("stage")
+    @classmethod
+    def validate_stage(cls, v: str) -> str:
+        """Validate stage is one of the allowed values."""
+        allowed_stages = {"planning", "execution", "reflection", "verification"}
+        if v not in allowed_stages:
+            raise ValueError(
+                f"Stage must be one of {allowed_stages}, got '{v}'"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def validate_error_rates(self) -> "PerformanceMetrics":
+        """Validate success and error rates sum to <= 1.0."""
+        total_rate = self.stage_success_rate + self.stage_error_rate
+        if total_rate > 1.0:
+            raise ValueError(
+                f"Success rate ({self.stage_success_rate}) + error rate "
+                f"({self.stage_error_rate}) cannot exceed 1.0 (got {total_rate})"
+            )
+        return self
+
+
+class PerformanceBaseline(BaseModel):
+    """Performance baseline for comparison (COMPASS ACE-1).
+
+    Stores rolling baseline metrics for detecting performance degradation.
+    """
+
+    baseline_id: UUID = Field(default_factory=uuid4, description="Unique baseline ID")
+    agent_id: str = Field(..., description="Agent identifier", min_length=1, max_length=255)
+    stage: str = Field(..., description="Reasoning stage", min_length=1, max_length=50)
+    task_type: str | None = Field(None, description="Task type (optional)", max_length=100)
+
+    # Baseline metrics (mean values)
+    mean_success_rate: float = Field(..., description="Mean success rate", ge=0.0, le=1.0)
+    mean_error_rate: float = Field(..., description="Mean error rate", ge=0.0, le=1.0)
+    mean_duration_ms: float = Field(..., description="Mean duration in ms", ge=0.0)
+    mean_action_count: float = Field(..., description="Mean action count", ge=0.0)
+
+    # Statistical measures
+    std_dev: dict[str, float] = Field(
+        default_factory=dict,
+        description="Standard deviations (metric_name -> std_dev)",
+    )
+    confidence_interval: dict[str, tuple[float, float]] = Field(
+        default_factory=dict,
+        description="95% confidence intervals (metric_name -> (low, high))",
+    )
+
+    # Metadata
+    sample_size: int = Field(..., description="Number of samples in baseline", ge=1)
+    last_updated: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Last update timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "baseline_id": "aa0e8400-e29b-41d4-a716-446655440005",
+                "agent_id": "agent-001",
+                "stage": "execution",
+                "task_type": "data_analysis",
+                "mean_success_rate": 0.90,
+                "mean_error_rate": 0.10,
+                "mean_duration_ms": 2000.0,
+                "mean_action_count": 10.0,
+                "std_dev": {"success_rate": 0.05, "duration_ms": 500.0},
+                "confidence_interval": {"success_rate": (0.85, 0.95)},
+                "sample_size": 50,
+            }
+        }
+    )
+
+    @field_validator("stage")
+    @classmethod
+    def validate_stage(cls, v: str) -> str:
+        """Validate stage is one of the allowed values."""
+        allowed_stages = {"planning", "execution", "reflection", "verification"}
+        if v not in allowed_stages:
+            raise ValueError(
+                f"Stage must be one of {allowed_stages}, got '{v}'"
+            )
+        return v
