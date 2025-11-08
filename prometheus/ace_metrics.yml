@@ -1,0 +1,87 @@
+# Prometheus Scraping Configuration for ACE Metrics
+#
+# Add this to your prometheus.yml:
+#
+# scrape_configs:
+#   - job_name: 'agentcore-ace'
+#     scrape_interval: 15s
+#     scrape_timeout: 10s
+#     metrics_path: '/metrics'
+#     static_configs:
+#       - targets: ['localhost:8001']
+#         labels:
+#           service: 'agentcore'
+#           component: 'ace'
+#           environment: 'production'
+#
+# Or use this file directly:
+#   kubectl apply -f prometheus/ace_metrics.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # ACE (Agent Context Engineering) Metrics
+  - job_name: 'agentcore-ace'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    honor_labels: true
+    static_configs:
+      - targets:
+          - 'localhost:8001'  # Development
+          # - 'agentcore-service:8001'  # Production
+        labels:
+          service: 'agentcore'
+          component: 'ace'
+          environment: 'development'
+    metric_relabel_configs:
+      # Keep only ACE metrics
+      - source_labels: [__name__]
+        regex: '^ace_.*'
+        action: keep
+
+  # Optional: Separate scrape for A2A protocol metrics
+  - job_name: 'agentcore-a2a'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    honor_labels: true
+    static_configs:
+      - targets:
+          - 'localhost:8001'
+        labels:
+          service: 'agentcore'
+          component: 'a2a'
+          environment: 'development'
+    metric_relabel_configs:
+      # Keep A2A and reasoning metrics
+      - source_labels: [__name__]
+        regex: '^(reasoning_|gateway_).*'
+        action: keep
+
+# Remote write configuration (optional - for long-term storage)
+# remote_write:
+#   - url: "http://timescaledb-prometheus-adapter:9201/write"
+#     write_relabel_configs:
+#       - source_labels: [__name__]
+#         regex: '^ace_.*'
+#         action: keep
+#     queue_config:
+#       capacity: 10000
+#       max_shards: 10
+#       min_shards: 1
+#       max_samples_per_send: 5000
+#       batch_send_deadline: 5s
+#       min_backoff: 30ms
+#       max_backoff: 100ms
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention:
+      time: 90d  # 90-day retention for COMPASS validation
+      size: 50GB

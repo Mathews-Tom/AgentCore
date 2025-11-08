@@ -1,0 +1,363 @@
+# Prometheus Alerting Rules for ACE (Agent Context Engineering)
+#
+# COMPASS-Enhanced Alerts for Meta-Thinker Performance Monitoring
+#
+# Load these rules into Prometheus:
+#   kubectl apply -f prometheus/alerts/ace-alerts.yml
+#
+# Or add to prometheus.yml:
+#   rule_files:
+#     - "alerts/ace-alerts.yml"
+
+groups:
+  # ============================================================================
+  # COMPASS VALIDATION ALERTS (Critical - P0)
+  # ============================================================================
+  - name: ace_compass_targets
+    interval: 30s
+    rules:
+      - alert: ACEInterventionPrecisionLow
+        expr: |
+          avg(ace_intervention_effectiveness) < 0.80
+        for: 10m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+          compass_target: intervention_precision
+        annotations:
+          summary: "ACE intervention precision below COMPASS target"
+          description: "Intervention precision is {{ $value | humanizePercentage }} (threshold: 80%, target: 85%). Meta-Thinker decision quality is degraded."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-low-precision"
+          impact: "Incorrect interventions may harm agent performance"
+          action: "Review intervention logic and baseline thresholds"
+
+      - alert: ACEErrorRecallLow
+        expr: |
+          (1 - avg(ace_error_rate)) < 0.85
+        for: 10m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+          compass_target: error_recall
+        annotations:
+          summary: "ACE error detection recall below COMPASS target"
+          description: "Error recall is {{ $value | humanizePercentage }} (threshold: 85%, target: 90%). Critical errors may be missed."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-low-recall"
+          impact: "Compounding errors may go undetected"
+          action: "Review error detection patterns and severity thresholds"
+
+      - alert: ACESystemOverheadHigh
+        expr: |
+          (
+            avg(rate(ace_metric_computation_duration_seconds_sum[5m]))
+            /
+            avg(rate(ace_metric_computation_duration_seconds_count[5m]))
+          ) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+          compass_target: system_overhead
+        annotations:
+          summary: "ACE system overhead exceeds COMPASS target"
+          description: "System overhead is {{ $value | humanizePercentage }} (threshold: 5%, target: <5%). Performance impact detected."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-high-overhead"
+          impact: "Agent performance degradation due to monitoring overhead"
+          action: "Optimize metric computation or reduce update frequency"
+
+      - alert: ACEMEMCoordinationLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ace_mem_query_duration_seconds_bucket[5m])) by (le)
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+          compass_target: ace_mem_latency
+        annotations:
+          summary: "ACE-MEM coordination latency exceeds COMPASS target"
+          description: "P95 ACE-MEM query latency is {{ $value | humanizeDuration }} (threshold: 200ms). Real-time decision support degraded."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-mem-latency"
+          impact: "Delayed interventions may reduce effectiveness"
+          action: "Check MEM service health and query optimization"
+
+  # ============================================================================
+  # ACE AVAILABILITY & HEALTH ALERTS
+  # ============================================================================
+  - name: ace_availability
+    interval: 30s
+    rules:
+      - alert: ACEHighErrorRate
+        expr: |
+          (
+            rate(ace_errors_total{severity="critical"}[5m])
+            /
+            rate(ace_performance_updates_total[5m])
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "High critical error rate in ACE"
+          description: "Critical error rate is {{ $value | humanizePercentage }} (threshold: 10%). Agent performance severely impacted."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-high-error-rate"
+
+      - alert: ACEPerformanceUpdateStalled
+        expr: |
+          rate(ace_performance_updates_total[5m]) == 0
+        for: 3m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "ACE performance updates have stalled"
+          description: "No performance metric updates in the last 3 minutes. Monitoring may be broken."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-stalled-updates"
+
+      - alert: ACEMetricComputationSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ace_metric_computation_duration_seconds_bucket[5m])) by (le, operation)
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "ACE metric computation is slow"
+          description: "P95 computation duration for {{$labels.operation}} is {{ $value | humanizeDuration }} (threshold: 50ms). Performance degrading."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-slow-computation"
+
+  # ============================================================================
+  # ACE PERFORMANCE DEGRADATION ALERTS
+  # ============================================================================
+  - name: ace_performance_degradation
+    interval: 60s
+    rules:
+      - alert: ACEBaselineDeviationHigh
+        expr: |
+          abs(ace_baseline_deviation) > 20
+        for: 15m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "High baseline deviation detected"
+          description: "Metric {{$labels.metric}} for {{$labels.stage}} deviates {{ $value }}% from baseline (threshold: 20%). Performance degradation detected."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-baseline-deviation"
+          impact: "Agent performance has changed significantly from baseline"
+          action: "Investigate root cause and consider intervention"
+
+      - alert: ACEContextStalenessCritical
+        expr: |
+          ace_context_staleness > 0.8
+        for: 5m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "Critical context staleness detected"
+          description: "Context staleness for {{$labels.agent_id}} is {{ $value | humanizePercentage }} (threshold: 80%). Context refresh needed."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-stale-context"
+          impact: "Agent may be operating with outdated context"
+          action: "Trigger context refresh intervention"
+
+      - alert: ACEStageLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ace_stage_duration_seconds_bucket[5m])) by (le, stage, agent_id)
+          ) > 60
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "High stage latency detected"
+          description: "P95 latency for {{$labels.stage}} stage is {{ $value | humanizeDuration }} (threshold: 60s). Performance degrading."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-high-latency"
+
+  # ============================================================================
+  # ACE INTERVENTION ALERTS
+  # ============================================================================
+  - name: ace_interventions
+    interval: 60s
+    rules:
+      - alert: ACEInterventionRateHigh
+        expr: |
+          rate(ace_interventions_total[10m]) > 1
+        for: 15m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "High intervention rate detected"
+          description: "Intervention rate is {{ $value }} per second (threshold: 1/s). Agents may be struggling."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-high-intervention-rate"
+          impact: "Frequent interventions indicate systemic issues"
+          action: "Review agent configuration and task complexity"
+
+      - alert: ACEInterventionLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ace_intervention_latency_seconds_bucket[5m])) by (le, type)
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "High intervention latency"
+          description: "P95 {{$labels.type}} intervention latency is {{ $value | humanizeDuration }} (threshold: 5s). Interventions may be ineffective."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-intervention-latency"
+
+      - alert: ACEInterventionEffectivenessDropping
+        expr: |
+          rate(ace_intervention_effectiveness[10m]) < -0.1
+        for: 15m
+        labels:
+          severity: warning
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "Intervention effectiveness is dropping"
+          description: "Intervention effectiveness for {{$labels.agent_id}} is declining at {{ $value | humanizePercentage }}/min. Review intervention strategy."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-effectiveness-drop"
+
+  # ============================================================================
+  # ACE ERROR PATTERN ALERTS
+  # ============================================================================
+  - name: ace_error_patterns
+    interval: 60s
+    rules:
+      - alert: ACEErrorBurst
+        expr: |
+          (
+            rate(ace_errors_total[1m])
+            /
+            rate(ace_errors_total[10m] offset 10m)
+          ) > 5
+        for: 2m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "Error burst detected"
+          description: "Error rate has increased 5x in the last minute for {{$labels.stage}}. Investigate immediately."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-error-burst"
+
+      - alert: ACECriticalErrorsAccumulating
+        expr: |
+          sum(rate(ace_errors_total{severity="critical"}[5m])) by (agent_id, stage) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "Critical errors accumulating"
+          description: "Critical error rate for {{$labels.agent_id}} in {{$labels.stage}} is {{ $value }}/s. Compounding errors likely."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+          runbook: "https://wiki/runbooks/ace-critical-errors"
+          impact: "Agent may enter error spiral"
+          action: "Trigger immediate intervention or halt agent"
+
+  # ============================================================================
+  # ACE CAPACITY & RESOURCE ALERTS
+  # ============================================================================
+  - name: ace_capacity
+    interval: 300s  # Check every 5 minutes
+    rules:
+      - alert: ACEHighMetricVolume
+        expr: |
+          rate(ace_performance_updates_total[5m]) > 100
+        for: 10m
+        labels:
+          severity: info
+          component: ace
+          team: ml-platform
+        annotations:
+          summary: "High ACE metric update volume"
+          description: "Metric update rate is {{ $value }}/s. Monitor for capacity issues."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+
+      - alert: ACEStorageGrowthHigh
+        expr: |
+          predict_linear(prometheus_tsdb_storage_blocks_bytes[1h], 24*3600) > 100e9
+        for: 1h
+        labels:
+          severity: warning
+          component: ace
+          team: infrastructure
+        annotations:
+          summary: "ACE metrics storage growing rapidly"
+          description: "Metrics storage will exceed 100GB in 24h. Review retention policy."
+          dashboard: "https://grafana/d/ace-compass-dashboard"
+
+# ============================================================================
+# Alert Manager Configuration
+#
+# Add to alertmanager.yml:
+#
+# receivers:
+#   - name: 'ace-critical'
+#     pagerduty_configs:
+#       - service_key: '<pagerduty-key>'
+#         severity: 'critical'
+#     slack_configs:
+#       - channel: '#ace-alerts-critical'
+#         title: 'CRITICAL: {{ .GroupLabels.alertname }}'
+#         text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+#
+#   - name: 'ace-warnings'
+#     slack_configs:
+#       - channel: '#ace-alerts'
+#         title: '{{ .GroupLabels.alertname }}'
+#         text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+#
+# route:
+#   group_by: ['alertname', 'component', 'agent_id']
+#   group_wait: 30s
+#   group_interval: 5m
+#   repeat_interval: 12h
+#   receiver: 'ace-warnings'
+#   routes:
+#     - match:
+#         component: ace
+#         severity: critical
+#       receiver: 'ace-critical'
+#       continue: true
+#     - match:
+#         component: ace
+#         compass_target: '.*'
+#       receiver: 'ace-critical'
+#       repeat_interval: 6h
+# ============================================================================
