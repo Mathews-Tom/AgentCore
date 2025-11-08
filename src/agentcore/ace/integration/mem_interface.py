@@ -18,9 +18,12 @@ import structlog
 from agentcore.ace.models.ace_models import (
     MemoryQuery,
     MemoryQueryResult,
+    PerformanceMetrics,
     QueryType,
     StrategicContext,
+    TriggerSignal,
 )
+from agentcore.ace.monitors.error_accumulator import ErrorRecord
 
 logger = structlog.get_logger()
 
@@ -474,3 +477,362 @@ class ACEMemoryInterface:
 
         # Rough estimate: 4 chars per token
         return total_chars // 4
+
+    # Specialized Strategic Query Methods (COMPASS ACE-3 - ACE-022)
+
+    async def query_for_strategic_decision(
+        self,
+        trigger: TriggerSignal,
+        agent_id: str,
+        task_id: UUID,
+    ) -> MemoryQueryResult:
+        """
+        Query MEM for strategic decision-making context.
+
+        Returns context optimized for intervention decision-making based
+        on the trigger signal type and metrics.
+
+        Graceful degradation: Returns partial context on MEM failure.
+
+        Args:
+            trigger: TriggerSignal with trigger type, confidence, and metric values
+            agent_id: Agent identifier
+            task_id: Task identifier
+
+        Returns:
+            MemoryQueryResult with strategic context for decision-making
+
+        Raises:
+            ValueError: If agent_id is empty
+        """
+        try:
+            # Build context from trigger signal
+            context = {
+                "trigger_type": trigger.trigger_type.value,
+                "confidence": trigger.confidence,
+                "signals": trigger.signals,
+                "metric_values": trigger.metric_values,
+            }
+
+            # Query MEM for strategic decision context
+            result = await self.get_strategic_context(
+                query_type=QueryType.STRATEGIC_DECISION,
+                agent_id=agent_id,
+                task_id=task_id,
+                context=context,
+            )
+
+            logger.info(
+                "Strategic decision query completed",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                trigger_type=trigger.trigger_type.value,
+                relevance_score=result.relevance_score,
+            )
+
+            return result
+
+        except Exception as e:
+            # Log error
+            logger.error(
+                "MEM query failed for strategic decision, using fallback",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                trigger_type=trigger.trigger_type.value,
+                error=str(e),
+            )
+
+            # Return fallback result
+            fallback_context = StrategicContext(
+                relevant_stage_summaries=[
+                    f"Fallback: MEM unavailable for trigger {trigger.trigger_type.value}"
+                ],
+                critical_facts=[],
+                error_patterns=[],
+                successful_patterns=[],
+                context_health_score=0.3,
+            )
+
+            return MemoryQueryResult(
+                query_id=uuid4(),
+                strategic_context=fallback_context,
+                relevance_score=0.3,
+                query_latency_ms=0,
+                metadata={"error": str(e), "fallback": True, "trigger_type": trigger.trigger_type.value},
+            )
+
+    async def query_for_error_analysis(
+        self,
+        errors: list[ErrorRecord],
+        agent_id: str,
+        task_id: UUID,
+    ) -> MemoryQueryResult:
+        """
+        Query MEM for error pattern analysis context.
+
+        Returns context focused on error patterns, compounding errors,
+        and historical error remediation strategies.
+
+        Graceful degradation: Returns basic error summary on MEM failure.
+
+        Args:
+            errors: List of ErrorRecord instances to analyze
+            agent_id: Agent identifier
+            task_id: Task identifier
+
+        Returns:
+            MemoryQueryResult with error analysis context
+
+        Raises:
+            ValueError: If agent_id is empty
+        """
+        try:
+            # Build context from error records
+            error_types = [e.error_type for e in errors]
+            severities = [e.severity.value for e in errors]
+            stages = [e.stage for e in errors]
+
+            context = {
+                "error_types": error_types,
+                "severities": severities,
+                "stages": stages,
+                "error_count": len(errors),
+            }
+
+            # Query MEM for error analysis context
+            result = await self.get_strategic_context(
+                query_type=QueryType.ERROR_ANALYSIS,
+                agent_id=agent_id,
+                task_id=task_id,
+                context=context,
+            )
+
+            logger.info(
+                "Error analysis query completed",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                error_count=len(errors),
+                relevance_score=result.relevance_score,
+            )
+
+            return result
+
+        except Exception as e:
+            # Log error
+            logger.error(
+                "MEM query failed for error analysis, using fallback",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                error_count=len(errors),
+                error=str(e),
+            )
+
+            # Return fallback result with basic error summary
+            error_summary = f"Fallback: MEM unavailable - {len(errors)} errors detected"
+            if errors:
+                error_summary += f" (types: {', '.join(set(e.error_type for e in errors[:3]))})"
+
+            fallback_context = StrategicContext(
+                relevant_stage_summaries=[error_summary],
+                critical_facts=[],
+                error_patterns=[],
+                successful_patterns=[],
+                context_health_score=0.3,
+            )
+
+            return MemoryQueryResult(
+                query_id=uuid4(),
+                strategic_context=fallback_context,
+                relevance_score=0.3,
+                query_latency_ms=0,
+                metadata={"error": str(e), "fallback": True, "error_count": len(errors)},
+            )
+
+    async def query_for_capability_evaluation(
+        self,
+        task_requirements: list[str],
+        agent_capabilities: list[str],
+        performance_metrics: PerformanceMetrics,
+        agent_id: str,
+        task_id: UUID,
+    ) -> MemoryQueryResult:
+        """
+        Query MEM for capability fitness evaluation context.
+
+        Returns context about capability usage, success rates,
+        and historical capability performance data.
+
+        Graceful degradation: Returns basic fitness score on MEM failure.
+
+        Args:
+            task_requirements: List of required capabilities
+            agent_capabilities: List of agent's available capabilities
+            performance_metrics: Current performance metrics
+            agent_id: Agent identifier
+            task_id: Task identifier
+
+        Returns:
+            MemoryQueryResult with capability evaluation context
+
+        Raises:
+            ValueError: If agent_id is empty
+        """
+        try:
+            # Compute capability coverage
+            matching_caps = set(task_requirements) & set(agent_capabilities)
+            coverage_ratio = len(matching_caps) / len(task_requirements) if task_requirements else 0.0
+
+            # Build context from requirements and capabilities
+            context = {
+                "requirements": task_requirements,
+                "capabilities": agent_capabilities,
+                "coverage_ratio": coverage_ratio,
+                "metrics": {
+                    "success_rate": performance_metrics.stage_success_rate,
+                    "error_rate": performance_metrics.stage_error_rate,
+                    "velocity": performance_metrics.overall_progress_velocity,
+                },
+            }
+
+            # Query MEM for capability evaluation context
+            result = await self.get_strategic_context(
+                query_type=QueryType.CAPABILITY_EVALUATION,
+                agent_id=agent_id,
+                task_id=task_id,
+                context=context,
+            )
+
+            logger.info(
+                "Capability evaluation query completed",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                coverage_ratio=coverage_ratio,
+                relevance_score=result.relevance_score,
+            )
+
+            return result
+
+        except Exception as e:
+            # Log error
+            logger.error(
+                "MEM query failed for capability evaluation, using fallback",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                error=str(e),
+            )
+
+            # Return fallback result with basic fitness score
+            matching_caps = set(task_requirements) & set(agent_capabilities)
+            coverage_ratio = len(matching_caps) / len(task_requirements) if task_requirements else 0.0
+
+            fallback_summary = f"Fallback: MEM unavailable - capability coverage {coverage_ratio:.0%}"
+
+            fallback_context = StrategicContext(
+                relevant_stage_summaries=[fallback_summary],
+                critical_facts=[],
+                error_patterns=[],
+                successful_patterns=[],
+                context_health_score=0.3,
+            )
+
+            return MemoryQueryResult(
+                query_id=uuid4(),
+                strategic_context=fallback_context,
+                relevance_score=0.3,
+                query_latency_ms=0,
+                metadata={
+                    "error": str(e),
+                    "fallback": True,
+                    "coverage_ratio": coverage_ratio,
+                },
+            )
+
+    async def query_for_context_refresh(
+        self,
+        agent_id: str,
+        task_id: UUID,
+        current_stage: str,
+    ) -> MemoryQueryResult:
+        """
+        Query MEM for fresh compressed context.
+
+        Returns latest context with cleared stale information,
+        optimized for context refresh interventions.
+
+        Graceful degradation: Returns basic stage summary on MEM failure.
+
+        Args:
+            agent_id: Agent identifier
+            task_id: Task identifier
+            current_stage: Current reasoning stage
+
+        Returns:
+            MemoryQueryResult with refreshed context
+
+        Raises:
+            ValueError: If agent_id is empty or stage is invalid
+        """
+        try:
+            # Validate stage
+            valid_stages = {"planning", "execution", "reflection", "verification"}
+            if current_stage not in valid_stages:
+                raise ValueError(
+                    f"Invalid stage '{current_stage}'. Must be one of: {valid_stages}"
+                )
+
+            # Build minimal context (just current stage)
+            context = {
+                "current_stage": current_stage,
+                "refresh_reason": "context_refresh_intervention",
+            }
+
+            # Query MEM for context refresh
+            result = await self.get_strategic_context(
+                query_type=QueryType.CONTEXT_REFRESH,
+                agent_id=agent_id,
+                task_id=task_id,
+                context=context,
+            )
+
+            logger.info(
+                "Context refresh query completed",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                current_stage=current_stage,
+                relevance_score=result.relevance_score,
+            )
+
+            return result
+
+        except Exception as e:
+            # Log error
+            logger.error(
+                "MEM query failed for context refresh, using fallback",
+                agent_id=agent_id,
+                task_id=str(task_id),
+                current_stage=current_stage,
+                error=str(e),
+            )
+
+            # Return fallback result with basic stage summary
+            fallback_context = StrategicContext(
+                relevant_stage_summaries=[
+                    f"Fallback: MEM unavailable - currently in {current_stage} stage"
+                ],
+                critical_facts=[],
+                error_patterns=[],
+                successful_patterns=[],
+                context_health_score=0.3,
+            )
+
+            return MemoryQueryResult(
+                query_id=uuid4(),
+                strategic_context=fallback_context,
+                relevance_score=0.3,
+                query_latency_ms=0,
+                metadata={
+                    "error": str(e),
+                    "fallback": True,
+                    "current_stage": current_stage,
+                },
+            )
