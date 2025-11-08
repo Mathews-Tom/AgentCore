@@ -482,6 +482,15 @@ class ExecutionStatus(str, Enum):
     PENDING = "pending"
 
 
+class InterventionState(str, Enum):
+    """Runtime intervention state tracking."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class TriggerSignal(BaseModel):
     """Intervention trigger signal (COMPASS ACE-2).
 
@@ -765,4 +774,67 @@ class InterventionDecision(BaseModel):
         """Validate expected impact has minimum length."""
         if len(v.strip()) < 10:
             raise ValueError("Expected impact must be at least 10 characters")
+        return v.strip()
+
+
+# Runtime Integration Models (ACE-019)
+
+
+class RuntimeIntervention(BaseModel):
+    """Runtime intervention tracking for Agent Runtime integration (COMPASS ACE-2).
+
+    Tracks intervention execution state and outcome when ACE sends intervention
+    commands to the Agent Runtime. Used by RuntimeInterface to manage intervention
+    lifecycle and report outcomes back to ACE.
+    """
+
+    intervention_id: UUID = Field(default_factory=uuid4, description="Unique intervention ID")
+    agent_id: str = Field(..., description="Agent identifier", min_length=1, max_length=255)
+    task_id: UUID = Field(..., description="Task identifier")
+    intervention_type: InterventionType = Field(..., description="Type of intervention to execute")
+    context: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Intervention context from decision",
+    )
+    state: InterventionState = Field(
+        default=InterventionState.PENDING,
+        description="Current intervention state",
+    )
+    outcome: dict[str, Any] | None = Field(None, description="Intervention outcome result")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Creation timestamp",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="Last update timestamp",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "intervention_id": "dd0e8400-e29b-41d4-a716-446655440008",
+                "agent_id": "agent-001",
+                "task_id": "ee0e8400-e29b-41d4-a716-446655440009",
+                "intervention_type": "context_refresh",
+                "context": {
+                    "rationale": "Context staleness detected",
+                    "expected_impact": "Refresh should improve accuracy",
+                    "confidence": 0.85,
+                },
+                "state": "completed",
+                "outcome": {
+                    "refreshed_facts": 42,
+                    "cleared_items": 15,
+                },
+            }
+        }
+    )
+
+    @field_validator("agent_id")
+    @classmethod
+    def validate_agent_id(cls, v: str) -> str:
+        """Validate agent_id is not empty."""
+        if not v or not v.strip():
+            raise ValueError("agent_id cannot be empty")
         return v.strip()
