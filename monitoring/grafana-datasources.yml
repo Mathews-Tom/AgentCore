@@ -1,0 +1,34 @@
+# Grafana Datasource Configuration for AgentCore ACE Monitoring
+#
+# Auto-provisioned datasources for Grafana
+
+apiVersion: 1
+
+datasources:
+  # Prometheus - Primary datasource for ACE metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s
+      queryTimeout: 30s
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: 10m
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo  # If using Tempo for distributed tracing
+    version: 1
+
+  # AlertManager - For alert management
+  - name: AlertManager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    editable: false
+    jsonData:
+      implementation: prometheus
+    version: 1

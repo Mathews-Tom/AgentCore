@@ -1,0 +1,217 @@
+# AlertManager Configuration for AgentCore ACE Monitoring
+#
+# Routes alerts based on severity and component to appropriate channels.
+# Supports email, Slack, PagerDuty, and webhook integrations.
+
+global:
+  # Global settings
+  resolve_timeout: 5m
+
+  # SMTP settings for email notifications (configure with environment variables)
+  smtp_smarthost: '${SMTP_HOST:localhost:587}'
+  smtp_from: '${ALERT_FROM_EMAIL:alerts@agentcore.example.com}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Email templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Alert routing tree
+route:
+  # Root route - all alerts start here
+  receiver: 'default'
+  group_by: ['alertname', 'component', 'severity']
+  group_wait: 30s           # Wait to batch alerts
+  group_interval: 5m        # Re-send grouped alerts
+  repeat_interval: 4h       # Re-send unresolved alerts
+
+  # Child routes based on severity
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+      continue: false  # Don't match further routes
+
+    # Warning alerts - notify but less urgently
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      group_interval: 5m
+      repeat_interval: 4h
+      continue: false
+
+    # Info alerts - low priority notifications
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 5m
+      group_interval: 15m
+      repeat_interval: 12h
+      continue: false
+
+    # ACE-specific routing
+    - match:
+        component: ace
+      receiver: 'ace-team'
+      group_by: ['alertname', 'agent_id', 'severity']
+      continue: true  # Also send to severity-based receivers
+
+# Alert inhibition rules
+inhibit_rules:
+  # Critical alerts inhibit warnings for same component
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['component', 'agent_id']
+
+  # ACE intervention latency critical inhibits warning
+  - source_match:
+      alertname: 'ACEInterventionLatencyCritical'
+    target_match:
+      alertname: 'ACEInterventionLatencyHigh'
+    equal: ['agent_id']
+
+  # Metrics not recorded inhibits other ACE alerts
+  - source_match:
+      alertname: 'ACEMetricsNotRecorded'
+    target_match_re:
+      alertname: 'ACE.*'
+    equal: ['agent_id']
+
+# Alert receivers (notification channels)
+receivers:
+  # Default receiver (fallback)
+  - name: 'default'
+    email_configs:
+      - to: '${DEFAULT_EMAIL:ops@agentcore.example.com}'
+        headers:
+          Subject: '[AgentCore] Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+          {{ range .Alerts }}
+          <hr>
+          <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          {{ if .Annotations.runbook }}
+          <p><strong>Runbook:</strong> {{ .Annotations.runbook }}</p>
+          {{ end }}
+          {{ end }}
+
+  # Critical alerts - PagerDuty and Slack
+  - name: 'critical-alerts'
+    # PagerDuty integration (configure with environment variables)
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .Annotations.summary }}'
+        severity: 'critical'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+        links:
+          - text: 'Runbook'
+            href: '{{ .Annotations.runbook }}'
+
+    # Slack integration for critical alerts
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '${SLACK_CRITICAL_CHANNEL:#agentcore-critical}'
+        username: 'AlertManager'
+        icon_emoji: ':rotating_light:'
+        color: 'danger'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severity:* {{ .GroupLabels.severity }}
+          *Component:* {{ .GroupLabels.component }}
+
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ if .Annotations.runbook }}
+          *Runbook:* {{ .Annotations.runbook }}
+          {{ end }}
+          {{ end }}
+        send_resolved: true
+
+  # Warning alerts - Slack and email
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '${SLACK_WARNING_CHANNEL:#agentcore-warnings}'
+        username: 'AlertManager'
+        icon_emoji: ':warning:'
+        color: 'warning'
+        title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severity:* {{ .GroupLabels.severity }}
+          *Component:* {{ .GroupLabels.component }}
+
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+    email_configs:
+      - to: '${WARNING_EMAIL:ops@agentcore.example.com}'
+        headers:
+          Subject: '[AgentCore] ⚠️ Warning: {{ .GroupLabels.alertname }}'
+
+  # Info alerts - Slack only
+  - name: 'info-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '${SLACK_INFO_CHANNEL:#agentcore-info}'
+        username: 'AlertManager'
+        icon_emoji: ':information_source:'
+        color: 'good'
+        title: 'ℹ️ INFO: {{ .GroupLabels.alertname }}'
+        text: |
+          *Component:* {{ .GroupLabels.component }}
+
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+        send_resolved: false
+
+  # ACE team - dedicated ACE alerts channel
+  - name: 'ace-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '${SLACK_ACE_CHANNEL:#agentcore-ace}'
+        username: 'ACE Monitor'
+        icon_emoji: ':robot_face:'
+        title: '🤖 ACE Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severity:* {{ .GroupLabels.severity }}
+          *Agent:* {{ .GroupLabels.agent_id }}
+
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ if .Annotations.compass_target }}
+          *COMPASS Target:* {{ .Annotations.compass_target }}
+          {{ end }}
+          {{ if .Annotations.load_test_target }}
+          *Load Test Target:* {{ .Annotations.load_test_target }}
+          {{ end }}
+          {{ end }}
+        send_resolved: true
+
+  # Webhook receiver for custom integrations
+  - name: 'webhook'
+    webhook_configs:
+      - url: '${WEBHOOK_URL:http://localhost:8080/alerts}'
+        send_resolved: true
+        http_config:
+          bearer_token: '${WEBHOOK_TOKEN}'
+        max_alerts: 0  # No limit
