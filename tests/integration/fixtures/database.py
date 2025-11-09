@@ -14,6 +14,10 @@ from testcontainers.postgres import PostgresContainer
 
 from agentcore.a2a_protocol.database.connection import Base
 
+# Import all ORM models to register them with Base.metadata
+from agentcore.a2a_protocol.database import models as a2a_models  # noqa: F401
+from agentcore.ace.database import ace_orm  # noqa: F401
+
 
 @pytest.fixture(scope="module")
 def postgres_container():
