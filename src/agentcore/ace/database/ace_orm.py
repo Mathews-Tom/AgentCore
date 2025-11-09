@@ -2,7 +2,8 @@
 ACE SQLAlchemy ORM Models
 
 Database models for ACE (Agentic Context Engineering) system.
-Maps to tables created by ACE migration (2b034c2a4021).
+Maps to tables created by ACE migration (c03db99da40b).
+Cross-database compatible (PostgreSQL, SQLite).
 """
 
 from datetime import UTC, datetime
@@ -17,12 +18,50 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
 )
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID as PostgreSQL_UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import TypeDecorator, CHAR
+import uuid as uuid_lib
+
+# Cross-database UUID type
+class UUID(TypeDecorator):
+    """Platform-independent UUID type.
+
+    Uses PostgreSQL's UUID type when available, otherwise uses CHAR(36)
+    storing as stringified hex values.
+    """
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PostgreSQL_UUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            if isinstance(value, uuid_lib.UUID):
+                return str(value)
+            return str(uuid_lib.UUID(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == 'postgresql':
+            return value
+        else:
+            if isinstance(value, uuid_lib.UUID):
+                return value
+            return uuid_lib.UUID(value)
 
 from agentcore.a2a_protocol.database.connection import Base
 from agentcore.ace.models.ace_models import EvolutionStatusType
@@ -37,10 +76,9 @@ class ContextPlaybookDB(Base):
     __tablename__ = "context_playbooks"
 
     playbook_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid4,
-        server_default="gen_random_uuid()",
     )
     agent_id = Column(
         String(255),
@@ -48,23 +86,21 @@ class ContextPlaybookDB(Base):
         nullable=False,
         index=True,
     )
-    context = Column(JSONB, nullable=False)
-    version = Column(Integer, nullable=False, default=1, server_default="1")
+    context = Column(JSON, nullable=False)
+    version = Column(Integer, nullable=False, default=1)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
     playbook_metadata = Column(
-        "metadata", JSONB, nullable=False, default=dict, server_default="'{}'::jsonb"
+        "metadata", JSON, nullable=False, default=dict
     )
 
     # Relationships
@@ -76,11 +112,7 @@ class ContextPlaybookDB(Base):
 
     __table_args__ = (
         Index("idx_playbooks_agent", "agent_id"),
-        Index(
-            "idx_playbooks_updated",
-            "updated_at",
-            postgresql_ops={"updated_at": "DESC"},
-        ),
+        Index("idx_playbooks_updated", "updated_at"),
     )
 
 
@@ -93,27 +125,25 @@ class ContextDeltaDB(Base):
     __tablename__ = "context_deltas"
 
     delta_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid4,
-        server_default="gen_random_uuid()",
     )
     playbook_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("context_playbooks.playbook_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    changes = Column(JSONB, nullable=False)
+    changes = Column(JSON, nullable=False)
     confidence = Column(Float, nullable=False)
     reasoning = Column(Text, nullable=False)
     generated_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
-    applied = Column(Boolean, nullable=False, default=False, server_default="false")
+    applied = Column(Boolean, nullable=False, default=False)
     applied_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
@@ -125,17 +155,8 @@ class ContextDeltaDB(Base):
             name="check_confidence_range",
         ),
         Index("idx_deltas_playbook", "playbook_id"),
-        Index(
-            "idx_deltas_confidence",
-            "confidence",
-            postgresql_ops={"confidence": "DESC"},
-        ),
-        Index(
-            "idx_deltas_applied",
-            "applied",
-            "applied_at",
-            postgresql_ops={"applied_at": "DESC"},
-        ),
+        Index("idx_deltas_confidence", "confidence"),
+        Index("idx_deltas_applied", "applied", "applied_at"),
     )
 
 
@@ -148,10 +169,9 @@ class ExecutionTraceDB(Base):
     __tablename__ = "execution_traces"
 
     trace_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid4,
-        server_default="gen_random_uuid()",
     )
     agent_id = Column(
         String(255),
@@ -165,13 +185,12 @@ class ExecutionTraceDB(Base):
     output_quality = Column(Float, nullable=True)
     error_message = Column(Text, nullable=True)
     trace_metadata = Column(
-        "metadata", JSONB, nullable=False, default=dict, server_default="'{}'::jsonb"
+        "metadata", JSON, nullable=False, default=dict
     )
     captured_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
 
     __table_args__ = (
@@ -179,18 +198,8 @@ class ExecutionTraceDB(Base):
             "output_quality IS NULL OR (output_quality >= 0.0 AND output_quality <= 1.0)",
             name="check_output_quality_range",
         ),
-        Index(
-            "idx_traces_agent",
-            "agent_id",
-            "captured_at",
-            postgresql_ops={"captured_at": "DESC"},
-        ),
-        Index(
-            "idx_traces_success",
-            "success",
-            "captured_at",
-            postgresql_ops={"captured_at": "DESC"},
-        ),
+        Index("idx_traces_agent", "agent_id", "captured_at"),
+        Index("idx_traces_success", "success", "captured_at"),
     )
 
 
@@ -208,15 +217,15 @@ class EvolutionStatusDB(Base):
         primary_key=True,
     )
     last_evolution = Column(DateTime(timezone=True), nullable=True)
-    pending_traces = Column(Integer, nullable=False, default=0, server_default="0")
-    deltas_generated = Column(Integer, nullable=False, default=0, server_default="0")
-    deltas_applied = Column(Integer, nullable=False, default=0, server_default="0")
-    total_cost = Column(Float, nullable=False, default=0.0, server_default="0.0")
+    pending_traces = Column(Integer, nullable=False, default=0)
+    deltas_generated = Column(Integer, nullable=False, default=0)
+    deltas_applied = Column(Integer, nullable=False, default=0)
+    total_cost = Column(Float, nullable=False, default=0.0)
+    # Use String for cross-database compatibility (CheckConstraint enforces values)
     status = Column(
-        SQLEnum(EvolutionStatusType, name="evolution_status_type", create_type=True),
+        String(50),
         nullable=False,
-        default=EvolutionStatusType.IDLE,
-        server_default="'idle'",
+        default="idle",
     )
 
     __table_args__ = (
@@ -224,12 +233,7 @@ class EvolutionStatusDB(Base):
             "status IN ('idle', 'processing', 'failed')",
             name="check_status_values",
         ),
-        Index(
-            "idx_evolution_status",
-            "status",
-            "last_evolution",
-            postgresql_ops={"last_evolution": "DESC"},
-        ),
+        Index("idx_evolution_status", "status", "last_evolution"),
     )
 
 
@@ -243,12 +247,11 @@ class PerformanceMetricsDB(Base):
     __tablename__ = "performance_metrics"
 
     metric_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid4,
-        server_default="gen_random_uuid()",
     )
-    task_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    task_id = Column(UUID(), nullable=False, index=True)
     agent_id = Column(String(255), nullable=False, index=True)
     stage = Column(String(50), nullable=False, index=True)
 
@@ -266,14 +269,13 @@ class PerformanceMetricsDB(Base):
 
     # Baseline comparison
     baseline_delta = Column(
-        JSONB, nullable=False, default=dict, server_default="'{}'::jsonb"
+        JSON, nullable=False, default=dict
     )
 
     recorded_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default="NOW()",
         index=True,
     )
 
@@ -302,18 +304,8 @@ class PerformanceMetricsDB(Base):
         Index("idx_metrics_task", "task_id"),
         Index("idx_metrics_agent", "agent_id"),
         Index("idx_metrics_stage", "stage"),
-        Index(
-            "idx_metrics_recorded",
-            "recorded_at",
-            postgresql_ops={"recorded_at": "DESC"},
-        ),
-        Index(
-            "idx_metrics_agent_stage",
-            "agent_id",
-            "stage",
-            "recorded_at",
-            postgresql_ops={"recorded_at": "DESC"},
-        ),
+        Index("idx_metrics_recorded", "recorded_at"),
+        Index("idx_metrics_agent_stage", "agent_id", "stage", "recorded_at"),
     )
 
 
@@ -326,12 +318,11 @@ class InterventionRecordDB(Base):
     __tablename__ = "intervention_records"
 
     intervention_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid4,
-        server_default="gen_random_uuid()",
     )
-    task_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    task_id = Column(UUID(), nullable=False, index=True)
     agent_id = Column(
         String(255),
         ForeignKey("agents.id", ondelete="CASCADE"),
@@ -341,9 +332,9 @@ class InterventionRecordDB(Base):
 
     # Trigger information
     trigger_type = Column(String(50), nullable=False)
-    trigger_signals = Column(JSONB, nullable=False)
+    trigger_signals = Column(JSON, nullable=False)
     trigger_metric_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("performance_metrics.metric_id", ondelete="SET NULL"),
         nullable=True,
     )
@@ -358,20 +349,19 @@ class InterventionRecordDB(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
-    execution_duration_ms = Column(Integer, nullable=False, default=0, server_default="0")
-    execution_status = Column(String(20), nullable=False, default="pending", server_default="'pending'")
+    execution_duration_ms = Column(Integer, nullable=False, default=0)
+    execution_status = Column(String(20), nullable=False, default="pending")
     execution_error = Column(Text, nullable=True)
 
     # Outcome tracking
     pre_metric_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("performance_metrics.metric_id", ondelete="SET NULL"),
         nullable=True,
     )
     post_metric_id = Column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("performance_metrics.metric_id", ondelete="SET NULL"),
         nullable=True,
     )
@@ -382,14 +372,12 @@ class InterventionRecordDB(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
-        server_default="NOW()",
     )
 
     __table_args__ = (
@@ -417,16 +405,6 @@ class InterventionRecordDB(Base):
         Index("idx_intervention_agent", "agent_id"),
         Index("idx_intervention_trigger_type", "trigger_type"),
         Index("idx_intervention_type", "intervention_type"),
-        Index(
-            "idx_intervention_executed",
-            "executed_at",
-            postgresql_ops={"executed_at": "DESC"},
-        ),
-        Index(
-            "idx_intervention_agent_task",
-            "agent_id",
-            "task_id",
-            "executed_at",
-            postgresql_ops={"executed_at": "DESC"},
-        ),
+        Index("idx_intervention_executed", "executed_at"),
+        Index("idx_intervention_agent_task", "agent_id", "task_id", "executed_at"),
     )
