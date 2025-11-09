@@ -513,8 +513,9 @@ class CapabilityRecommender:
         if to_upgrade:
             parts.append(f"Recommend upgrading {len(to_upgrade)} capability(ies)")
 
-        # Default message
-        if not parts:
+        # Default message if no changes
+        has_changes = bool(gaps or to_add or to_remove or to_upgrade)
+        if not has_changes:
             parts.append("No significant capability changes recommended at this time")
 
         return ". ".join(parts) + "."

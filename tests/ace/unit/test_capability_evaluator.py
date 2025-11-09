@@ -257,13 +257,15 @@ class TestCapabilityEvaluator:
 
     async def test_coverage_score_computation(self, evaluator, task_requirements):
         """Test coverage score computation."""
-        # Exact match
+        # Exact match - covers 1.0 of 2.3 total weight (api_client requirement)
         score1 = await evaluator._compute_coverage_score(
             capability_id="api_client",
             capability_name="api_client",
             task_requirements=task_requirements,
         )
-        assert score1 == 1.0  # Perfect match
+        # Total weight: 1.0 + 0.8 + 0.5 = 2.3, matched weight: 1.0
+        # Score: 1.0 / 2.3 ≈ 0.4348
+        assert 0.43 < score1 < 0.44  # Partial coverage of total requirements
 
         # No match
         score2 = await evaluator._compute_coverage_score(

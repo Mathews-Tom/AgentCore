@@ -20,9 +20,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
-import pytest_asyncio
 
-from agentcore.a2a_protocol.database import close_db, init_db
 from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.ace.database.repositories import MetricsRepository
 from agentcore.ace.jsonrpc import (
@@ -36,22 +34,6 @@ from agentcore.ace.models.ace_models import PerformanceMetrics
 from agentcore.ace.monitors.baseline_tracker import BaselineTracker
 from agentcore.ace.monitors.error_accumulator import ErrorAccumulator, ErrorSeverity
 from agentcore.ace.monitors.performance_monitor import PerformanceMonitor
-
-
-# Database setup/teardown fixtures
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def setup_database():
-    """Initialize database for integration tests."""
-    # Ensure database is initialized before each test
-    try:
-        await init_db()
-    except RuntimeError:
-        # Already initialized
-        pass
-    yield
-    # Don't close database between tests, only at end of session
 
 
 # Test fixtures

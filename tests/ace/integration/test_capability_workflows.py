@@ -217,7 +217,7 @@ class TestCapabilityEvaluationWorkflows:
 
         agent_id = "agent-underperforming-001"
 
-        # Evaluate with poor performance
+        # Evaluate with poor performance and task requirements
         fitness_scores = {}
         for cap in current_capabilities:
             fitness = await evaluator.evaluate_fitness(
@@ -225,10 +225,11 @@ class TestCapabilityEvaluationWorkflows:
                 capability_id=cap["id"],
                 capability_name=cap["name"],
                 performance_history=poor_performance,
+                task_requirements=task_requirements,
             )
             fitness_scores[cap["id"]] = fitness
 
-        # Should have low fitness scores
+        # Should have low fitness scores (poor performance + low coverage)
         low_fitness_count = sum(
             1 for f in fitness_scores.values() if f.fitness_score < 0.5
         )

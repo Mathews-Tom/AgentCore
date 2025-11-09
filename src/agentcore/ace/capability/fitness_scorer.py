@@ -274,19 +274,19 @@ class FitnessScorer:
             else:
                 slope = 0.0
 
-            # Determine trend direction
-            if slope > 0.01:
+            # Change rate (score change per day)
+            change_rate = slope * 86400  # seconds per day
+
+            # Determine trend direction (using daily change rate)
+            if change_rate > 0.01:
                 trend_direction = 1  # Improving
-            elif slope < -0.01:
+            elif change_rate < -0.01:
                 trend_direction = -1  # Declining
             else:
                 trend_direction = 0  # Stable
 
-            # Trend strength (normalized slope)
-            trend_strength = min(1.0, abs(slope) * 100)
-
-            # Change rate (score change per day)
-            change_rate = slope * 86400  # seconds per day
+            # Trend strength (normalized change rate)
+            trend_strength = min(1.0, abs(change_rate) * 10)
 
         else:
             trend_direction = 0
@@ -327,23 +327,24 @@ class FitnessScorer:
         if c1_lower == c2_lower:
             return 1.0
 
-        # Contains match
-        if c1_lower in c2_lower or c2_lower in c1_lower:
-            return 0.8
-
-        # Word overlap
+        # Word-level analysis
         words1 = set(c1_lower.replace("_", " ").replace("-", " ").split())
         words2 = set(c2_lower.replace("_", " ").replace("-", " ").split())
 
         if not words1 or not words2:
             return 0.0
 
+        # Contains match (all words from one capability in the other)
+        if words2.issubset(words1) or words1.issubset(words2):
+            return 0.8
+
+        # Partial word overlap
         overlap = len(words1 & words2)
         total = len(words1 | words2)
 
         similarity = overlap / total if total > 0 else 0.0
 
-        return similarity * 0.6  # Scale down for word overlap
+        return similarity * 0.6  # Scale down for partial word overlap
 
     def _compute_consistency_bonus(
         self,
@@ -379,7 +380,12 @@ class FitnessScorer:
             (r - success_rate) ** 2 for r in recent_results
         ) / len(recent_results)
 
-        # Convert variance to bonus (inverse relationship)
-        consistency_bonus = max(0.0, 0.2 * (1.0 - variance))
+        # Normalize variance by maximum possible (0.25 for binary data)
+        # This ensures we get full 0-1 range for consistency
+        max_variance = 0.25
+        normalized_variance = variance / max_variance
+
+        # Convert normalized variance to bonus (inverse relationship)
+        consistency_bonus = max(0.0, 0.2 * (1.0 - normalized_variance))
 
         return consistency_bonus

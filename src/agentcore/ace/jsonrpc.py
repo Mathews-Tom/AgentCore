@@ -378,11 +378,17 @@ async def handle_get_metric_history(request: JsonRpcRequest) -> dict[str, Any]:
                 session, task_id, limit=100
             )
 
-            # Filter by time range
-            filtered_metrics = [
-                m for m in db_metrics
-                if req.start_time <= m.recorded_at <= req.end_time
-            ]
+            # Filter by time range (ensure timezone-aware comparison)
+            from datetime import UTC
+            start_time = req.start_time if req.start_time.tzinfo else req.start_time.replace(tzinfo=UTC)
+            end_time = req.end_time if req.end_time.tzinfo else req.end_time.replace(tzinfo=UTC)
+
+            filtered_metrics = []
+            for m in db_metrics:
+                # Ensure recorded_at is timezone-aware (SQLite returns naive datetimes)
+                recorded_at = m.recorded_at if m.recorded_at.tzinfo else m.recorded_at.replace(tzinfo=UTC)
+                if start_time <= recorded_at <= end_time:
+                    filtered_metrics.append(m)
 
             # Convert to Pydantic models
             metrics = [
