@@ -1,0 +1,437 @@
+{
+  "dashboard": {
+    "title": "ACE (Agent Context Engineering) Monitoring",
+    "tags": ["ace", "compass", "meta-thinker", "production"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+
+    "templating": {
+      "list": [
+        {
+          "name": "agent_id",
+          "type": "query",
+          "label": "Agent ID",
+          "query": "label_values(ace_performance_updates_total, agent_id)",
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*",
+          "refresh": 2
+        },
+        {
+          "name": "stage",
+          "type": "query",
+          "label": "Stage",
+          "query": "label_values(ace_performance_updates_total, stage)",
+          "multi": true,
+          "includeAll": true,
+          "allValue": ".*",
+          "refresh": 2
+        }
+      ]
+    },
+
+    "panels": [
+      {
+        "title": "ACE Overview",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+        "collapsed": false
+      },
+      {
+        "title": "Concurrent Agents",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+        "targets": [{
+          "expr": "count(count by (agent_id) (rate(ace_performance_updates_total[5m]) > 0))",
+          "legendFormat": "Agents"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 80, "color": "yellow"},
+                {"value": 95, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "title": "Task Throughput",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+        "targets": [{
+          "expr": "sum(rate(ace_performance_updates_total[5m]))",
+          "legendFormat": "Tasks/sec"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "green"}
+              ]
+            },
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "title": "Intervention Rate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+        "targets": [{
+          "expr": "(sum(rate(ace_interventions_total[5m])) / sum(rate(ace_performance_updates_total[5m]))) * 100",
+          "legendFormat": "Rate %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 15, "color": "yellow"},
+                {"value": 25, "color": "red"}
+              ]
+            },
+            "unit": "percent",
+            "decimals": 1
+          }
+        }
+      },
+      {
+        "title": "Error Rate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
+        "targets": [{
+          "expr": "(sum(rate(ace_errors_total[5m])) / sum(rate(ace_performance_updates_total[5m]))) * 100",
+          "legendFormat": "Error %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            },
+            "unit": "percent",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "title": "Intervention Latency (p95)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
+        "targets": [{
+          "expr": "histogram_quantile(0.95, rate(ace_intervention_latency_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p95 ms"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 150, "color": "yellow"},
+                {"value": 200, "color": "red"}
+              ]
+            },
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "title": "Critical Errors (24h)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
+        "targets": [{
+          "expr": "sum(increase(ace_errors_total{severity=\"critical\"}[24h]))",
+          "legendFormat": "Critical"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 20, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+
+      {
+        "title": "Performance Metrics",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+        "collapsed": false
+      },
+      {
+        "title": "Stage Duration (p50, p95, p99)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum by (stage, le) (rate(ace_stage_duration_seconds_bucket{agent_id=~\"$agent_id\", stage=~\"$stage\"}[5m])))",
+            "legendFormat": "{{stage}} p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum by (stage, le) (rate(ace_stage_duration_seconds_bucket{agent_id=~\"$agent_id\", stage=~\"$stage\"}[5m])))",
+            "legendFormat": "{{stage}} p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum by (stage, le) (rate(ace_stage_duration_seconds_bucket{agent_id=~\"$agent_id\", stage=~\"$stage\"}[5m])))",
+            "legendFormat": "{{stage}} p99"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "title": "Stage Error Rate by Stage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+        "targets": [{
+          "expr": "sum by (stage) (rate(ace_errors_total{agent_id=~\"$agent_id\", stage=~\"$stage\"}[5m]))",
+          "legendFormat": "{{stage}}"
+        }],
+        "yaxes": [
+          {"format": "ops", "label": "Errors/sec"},
+          {"format": "short", "show": false}
+        ]
+      },
+
+      {
+        "title": "Intervention Metrics",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+        "collapsed": false
+      },
+      {
+        "title": "Interventions by Type",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 15},
+        "targets": [{
+          "expr": "sum by (type) (rate(ace_interventions_total{agent_id=~\"$agent_id\"}[5m]))",
+          "legendFormat": "{{type}}"
+        }],
+        "yaxes": [
+          {"format": "ops", "label": "Interventions/sec"},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "title": "Intervention Latency Heatmap",
+        "type": "heatmap",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 15},
+        "targets": [{
+          "expr": "sum by (le) (rate(ace_intervention_latency_seconds_bucket[5m]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }],
+        "heatmap": {
+          "yAxis": {"format": "s", "decimals": 2}
+        }
+      },
+      {
+        "title": "Intervention Effectiveness",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 23},
+        "targets": [{
+          "expr": "avg(ace_intervention_effectiveness{agent_id=~\"$agent_id\"})",
+          "legendFormat": "Effectiveness"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 0.7, "color": "green"}
+              ]
+            },
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+      {
+        "title": "Context Staleness",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 23},
+        "targets": [{
+          "expr": "avg(ace_context_staleness{agent_id=~\"$agent_id\"})",
+          "legendFormat": "Staleness"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 0.8, "color": "red"}
+              ]
+            },
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1
+          }
+        }
+      },
+
+      {
+        "title": "Error Tracking",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 31},
+        "collapsed": false
+      },
+      {
+        "title": "Errors by Severity",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+        "targets": [{
+          "expr": "sum by (severity) (rate(ace_errors_total{agent_id=~\"$agent_id\"}[5m]))",
+          "legendFormat": "{{severity}}"
+        }],
+        "yaxes": [
+          {"format": "ops", "label": "Errors/sec"},
+          {"format": "short", "show": false}
+        ],
+        "stack": true
+      },
+      {
+        "title": "Error Rate by Agent",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+        "targets": [{
+          "expr": "topk(10, sum by (agent_id) (rate(ace_errors_total{agent_id=~\"$agent_id\"}[5m])))",
+          "legendFormat": "{{agent_id}}"
+        }],
+        "yaxes": [
+          {"format": "ops", "label": "Errors/sec"},
+          {"format": "short", "show": false}
+        ]
+      },
+
+      {
+        "title": "COMPASS Benchmarks",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 40},
+        "collapsed": false
+      },
+      {
+        "title": "Long-Horizon Accuracy (Target: +20%)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 41},
+        "targets": [{
+          "expr": "avg(1 - ace_error_rate{agent_id=~\"$agent_id\"}) * 100",
+          "legendFormat": "Accuracy %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 75, "color": "yellow"},
+                {"value": 85, "color": "green"}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "title": "Critical Error Recall (Target: 90%+)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 41},
+        "targets": [{
+          "expr": "(sum(rate(ace_errors_total{severity=\"critical\"}[24h])) / (sum(rate(ace_errors_total{severity=\"critical\"}[24h])) + 0.1)) * 100",
+          "legendFormat": "Recall %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 85, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "title": "Intervention Precision (Target: 85%+)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 41},
+        "targets": [{
+          "expr": "avg(ace_intervention_effectiveness) * 100",
+          "legendFormat": "Precision %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 80, "color": "yellow"},
+                {"value": 85, "color": "green"}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "title": "System Overhead (Target: <5%)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 41},
+        "targets": [{
+          "expr": "(histogram_quantile(0.95, rate(ace_metric_computation_duration_seconds_bucket[5m])) / 0.01) * 100",
+          "legendFormat": "Overhead %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 3, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            },
+            "unit": "percent",
+            "decimals": 1
+          }
+        }
+      }
+    ]
+  }
+}

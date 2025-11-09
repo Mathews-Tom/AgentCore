@@ -1,0 +1,17 @@
+# Grafana Dashboard Provisioning Configuration
+#
+# Auto-loads ACE dashboard on Grafana startup
+
+apiVersion: 1
+
+providers:
+  - name: 'ACE Dashboards'
+    orgId: 1
+    folder: 'ACE'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
