@@ -79,7 +79,7 @@ class ACECacheService:
             return
 
         try:
-            self._redis = await aioredis.from_url(
+            self._redis = await aioredis.from_url(  # type: ignore[no-untyped-call]
                 self.config.redis_url,
                 max_connections=self.config.max_connections,
                 socket_timeout=self.config.socket_timeout,
