@@ -63,10 +63,10 @@ class Settings(BaseSettings):
         default="agentcore", description="PostgreSQL database name"
     )
     DATABASE_POOL_SIZE: int = Field(
-        default=10, description="Database connection pool size"
+        default=10, description="Database connection pool size (minimum connections)"
     )
     DATABASE_MAX_OVERFLOW: int = Field(
-        default=20, description="Database connection pool max overflow"
+        default=40, description="Database connection pool max overflow (allows up to 50 total)"
     )
     DATABASE_POOL_TIMEOUT: int = Field(
         default=30, description="Database connection pool timeout in seconds"
