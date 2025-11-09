@@ -29,7 +29,23 @@ def upgrade() -> None:
     - 90-95% storage reduction
     - Faster queries on compressed data
     - Automatic 90-day retention
+
+    Note: This migration is optional and only runs if TimescaleDB extension is available.
+    Standard PostgreSQL environments will skip TimescaleDB-specific optimizations.
     """
+    # Check if TimescaleDB extension is available
+    connection = op.get_bind()
+    result = connection.execute(sa.text(
+        "SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'"
+    ))
+    timescaledb_installed = result.scalar() > 0
+
+    if not timescaledb_installed:
+        # Skip TimescaleDB configuration if extension not available
+        # This allows migration to succeed in CI and non-TimescaleDB environments
+        print("TimescaleDB extension not found - skipping compression configuration")
+        return
+
     # Enable compression on performance_metrics hypertable
     # Note: This assumes performance_metrics is already a hypertable
     # from the ACE database migration (c03db99da40b)
@@ -62,6 +78,18 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove TimescaleDB compression configuration."""
+
+    # Check if TimescaleDB extension is available
+    connection = op.get_bind()
+    result = connection.execute(sa.text(
+        "SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'"
+    ))
+    timescaledb_installed = result.scalar() > 0
+
+    if not timescaledb_installed:
+        # Skip if TimescaleDB not available (nothing to rollback)
+        print("TimescaleDB extension not found - skipping compression removal")
+        return
 
     # Remove retention policy
     op.execute("""
