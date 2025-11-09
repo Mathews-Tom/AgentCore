@@ -51,6 +51,16 @@ except ImportError:
     # Agent runtime tools optional
     tools_jsonrpc = None
 
+# Import ACE JSON-RPC methods
+try:
+    from agentcore.ace import jsonrpc as ace_jsonrpc
+    # Import ACE integration module for runtime intervention support
+    from agentcore.ace.integration import runtime_interface as ace_runtime_integration
+except ImportError:
+    # ACE optional
+    ace_jsonrpc = None
+    ace_runtime_integration = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
