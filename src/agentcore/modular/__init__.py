@@ -71,6 +71,14 @@ from agentcore.modular.coordinator import (
     CoordinationContext,
 )
 
+from agentcore.modular.state_manager import (
+    # State Manager
+    StateManager,
+    # State Models
+    ExecutionCheckpoint,
+    RecoveryInfo,
+)
+
 __all__ = [
     # Planner
     "PlannerQuery",
@@ -119,4 +127,8 @@ __all__ = [
     "ModuleCapability",
     "ModuleMessage",
     "CoordinationContext",
+    # State Manager
+    "StateManager",
+    "ExecutionCheckpoint",
+    "RecoveryInfo",
 ]
