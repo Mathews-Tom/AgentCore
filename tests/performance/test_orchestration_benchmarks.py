@@ -10,6 +10,8 @@ Tests validate acceptance criteria for ORCH-010:
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from agentcore.orchestration.performance.benchmarks import OrchestrationBenchmarks
@@ -17,6 +19,8 @@ from agentcore.orchestration.performance.graph_optimizer import (
     GraphOptimizer,
     analyze_workflow_parallelism,
     optimize_workflow_graph)
+
+logger = logging.getLogger(__name__)
 
 
 class TestGraphPlanningPerformance:
@@ -201,12 +205,13 @@ class TestEventProcessingPerformance:
         # (not a hard requirement, just informational)
         if throughputs[-1] < throughputs[0] * 0.5:
             # This is informational, not a failure
-            import warnings
-            warnings.warn(
-                f"Large batch throughput {throughputs[-1]:,.0f} is <50% of "
-                f"small batch {throughputs[0]:,.0f} (ratio: {throughputs[-1]/throughputs[0]:.2f}, x). "
-                f"This may indicate batch size is not optimal for this workload, "
-                f"but both achieve acceptable absolute throughput."
+            logger.info(
+                "Large batch throughput %s is <50%% of small batch %s (ratio: %.2f). "
+                "This may indicate batch size is not optimal for this workload, "
+                "but both achieve acceptable absolute throughput.",
+                f"{throughputs[-1]:,.0f}",
+                f"{throughputs[0]:,.0f}",
+                throughputs[-1] / throughputs[0],
             )
 
 
