@@ -62,6 +62,15 @@ from agentcore.modular.models import (
     SuccessCriteria,
 )
 
+from agentcore.modular.coordinator import (
+    # Coordinator
+    ModuleCoordinator,
+    # Coordination Models
+    ModuleCapability,
+    ModuleMessage,
+    CoordinationContext,
+)
+
 __all__ = [
     # Planner
     "PlannerQuery",
@@ -105,4 +114,9 @@ __all__ = [
     "StepDependency",
     "SuccessCriterion",
     "SuccessCriteria",
+    # Coordinator
+    "ModuleCoordinator",
+    "ModuleCapability",
+    "ModuleMessage",
+    "CoordinationContext",
 ]
