@@ -44,6 +44,24 @@ from agentcore.modular.base import (
     ModuleState,
 )
 
+from agentcore.modular.models import (
+    # Enums
+    PlanStatus,
+    StepStatus,
+    ModuleType,
+    VerificationLevel,
+    # Enhanced Models
+    EnhancedExecutionPlan,
+    EnhancedPlanStep,
+    EnhancedVerificationResult,
+    ModuleTransition,
+    # Supporting Models
+    ToolRequirement,
+    StepDependency,
+    SuccessCriterion,
+    SuccessCriteria,
+)
+
 __all__ = [
     # Planner
     "PlannerQuery",
@@ -73,4 +91,18 @@ __all__ = [
     # Common
     "BaseModule",
     "ModuleState",
+    # Enums
+    "PlanStatus",
+    "StepStatus",
+    "ModuleType",
+    "VerificationLevel",
+    # Enhanced Models
+    "EnhancedExecutionPlan",
+    "EnhancedPlanStep",
+    "EnhancedVerificationResult",
+    "ModuleTransition",
+    "ToolRequirement",
+    "StepDependency",
+    "SuccessCriterion",
+    "SuccessCriteria",
 ]
