@@ -329,3 +329,268 @@ class TestQueryClassification:
         assert planner._is_multi_step_task("step 1. do something. step 2. do more.")
         assert planner._is_multi_step_task("after searching, analyze the results")
         assert not planner._is_multi_step_task("simple query")
+
+
+class TestFeedbackAnalysis:
+    """Test feedback analysis for plan refinement."""
+
+    def test_analyze_feedback_error_handling(self) -> None:
+        """Test feedback analysis detects error handling needs."""
+        planner = Planner()
+
+        feedback = "Step 2 failed with an exception during execution"
+        analysis = planner._analyze_feedback(feedback)
+
+        assert "add_error_handling" in analysis
+        assert analysis["add_error_handling"]["detected"] is True
+        assert "failed" in analysis["add_error_handling"]["keywords"]
+
+    def test_analyze_feedback_parameter_adjustment(self) -> None:
+        """Test feedback analysis detects parameter adjustment needs."""
+        planner = Planner()
+
+        feedback = "Invalid parameter value provided to step 3"
+        analysis = planner._analyze_feedback(feedback)
+
+        assert "adjust_parameters" in analysis
+        assert analysis["adjust_parameters"]["detected"] is True
+
+    def test_analyze_feedback_validation_needs(self) -> None:
+        """Test feedback analysis detects validation step needs."""
+        planner = Planner()
+
+        feedback = "Missing validation for output format"
+        analysis = planner._analyze_feedback(feedback)
+
+        assert "add_validation" in analysis
+        assert analysis["add_validation"]["detected"] is True
+        assert "missing validation" in analysis["add_validation"]["keywords"]
+
+    def test_analyze_feedback_reordering_needs(self) -> None:
+        """Test feedback analysis detects step reordering needs."""
+        planner = Planner()
+
+        feedback = "Steps executed in wrong order, step 2 should come before step 1"
+        analysis = planner._analyze_feedback(feedback)
+
+        assert "reorder_steps" in analysis
+        assert analysis["reorder_steps"]["detected"] is True
+        assert "before" in analysis["reorder_steps"]["keywords"]
+
+    def test_analyze_feedback_multiple_strategies(self) -> None:
+        """Test feedback analysis detects multiple strategies."""
+        planner = Planner()
+
+        feedback = "Step failed due to invalid parameter and missing validation"
+        analysis = planner._analyze_feedback(feedback)
+
+        assert "add_error_handling" in analysis
+        assert "adjust_parameters" in analysis
+        assert "add_validation" in analysis
+
+
+class TestIntelligentPlanRefinement:
+    """Test intelligent plan refinement strategies."""
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_with_error_handling(self) -> None:
+        """Test plan refinement adds error handling for failed steps."""
+        planner = Planner()
+
+        # Create initial plan
+        initial_plan = await planner.create_plan("Test query")
+        plan_dict = initial_plan.model_dump()
+
+        # Mark first step as failed
+        plan_dict["steps"][0]["status"] = "failed"
+        plan_dict["steps"][0]["error"] = "Execution timeout"
+
+        # Create refinement request
+        refinement = PlanRefinement(
+            plan_id=plan_dict["plan_id"],
+            feedback="Step execute_1 failed with timeout error",
+            constraints={
+                "original_query": "Test query",
+                "existing_plan": plan_dict,
+                "failed_step_ids": ["execute_1"],
+            },
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify error handling was added
+        refined_step = refined_plan.steps[0]
+        assert refined_step.max_retries > initial_plan.steps[0].max_retries
+        assert refined_step.status == StepStatus.PENDING
+        assert refined_step.error is None
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_with_parameter_adjustment(self) -> None:
+        """Test plan refinement adjusts parameters."""
+        planner = Planner()
+
+        # Create initial plan
+        initial_plan = await planner.create_plan("Calculate sum")
+        plan_dict = initial_plan.model_dump()
+
+        # Create refinement with parameter adjustments
+        refinement = PlanRefinement(
+            plan_id=plan_dict["plan_id"],
+            feedback="Invalid parameter value in step gather_1",
+            constraints={
+                "original_query": "Calculate sum",
+                "existing_plan": plan_dict,
+                "parameter_adjustments": {
+                    "gather_1": {"timeout": 60, "retry_delay": 5}
+                },
+            },
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify parameters were adjusted
+        gather_step = refined_plan.get_step_by_id("gather_1")
+        assert gather_step is not None
+        assert gather_step.parameters["timeout"] == 60
+        assert gather_step.parameters["retry_delay"] == 5
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_with_validation_steps(self) -> None:
+        """Test plan refinement inserts validation steps."""
+        planner = Planner()
+
+        # Create initial plan
+        initial_plan = await planner.create_plan("Search for data")
+        plan_dict = initial_plan.model_dump()
+        initial_step_count = len(plan_dict["steps"])
+
+        # Create refinement requesting validation
+        refinement = PlanRefinement(
+            plan_id=plan_dict["plan_id"],
+            feedback="Missing validation after search step",
+            constraints={
+                "original_query": "Search for data",
+                "existing_plan": plan_dict,
+                "steps_needing_validation": ["search_1"],
+            },
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify validation step was inserted
+        assert len(refined_plan.steps) > initial_step_count
+        validation_steps = [s for s in refined_plan.steps if "validation" in s.step_id]
+        assert len(validation_steps) > 0
+        assert validation_steps[0].action == "validate_result"
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_with_step_reordering(self) -> None:
+        """Test plan refinement reorders steps."""
+        planner = Planner()
+
+        # Create multi-step plan
+        initial_plan = await planner.create_plan(
+            "First search, then analyze, finally report"
+        )
+        plan_dict = initial_plan.model_dump()
+
+        original_order = [s["step_id"] for s in plan_dict["steps"]]
+        new_order = list(reversed(original_order))  # Reverse the order
+
+        # Create refinement with new order
+        refinement = PlanRefinement(
+            plan_id=plan_dict["plan_id"],
+            feedback="Steps should be executed in different order",
+            constraints={
+                "original_query": "First search, then analyze, finally report",
+                "existing_plan": plan_dict,
+                "step_order": new_order,
+            },
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify steps were reordered
+        refined_order = [s.step_id for s in refined_plan.steps]
+        assert refined_order == new_order
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_with_multiple_strategies(self) -> None:
+        """Test plan refinement applies multiple strategies."""
+        planner = Planner()
+
+        # Create initial plan
+        initial_plan = await planner.create_plan("Complex query")
+        plan_dict = initial_plan.model_dump()
+
+        # Mark step as failed
+        plan_dict["steps"][0]["status"] = "failed"
+
+        # Create refinement with multiple strategies
+        refinement = PlanRefinement(
+            plan_id=plan_dict["plan_id"],
+            feedback="Step failed with invalid parameter and needs validation",
+            constraints={
+                "original_query": "Complex query",
+                "existing_plan": plan_dict,
+                "failed_step_ids": ["execute_1"],
+                "parameter_adjustments": {"execute_1": {"timeout": 120}},
+                "steps_needing_validation": ["execute_1"],
+            },
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify all strategies were applied
+        # 1. Error handling: max_retries increased
+        assert refined_plan.steps[0].max_retries > initial_plan.steps[0].max_retries
+        # 2. Parameter adjustment: timeout updated
+        assert refined_plan.steps[0].parameters.get("timeout") == 120
+        # 3. Validation: validation step inserted
+        validation_steps = [s for s in refined_plan.steps if "validation" in s.step_id]
+        assert len(validation_steps) > 0
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_without_existing_plan_fallback(self) -> None:
+        """Test plan refinement falls back to regeneration without existing plan."""
+        planner = Planner()
+
+        # Create refinement without existing plan
+        refinement = PlanRefinement(
+            plan_id="original-plan-123",
+            feedback="Plan needs improvement",
+            constraints={"original_query": "Test query"},
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify new plan was generated
+        assert refined_plan.plan_id != "original-plan-123"
+        assert refined_plan.query == "Test query"
+        assert len(refined_plan.steps) >= 1
+
+    @pytest.mark.asyncio
+    async def test_refine_plan_updates_metadata(self) -> None:
+        """Test plan refinement updates metadata correctly."""
+        planner = Planner()
+
+        # Create initial plan
+        initial_plan = await planner.create_plan("Test query")
+        plan_dict = initial_plan.model_dump()
+
+        # Create refinement
+        refinement = PlanRefinement(
+            plan_id=plan_dict["plan_id"],
+            feedback="Needs improvement",
+            constraints={
+                "original_query": "Test query",
+                "existing_plan": plan_dict,
+            },
+        )
+
+        refined_plan = await planner.refine_plan(refinement)
+
+        # Verify metadata updates
+        assert refined_plan.parent_plan_id == plan_dict["plan_id"]
+        assert refined_plan.current_iteration == initial_plan.current_iteration + 1
+        assert refined_plan.plan_id != plan_dict["plan_id"]
