@@ -33,6 +33,17 @@ from agentcore.modular.interfaces import (
     GeneratorInterface,
 )
 
+from agentcore.modular.base import (
+    # Base Classes
+    BaseModule,
+    BasePlanner,
+    BaseExecutor,
+    BaseVerifier,
+    BaseGenerator,
+    # State Management
+    ModuleState,
+)
+
 __all__ = [
     # Planner
     "PlannerQuery",
@@ -40,19 +51,26 @@ __all__ = [
     "ExecutionPlan",
     "PlanRefinement",
     "PlannerInterface",
+    "BasePlanner",
     # Executor
     "ExecutionContext",
     "ExecutionResult",
     "RetryPolicy",
     "ExecutorInterface",
+    "BaseExecutor",
     # Verifier
     "VerificationRequest",
     "VerificationResult",
     "ConsistencyCheck",
     "VerifierInterface",
+    "BaseVerifier",
     # Generator
     "GenerationRequest",
     "GeneratedResponse",
     "OutputFormat",
     "GeneratorInterface",
+    "BaseGenerator",
+    # Common
+    "BaseModule",
+    "ModuleState",
 ]
