@@ -6,7 +6,8 @@ Provides database session and test utilities.
 """
 
 import asyncio
-from typing import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, AsyncIterator, Callable
 
 import pytest
 import pytest_asyncio
@@ -65,7 +66,7 @@ async def test_db_session(
 @pytest_asyncio.fixture(scope="function")
 async def get_session(
     test_db_engine,
-) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
+) -> Callable[[], AsyncIterator[AsyncSession]]:
     """
     Provide get_session callable for tests.
 
@@ -80,7 +81,8 @@ async def get_session(
         autoflush=False,
     )
 
-    async def _get_session() -> AsyncGenerator[AsyncSession, None]:
+    @asynccontextmanager
+    async def _get_session() -> AsyncIterator[AsyncSession]:
         async with async_session() as session:
             yield session
 

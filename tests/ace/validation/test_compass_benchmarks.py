@@ -456,13 +456,26 @@ class TestRealWorldValidation:
             agent_id = f"agent-{agent_num}"
 
             for task_num in range(tasks_per_agent):
-                task = monitor.record_metrics(
+                task_id = uuid4()
+                # Varying success rate: 0.85, 0.88, 0.91
+                success_rate = 0.85 + (0.03 * (task_num % 3))
+                metrics = PerformanceMetrics(
+                    task_id=task_id,
                     agent_id=agent_id,
-                    task_id=f"task-{agent_num}-{task_num}",
                     stage="execution",
-                    accuracy=0.85 + (0.05 * (task_num % 3)),  # Varying accuracy
-                    recall=0.83,
-                    f1_score=0.84,
+                    stage_success_rate=success_rate,
+                    stage_error_rate=1.0 - success_rate,  # Complement to avoid exceeding 1.0
+                    stage_duration_ms=1000,
+                    stage_action_count=10,
+                    overall_progress_velocity=10.0,
+                    error_accumulation_rate=0.05,
+                    context_staleness_score=0.1,
+                )
+                task = monitor.record_metrics(
+                    task_id=task_id,
+                    agent_id=agent_id,
+                    stage="execution",
+                    metrics=metrics,
                 )
                 tasks.append(task)
 
