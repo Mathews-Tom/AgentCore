@@ -1,0 +1,285 @@
+# Prometheus Alert Rules for ACE (Agent Context Engineering)
+#
+# Alert severity levels:
+# - critical: Immediate action required, service degradation or outage
+# - warning: Attention needed, potential issues or degradation
+# - info: Informational, no action required but worth noting
+#
+# Alerts based on COMPASS benchmarks and ACE-031 load test targets
+
+groups:
+  # ============================================================================
+  # ACE Performance Alerts
+  # ============================================================================
+  - name: ace_performance
+    interval: 30s
+    rules:
+      # Intervention latency exceeds COMPASS target (<200ms p95)
+      - alert: ACEInterventionLatencyHigh
+        expr: histogram_quantile(0.95, rate(ace_intervention_latency_seconds_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: ace
+          category: performance
+        annotations:
+          summary: "ACE intervention latency exceeds target"
+          description: "ACE intervention p95 latency is {{ $value | humanizeDuration }}, exceeding 200ms target"
+          runbook: "Check intervention engine performance, review trigger conditions"
+          compass_target: "p95 < 200ms"
+
+      # Intervention latency critical (>500ms)
+      - alert: ACEInterventionLatencyCritical
+        expr: histogram_quantile(0.95, rate(ace_intervention_latency_seconds_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          component: ace
+          category: performance
+        annotations:
+          summary: "ACE intervention latency critically high"
+          description: "ACE intervention p95 latency is {{ $value | humanizeDuration }}, severely impacting responsiveness"
+          runbook: "Immediate investigation required, check for resource contention or blocking operations"
+
+      # Stage duration anomaly (significantly above baseline)
+      - alert: ACEStageDurationAnomaly
+        expr: |
+          histogram_quantile(0.95, rate(ace_stage_duration_seconds_bucket[5m]))
+          >
+          (histogram_quantile(0.95, rate(ace_stage_duration_seconds_bucket[1h] offset 1h)) * 1.5)
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          category: performance
+        annotations:
+          summary: "ACE stage duration significantly increased"
+          description: "Stage {{ $labels.stage }} duration increased by >50% compared to baseline"
+          runbook: "Check for performance degradation, review recent changes"
+
+      # Metric computation taking too long (>100ms p95)
+      - alert: ACEMetricComputationSlow
+        expr: histogram_quantile(0.95, rate(ace_metric_computation_duration_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: ace
+          category: performance
+        annotations:
+          summary: "ACE metric computation latency high"
+          description: "Metric computation p95 latency is {{ $value | humanizeDuration }}, may impact overhead target"
+          runbook: "Review metric computation efficiency, check database query performance"
+
+  # ============================================================================
+  # ACE Error Detection Alerts
+  # ============================================================================
+  - name: ace_errors
+    interval: 30s
+    rules:
+      # High error rate (>10% over 5 minutes)
+      - alert: ACEErrorRateHigh
+        expr: |
+          sum by (agent_id, stage) (rate(ace_errors_total[5m]))
+          /
+          sum by (agent_id, stage) (rate(ace_performance_updates_total[5m]))
+          > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: ace
+          category: errors
+        annotations:
+          summary: "High error rate detected by ACE"
+          description: "Agent {{ $labels.agent_id }} stage {{ $labels.stage }} error rate: {{ $value | humanizePercentage }}"
+          runbook: "Review agent logs, check for systematic issues"
+
+      # Critical errors detected
+      - alert: ACECriticalErrorsDetected
+        expr: rate(ace_errors_total{severity="critical"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: ace
+          category: errors
+        annotations:
+          summary: "Critical errors detected by ACE"
+          description: "Critical errors detected for agent {{ $labels.agent_id }} in stage {{ $labels.stage }}"
+          runbook: "Immediate investigation required, check agent state and execution trace"
+          compass_target: "90%+ critical error recall"
+
+      # Error accumulation (compounding errors)
+      - alert: ACEErrorAccumulation
+        expr: |
+          sum by (agent_id) (rate(ace_errors_total[5m])) > 5
+          and
+          deriv(ace_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          component: ace
+          category: errors
+        annotations:
+          summary: "Error accumulation detected"
+          description: "Agent {{ $labels.agent_id }} experiencing compounding errors ({{ $value }} errors/sec)"
+          runbook: "Check for error patterns, consider intervention to prevent cascade"
+
+  # ============================================================================
+  # ACE Intervention Alerts
+  # ============================================================================
+  - name: ace_interventions
+    interval: 30s
+    rules:
+      # Intervention rate too high (>20% over 10 minutes)
+      - alert: ACEInterventionRateTooHigh
+        expr: |
+          sum by (agent_id) (rate(ace_interventions_total[10m]))
+          /
+          sum by (agent_id) (rate(ace_performance_updates_total[10m]))
+          > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          category: interventions
+        annotations:
+          summary: "ACE intervention rate unusually high"
+          description: "Agent {{ $labels.agent_id }} intervention rate: {{ $value | humanizePercentage }} (expected ~10%)"
+          runbook: "Review trigger thresholds, check if agent is struggling with task"
+          compass_target: "~10% intervention rate"
+
+      # No interventions when errors detected (potential missed intervention)
+      - alert: ACEInterventionMissed
+        expr: |
+          (sum by (agent_id) (rate(ace_errors_total{severity=~"high|critical"}[5m])) > 0.5)
+          and
+          (sum by (agent_id) (rate(ace_interventions_total[5m])) == 0)
+        for: 5m
+        labels:
+          severity: warning
+          component: ace
+          category: interventions
+        annotations:
+          summary: "ACE may have missed intervention opportunity"
+          description: "Agent {{ $labels.agent_id }} has high error rate but no interventions triggered"
+          runbook: "Review trigger detection, check intervention engine status"
+          compass_target: "85%+ intervention precision"
+
+      # Intervention effectiveness low
+      - alert: ACEInterventionEffectivenessLow
+        expr: ace_intervention_effectiveness < 0.5
+        for: 15m
+        labels:
+          severity: warning
+          component: ace
+          category: interventions
+        annotations:
+          summary: "ACE intervention effectiveness below threshold"
+          description: "Agent {{ $labels.agent_id }} intervention effectiveness: {{ $value | humanizePercentage }}"
+          runbook: "Review intervention strategies, check post-intervention performance"
+
+  # ============================================================================
+  # ACE System Health Alerts
+  # ============================================================================
+  - name: ace_system_health
+    interval: 30s
+    rules:
+      # Context staleness high (>0.8)
+      - alert: ACEContextStalenessHigh
+        expr: ace_context_staleness > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          category: health
+        annotations:
+          summary: "ACE context staleness high"
+          description: "Agent {{ $labels.agent_id }} context staleness: {{ $value }} (scale 0-1)"
+          runbook: "Consider context refresh intervention, check MEM integration"
+
+      # Baseline deviation significant (>30%)
+      - alert: ACEBaselineDeviationSignificant
+        expr: abs(ace_baseline_deviation) > 30
+        for: 10m
+        labels:
+          severity: warning
+          component: ace
+          category: health
+        annotations:
+          summary: "Significant deviation from ACE performance baseline"
+          description: "Agent {{ $labels.agent_id }} {{ $labels.metric }} deviated by {{ $value }}%"
+          runbook: "Review agent performance, check for environmental changes"
+          compass_target: "+20% long-horizon accuracy improvement"
+
+      # ACE-MEM query latency high (>200ms p95)
+      - alert: ACEMEMQueryLatencyHigh
+        expr: histogram_quantile(0.95, rate(ace_mem_query_duration_seconds_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: ace-mem
+          category: performance
+        annotations:
+          summary: "ACE-MEM query latency high"
+          description: "MEM query type {{ $labels.query_type }} p95 latency: {{ $value | humanizeDuration }}"
+          runbook: "Check MEM service health, review query efficiency"
+
+      # ACE metrics not being recorded
+      - alert: ACEMetricsNotRecorded
+        expr: rate(ace_performance_updates_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          component: ace
+          category: health
+        annotations:
+          summary: "ACE metrics not being recorded"
+          description: "No ACE performance updates recorded for {{ $labels.agent_id }} in last 10 minutes"
+          runbook: "Check ACE integration, verify PerformanceMonitor is active"
+
+  # ============================================================================
+  # ACE Load and Scalability Alerts
+  # ============================================================================
+  - name: ace_scalability
+    interval: 60s
+    rules:
+      # High number of concurrent agents (>80 agents)
+      - alert: ACEConcurrentAgentsHigh
+        expr: count(count by (agent_id) (rate(ace_performance_updates_total[5m]) > 0)) > 80
+        for: 5m
+        labels:
+          severity: info
+          component: ace
+          category: scalability
+        annotations:
+          summary: "High number of concurrent agents"
+          description: "{{ $value }} concurrent agents active (target capacity: 100)"
+          runbook: "Monitor system resources, prepare for scaling if approaching 100 agents"
+          load_test_target: "100 concurrent agents"
+
+      # Approaching agent capacity (>95 agents)
+      - alert: ACEApproachingCapacity
+        expr: count(count by (agent_id) (rate(ace_performance_updates_total[5m]) > 0)) > 95
+        for: 5m
+        labels:
+          severity: warning
+          component: ace
+          category: scalability
+        annotations:
+          summary: "ACE approaching concurrent agent capacity"
+          description: "{{ $value }} concurrent agents (95%+ of 100 target capacity)"
+          runbook: "Scale infrastructure, increase connection pool, consider horizontal scaling"
+          load_test_target: "100 concurrent agents"
+
+      # Task throughput low (<5 tasks/sec sustained)
+      - alert: ACETaskThroughputLow
+        expr: sum(rate(ace_performance_updates_total[5m])) < 5
+        for: 15m
+        labels:
+          severity: warning
+          component: ace
+          category: scalability
+        annotations:
+          summary: "ACE task throughput below expected rate"
+          description: "Current throughput: {{ $value | humanize }} tasks/sec (expected >10 tasks/sec)"
+          runbook: "Check for bottlenecks, review system resources"
+          load_test_target: "10.5 tasks/sec"

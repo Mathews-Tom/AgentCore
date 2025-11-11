@@ -327,9 +327,9 @@ class TraceRepository:
             delete(ExecutionTraceDB).where(
                 ExecutionTraceDB.agent_id == agent_id,
                 ExecutionTraceDB.captured_at
-                < select(ExecutionTraceDB.captured_at).where(
-                    ExecutionTraceDB.trace_id == cutoff_trace
-                ),
+                < select(ExecutionTraceDB.captured_at)
+                .where(ExecutionTraceDB.trace_id == cutoff_trace)
+                .scalar_subquery(),
             )
         )
         return result.rowcount

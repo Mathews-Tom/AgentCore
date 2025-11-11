@@ -1,0 +1,206 @@
+# Docker Compose for AgentCore ACE Monitoring Stack
+#
+# Services:
+# - Prometheus: Time-series database and alerting
+# - AlertManager: Alert routing and notifications
+# - Grafana: Visualization and dashboards
+# - Node Exporter: System metrics
+# - PostgreSQL Exporter: Database metrics
+# - Redis Exporter: Cache metrics
+#
+# Usage:
+#   docker compose -f docker-compose.monitoring.yml up -d
+
+version: '3.8'
+
+networks:
+  monitoring:
+    driver: bridge
+  agentcore:
+    external: true  # Connect to existing AgentCore network
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  alertmanager-data:
+
+services:
+  # ============================================================================
+  # Prometheus - Metrics Collection and Alerting
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: agentcore-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    networks:
+      - monitoring
+      - agentcore
+    depends_on:
+      - alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # AlertManager - Alert Routing and Notifications
+  # ============================================================================
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: agentcore-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    networks:
+      - monitoring
+    environment:
+      # Configure via environment variables or secrets
+      SMTP_HOST: ${SMTP_HOST:-localhost:587}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      ALERT_FROM_EMAIL: ${ALERT_FROM_EMAIL:-alerts@agentcore.example.com}
+      DEFAULT_EMAIL: ${DEFAULT_EMAIL:-ops@agentcore.example.com}
+      WARNING_EMAIL: ${WARNING_EMAIL:-ops@agentcore.example.com}
+      PAGERDUTY_SERVICE_KEY: ${PAGERDUTY_SERVICE_KEY}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_CRITICAL_CHANNEL: ${SLACK_CRITICAL_CHANNEL:-#agentcore-critical}
+      SLACK_WARNING_CHANNEL: ${SLACK_WARNING_CHANNEL:-#agentcore-warnings}
+      SLACK_INFO_CHANNEL: ${SLACK_INFO_CHANNEL:-#agentcore-info}
+      SLACK_ACE_CHANNEL: ${SLACK_ACE_CHANNEL:-#agentcore-ace}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # Grafana - Visualization and Dashboards
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: agentcore-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    networks:
+      - monitoring
+    environment:
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS_ENABLED:-false}
+      GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS:-}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_ALERTING_ENABLED: true
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # Node Exporter - System Metrics
+  # ============================================================================
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: agentcore-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - monitoring
+    pid: host
+
+  # ============================================================================
+  # PostgreSQL Exporter - Database Metrics
+  # ============================================================================
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: agentcore-postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    networks:
+      - monitoring
+      - agentcore
+    environment:
+      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN:-postgresql://postgres:postgres@postgres:5432/agentcore?sslmode=disable}
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: ${PG_EXPORTER_AUTO_DISCOVER:-true}
+      PG_EXPORTER_EXCLUDE_DATABASES: ${PG_EXPORTER_EXCLUDE_DBS:-template0,template1}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # Redis Exporter - Cache Metrics
+  # ============================================================================
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: agentcore-redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    networks:
+      - monitoring
+      - agentcore
+    environment:
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # Optional: Pushgateway - For Batch Job Metrics
+  # ============================================================================
+  pushgateway:
+    image: prom/pushgateway:v1.6.2
+    container_name: agentcore-pushgateway
+    restart: unless-stopped
+    ports:
+      - "9091:9091"
+    networks:
+      - monitoring
+    profiles:
+      - full  # Only start with --profile full
