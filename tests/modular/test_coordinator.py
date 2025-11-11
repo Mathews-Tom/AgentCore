@@ -393,10 +393,11 @@ class TestModuleCoordinator:
     # Error Handling Tests
     # ========================================================================
 
-    def test_handle_error(self, coordinator: ModuleCoordinator) -> None:
+    async def test_handle_error(self, coordinator: ModuleCoordinator) -> None:
         """Test error handling."""
-        # Create pending request
-        future: asyncio.Future[JsonRpcResponse] = asyncio.Future()
+        # Create pending request with event loop
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[JsonRpcResponse] = loop.create_future()
         message_id = "test-message-123"
         coordinator._pending_requests[message_id] = future
 
@@ -411,10 +412,11 @@ class TestModuleCoordinator:
         assert response.error.code == JsonRpcErrorCode.INTERNAL_ERROR
         assert "Test error" in response.error.message
 
-    def test_receive_response(self, coordinator: ModuleCoordinator) -> None:
+    async def test_receive_response(self, coordinator: ModuleCoordinator) -> None:
         """Test receiving response for pending request."""
-        # Create pending request
-        future: asyncio.Future[JsonRpcResponse] = asyncio.Future()
+        # Create pending request with event loop
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[JsonRpcResponse] = loop.create_future()
         message_id = "test-message-123"
         coordinator._pending_requests[message_id] = future
 

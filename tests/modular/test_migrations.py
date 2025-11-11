@@ -11,19 +11,22 @@ import re
 from pathlib import Path
 
 
+# Get project root directory (two levels up from this test file)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+MIGRATION_FILE = PROJECT_ROOT / "alembic" / "versions" / "e247cdc4c183_add_modular_executions_tables.py"
+
+
 class TestModularExecutionsMigration:
     """Test the modular_executions migration."""
 
     @pytest.fixture
     def migration_file(self) -> str:
         """Load the migration file content."""
-        migration_path = Path("alembic/versions/e247cdc4c183_add_modular_executions_tables.py")
-        return migration_path.read_text()
+        return MIGRATION_FILE.read_text()
 
     def test_migration_file_exists(self) -> None:
         """Test that migration file exists."""
-        migration_path = Path("alembic/versions/e247cdc4c183_add_modular_executions_tables.py")
-        assert migration_path.exists(), "Migration file not found"
+        assert MIGRATION_FILE.exists(), f"Migration file not found at {MIGRATION_FILE}"
 
     def test_migration_has_correct_revision(self, migration_file: str) -> None:
         """Test migration has correct revision ID."""
