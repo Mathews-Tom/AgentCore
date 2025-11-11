@@ -496,3 +496,114 @@ class ToolExecutionDB(Base):
             postgresql_ops={"timestamp": "DESC"},
         ),
     )
+
+
+# ============================================================================
+# Modular Agent Core Execution Models
+# ============================================================================
+
+
+class ModularExecutionDB(Base):
+    """Top-level modular execution record."""
+
+    __tablename__ = "modular_executions"
+
+    id = Column(String(255), primary_key=True)
+    query = Column(Text, nullable=False)
+    plan_id = Column(String(255), nullable=True, index=True)
+    iterations = Column(Integer, nullable=False, default=0)
+    final_result = Column(JSON, nullable=True)
+    status = Column(String(50), nullable=False, index=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    completed_at = Column(DateTime, nullable=True)
+    execution_metadata = Column("metadata", JSON, nullable=True)
+
+    # Relationships
+    plans = relationship("ExecutionPlanDB", back_populates="execution", cascade="all, delete-orphan")
+
+
+class ExecutionPlanDB(Base):
+    """Execution plan with structured steps."""
+
+    __tablename__ = "execution_plans"
+
+    plan_id = Column(String(255), primary_key=True)
+    execution_id = Column(String(255), ForeignKey("modular_executions.id", ondelete="CASCADE"), nullable=False, index=True)
+    plan_data = Column(JSON, nullable=False)
+    status = Column(String(50), nullable=False, index=True)
+    max_iterations = Column(Integer, nullable=False, default=10)
+    current_iteration = Column(Integer, nullable=False, default=0)
+    success_criteria = Column(JSON, nullable=True)
+    final_result = Column(JSON, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+    total_estimated_cost = Column(Float, nullable=False, default=0.0)
+    actual_cost = Column(Float, nullable=True)
+    plan_metadata = Column("metadata", JSON, nullable=True)
+
+    # Relationships
+    execution = relationship("ModularExecutionDB", back_populates="plans")
+    steps = relationship("PlanStepDB", back_populates="plan", cascade="all, delete-orphan")
+    transitions = relationship("ModuleTransitionDB", back_populates="plan", cascade="all, delete-orphan")
+
+
+class PlanStepDB(Base):
+    """Individual plan step with dependencies."""
+
+    __tablename__ = "plan_steps"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    step_id = Column(String(255), nullable=False, index=True)
+    plan_id = Column(String(255), ForeignKey("execution_plans.plan_id", ondelete="CASCADE"), nullable=False, index=True)
+    action = Column(String(255), nullable=False)
+    parameters = Column(JSON, nullable=False)
+    status = Column(String(50), nullable=False, index=True)
+    dependencies = Column(JSON, nullable=True)
+    tool_requirements = Column(JSON, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+    retry_count = Column(Integer, nullable=False, default=0)
+    max_retries = Column(Integer, nullable=False, default=3)
+    result = Column(JSON, nullable=True)
+    error = Column(Text, nullable=True)
+    estimated_cost = Column(Float, nullable=False, default=0.0)
+    actual_cost = Column(Float, nullable=True)
+    step_metadata = Column("metadata", JSON, nullable=True)
+
+    # Relationships
+    plan = relationship("ExecutionPlanDB", back_populates="steps")
+
+    __table_args__ = (
+        UniqueConstraint("plan_id", "step_id", name="uq_plan_step"),
+    )
+
+
+class ModuleTransitionDB(Base):
+    """Module-to-module transition tracking."""
+
+    __tablename__ = "module_transitions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    transition_id = Column(String(255), nullable=False, unique=True)
+    plan_id = Column(String(255), ForeignKey("execution_plans.plan_id", ondelete="CASCADE"), nullable=False, index=True)
+    iteration = Column(Integer, nullable=False)
+    from_module = Column(String(50), nullable=False)
+    to_module = Column(String(50), nullable=False)
+    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True)
+    reason = Column(Text, nullable=False)
+    trigger = Column(String(255), nullable=True)
+    data = Column(JSON, nullable=True)
+    duration_in_from_module = Column(Float, nullable=True)
+    transition_metadata = Column("metadata", JSON, nullable=True)
+
+    # Relationships
+    plan = relationship("ExecutionPlanDB", back_populates="transitions")
+
+    __table_args__ = (
+        Index("idx_module_transitions_from_to", "from_module", "to_module"),
+    )

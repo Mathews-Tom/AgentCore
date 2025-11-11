@@ -2,8 +2,8 @@
   "version": "1.0",
   "generated": "2025-11-05T15:04:09.830130+00:00",
   "total_tickets": 344,
-  "completed_tickets": 206,
-  "unprocessed_tickets": 130,
+  "completed_tickets": 210,
+  "unprocessed_tickets": 126,
   "components": {
     "a2a-protocol": {
       "total": 17,
@@ -63,8 +63,8 @@
     },
     "modular-agent-core": {
       "total": 31,
-      "completed": 0,
-      "unprocessed": 31
+      "completed": 1,
+      "unprocessed": 30
     },
     "llm-client-service": {
       "total": 20,
@@ -6909,7 +6909,7 @@
       "id": "MOD-001",
       "title": "Modular Agent Core Implementation",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 162,
@@ -6918,7 +6918,7 @@
         "TOOL-001"
       ],
       "created": "2025-10-14T22:56:40.457375+00:00",
-      "updated": "2025-11-06T07:36:24Z",
+      "updated": "2025-11-11T00:13:38Z",
       "children": [
         "MOD-002",
         "MOD-003",
@@ -6963,13 +6963,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-002",
       "title": "Define Module Interface Protocols",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 3,
@@ -6979,7 +6992,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:28Z",
+      "updated": "2025-11-10T16:33:25.372042+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 138,
@@ -6992,13 +7005,23 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-10T15:53:40.934233+00:00"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-10T16:33:25.372517+00:00"
+        }
+      ]
     },
     {
       "id": "MOD-003",
       "title": "Implement Base Module Classes",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -7008,7 +7031,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:31Z",
+      "updated": "2025-11-10T17:12:07.486068+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 139,
@@ -7021,13 +7044,23 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-10T16:58:51.468930+00:00"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-10T17:12:07.487301+00:00"
+        }
+      ]
     },
     {
       "id": "MOD-004",
       "title": "Create Execution Plan Data Models",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 3,
@@ -7037,7 +7070,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:34Z",
+      "updated": "2025-11-10T18:36:23.137556+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 140,
@@ -7050,13 +7083,23 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-10T18:31:50.921535+00:00"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-10T18:36:23.137798+00:00"
+        }
+      ]
     },
     {
       "id": "MOD-005",
       "title": "Database Migration for Modular Executions",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 3,
@@ -7066,7 +7109,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:37Z",
+      "updated": "2025-11-10T19:12:37.340022+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 141,
@@ -7085,7 +7128,7 @@
       "id": "MOD-006",
       "title": "JSON-RPC Coordination Handler",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -7095,7 +7138,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:40Z",
+      "updated": "2025-11-10T20:07:31.483797+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 142,
@@ -7114,7 +7157,7 @@
       "id": "MOD-007",
       "title": "Module State Management",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7125,7 +7168,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:43Z",
+      "updated": "2025-11-10T21:01:07.076480+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 143,
@@ -7144,7 +7187,7 @@
       "id": "MOD-008",
       "title": "Unit Tests for Interfaces and Base Classes",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -7157,7 +7200,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:46Z",
+      "updated": "2025-11-10T21:13:40.929624+00:00",
       "validation_type": "generic",
       "github": {
         "issueNumber": 144,
@@ -7176,7 +7219,7 @@
       "id": "MOD-009",
       "title": "Implement Planner Module with Task Decomposition",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7187,7 +7230,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:49Z",
+      "updated": "2025-11-11T00:00:00Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 145,
@@ -7206,7 +7249,7 @@
       "id": "MOD-010",
       "title": "Implement Plan Refinement Logic in Planner",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7216,7 +7259,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:52Z",
+      "updated": "2025-11-11T19:45:00Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 146,
@@ -7235,7 +7278,7 @@
       "id": "MOD-011",
       "title": "Implement Executor Module with Tool Invocation",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7247,7 +7290,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:55Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 147,
@@ -7260,13 +7303,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-012",
       "title": "Executor Retry and Error Recovery",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7276,7 +7332,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:36:59Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 148,
@@ -7289,13 +7345,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-013",
       "title": "Implement Verifier Module with Validation Rules",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7306,7 +7375,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:02Z",
+      "updated": "2025-11-11T04:00:00Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 149,
@@ -7325,7 +7394,7 @@
       "id": "MOD-014",
       "title": "Verifier Confidence Scoring",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P1",
       "type": "implementation",
       "effort": 3,
@@ -7335,7 +7404,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:05Z",
+      "updated": "2025-11-11T00:34:46Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 150,
@@ -7348,13 +7417,23 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "2025-11-11T00:18:23Z"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "2025-11-11T00:34:46Z"
+        }
+      ]
     },
     {
       "id": "MOD-015",
       "title": "Implement Generator Module with Response Synthesis",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -7365,7 +7444,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:08Z",
+      "updated": "2025-11-11T04:30:00Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 151,
@@ -7384,7 +7463,7 @@
       "id": "MOD-016",
       "title": "Register Modules as A2A Agents",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -7397,7 +7476,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:11Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 152,
@@ -7410,13 +7489,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-017",
       "title": "Implement modular.solve JSON-RPC Method",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7427,7 +7519,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:14Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 153,
@@ -7440,13 +7532,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-018",
       "title": "Module Coordination Loop",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7456,7 +7561,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:17Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 154,
@@ -7469,13 +7574,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-019",
       "title": "Integration Tests for Full Pipeline",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7485,7 +7603,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:20Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 155,
@@ -7498,13 +7616,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-020",
       "title": "Optimize Module Response Times",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7515,7 +7646,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:23Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 156,
@@ -7528,13 +7659,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-021",
       "title": "Implement Plan Refinement Loop with Max Iterations",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7545,7 +7689,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:26Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 157,
@@ -7558,13 +7702,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-022",
       "title": "Integrate OpenTelemetry Distributed Tracing",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 8,
@@ -7574,7 +7731,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:29Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 158,
@@ -7587,13 +7744,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-023",
       "title": "Add Trace ID Propagation Across Modules",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 3,
@@ -7603,7 +7773,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:32Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 159,
@@ -7616,13 +7786,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-024",
       "title": "Module-Specific Model Configuration",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7635,7 +7818,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:35Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 160,
@@ -7648,13 +7831,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-025",
       "title": "Performance Benchmarking vs Baseline",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -7665,7 +7861,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:38Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 161,
@@ -7678,13 +7874,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-026",
       "title": "Prometheus Metrics for Each Module",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7694,7 +7903,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:41Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 162,
@@ -7707,13 +7916,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-027",
       "title": "Grafana Dashboards for Module Health",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 3,
@@ -7723,7 +7945,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:44Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 163,
@@ -7736,13 +7958,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-028",
       "title": "Load Testing (100 Concurrent Executions)",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7753,7 +7988,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:47Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 164,
@@ -7766,13 +8001,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-029",
       "title": "Error Recovery Testing (>80% Target)",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7783,7 +8031,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:50Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 165,
@@ -7796,13 +8044,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-030",
       "title": "Security Audit (Auth, RBAC, Audit Logging)",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P0",
       "type": "implementation",
       "effort": 8,
@@ -7813,7 +8074,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:52Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 166,
@@ -7826,13 +8087,26 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "MOD-031",
       "title": "Production Runbook and Documentation",
       "component": "modular-agent-core",
-      "state": "UNPROCESSED",
+      "state": "DEFERRED",
       "priority": "P1",
       "type": "implementation",
       "effort": 5,
@@ -7844,7 +8118,7 @@
       ],
       "parent": "MOD-001",
       "created": "2025-10-15T13:15:26.173795+00:00",
-      "updated": "2025-11-06T07:37:55Z",
+      "updated": "2025-11-11T00:13:38Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 167,
@@ -7857,7 +8131,20 @@
         ],
         "milestone": null,
         "assignees": []
-      }
+      },
+      "deferReason": {
+        "category": "dependency_blocker",
+        "message": "Blocked by unresolved dependency TOOL-001",
+        "blocker": "TOOL-001",
+        "deferred_at": "2025-11-11T00:13:38Z"
+      },
+      "state_history": [
+        {
+          "state": "DEFERRED",
+          "timestamp": "2025-11-11T00:13:38Z",
+          "reason": "dependency_blocker"
+        }
+      ]
     },
     {
       "id": "TOOL-001",
@@ -11766,7 +12053,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:27Z",
-      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task \u2192 stages \u2192 memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task → stages → memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 173,
@@ -11969,7 +12256,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:48Z",
-      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: \u226595%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: ≥95%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 180,
@@ -12236,7 +12523,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:39:16Z",
-      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity \u2192 relationship \u2192 entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity → relationship → entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 189,
