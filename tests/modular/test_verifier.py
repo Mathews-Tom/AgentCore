@@ -811,7 +811,9 @@ class TestConsolidatedFeedback:
         """Test that no feedback is generated for clean results."""
         verifier = Verifier()
 
-        feedback = verifier._generate_consolidated_feedback([], [], [])
+        feedback = verifier._generate_consolidated_feedback(
+            [], [], [], refinement_needed=False, confidence=1.0
+        )
 
         assert feedback is None
 
@@ -823,6 +825,8 @@ class TestConsolidatedFeedback:
             errors=["Error 1", "Error 2"],
             warnings=[],
             feedback_parts=[],
+            refinement_needed=False,
+            confidence=0.6,
         )
 
         assert feedback is not None
@@ -838,6 +842,8 @@ class TestConsolidatedFeedback:
             errors=[],
             warnings=["Warning 1"],
             feedback_parts=[],
+            refinement_needed=False,
+            confidence=0.95,
         )
 
         assert feedback is not None
@@ -852,6 +858,8 @@ class TestConsolidatedFeedback:
             errors=[],
             warnings=[],
             feedback_parts=["Additional feedback"],
+            refinement_needed=False,
+            confidence=1.0,
         )
 
         assert feedback is not None
@@ -866,9 +874,177 @@ class TestConsolidatedFeedback:
             errors=["Error 1"],
             warnings=["Warning 1"],
             feedback_parts=["Additional feedback"],
+            refinement_needed=False,
+            confidence=0.8,
         )
 
         assert feedback is not None
         assert "ERRORS" in feedback
         assert "WARNINGS" in feedback
         assert "ADDITIONAL FEEDBACK" in feedback
+
+
+class TestConfidenceThreshold:
+    """Test confidence threshold configuration and refinement logic (MOD-014)."""
+
+    def test_default_confidence_threshold(self) -> None:
+        """Test that default confidence threshold is 0.7."""
+        verifier = Verifier()
+
+        assert verifier.confidence_threshold == 0.7
+
+    def test_custom_confidence_threshold(self) -> None:
+        """Test setting custom confidence threshold."""
+        verifier = Verifier(confidence_threshold=0.9)
+
+        assert verifier.confidence_threshold == 0.9
+
+    def test_confidence_threshold_validation_low(self) -> None:
+        """Test that confidence threshold must be >= 0.0."""
+        with pytest.raises(ValueError, match="confidence_threshold must be between"):
+            Verifier(confidence_threshold=-0.1)
+
+    def test_confidence_threshold_validation_high(self) -> None:
+        """Test that confidence threshold must be <= 1.0."""
+        with pytest.raises(ValueError, match="confidence_threshold must be between"):
+            Verifier(confidence_threshold=1.1)
+
+    def test_meets_confidence_threshold_above(self) -> None:
+        """Test that confidence above threshold meets it."""
+        verifier = Verifier(confidence_threshold=0.7)
+
+        assert verifier.meets_confidence_threshold(0.8) is True
+        assert verifier.meets_confidence_threshold(0.7) is True
+
+    def test_meets_confidence_threshold_below(self) -> None:
+        """Test that confidence below threshold does not meet it."""
+        verifier = Verifier(confidence_threshold=0.7)
+
+        assert verifier.meets_confidence_threshold(0.6) is False
+        assert verifier.meets_confidence_threshold(0.0) is False
+
+    def test_meets_confidence_threshold_validation(self) -> None:
+        """Test that meets_confidence_threshold validates input."""
+        verifier = Verifier()
+
+        with pytest.raises(ValueError, match="Confidence must be between"):
+            verifier.meets_confidence_threshold(-0.1)
+
+        with pytest.raises(ValueError, match="Confidence must be between"):
+            verifier.meets_confidence_threshold(1.5)
+
+    async def test_refinement_needed_for_low_confidence(self) -> None:
+        """Test that refinement_needed is set when confidence is low."""
+        verifier = Verifier(confidence_threshold=0.85)
+        result = ExecutionResult(
+            step_id="step_1",
+            success=True,
+            result=None,  # Causes error, reduces confidence by 0.2
+            execution_time=0.5,
+        )
+        request = VerificationRequest(results=[result])
+
+        verification = await verifier.validate_results(request)
+
+        # This should fail validation and have low confidence (0.8 < 0.85)
+        assert verification.valid is False
+        assert verification.confidence == 0.8  # 1.0 - 0.2 = 0.8
+        assert verification.refinement_needed is True
+
+    async def test_refinement_not_needed_for_high_confidence(self) -> None:
+        """Test that refinement_needed is not set when confidence is high."""
+        verifier = Verifier(confidence_threshold=0.7)
+        result = ExecutionResult(
+            step_id="step_1",
+            success=True,
+            result=42,
+            execution_time=0.5,
+        )
+        request = VerificationRequest(
+            results=[result],
+            expected_json_schema={"type": "integer"},
+        )
+
+        verification = await verifier.validate_results(request)
+
+        assert verification.valid is True
+        assert verification.confidence >= 0.7
+        assert verification.refinement_needed is False
+
+    async def test_low_confidence_feedback_message(self) -> None:
+        """Test that low confidence includes refinement feedback."""
+        verifier = Verifier(confidence_threshold=0.85)
+        result = ExecutionResult(
+            step_id="step_1",
+            success=True,
+            result=None,  # Causes error, confidence = 0.8
+            execution_time=0.5,
+        )
+        request = VerificationRequest(results=[result])
+
+        verification = await verifier.validate_results(request)
+
+        assert verification.refinement_needed is True
+        assert verification.feedback is not None
+        assert "LOW CONFIDENCE" in verification.feedback
+        assert "Plan refinement needed" in verification.feedback
+        assert "0.85" in verification.feedback
+
+    async def test_high_threshold_requires_better_validation(self) -> None:
+        """Test that higher threshold requires better validation."""
+        # With low threshold (0.5), warnings might still pass
+        verifier_low = Verifier(confidence_threshold=0.5)
+        result = ExecutionResult(
+            step_id="step_1",
+            success=True,
+            result="42",  # String instead of number (causes warning)
+            execution_time=0.001,  # Very fast (causes warning)
+        )
+        request = VerificationRequest(
+            results=[result],
+            expected_json_schema={"type": "integer"},
+        )
+
+        verification_low = await verifier_low.validate_results(request)
+
+        # Low threshold should not trigger refinement despite warnings
+        # Note: This depends on exact confidence calculation
+        assert verification_low.confidence >= 0.5
+
+        # With high threshold (0.95), same validation might need refinement
+        verifier_high = Verifier(confidence_threshold=0.95)
+        verification_high = await verifier_high.validate_results(request)
+
+        # High threshold might trigger refinement with schema mismatch
+        if verification_high.confidence < 0.95:
+            assert verification_high.refinement_needed is True
+
+    def test_health_check_includes_threshold(self) -> None:
+        """Test that health check includes confidence threshold."""
+        verifier = Verifier(confidence_threshold=0.85)
+
+        health = asyncio.run(verifier.health_check())
+
+        assert health["confidence_threshold"] == 0.85
+
+    def test_consolidated_feedback_with_low_confidence(self) -> None:
+        """Test consolidated feedback generation with low confidence."""
+        verifier = Verifier(confidence_threshold=0.7)
+
+        feedback = verifier._generate_consolidated_feedback(
+            errors=[],
+            warnings=["Some warning"],
+            feedback_parts=[],
+            refinement_needed=True,
+            confidence=0.5,
+        )
+
+        assert feedback is not None
+        assert "LOW CONFIDENCE: 0.50" in feedback
+        assert "threshold: 0.70" in feedback
+        assert "Plan refinement needed" in feedback
+
+
+# Import pytest at top if not already imported
+import pytest
+import asyncio

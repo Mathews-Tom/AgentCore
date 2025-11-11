@@ -49,6 +49,7 @@ class Verifier(BaseVerifier):
         a2a_context: Any | None = None,
         logger: Any | None = None,
         enable_llm_verification: bool = False,
+        confidence_threshold: float = 0.7,
     ) -> None:
         """
         Initialize Verifier module.
@@ -57,9 +58,22 @@ class Verifier(BaseVerifier):
             a2a_context: A2A context for distributed tracing
             logger: Logger instance for structured logging
             enable_llm_verification: Enable LLM-based verification (requires API key)
+            confidence_threshold: Minimum confidence score (0.0-1.0) for acceptance.
+                                Results below this threshold trigger plan refinement.
+                                Default: 0.7
+
+        Raises:
+            ValueError: If confidence_threshold is not between 0.0 and 1.0
         """
         super().__init__(a2a_context, logger)
+
+        if not 0.0 <= confidence_threshold <= 1.0:
+            raise ValueError(
+                f"confidence_threshold must be between 0.0 and 1.0, got {confidence_threshold}"
+            )
+
         self.enable_llm_verification = enable_llm_verification
+        self.confidence_threshold = confidence_threshold
 
     async def health_check(self) -> dict[str, Any]:
         """
@@ -72,12 +86,33 @@ class Verifier(BaseVerifier):
             "status": "healthy",
             "module": "Verifier",
             "enable_llm_verification": self.enable_llm_verification,
+            "confidence_threshold": self.confidence_threshold,
             "execution_id": self.state.execution_id,
         }
 
     # ========================================================================
     # Core Verification Methods (implements VerifierInterface)
     # ========================================================================
+
+    def meets_confidence_threshold(self, confidence: float) -> bool:
+        """
+        Check if a confidence score meets the configured threshold.
+
+        Args:
+            confidence: Confidence score to check (0.0-1.0)
+
+        Returns:
+            True if confidence meets or exceeds threshold
+
+        Raises:
+            ValueError: If confidence is not between 0.0 and 1.0
+        """
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError(
+                f"Confidence must be between 0.0 and 1.0, got {confidence}"
+            )
+
+        return confidence >= self.confidence_threshold
 
     async def _validate_results_impl(
         self, request: VerificationRequest
@@ -129,9 +164,12 @@ class Verifier(BaseVerifier):
         # Stage 3: Calculate confidence score
         confidence = self._calculate_confidence(request, errors, warnings)
 
+        # Stage 4: Check if refinement is needed due to low confidence
+        refinement_needed = confidence < self.confidence_threshold
+
         # Generate consolidated feedback
         feedback = self._generate_consolidated_feedback(
-            errors, warnings, feedback_parts
+            errors, warnings, feedback_parts, refinement_needed, confidence
         )
 
         valid = len(errors) == 0
@@ -142,6 +180,8 @@ class Verifier(BaseVerifier):
             errors_count=len(errors),
             warnings_count=len(warnings),
             confidence=confidence,
+            refinement_needed=refinement_needed,
+            threshold=self.confidence_threshold,
         )
 
         return VerificationResult(
@@ -150,6 +190,7 @@ class Verifier(BaseVerifier):
             warnings=warnings,
             feedback=feedback if feedback else None,
             confidence=confidence,
+            refinement_needed=refinement_needed,
         )
 
     async def _check_consistency_impl(
@@ -605,6 +646,8 @@ class Verifier(BaseVerifier):
         errors: list[str],
         warnings: list[str],
         feedback_parts: list[str],
+        refinement_needed: bool,
+        confidence: float,
     ) -> str | None:
         """
         Generate consolidated feedback from validation results.
@@ -613,25 +656,39 @@ class Verifier(BaseVerifier):
             errors: Validation errors
             warnings: Validation warnings
             feedback_parts: Additional feedback strings
+            refinement_needed: Whether plan refinement is needed
+            confidence: Confidence score for validation
 
         Returns:
             Consolidated feedback string or None if no issues
         """
-        if not errors and not warnings and not feedback_parts:
+        if not errors and not warnings and not feedback_parts and not refinement_needed:
             return None
 
         parts: list[str] = []
+
+        # Confidence assessment
+        if refinement_needed:
+            parts.append(
+                f"⚠️  LOW CONFIDENCE: {confidence:.2f} (threshold: {self.confidence_threshold:.2f})"
+            )
+            parts.append("RECOMMENDATION: Plan refinement needed before execution")
+            parts.append("")
 
         if errors:
             parts.append(f"ERRORS ({len(errors)}):")
             parts.extend([f"  - {err}" for err in errors])
 
         if warnings:
-            parts.append(f"\nWARNINGS ({len(warnings)}):")
+            if errors:
+                parts.append("")
+            parts.append(f"WARNINGS ({len(warnings)}):")
             parts.extend([f"  - {warn}" for warn in warnings])
 
         if feedback_parts:
-            parts.append("\nADDITIONAL FEEDBACK:")
+            if errors or warnings:
+                parts.append("")
+            parts.append("ADDITIONAL FEEDBACK:")
             parts.extend([f"  {fb}" for fb in feedback_parts])
 
         return "\n".join(parts)

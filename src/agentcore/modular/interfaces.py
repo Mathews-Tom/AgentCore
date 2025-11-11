@@ -144,7 +144,11 @@ class VerificationResult(BaseModel):
         None, description="Feedback for improvement"
     )
     confidence: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Confidence in validation"
+        default=1.0, ge=0.0, le=1.0, description="Confidence in validation (0.0-1.0)"
+    )
+    refinement_needed: bool = Field(
+        default=False,
+        description="Whether plan refinement is needed due to low confidence"
     )
 
 
