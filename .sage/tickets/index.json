@@ -8464,7 +8464,7 @@
     {
       "id": "TOOL-010",
       "title": "Wikipedia Search Tool",
-      "state": "IN_PROGRESS",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": "TOOL-001",
@@ -8490,7 +8490,8 @@
         "assignees": []
       },
       "updated": "2025-11-06T07:35:04Z",
-      "startedAt": "2025-11-12T20:13:00.159310+00:00"
+      "startedAt": "2025-11-12T20:13:00.159310+00:00",
+      "completedAt": "2025-11-12T20:13:42.602762+00:00"
     },
     {
       "id": "TOOL-011",

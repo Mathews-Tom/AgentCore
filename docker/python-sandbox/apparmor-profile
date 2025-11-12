@@ -1,0 +1,44 @@
+#include <tunables/global>
+
+profile agentcore-python-sandbox flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/python>
+
+  # Allow Python interpreter
+  /usr/bin/python3* rix,
+  /usr/lib/python3*/** mr,
+
+  # Allow read access to system libraries
+  /lib/** mr,
+  /usr/lib/** mr,
+  /etc/ld.so.cache r,
+
+  # Allow /tmp for workspace
+  /tmp/sandbox/** rw,
+  /tmp/sandbox/ rw,
+
+  # Deny network access
+  deny network,
+  deny /proc/sys/net/** rw,
+
+  # Deny sensitive system access
+  deny /proc/kcore r,
+  deny /proc/kmem r,
+  deny /proc/mem r,
+  deny /sys/kernel/security/** rw,
+  deny /boot/** r,
+
+  # Deny other users' files
+  deny @{HOME}/.ssh/** rw,
+  deny @{HOME}/.gnupg/** rw,
+
+  # Allow basic proc access
+  /proc/cpuinfo r,
+  /proc/meminfo r,
+  /proc/self/** r,
+
+  # Deny capability escalation
+  deny capability sys_admin,
+  deny capability sys_ptrace,
+  deny capability sys_module,
+}
