@@ -8149,7 +8149,7 @@
     {
       "id": "TOOL-001",
       "title": "Multi-Tool Integration Framework",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": null,
@@ -8202,12 +8202,18 @@
         "milestone": null,
         "assignees": []
       },
-      "updated": "2025-11-06T07:34:38Z"
+      "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+      "state_history": [
+        {
+          "state": "COMPLETED",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+      ]
     },
     {
       "id": "TOOL-002",
       "title": "Tool Interface and Base Classes",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": "TOOL-001",
@@ -8231,12 +8237,22 @@
         "milestone": null,
         "assignees": []
       },
-      "updated": "2025-11-06T07:34:40Z"
+      "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+      "state_history": [
+        {
+          "state": "IN_PROGRESS",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        },
+        {
+          "state": "COMPLETED",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+      ]
     },
     {
       "id": "TOOL-003",
       "title": "Data Models",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": "TOOL-001",
@@ -8260,12 +8276,13 @@
         "milestone": null,
         "assignees": []
       },
-      "updated": "2025-11-06T07:34:43Z"
+      "updated": "2025-11-06T07:34:43Z",
+      "status": "COMPLETED"
     },
     {
       "id": "TOOL-004",
       "title": "Tool Registry",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": "TOOL-001",
@@ -8294,7 +8311,7 @@
     {
       "id": "TOOL-005",
       "title": "Database Schema",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": "TOOL-001",
@@ -8323,7 +8340,7 @@
     {
       "id": "TOOL-006",
       "title": "Tool Executor",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "parent": "TOOL-001",
@@ -12053,7 +12070,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:27Z",
-      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task → stages → memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task \u2192 stages \u2192 memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 173,
@@ -12256,7 +12273,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:48Z",
-      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: ≥95%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: \u226595%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 180,
@@ -12523,7 +12540,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:39:16Z",
-      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity → relationship → entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity \u2192 relationship \u2192 entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 189,
