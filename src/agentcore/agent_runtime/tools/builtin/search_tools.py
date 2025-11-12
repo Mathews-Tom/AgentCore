@@ -306,6 +306,8 @@ class WikipediaSearchTool(Tool):
     """Wikipedia search tool for knowledge retrieval.
 
     Searches Wikipedia and returns article summaries using the Wikipedia API.
+    Supports article summary extraction with configurable sentence count and
+    disambiguation handling for queries with multiple matches.
     """
 
     def __init__(self):
@@ -313,7 +315,7 @@ class WikipediaSearchTool(Tool):
         metadata = ToolDefinition(
             tool_id="wikipedia_search",
             name="Wikipedia Search",
-            description="Search Wikipedia and return article summaries",
+            description="Search Wikipedia and return article summaries with configurable detail",
             version="1.0.0",
             category=ToolCategory.SEARCH,
             parameters={
@@ -325,10 +327,10 @@ class WikipediaSearchTool(Tool):
                     min_length=1,
                     max_length=300,
                 ),
-                "limit": ToolParameter(
-                    name="limit",
-                    type="number",
-                    description="Maximum number of results",
+                "sentences": ToolParameter(
+                    name="sentences",
+                    type="integer",
+                    description="Number of sentences to include in article summary",
                     required=False,
                     default=5,
                     min_value=1,
@@ -344,144 +346,104 @@ class WikipediaSearchTool(Tool):
             tags=["search", "wikipedia", "knowledge", "encyclopedia"],
         )
         super().__init__(metadata)
+        self.api_base_url = "https://en.wikipedia.org/w/api.php"
 
     async def execute(
         self,
         parameters: dict[str, Any],
         context: ExecutionContext,
     ) -> ToolResult:
-        """Execute Wikipedia search.
+        """Execute Wikipedia search with article summary extraction.
 
         Args:
             parameters: Dictionary with keys:
                 - query: str - Search query
-                - limit: int - Maximum number of results (default: 5)
+                - sentences: int - Number of sentences in summary (default: 5)
             context: Execution context
 
         Returns:
-            ToolResult with Wikipedia search results
+            ToolResult with Wikipedia article summaries and metadata
         """
         start_time = time.time()
 
         try:
+            # Validate parameters using base class validation
+            is_valid, error = await self.validate_parameters(parameters)
+            if not is_valid:
+                execution_time_ms = (time.time() - start_time) * 1000
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.FAILED,
+                    error=error,
+                    error_type="ValidationError",
+                    execution_time_ms=execution_time_ms,
+                    metadata={"trace_id": context.trace_id},
+                )
+
             query = parameters["query"]
-            limit = int(parameters.get("limit", 5))
-
-            # Validate parameters
-            if not query or not query.strip():
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ToolResult(
-                    request_id=context.request_id,
-                    tool_id=self.metadata.tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    result={},
-                    error="Query cannot be empty",
-                    execution_time_ms=execution_time_ms,
-                    metadata={"trace_id": context.trace_id},
-                )
-
-            if limit < 1 or limit > 20:
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ToolResult(
-                    request_id=context.request_id,
-                    tool_id=self.metadata.tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    result={},
-                    error="limit must be between 1 and 20",
-                    execution_time_ms=execution_time_ms,
-                    metadata={"trace_id": context.trace_id},
-                )
+            sentences = int(parameters.get("sentences", 5))
 
             self.logger.info(
                 "wikipedia_search_executing",
                 query=query,
-                limit=limit,
+                sentences=sentences,
             )
 
-            # Use Wikipedia API
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                # Search for articles
-                search_params = {
-                    "action": "opensearch",
-                    "search": query,
-                    "limit": limit,
-                    "format": "json",
-                }
+            # Search and extract summaries
+            result_data = await self._search_and_extract(query, sentences)
 
-                response = await client.get(
-                    "https://en.wikipedia.org/w/api.php",
-                    params=search_params,
-                )
-                response.raise_for_status()
-
-                search_data = response.json()
-
-                if len(search_data) < 4:
-                    execution_time_ms = (time.time() - start_time) * 1000
-                    return ToolResult(
-                        request_id=context.request_id,
-                        tool_id=self.metadata.tool_id,
-                        status=ToolExecutionStatus.FAILED,
-                        result={},
-                        error="Invalid response from Wikipedia API",
-                        execution_time_ms=execution_time_ms,
-                        metadata={"trace_id": context.trace_id},
-                    )
-
-                titles = search_data[1]
-                descriptions = search_data[2]
-                urls = search_data[3]
-
-                results = []
-                for i in range(len(titles)):
-                    results.append(
-                        {
-                            "title": titles[i],
-                            "description": descriptions[i],
-                            "url": urls[i],
-                        }
-                    )
-
-                execution_time_ms = (time.time() - start_time) * 1000
-
-                self.logger.info(
-                    "wikipedia_search_completed",
-                    query=query,
-                    result_count=len(results),
-                )
-
-                return ToolResult(
-                    request_id=context.request_id,
-                    tool_id=self.metadata.tool_id,
-                    status=ToolExecutionStatus.SUCCESS,
-                    result={
-                        "query": query,
-                        "total_results": len(results),
-                        "results": results,
-                        "api_url": "https://en.wikipedia.org/w/api.php",
-                    },
-                    error=None,
-                    execution_time_ms=execution_time_ms,
-                    metadata={
-                        "trace_id": context.trace_id,
-                        "agent_id": context.agent_id,
-                    },
-                )
-
-        except httpx.HTTPError as e:
             execution_time_ms = (time.time() - start_time) * 1000
+
+            self.logger.info(
+                "wikipedia_search_completed",
+                query=query,
+                result_count=len(result_data.get("results", [])),
+                disambiguation=result_data.get("disambiguation", False),
+            )
+
+            return ToolResult(
+                request_id=context.request_id,
+                tool_id=self.metadata.tool_id,
+                status=ToolExecutionStatus.SUCCESS,
+                result=result_data,
+                execution_time_ms=execution_time_ms,
+                metadata={
+                    "trace_id": context.trace_id,
+                    "agent_id": context.agent_id,
+                },
+            )
+
+        except httpx.HTTPStatusError as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+            error_msg = f"Wikipedia API HTTP error: {e.response.status_code}"
             self.logger.error(
-                "wikipedia_search_error",
+                "wikipedia_api_http_error",
+                status_code=e.response.status_code,
                 error=str(e),
-                parameters=parameters,
             )
 
             return ToolResult(
                 request_id=context.request_id,
                 tool_id=self.metadata.tool_id,
                 status=ToolExecutionStatus.FAILED,
-                result={},
-                error=f"Wikipedia API error: {str(e)}",
+                error=error_msg,
+                error_type="HttpError",
+                execution_time_ms=execution_time_ms,
+                metadata={"trace_id": context.trace_id},
+            )
+
+        except httpx.TimeoutException as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+            error_msg = f"Wikipedia API timeout: {str(e)}"
+            self.logger.error("wikipedia_api_timeout", error=str(e))
+
+            return ToolResult(
+                request_id=context.request_id,
+                tool_id=self.metadata.tool_id,
+                status=ToolExecutionStatus.TIMEOUT,
+                error=error_msg,
+                error_type="TimeoutError",
                 execution_time_ms=execution_time_ms,
                 metadata={"trace_id": context.trace_id},
             )
@@ -491,6 +453,7 @@ class WikipediaSearchTool(Tool):
             self.logger.error(
                 "wikipedia_search_error",
                 error=str(e),
+                error_type=type(e).__name__,
                 parameters=parameters,
             )
 
@@ -498,11 +461,155 @@ class WikipediaSearchTool(Tool):
                 request_id=context.request_id,
                 tool_id=self.metadata.tool_id,
                 status=ToolExecutionStatus.FAILED,
-                result={},
                 error=str(e),
+                error_type=type(e).__name__,
                 execution_time_ms=execution_time_ms,
                 metadata={"trace_id": context.trace_id},
             )
+
+    async def _search_and_extract(
+        self,
+        query: str,
+        sentences: int,
+    ) -> dict[str, Any]:
+        """Search Wikipedia and extract article summaries.
+
+        Args:
+            query: Search query
+            sentences: Number of sentences to extract from each article
+
+        Returns:
+            Dictionary with search results, summaries, and disambiguation info
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # First, search for the article
+            search_params = {
+                "action": "query",
+                "list": "search",
+                "srsearch": query,
+                "srlimit": 1,
+                "format": "json",
+            }
+
+            search_response = await client.get(self.api_base_url, params=search_params)
+            search_response.raise_for_status()
+            search_data = search_response.json()
+
+            search_results = search_data.get("query", {}).get("search", [])
+
+            if not search_results:
+                # No results found
+                return {
+                    "query": query,
+                    "total_results": 0,
+                    "results": [],
+                    "disambiguation": False,
+                }
+
+            # Get the page title from search results
+            page_title = search_results[0]["title"]
+
+            # Check if it's a disambiguation page
+            is_disambiguation = "(disambiguation)" in page_title.lower()
+
+            if is_disambiguation:
+                # Get disambiguation options
+                return await self._handle_disambiguation(client, page_title, query)
+
+            # Extract article summary
+            extract_params = {
+                "action": "query",
+                "prop": "extracts|info",
+                "exintro": True,
+                "explaintext": True,
+                "exsentences": sentences,
+                "inprop": "url",
+                "titles": page_title,
+                "format": "json",
+            }
+
+            extract_response = await client.get(self.api_base_url, params=extract_params)
+            extract_response.raise_for_status()
+            extract_data = extract_response.json()
+
+            pages = extract_data.get("query", {}).get("pages", {})
+
+            if not pages:
+                return {
+                    "query": query,
+                    "total_results": 0,
+                    "results": [],
+                    "disambiguation": False,
+                }
+
+            # Get the first (and only) page
+            page = next(iter(pages.values()))
+
+            result = {
+                "title": page.get("title", ""),
+                "summary": page.get("extract", ""),
+                "url": page.get("fullurl", ""),
+                "page_id": page.get("pageid"),
+            }
+
+            return {
+                "query": query,
+                "total_results": 1,
+                "results": [result],
+                "disambiguation": False,
+            }
+
+    async def _handle_disambiguation(
+        self,
+        client: httpx.AsyncClient,
+        page_title: str,
+        original_query: str,
+    ) -> dict[str, Any]:
+        """Handle disambiguation pages by extracting alternative options.
+
+        Args:
+            client: HTTP client
+            page_title: Title of the disambiguation page
+            original_query: Original search query
+
+        Returns:
+            Dictionary with disambiguation options
+        """
+        # Get links from the disambiguation page
+        links_params = {
+            "action": "query",
+            "prop": "links",
+            "titles": page_title,
+            "pllimit": 10,
+            "format": "json",
+        }
+
+        links_response = await client.get(self.api_base_url, params=links_params)
+        links_response.raise_for_status()
+        links_data = links_response.json()
+
+        pages = links_data.get("query", {}).get("pages", {})
+        page = next(iter(pages.values()))
+        links = page.get("links", [])
+
+        # Format disambiguation options
+        options = []
+        for link in links[:10]:  # Limit to top 10 options
+            title = link.get("title", "")
+            # Skip Wikipedia meta pages
+            if not title.startswith("Wikipedia:") and not title.startswith("Help:"):
+                options.append({
+                    "title": title,
+                    "url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}",
+                })
+
+        return {
+            "query": original_query,
+            "total_results": len(options),
+            "results": options,
+            "disambiguation": True,
+            "disambiguation_page": page_title,
+        }
 
 
 class WebScrapeTool(Tool):
