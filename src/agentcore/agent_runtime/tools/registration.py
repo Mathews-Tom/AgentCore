@@ -11,6 +11,7 @@ from .builtin import (
     EchoTool,
     EvaluateExpressionTool,
     ExecutePythonTool,
+    FileOperationsTool,
     GetCurrentTimeTool,
     GoogleSearchTool,
     GraphQLQueryTool,
@@ -48,6 +49,7 @@ def register_native_builtin_tools(registry) -> None:
         CalculatorTool(),
         GetCurrentTimeTool(),
         EchoTool(),
+        FileOperationsTool(),
         # Search tools
         GoogleSearchTool(),
         WikipediaSearchTool(),
@@ -116,6 +118,7 @@ def get_native_builtin_tool_ids() -> list[str]:
         "calculator",
         "get_current_time",
         "echo",
+        "file_operations",
         "google_search",
         "wikipedia_search",
         "web_scrape",

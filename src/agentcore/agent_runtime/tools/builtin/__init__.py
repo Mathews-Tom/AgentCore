@@ -6,6 +6,7 @@ These replace the legacy function-based tools during Stage 3 migration.
 
 from .api_tools import GraphQLQueryTool, HttpRequestTool, RestGetTool, RestPostTool
 from .code_execution_tools import EvaluateExpressionTool, ExecutePythonTool
+from .file_operations_tools import FileOperationsTool
 from .search_tools import GoogleSearchTool, WebScrapeTool, WikipediaSearchTool
 from .utility_tools import CalculatorTool, EchoTool, GetCurrentTimeTool
 
@@ -14,6 +15,7 @@ __all__ = [
     "CalculatorTool",
     "GetCurrentTimeTool",
     "EchoTool",
+    "FileOperationsTool",
     # Search tools
     "GoogleSearchTool",
     "WikipediaSearchTool",
