@@ -1,6 +1,8 @@
 """JSON-RPC methods for tool integration."""
 
 from typing import Any
+import asyncio
+from datetime import datetime
 
 import structlog
 
@@ -8,6 +10,7 @@ from agentcore.a2a_protocol.models.jsonrpc import JsonRpcRequest
 from agentcore.a2a_protocol.services.jsonrpc_handler import register_jsonrpc_method
 from agentcore.agent_runtime.models.tool_integration import (
     ToolCategory,
+    ToolExecutionStatus,
 )
 
 from agentcore.agent_runtime.tools.base import ExecutionContext
@@ -378,6 +381,347 @@ async def tools_search(
             "capabilities": capabilities,
             "tags": tags,
         },
+    }
+
+
+@register_jsonrpc_method("tools.execute_batch")
+async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
+    """
+    Execute multiple tools in batch with concurrency control.
+
+    Method: tools.execute_batch
+    Params:
+        - requests: list[dict] - List of tool execution requests
+            Each request contains:
+                - tool_id: string
+                - parameters: dict
+                - agent_id: string
+        - max_concurrent: int (optional) - Maximum concurrent executions (default: 5)
+
+    Returns:
+        - results: list of execution results (preserves order)
+        - successful_count: number of successful executions
+        - failed_count: number of failed executions
+        - total_time_ms: total execution time in milliseconds
+    """
+    params = request.params or {}
+    requests = params.get("requests")
+    max_concurrent = params.get("max_concurrent", 5)
+
+    if not requests or not isinstance(requests, list) or len(requests) == 0:
+        raise ValueError("requests parameter required and must be non-empty list")
+
+    start_time = datetime.utcnow()
+    executor = get_tool_executor()
+
+    # Create execution contexts and tasks
+    tasks = []
+    for req in requests:
+        tool_id = req.get("tool_id")
+        parameters = req.get("parameters", {})
+        agent_id = req.get("agent_id")
+
+        if not tool_id or not agent_id:
+            raise ValueError("Each request must have tool_id and agent_id")
+
+        context = ExecutionContext(
+            agent_id=agent_id,
+            user_id=agent_id,
+            trace_id=req.get("execution_context", {}).get("trace_id") if "execution_context" in req else None,
+        )
+
+        tasks.append((tool_id, parameters, context))
+
+    # Execute with concurrency control using semaphore
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def execute_with_semaphore(tool_id: str, parameters: dict[str, Any], context: ExecutionContext) -> dict[str, Any]:
+        async with semaphore:
+            try:
+                result = await executor.execute_tool(tool_id, parameters, context)
+                return {
+                    "tool_id": tool_id,
+                    "status": result.status.value,
+                    "result": result.result,
+                    "error": result.error,
+                    "execution_time_ms": result.execution_time_ms,
+                }
+            except Exception as e:
+                return {
+                    "tool_id": tool_id,
+                    "status": "failed",
+                    "result": None,
+                    "error": str(e),
+                    "execution_time_ms": 0,
+                }
+
+    # Execute all tasks concurrently with semaphore control
+    results = await asyncio.gather(
+        *[execute_with_semaphore(tool_id, params, ctx) for tool_id, params, ctx in tasks]
+    )
+
+    # Calculate statistics
+    successful_count = sum(1 for r in results if r["status"] == "success")
+    failed_count = len(results) - successful_count
+    total_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+    logger.info(
+        "tools_execute_batch_called",
+        total_requests=len(requests),
+        successful_count=successful_count,
+        failed_count=failed_count,
+        total_time_ms=total_time_ms,
+    )
+
+    return {
+        "results": results,
+        "successful_count": successful_count,
+        "failed_count": failed_count,
+        "total_time_ms": total_time_ms,
+    }
+
+
+@register_jsonrpc_method("tools.execute_parallel")
+async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, Any]:
+    """
+    Execute tools in parallel with dependency management.
+
+    Method: tools.execute_parallel
+    Params:
+        - tasks: list[dict] - List of tasks with dependencies
+            Each task contains:
+                - task_id: string - Unique task identifier
+                - tool_id: string
+                - parameters: dict
+                - agent_id: string
+                - dependencies: list[string] - Task IDs this task depends on
+        - max_concurrent: int (optional) - Maximum concurrent executions (default: 10)
+
+    Returns:
+        - results: dict[task_id -> execution result]
+        - successful_count: number of successful executions
+        - failed_count: number of failed executions
+        - execution_order: list of task_ids in execution order
+        - total_time_ms: total execution time in milliseconds
+    """
+    params = request.params or {}
+    tasks = params.get("tasks")
+    max_concurrent = params.get("max_concurrent", 10)
+
+    if not tasks or not isinstance(tasks, list):
+        raise ValueError("tasks parameter required and must be a list")
+
+    # Validate task structure
+    task_map = {}
+    for task in tasks:
+        task_id = task.get("task_id")
+        if not task_id:
+            raise ValueError("Each task must have task_id")
+        if not task.get("tool_id") or not task.get("agent_id"):
+            raise ValueError(f"Task {task_id} must have tool_id and agent_id")
+        task_map[task_id] = task
+
+    start_time = datetime.utcnow()
+    executor = get_tool_executor()
+
+    # Track completed tasks and their results
+    completed: dict[str, dict[str, Any]] = {}
+    execution_order: list[str] = []
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def execute_task(task_id: str) -> None:
+        """Execute a task after its dependencies complete."""
+        task = task_map[task_id]
+        dependencies = task.get("dependencies", [])
+
+        # Wait for dependencies to complete
+        while not all(dep_id in completed for dep_id in dependencies):
+            await asyncio.sleep(0.01)  # Small delay to avoid busy waiting
+
+        # Check if any dependency failed
+        dependency_failed = any(
+            completed[dep_id]["status"] == "failed" for dep_id in dependencies
+        )
+
+        if dependency_failed:
+            completed[task_id] = {
+                "tool_id": task["tool_id"],
+                "status": "failed",
+                "result": None,
+                "error": "Dependency failed",
+                "execution_time_ms": 0,
+            }
+            execution_order.append(task_id)
+            return
+
+        # Execute the tool
+        async with semaphore:
+            try:
+                context = ExecutionContext(
+                    agent_id=task["agent_id"],
+                    user_id=task["agent_id"],
+                    trace_id=task.get("execution_context", {}).get("trace_id") if "execution_context" in task else None,
+                )
+
+                result = await executor.execute_tool(
+                    task["tool_id"],
+                    task.get("parameters", {}),
+                    context,
+                )
+
+                completed[task_id] = {
+                    "tool_id": task["tool_id"],
+                    "status": result.status.value,
+                    "result": result.result,
+                    "error": result.error,
+                    "execution_time_ms": result.execution_time_ms,
+                }
+            except Exception as e:
+                completed[task_id] = {
+                    "tool_id": task["tool_id"],
+                    "status": "failed",
+                    "result": None,
+                    "error": str(e),
+                    "execution_time_ms": 0,
+                }
+
+            execution_order.append(task_id)
+
+    # Execute all tasks concurrently (dependencies handled internally)
+    await asyncio.gather(*[execute_task(task_id) for task_id in task_map.keys()])
+
+    # Calculate statistics
+    successful_count = sum(1 for r in completed.values() if r["status"] == "success")
+    failed_count = len(completed) - successful_count
+    total_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+    logger.info(
+        "tools_execute_parallel_called",
+        total_tasks=len(tasks),
+        successful_count=successful_count,
+        failed_count=failed_count,
+        total_time_ms=total_time_ms,
+    )
+
+    return {
+        "results": completed,
+        "successful_count": successful_count,
+        "failed_count": failed_count,
+        "execution_order": execution_order,
+        "total_time_ms": total_time_ms,
+    }
+
+
+@register_jsonrpc_method("tools.execute_with_fallback")
+async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[str, Any]:
+    """
+    Execute a tool with fallback on failure.
+
+    Method: tools.execute_with_fallback
+    Params:
+        - primary: dict - Primary tool execution request
+            - tool_id: string
+            - parameters: dict
+            - agent_id: string
+        - fallback: dict - Fallback tool execution request (same structure as primary)
+
+    Returns:
+        - result: execution result (from primary or fallback)
+        - used_fallback: boolean - Whether fallback was used
+        - primary_error: string | null - Error from primary if it failed
+        - total_time_ms: total execution time in milliseconds
+    """
+    params = request.params or {}
+    primary = params.get("primary")
+    fallback = params.get("fallback")
+
+    if not primary:
+        raise ValueError("primary parameter required")
+    if not fallback:
+        raise ValueError("fallback parameter required")
+
+    start_time = datetime.utcnow()
+    executor = get_tool_executor()
+
+    # Try primary execution
+    primary_error = None
+    used_fallback = False
+    result_data = None
+
+    try:
+        context = ExecutionContext(
+            agent_id=primary["agent_id"],
+            user_id=primary["agent_id"],
+            trace_id=primary.get("execution_context", {}).get("trace_id") if "execution_context" in primary else None,
+        )
+
+        result = await executor.execute_tool(
+            primary["tool_id"],
+            primary.get("parameters", {}),
+            context,
+        )
+
+        if result.status == ToolExecutionStatus.SUCCESS:
+            result_data = {
+                "tool_id": primary["tool_id"],
+                "status": result.status.value,
+                "result": result.result,
+                "error": result.error,
+                "execution_time_ms": result.execution_time_ms,
+            }
+        else:
+            primary_error = result.error or "Primary execution failed"
+            raise ValueError(primary_error)
+
+    except Exception as e:
+        primary_error = str(e)
+        used_fallback = True
+
+        # Execute fallback
+        try:
+            context = ExecutionContext(
+                agent_id=fallback["agent_id"],
+                user_id=fallback["agent_id"],
+                trace_id=fallback.get("execution_context", {}).get("trace_id") if "execution_context" in fallback else None,
+            )
+
+            result = await executor.execute_tool(
+                fallback["tool_id"],
+                fallback.get("parameters", {}),
+                context,
+            )
+
+            result_data = {
+                "tool_id": fallback["tool_id"],
+                "status": result.status.value,
+                "result": result.result,
+                "error": result.error,
+                "execution_time_ms": result.execution_time_ms,
+            }
+
+        except Exception as fallback_error:
+            result_data = {
+                "tool_id": fallback["tool_id"],
+                "status": "failed",
+                "result": None,
+                "error": str(fallback_error),
+                "execution_time_ms": 0,
+            }
+
+    total_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+    logger.info(
+        "tools_execute_with_fallback_called",
+        used_fallback=used_fallback,
+        primary_error=primary_error,
+        total_time_ms=total_time_ms,
+    )
+
+    return {
+        "result": result_data,
+        "used_fallback": used_fallback,
+        "primary_error": primary_error,
+        "total_time_ms": total_time_ms,
     }
 
 
