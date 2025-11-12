@@ -8,12 +8,14 @@ Migration from: agent_runtime/tools/search_tools.py
 Status: Stage 3 - Native Migration
 """
 
+import os
 import re
 import time
 from typing import Any
 
 import httpx
 
+from ...config.settings import get_settings
 from ...models.tool_integration import (
     AuthMethod,
     ToolCategory,
@@ -28,13 +30,20 @@ from ..base import ExecutionContext, Tool
 class GoogleSearchTool(Tool):
     """Google search tool for web search operations.
 
-    Performs Google searches and returns relevant results. In production,
-    this would integrate with Google Custom Search API. Currently returns
-    mock results for testing and development.
+    Integrates with Google Custom Search API to perform web searches and
+    return relevant results with title, URL, and snippet.
+
+    Requires Google API key and Custom Search Engine ID from environment
+    or settings. Falls back to mock results if API credentials not configured.
     """
 
-    def __init__(self):
-        """Initialize Google search tool with metadata."""
+    def __init__(self, api_key: str | None = None, cse_id: str | None = None):
+        """Initialize Google search tool with metadata.
+
+        Args:
+            api_key: Google API key (optional, reads from settings if not provided)
+            cse_id: Google Custom Search Engine ID (optional, reads from settings)
+        """
         metadata = ToolDefinition(
             tool_id="google_search",
             name="Google Search",
@@ -57,18 +66,25 @@ class GoogleSearchTool(Tool):
                     required=False,
                     default=10,
                     min_value=1,
-                    max_value=100,
+                    max_value=10,
                 ),
             },
-            auth_method=AuthMethod.NONE,
+            auth_method=AuthMethod.API_KEY,
             is_retryable=True,
             max_retries=3,
             timeout_seconds=30,
             is_idempotent=True,
             capabilities=["web_search", "external_api"],
             tags=["search", "google", "web"],
+            rate_limits={"calls_per_minute": 100},
         )
         super().__init__(metadata)
+
+        # Get API credentials from settings if not provided
+        settings = get_settings()
+        self.api_key = api_key or settings.google_api_key or os.getenv("GOOGLE_API_KEY", "")
+        self.cse_id = cse_id or settings.google_cse_id or os.getenv("GOOGLE_CSE_ID", "")
+        self.base_url = "https://www.googleapis.com/customsearch/v1"
 
     async def execute(
         self,
@@ -80,92 +96,138 @@ class GoogleSearchTool(Tool):
         Args:
             parameters: Dictionary with keys:
                 - query: str - Search query
-                - num_results: int - Number of results (default: 10)
+                - num_results: int - Number of results (default: 10, max: 10)
             context: Execution context
 
         Returns:
-            ToolResult with search results
+            ToolResult with search results including title, URL, and snippet
         """
         start_time = time.time()
 
         try:
+            # Validate parameters
+            is_valid, error = await self.validate_parameters(parameters)
+            if not is_valid:
+                execution_time_ms = (time.time() - start_time) * 1000
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.FAILED,
+                    error=error,
+                    error_type="ValidationError",
+                    execution_time_ms=execution_time_ms,
+                    metadata={"trace_id": context.trace_id},
+                )
+
             query = parameters["query"]
             num_results = int(parameters.get("num_results", 10))
-
-            # Validate parameters
-            if not query or not query.strip():
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ToolResult(
-                    request_id=context.request_id,
-                    tool_id=self.metadata.tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    result={},
-                    error="Query cannot be empty",
-                    execution_time_ms=execution_time_ms,
-                    metadata={"trace_id": context.trace_id},
-                )
-
-            if num_results < 1 or num_results > 100:
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ToolResult(
-                    request_id=context.request_id,
-                    tool_id=self.metadata.tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    result={},
-                    error="num_results must be between 1 and 100",
-                    execution_time_ms=execution_time_ms,
-                    metadata={"trace_id": context.trace_id},
-                )
 
             self.logger.info(
                 "google_search_executing",
                 query=query,
                 num_results=num_results,
+                has_api_key=bool(self.api_key),
             )
 
-            # Note: In production, this would use Google Custom Search API
-            # For now, return mock structure for testing
-            results = [
-                {
-                    "title": f"Result {i+1} for {query}",
-                    "url": f"https://example.com/result{i+1}",
-                    "snippet": f"This is a snippet for result {i+1} about {query}",
-                }
-                for i in range(min(num_results, 10))
-            ]
+            # Check if API credentials are configured
+            if not self.api_key or not self.cse_id:
+                self.logger.warning(
+                    "google_api_not_configured",
+                    message="Google API credentials not configured, using mock results",
+                )
+                results = self._get_mock_results(query, num_results)
+                execution_time_ms = (time.time() - start_time) * 1000
 
-            execution_time_ms = (time.time() - start_time) * 1000
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.SUCCESS,
+                    result={
+                        "query": query,
+                        "total_results": len(results),
+                        "results": results,
+                        "search_time_ms": execution_time_ms,
+                        "provider": "Google Custom Search API (Mock)",
+                    },
+                    execution_time_ms=execution_time_ms,
+                    metadata={
+                        "trace_id": context.trace_id,
+                        "agent_id": context.agent_id,
+                        "using_mock": True,
+                    },
+                )
 
-            self.logger.info(
-                "google_search_completed",
-                query=query,
-                result_count=len(results),
-            )
+            # Call Google Custom Search API
+            try:
+                results = await self._call_google_api(query, num_results)
+                execution_time_ms = (time.time() - start_time) * 1000
 
-            return ToolResult(
-                request_id=context.request_id,
-                tool_id=self.metadata.tool_id,
-                status=ToolExecutionStatus.SUCCESS,
-                result={
-                    "query": query,
-                    "total_results": len(results),
-                    "results": results,
-                    "search_time_ms": 0.5,
-                    "provider": "Google Custom Search API (Mock)",
-                },
-                error=None,
-                execution_time_ms=execution_time_ms,
-                metadata={
-                    "trace_id": context.trace_id,
-                    "agent_id": context.agent_id,
-                },
-            )
+                self.logger.info(
+                    "google_search_completed",
+                    query=query,
+                    result_count=len(results),
+                    execution_time_ms=execution_time_ms,
+                )
+
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.SUCCESS,
+                    result={
+                        "query": query,
+                        "total_results": len(results),
+                        "results": results,
+                        "search_time_ms": execution_time_ms,
+                        "provider": "Google Custom Search API",
+                    },
+                    execution_time_ms=execution_time_ms,
+                    metadata={
+                        "trace_id": context.trace_id,
+                        "agent_id": context.agent_id,
+                        "using_mock": False,
+                    },
+                )
+
+            except httpx.HTTPStatusError as e:
+                execution_time_ms = (time.time() - start_time) * 1000
+                error_msg = f"Google API error: {e.response.status_code} - {e.response.text}"
+                self.logger.error(
+                    "google_api_http_error",
+                    status_code=e.response.status_code,
+                    error=str(e),
+                )
+
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.FAILED,
+                    error=error_msg,
+                    error_type="HttpError",
+                    execution_time_ms=execution_time_ms,
+                    metadata={"trace_id": context.trace_id},
+                )
+
+            except httpx.TimeoutException as e:
+                execution_time_ms = (time.time() - start_time) * 1000
+                error_msg = f"Google API timeout: {str(e)}"
+                self.logger.error("google_api_timeout", error=str(e))
+
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.TIMEOUT,
+                    error=error_msg,
+                    error_type="TimeoutError",
+                    execution_time_ms=execution_time_ms,
+                    metadata={"trace_id": context.trace_id},
+                )
 
         except Exception as e:
             execution_time_ms = (time.time() - start_time) * 1000
             self.logger.error(
                 "google_search_error",
                 error=str(e),
+                error_type=type(e).__name__,
                 parameters=parameters,
             )
 
@@ -173,11 +235,71 @@ class GoogleSearchTool(Tool):
                 request_id=context.request_id,
                 tool_id=self.metadata.tool_id,
                 status=ToolExecutionStatus.FAILED,
-                result={},
                 error=str(e),
+                error_type=type(e).__name__,
                 execution_time_ms=execution_time_ms,
                 metadata={"trace_id": context.trace_id},
             )
+
+    async def _call_google_api(
+        self,
+        query: str,
+        num_results: int,
+    ) -> list[dict[str, Any]]:
+        """Call Google Custom Search API.
+
+        Args:
+            query: Search query
+            num_results: Number of results to return
+
+        Returns:
+            List of search results with title, url, snippet
+
+        Raises:
+            httpx.HTTPStatusError: On API HTTP errors
+            httpx.TimeoutException: On API timeout
+        """
+        params = {
+            "key": self.api_key,
+            "cx": self.cse_id,
+            "q": query,
+            "num": min(num_results, 10),  # API max is 10 per request
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(self.base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+        # Parse and format results
+        results = []
+        for item in data.get("items", []):
+            results.append({
+                "title": item.get("title", ""),
+                "url": item.get("link", ""),
+                "snippet": item.get("snippet", ""),
+            })
+
+        return results
+
+    def _get_mock_results(self, query: str, num_results: int) -> list[dict[str, Any]]:
+        """Get mock search results for testing.
+
+        Args:
+            query: Search query
+            num_results: Number of results to return
+
+        Returns:
+            List of mock search results
+        """
+        return [
+            {
+                "title": f"Result {i+1} for {query}",
+                "url": f"https://example.com/result{i+1}",
+                "snippet": f"This is a snippet for result {i+1} about {query}",
+            }
+            for i in range(min(num_results, 10))
+        ]
 
 
 class WikipediaSearchTool(Tool):
