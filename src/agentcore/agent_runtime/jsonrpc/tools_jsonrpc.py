@@ -21,12 +21,31 @@ _tool_executor: ToolExecutor | None = None
 
 
 def get_tool_registry() -> ToolRegistry:
-    """Get or create global tool registry."""
+    """Get or create global tool registry.
+
+    Note: For production use, prefer initializing via startup.initialize_tool_system()
+    during application lifespan. This lazy initialization is for backward compatibility.
+    """
     global _tool_registry
     if _tool_registry is None:
         _tool_registry = ToolRegistry()
+        # Use legacy registration for backward compatibility
+        # Production should use startup.register_builtin_tools() with config
         register_native_builtin_tools(_tool_registry)
     return _tool_registry
+
+
+def set_tool_registry(registry: ToolRegistry) -> None:
+    """Set the global tool registry.
+
+    This should be called during application startup after initializing
+    the tool system with proper configuration.
+
+    Args:
+        registry: Initialized ToolRegistry instance
+    """
+    global _tool_registry
+    _tool_registry = registry
 
 
 def get_tool_executor() -> ToolExecutor:
