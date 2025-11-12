@@ -8,6 +8,7 @@ Enhanced with:
 - Rate limiting using Redis-based sliding window algorithm
 - Retry logic with exponential backoff and jitter
 - Lifecycle hooks (before/after/error) for observability
+- OpenTelemetry distributed tracing for observability (TOOL-020)
 """
 
 import asyncio
@@ -21,6 +22,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.tool_integration import ToolExecutionStatus, ToolResult
+from ..monitoring.tracing import (
+    add_span_attributes,
+    add_span_event,
+    get_tracer,
+    record_exception,
+)
 from ..services.rate_limiter import RateLimitExceeded, RateLimiter
 from ..services.retry_handler import BackoffStrategy, RetryHandler
 from .base import ExecutionContext, Tool
@@ -188,6 +195,7 @@ class ToolExecutor:
         5. Error handling and categorization
         6. Result logging to database
         7. Trace ID propagation
+        8. Distributed tracing with OpenTelemetry
 
         Implements all TOOL-006 acceptance criteria.
 
@@ -208,181 +216,211 @@ class ToolExecutor:
             )
             ```
         """
-        start_time = time.time()
-        timestamp = datetime.utcnow()
+        # Create OpenTelemetry span for distributed tracing
+        tracer = get_tracer("agentcore.agent_runtime.tools.executor")
 
-        self.logger.info(
-            "tool_execution_started",
-            tool_id=tool_id,
-            user_id=context.user_id,
-            agent_id=context.agent_id,
-            trace_id=context.trace_id,
-            request_id=context.request_id,
-        )
-
-        try:
-            # 0. Run before hooks
-            await self._run_before_hooks(context)
-
-            # 1. Tool lookup from registry
-            tool = self.registry.get(tool_id)
-            if tool is None:
-                execution_time_ms = (time.time() - start_time) * 1000
-                result = ToolResult(
-                    request_id=context.request_id,
-                    tool_id=tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    error=f"Tool '{tool_id}' not found in registry",
-                    error_type="ToolNotFoundError",
-                    execution_time_ms=execution_time_ms,
-                    timestamp=timestamp,
-                )
-                await self._log_execution(result, context, parameters)
-                await self._run_error_hooks(context, Exception(result.error))
-                return result
-
-            # 2. Authentication validation (basic via ExecutionContext)
-            auth_error = await self._validate_authentication(tool, context)
-            if auth_error:
-                execution_time_ms = (time.time() - start_time) * 1000
-                result = ToolResult(
-                    request_id=context.request_id,
-                    tool_id=tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    error=auth_error,
-                    error_type="ToolAuthenticationError",
-                    execution_time_ms=execution_time_ms,
-                    timestamp=timestamp,
-                )
-                await self._log_execution(result, context, parameters)
-                await self._run_error_hooks(context, ToolAuthenticationError(auth_error))
-                return result
-
-            # 3. Parameter validation
-            is_valid, validation_error = await tool.validate_parameters(parameters)
-            if not is_valid:
-                execution_time_ms = (time.time() - start_time) * 1000
-                result = ToolResult(
-                    request_id=context.request_id,
-                    tool_id=tool_id,
-                    status=ToolExecutionStatus.FAILED,
-                    error=f"Parameter validation failed: {validation_error}",
-                    error_type="ToolValidationError",
-                    execution_time_ms=execution_time_ms,
-                    timestamp=timestamp,
-                )
-                await self._log_execution(result, context, parameters)
-                await self._run_error_hooks(context, ToolValidationError(validation_error))
-                return result
-
-            # 4. Check rate limits
-            rate_limit_config = getattr(tool.metadata, "rate_limits", None)
-            if self.rate_limiter and rate_limit_config:
-                requests_per_minute = rate_limit_config.get("requests_per_minute")
-                if requests_per_minute:
-                    try:
-                        await self.rate_limiter.check_rate_limit(
-                            tool_id=tool_id,
-                            limit=requests_per_minute,
-                            window_seconds=60,
-                            identifier=context.agent_id,
-                        )
-                    except RateLimitExceeded as e:
-                        execution_time_ms = (time.time() - start_time) * 1000
-                        result = ToolResult(
-                            request_id=context.request_id,
-                            tool_id=tool_id,
-                            status=ToolExecutionStatus.FAILED,
-                            error=str(e),
-                            error_type="RateLimitExceeded",
-                            execution_time_ms=execution_time_ms,
-                            timestamp=timestamp,
-                            metadata={"retry_after": e.retry_after},
-                        )
-                        await self._log_execution(result, context, parameters)
-                        await self._run_error_hooks(context, e)
-                        self.logger.warning(
-                            "tool_execution_rate_limited",
-                            tool_id=tool_id,
-                            agent_id=context.agent_id,
-                            retry_after=e.retry_after,
-                        )
-                        return result
-
-            # 5. Tool execution with timeout and retry
-            result, retry_count = await self._execute_with_retry(
-                tool, parameters, context, start_time, timestamp
-            )
-
-            # Update retry count in result
-            result.retry_count = retry_count
-
-            # 6. Log execution to database
-            await self._log_execution(result, context, parameters)
-
-            # 7. Run after hooks
-            await self._run_after_hooks(result)
-
-            # Log success
-            if result.status == ToolExecutionStatus.SUCCESS:
-                self.logger.info(
-                    "tool_execution_completed",
-                    tool_id=tool_id,
-                    status="success",
-                    execution_time_ms=result.execution_time_ms,
-                    retry_count=retry_count,
-                    trace_id=context.trace_id,
-                )
-            else:
-                self.logger.warning(
-                    "tool_execution_failed",
-                    tool_id=tool_id,
-                    status=result.status.value,
-                    error=result.error,
-                    error_type=result.error_type,
-                    trace_id=context.trace_id,
-                )
-
-            return result
-
-        except RateLimitExceeded as e:
-            execution_time_ms = (time.time() - start_time) * 1000
-            result = ToolResult(
+        with tracer.start_as_current_span(f"tool.execute.{tool_id}") as span:
+            # Add span attributes for observability
+            add_span_attributes(
+                tool_id=tool_id,
+                user_id=context.user_id or "unknown",
+                agent_id=context.agent_id or "unknown",
                 request_id=context.request_id,
-                tool_id=tool_id,
-                status=ToolExecutionStatus.FAILED,
-                error=str(e),
-                error_type="RateLimitExceeded",
-                execution_time_ms=execution_time_ms,
-                timestamp=timestamp,
-                metadata={"retry_after": e.retry_after},
-            )
-            await self._log_execution(result, context, parameters)
-            await self._run_error_hooks(context, e)
-            return result
-
-        except Exception as e:
-            # Catch-all for unexpected errors
-            execution_time_ms = (time.time() - start_time) * 1000
-            result = ToolResult(
-                request_id=context.request_id,
-                tool_id=tool_id,
-                status=ToolExecutionStatus.FAILED,
-                error=f"Unexpected error: {str(e)}",
-                error_type=type(e).__name__,
-                execution_time_ms=execution_time_ms,
-                timestamp=timestamp,
-            )
-            await self._log_execution(result, context, parameters)
-            await self._run_error_hooks(context, e)
-            self.logger.error(
-                "tool_execution_error",
-                tool_id=tool_id,
-                error=str(e),
-                error_type=type(e).__name__,
                 trace_id=context.trace_id,
             )
-            return result
+
+            start_time = time.time()
+            timestamp = datetime.utcnow()
+
+            self.logger.info(
+                "tool_execution_started",
+                tool_id=tool_id,
+                user_id=context.user_id,
+                agent_id=context.agent_id,
+                trace_id=context.trace_id,
+                request_id=context.request_id,
+            )
+
+            try:
+                # 0. Run before hooks
+                await self._run_before_hooks(context)
+                add_span_event("hooks.before_completed")
+
+                # 1. Tool lookup from registry
+                tool = self.registry.get(tool_id)
+                if tool is None:
+                    execution_time_ms = (time.time() - start_time) * 1000
+                    result = ToolResult(
+                        request_id=context.request_id,
+                        tool_id=tool_id,
+                        status=ToolExecutionStatus.FAILED,
+                        error=f"Tool '{tool_id}' not found in registry",
+                        error_type="ToolNotFoundError",
+                        execution_time_ms=execution_time_ms,
+                        timestamp=timestamp,
+                    )
+                    await self._log_execution(result, context, parameters)
+                    await self._run_error_hooks(context, Exception(result.error))
+                    record_exception(Exception(result.error))
+                    return result
+
+                # 2. Authentication validation (basic via ExecutionContext)
+                auth_error = await self._validate_authentication(tool, context)
+                if auth_error:
+                    execution_time_ms = (time.time() - start_time) * 1000
+                    result = ToolResult(
+                        request_id=context.request_id,
+                        tool_id=tool_id,
+                        status=ToolExecutionStatus.FAILED,
+                        error=auth_error,
+                        error_type="ToolAuthenticationError",
+                        execution_time_ms=execution_time_ms,
+                        timestamp=timestamp,
+                    )
+                    await self._log_execution(result, context, parameters)
+                    await self._run_error_hooks(context, ToolAuthenticationError(auth_error))
+                    auth_exception = ToolAuthenticationError(auth_error)
+                    record_exception(auth_exception)
+                    return result
+
+                add_span_event("authentication.validated")
+
+                # 3. Parameter validation
+                is_valid, validation_error = await tool.validate_parameters(parameters)
+                if not is_valid:
+                    execution_time_ms = (time.time() - start_time) * 1000
+                    result = ToolResult(
+                        request_id=context.request_id,
+                        tool_id=tool_id,
+                        status=ToolExecutionStatus.FAILED,
+                        error=f"Parameter validation failed: {validation_error}",
+                        error_type="ToolValidationError",
+                        execution_time_ms=execution_time_ms,
+                        timestamp=timestamp,
+                    )
+                    await self._log_execution(result, context, parameters)
+                    await self._run_error_hooks(context, ToolValidationError(validation_error))
+                    validation_exception = ToolValidationError(validation_error)
+                    record_exception(validation_exception)
+                    return result
+
+                add_span_event("parameters.validated", parameter_count=len(parameters))
+
+                # 4. Check rate limits
+                rate_limit_config = getattr(tool.metadata, "rate_limits", None)
+                if self.rate_limiter and rate_limit_config:
+                    requests_per_minute = rate_limit_config.get("requests_per_minute")
+                    if requests_per_minute:
+                        try:
+                            await self.rate_limiter.check_rate_limit(
+                                tool_id=tool_id,
+                                limit=requests_per_minute,
+                                window_seconds=60,
+                                identifier=context.agent_id,
+                            )
+                            add_span_event("rate_limit.checked", limit=requests_per_minute)
+                        except RateLimitExceeded as e:
+                            execution_time_ms = (time.time() - start_time) * 1000
+                            result = ToolResult(
+                                request_id=context.request_id,
+                                tool_id=tool_id,
+                                status=ToolExecutionStatus.FAILED,
+                                error=str(e),
+                                error_type="RateLimitExceeded",
+                                execution_time_ms=execution_time_ms,
+                                timestamp=timestamp,
+                                metadata={"retry_after": e.retry_after},
+                            )
+                            await self._log_execution(result, context, parameters)
+                            await self._run_error_hooks(context, e)
+                            record_exception(e)
+                            self.logger.warning(
+                                "tool_execution_rate_limited",
+                                tool_id=tool_id,
+                                agent_id=context.agent_id,
+                                retry_after=e.retry_after,
+                            )
+                            return result
+
+                # 5. Tool execution with timeout and retry
+                add_span_event("tool.execution_started")
+                result, retry_count = await self._execute_with_retry(
+                    tool, parameters, context, start_time, timestamp
+                )
+                add_span_event("tool.execution_completed", retry_count=retry_count)
+
+                # Update retry count in result
+                result.retry_count = retry_count
+
+                # 6. Log execution to database
+                await self._log_execution(result, context, parameters)
+
+                # 7. Run after hooks
+                await self._run_after_hooks(result)
+                add_span_event("hooks.after_completed")
+
+                # Log success
+                if result.status == ToolExecutionStatus.SUCCESS:
+                    self.logger.info(
+                        "tool_execution_completed",
+                        tool_id=tool_id,
+                        status="success",
+                        execution_time_ms=result.execution_time_ms,
+                        retry_count=retry_count,
+                        trace_id=context.trace_id,
+                    )
+                else:
+                    self.logger.warning(
+                        "tool_execution_failed",
+                        tool_id=tool_id,
+                        status=result.status.value,
+                        error=result.error,
+                        error_type=result.error_type,
+                        trace_id=context.trace_id,
+                    )
+
+                return result
+
+            except RateLimitExceeded as e:
+                record_exception(e)
+                execution_time_ms = (time.time() - start_time) * 1000
+                result = ToolResult(
+                    request_id=context.request_id,
+                    tool_id=tool_id,
+                    status=ToolExecutionStatus.FAILED,
+                    error=str(e),
+                    error_type="RateLimitExceeded",
+                    execution_time_ms=execution_time_ms,
+                    timestamp=timestamp,
+                    metadata={"retry_after": e.retry_after},
+                )
+                await self._log_execution(result, context, parameters)
+                await self._run_error_hooks(context, e)
+                return result
+
+            except Exception as e:
+                # Catch-all for unexpected errors
+                record_exception(e)
+                execution_time_ms = (time.time() - start_time) * 1000
+                result = ToolResult(
+                    request_id=context.request_id,
+                    tool_id=tool_id,
+                    status=ToolExecutionStatus.FAILED,
+                    error=f"Unexpected error: {str(e)}",
+                    error_type=type(e).__name__,
+                    execution_time_ms=execution_time_ms,
+                    timestamp=timestamp,
+                )
+                await self._log_execution(result, context, parameters)
+                await self._run_error_hooks(context, e)
+                self.logger.error(
+                    "tool_execution_error",
+                    tool_id=tool_id,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    trace_id=context.trace_id,
+                )
+                return result
 
     async def _run_before_hooks(self, context: ExecutionContext) -> None:
         """Run all before hooks."""
