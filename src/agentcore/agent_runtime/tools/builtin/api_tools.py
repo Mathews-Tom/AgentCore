@@ -4,13 +4,16 @@ This module provides Tool ABC implementations for REST and GraphQL API interacti
 These are native implementations that directly inherit from Tool ABC (not legacy
 function-based tools).
 
+Implements TOOL-012: REST API Tool with authentication support (none, api_key,
+bearer_token, oauth).
+
 Migration from: agent_runtime/tools/api_tools.py
 Status: Stage 3 - Native Migration
 """
 
 import json
 import time
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -744,6 +747,296 @@ class GraphQLQueryTool(Tool):
                 status=ToolExecutionStatus.FAILED,
                 result={},
                 error=str(e),
+                execution_time_ms=execution_time_ms,
+                metadata={"trace_id": context.trace_id},
+            )
+
+
+class RESTAPITool(Tool):
+    """Comprehensive REST API tool with authentication support.
+
+    Implements TOOL-012 acceptance criteria:
+    - Support for GET, POST, PUT, DELETE methods
+    - Multiple authentication methods: none, api_key, bearer_token, oauth
+    - Response parsing (JSON, text, binary)
+    - Error handling for network errors, timeouts, HTTP errors
+    - Parameters: url, method, headers, body, auth_type, auth_token, auth_header
+    """
+
+    def __init__(self):
+        """Initialize REST API tool with metadata."""
+        metadata = ToolDefinition(
+            tool_id="rest_api",
+            name="REST API",
+            description="Make authenticated REST API requests with support for multiple auth methods",
+            version="2.0.0",
+            category=ToolCategory.API_CLIENT,
+            parameters={
+                "url": ToolParameter(
+                    name="url",
+                    type="string",
+                    description="Request URL",
+                    required=True,
+                    min_length=10,
+                    max_length=2000,
+                ),
+                "method": ToolParameter(
+                    name="method",
+                    type="string",
+                    description="HTTP method",
+                    required=False,
+                    default="GET",
+                    enum=["GET", "POST", "PUT", "DELETE"],
+                ),
+                "headers": ToolParameter(
+                    name="headers",
+                    type="object",
+                    description="Request headers as JSON object",
+                    required=False,
+                ),
+                "body": ToolParameter(
+                    name="body",
+                    type="string",
+                    description="Request body (JSON string or raw text)",
+                    required=False,
+                ),
+                "auth_type": ToolParameter(
+                    name="auth_type",
+                    type="string",
+                    description="Authentication type",
+                    required=False,
+                    default="none",
+                    enum=["none", "api_key", "bearer_token", "oauth"],
+                ),
+                "auth_token": ToolParameter(
+                    name="auth_token",
+                    type="string",
+                    description="Authentication token (for api_key, bearer_token, oauth)",
+                    required=False,
+                ),
+                "auth_header": ToolParameter(
+                    name="auth_header",
+                    type="string",
+                    description="Custom auth header name (for api_key auth, default: 'X-API-Key')",
+                    required=False,
+                    default="X-API-Key",
+                ),
+                "timeout": ToolParameter(
+                    name="timeout",
+                    type="number",
+                    description="Request timeout in seconds",
+                    required=False,
+                    default=30,
+                    min_value=1,
+                    max_value=300,
+                ),
+            },
+            auth_method=AuthMethod.NONE,
+            is_retryable=True,
+            max_retries=3,
+            timeout_seconds=305,
+            is_idempotent=False,  # Depends on HTTP method
+            capabilities=["http_client", "rest_api", "authenticated_api", "external_api"],
+            tags=["http", "rest", "api", "auth", "oauth", "bearer"],
+        )
+        super().__init__(metadata)
+
+    async def execute(
+        self,
+        parameters: dict[str, Any],
+        context: ExecutionContext,
+    ) -> ToolResult:
+        """Execute authenticated REST API request.
+
+        Args:
+            parameters: Dictionary with keys:
+                - url: str - Request URL
+                - method: str - HTTP method (default: "GET")
+                - headers: dict - Request headers (optional)
+                - body: str - Request body (optional)
+                - auth_type: str - Authentication type (default: "none")
+                - auth_token: str - Authentication token (optional)
+                - auth_header: str - Custom auth header name (optional)
+                - timeout: int - Request timeout in seconds (default: 30)
+            context: Execution context
+
+        Returns:
+            ToolResult with HTTP response data
+        """
+        start_time = time.time()
+
+        try:
+            # Validate parameters
+            is_valid, error = await self.validate_parameters(parameters)
+            if not is_valid:
+                execution_time_ms = (time.time() - start_time) * 1000
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.FAILED,
+                    error=error,
+                    error_type="ValidationError",
+                    execution_time_ms=execution_time_ms,
+                    metadata={"trace_id": context.trace_id},
+                )
+
+            url = parameters["url"]
+            method = parameters.get("method", "GET").upper()
+            headers = parameters.get("headers", {}).copy()  # Copy to avoid mutation
+            body = parameters.get("body")
+            timeout = int(parameters.get("timeout", 30))
+
+            # Authentication parameters
+            auth_type = parameters.get("auth_type", "none")
+            auth_token = parameters.get("auth_token")
+            auth_header = parameters.get("auth_header", "X-API-Key")
+
+            # Apply authentication
+            if auth_type != "none":
+                if not auth_token:
+                    execution_time_ms = (time.time() - start_time) * 1000
+                    return ToolResult(
+                        request_id=context.request_id,
+                        tool_id=self.metadata.tool_id,
+                        status=ToolExecutionStatus.FAILED,
+                        error=f"auth_token is required when auth_type is '{auth_type}'",
+                        error_type="ValidationError",
+                        execution_time_ms=execution_time_ms,
+                        metadata={"trace_id": context.trace_id},
+                    )
+
+                if auth_type == "api_key":
+                    headers[auth_header] = auth_token
+                elif auth_type == "bearer_token":
+                    headers["Authorization"] = f"Bearer {auth_token}"
+                elif auth_type == "oauth":
+                    headers["Authorization"] = f"Bearer {auth_token}"
+
+            self.logger.info(
+                "rest_api_executing",
+                url=url,
+                method=method,
+                auth_type=auth_type,
+                timeout=timeout,
+            )
+
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                # Prepare request
+                request_kwargs: dict[str, Any] = {
+                    "method": method,
+                    "url": url,
+                    "headers": headers,
+                }
+
+                if body:
+                    # Try to parse as JSON first
+                    try:
+                        request_kwargs["json"] = json.loads(body)
+                    except json.JSONDecodeError:
+                        # Use as raw text
+                        request_kwargs["content"] = body
+
+                # Make request
+                response = await client.request(**request_kwargs)
+
+                # Parse response
+                result_data = {
+                    "success": response.is_success,
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "body": None,
+                    "content_type": None,
+                    "error": None,
+                }
+
+                # Determine response type
+                content_type = response.headers.get("content-type", "")
+                result_data["content_type"] = content_type
+
+                # Parse response based on content type
+                if "application/json" in content_type:
+                    try:
+                        result_data["body"] = response.json()
+                    except json.JSONDecodeError:
+                        result_data["body"] = response.text
+                elif "text/" in content_type:
+                    result_data["body"] = response.text
+                else:
+                    # Binary content - encode as base64 for JSON serialization
+                    import base64
+                    result_data["body"] = base64.b64encode(response.content).decode("utf-8")
+                    result_data["is_binary"] = True
+
+                if not response.is_success:
+                    result_data["error"] = f"HTTP {response.status_code}: {response.reason_phrase}"
+
+                execution_time_ms = (time.time() - start_time) * 1000
+
+                self.logger.info(
+                    "rest_api_completed",
+                    url=url,
+                    status_code=response.status_code,
+                    success=response.is_success,
+                    auth_type=auth_type,
+                )
+
+                return ToolResult(
+                    request_id=context.request_id,
+                    tool_id=self.metadata.tool_id,
+                    status=ToolExecutionStatus.SUCCESS if response.is_success else ToolExecutionStatus.FAILED,
+                    result=result_data,
+                    error=result_data["error"],
+                    execution_time_ms=execution_time_ms,
+                    metadata={
+                        "trace_id": context.trace_id,
+                        "agent_id": context.agent_id,
+                        "auth_type": auth_type,
+                    },
+                )
+
+        except httpx.TimeoutException:
+            execution_time_ms = (time.time() - start_time) * 1000
+            self.logger.warning("rest_api_timeout", url=url, timeout=timeout)
+
+            return ToolResult(
+                request_id=context.request_id,
+                tool_id=self.metadata.tool_id,
+                status=ToolExecutionStatus.TIMEOUT,
+                error=f"Request timed out after {timeout} seconds",
+                error_type="TimeoutError",
+                execution_time_ms=execution_time_ms,
+                metadata={"trace_id": context.trace_id},
+            )
+
+        except httpx.HTTPError as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+            self.logger.error("rest_api_http_error", url=url, error=str(e))
+
+            return ToolResult(
+                request_id=context.request_id,
+                tool_id=self.metadata.tool_id,
+                status=ToolExecutionStatus.FAILED,
+                error=f"HTTP error: {str(e)}",
+                error_type="HttpError",
+                execution_time_ms=execution_time_ms,
+                metadata={"trace_id": context.trace_id},
+            )
+
+        except Exception as e:
+            execution_time_ms = (time.time() - start_time) * 1000
+            self.logger.error(
+                "rest_api_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                parameters=parameters,
+            )
+
+            return ToolResult(
+                request_id=context.request_id,
+                tool_id=self.metadata.tool_id,
+                status=ToolExecutionStatus.FAILED,
+                error=f"{type(e).__name__}: {str(e)}",
+                error_type=type(e).__name__,
                 execution_time_ms=execution_time_ms,
                 metadata={"trace_id": context.trace_id},
             )
