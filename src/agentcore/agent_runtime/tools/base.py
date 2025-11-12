@@ -13,7 +13,6 @@ import structlog
 
 from ..models.tool_integration import (
     ToolDefinition,
-    ToolExecutionStatus,
     ToolResult,
 )
 
@@ -179,7 +178,6 @@ class Tool(ABC):
                     )
             ```
         """
-        pass
 
     async def validate_parameters(
         self,
@@ -187,12 +185,16 @@ class Tool(ABC):
     ) -> tuple[bool, str | None]:
         """Validate parameters against tool's parameter definitions.
 
+        Enhanced validation implementing TOOL-007 Parameter Validation Framework.
+
         Checks that:
         - All required parameters are present
-        - Parameter types are correct
+        - Parameter types match expected types (strict type checking)
         - Values are within allowed ranges/enums
         - String lengths are within bounds
         - Numbers are within min/max values
+        - Strings match regex patterns (if defined)
+        - Complex types (objects, arrays) are properly structured
 
         Implements specification FR-2.2: Parameter validation before execution.
 
@@ -201,7 +203,8 @@ class Tool(ABC):
 
         Returns:
             Tuple of (is_valid, error_message). If valid, error_message is None.
-            If invalid, error_message contains detailed validation error.
+            If invalid, error_message contains detailed validation error with
+            parameter name, expected type/format, and received value.
 
         Example:
             ```python
@@ -216,11 +219,15 @@ class Tool(ABC):
         # Check required parameters
         for param_name, param_def in self.metadata.parameters.items():
             if param_def.required and param_name not in parameters:
-                error_msg = f"Missing required parameter: {param_name}"
+                error_msg = (
+                    f"Missing required parameter: '{param_name}' "
+                    f"(type: {param_def.type}, description: {param_def.description})"
+                )
                 self.logger.warning(
                     "parameter_validation_failed",
                     error=error_msg,
                     parameter=param_name,
+                    expected_type=param_def.type,
                 )
                 return False, error_msg
 
@@ -228,51 +235,87 @@ class Tool(ABC):
         for param_name, value in parameters.items():
             if param_name not in self.metadata.parameters:
                 # Allow extra parameters (may be used by specific implementations)
+                self.logger.debug(
+                    "extra_parameter_provided",
+                    parameter=param_name,
+                    value_type=type(value).__name__,
+                )
                 continue
 
             param_def = self.metadata.parameters[param_name]
+
+            # Strict type checking (TOOL-007 enhancement)
+            type_valid, type_error = self._validate_type(param_name, value, param_def)
+            if not type_valid:
+                self.logger.warning(
+                    "parameter_type_validation_failed",
+                    error=type_error,
+                    parameter=param_name,
+                    expected_type=param_def.type,
+                    actual_type=type(value).__name__,
+                )
+                return False, type_error
 
             # Enum validation
             if param_def.enum and value not in param_def.enum:
                 error_msg = (
                     f"Parameter '{param_name}' must be one of {param_def.enum}, "
-                    f"got: {value}"
+                    f"got: {value!r} (type: {type(value).__name__})"
                 )
                 self.logger.warning(
                     "parameter_validation_failed",
                     error=error_msg,
                     parameter=param_name,
                     value=value,
+                    allowed_values=param_def.enum,
                 )
                 return False, error_msg
 
-            # String length validation
+            # String-specific validation
             if param_def.type == "string" and isinstance(value, str):
+                # Length validation
                 if param_def.min_length and len(value) < param_def.min_length:
                     error_msg = (
                         f"Parameter '{param_name}' must be at least "
-                        f"{param_def.min_length} characters"
+                        f"{param_def.min_length} characters, got {len(value)} characters"
                     )
                     return False, error_msg
 
                 if param_def.max_length and len(value) > param_def.max_length:
                     error_msg = (
                         f"Parameter '{param_name}' must be at most "
-                        f"{param_def.max_length} characters"
+                        f"{param_def.max_length} characters, got {len(value)} characters"
                     )
                     return False, error_msg
+
+                # Regex pattern validation (TOOL-007 enhancement)
+                if param_def.pattern:
+                    pattern_valid, pattern_error = self._validate_pattern(
+                        param_name, value, param_def.pattern
+                    )
+                    if not pattern_valid:
+                        self.logger.warning(
+                            "parameter_pattern_validation_failed",
+                            error=pattern_error,
+                            parameter=param_name,
+                            pattern=param_def.pattern,
+                            value=value,
+                        )
+                        return False, pattern_error
 
             # Number range validation
             if param_def.type in ("number", "integer") and isinstance(value, (int, float)):
                 if param_def.min_value is not None and value < param_def.min_value:
                     error_msg = (
-                        f"Parameter '{param_name}' must be >= {param_def.min_value}"
+                        f"Parameter '{param_name}' must be >= {param_def.min_value}, "
+                        f"got {value}"
                     )
                     return False, error_msg
 
                 if param_def.max_value is not None and value > param_def.max_value:
                     error_msg = (
-                        f"Parameter '{param_name}' must be <= {param_def.max_value}"
+                        f"Parameter '{param_name}' must be <= {param_def.max_value}, "
+                        f"got {value}"
                     )
                     return False, error_msg
 
@@ -281,21 +324,117 @@ class Tool(ABC):
                 if param_def.min_length and len(value) < param_def.min_length:
                     error_msg = (
                         f"Parameter '{param_name}' must have at least "
-                        f"{param_def.min_length} items"
+                        f"{param_def.min_length} items, got {len(value)} items"
                     )
                     return False, error_msg
 
                 if param_def.max_length and len(value) > param_def.max_length:
                     error_msg = (
                         f"Parameter '{param_name}' must have at most "
-                        f"{param_def.max_length} items"
+                        f"{param_def.max_length} items, got {len(value)} items"
                     )
                     return False, error_msg
 
         self.logger.debug(
             "parameter_validation_passed",
             parameter_count=len(parameters),
+            tool_id=self.metadata.tool_id,
         )
+        return True, None
+
+    def _validate_type(
+        self,
+        param_name: str,
+        value: Any,
+        param_def: Any,
+    ) -> tuple[bool, str | None]:
+        """Validate parameter type matches expected type.
+
+        TOOL-007 enhancement: Strict type checking with comprehensive error messages.
+
+        Args:
+            param_name: Name of the parameter being validated
+            value: Actual value provided
+            param_def: Parameter definition with expected type
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        expected_type = param_def.type
+        actual_type = type(value).__name__
+
+        type_mapping: dict[str, type | tuple[type, ...]] = {
+            "string": str,
+            "number": (int, float),
+            "integer": int,
+            "boolean": bool,
+            "array": list,
+            "object": dict,
+        }
+
+        if expected_type not in type_mapping:
+            # Unknown type, skip validation
+            return True, None
+
+        expected_python_type = type_mapping[expected_type]
+
+        # Special case: integers can be provided as floats if they're whole numbers
+        if expected_type == "integer" and isinstance(value, float):
+            if value.is_integer():
+                # Allow whole number floats for integers
+                return True, None
+            else:
+                # Non-integer float for integer parameter - specific error
+                error_msg = (
+                    f"Parameter '{param_name}' must be an integer, "
+                    f"got float: {value}"
+                )
+                return False, error_msg
+
+        if not isinstance(value, expected_python_type):
+            error_msg = (
+                f"Parameter '{param_name}' has incorrect type: "
+                f"expected {expected_type}, got {actual_type} "
+                f"(value: {value!r})"
+            )
+            return False, error_msg
+
+        return True, None
+
+    def _validate_pattern(
+        self,
+        param_name: str,
+        value: str,
+        pattern: str,
+    ) -> tuple[bool, str | None]:
+        """Validate string matches regex pattern.
+
+        TOOL-007 enhancement: Pattern validation for strings.
+
+        Args:
+            param_name: Name of the parameter being validated
+            value: String value to validate
+            pattern: Regex pattern to match
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        import re
+
+        try:
+            if not re.match(pattern, value):
+                error_msg = (
+                    f"Parameter '{param_name}' does not match required pattern. "
+                    f"Pattern: '{pattern}', Value: '{value}'"
+                )
+                return False, error_msg
+        except re.error as e:
+            error_msg = (
+                f"Invalid regex pattern for parameter '{param_name}': {pattern}. "
+                f"Error: {e}"
+            )
+            return False, error_msg
+
         return True, None
 
     def __repr__(self) -> str:
