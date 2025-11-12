@@ -31,6 +31,7 @@ from ..monitoring.tracing import (
 from ..services.rate_limiter import RateLimitExceeded, RateLimiter
 from ..services.retry_handler import BackoffStrategy, RetryHandler
 from .base import ExecutionContext, Tool
+from .errors import categorize_error, get_error_metadata
 from .registry import ToolRegistry
 
 logger = structlog.get_logger()
@@ -179,6 +180,57 @@ class ToolExecutor:
         """
         self._error_hooks.append(hook)
 
+    def _enrich_result_with_error_metadata(
+        self,
+        result: ToolResult,
+        error_type: str | None = None,
+        error_message: str | None = None,
+    ) -> ToolResult:
+        """Enrich ToolResult with error categorization metadata.
+
+        Args:
+            result: Original ToolResult
+            error_type: Error type string (e.g., "ToolNotFoundError")
+            error_message: Error message for additional context
+
+        Returns:
+            ToolResult with enriched metadata including error category, code, and recovery guidance
+        """
+        if result.status != ToolExecutionStatus.FAILED or not error_type:
+            return result
+
+        # Categorize the error
+        category, error_code, recovery_strategy = categorize_error(error_type, error_message)
+
+        # Get user-friendly error metadata
+        error_meta = get_error_metadata(category, error_code, recovery_strategy)
+
+        # Enrich existing metadata
+        enriched_metadata = result.metadata or {}
+        enriched_metadata.update(
+            {
+                "error_category": error_meta["category"],
+                "error_code": error_meta["error_code"],
+                "user_message": error_meta["user_message"],
+                "is_retryable": error_meta["is_retryable"],
+                "recovery_strategy": error_meta["recovery_strategy"],
+                "recovery_guidance": error_meta["recovery_guidance"],
+            }
+        )
+
+        # Create new ToolResult with enriched metadata
+        return ToolResult(
+            request_id=result.request_id,
+            tool_id=result.tool_id,
+            status=result.status,
+            result=result.result,
+            error=result.error,
+            error_type=result.error_type,
+            execution_time_ms=result.execution_time_ms,
+            timestamp=result.timestamp,
+            metadata=enriched_metadata,
+        )
+
     async def execute_tool(
         self,
         tool_id: str,
@@ -250,14 +302,19 @@ class ToolExecutor:
                 tool = self.registry.get(tool_id)
                 if tool is None:
                     execution_time_ms = (time.time() - start_time) * 1000
+                    error_msg = f"Tool '{tool_id}' not found in registry"
                     result = ToolResult(
                         request_id=context.request_id,
                         tool_id=tool_id,
                         status=ToolExecutionStatus.FAILED,
-                        error=f"Tool '{tool_id}' not found in registry",
+                        error=error_msg,
                         error_type="ToolNotFoundError",
                         execution_time_ms=execution_time_ms,
                         timestamp=timestamp,
+                    )
+                    # Enrich with error categorization metadata
+                    result = self._enrich_result_with_error_metadata(
+                        result, error_type="ToolNotFoundError", error_message=error_msg
                     )
                     await self._log_execution(result, context, parameters)
                     await self._run_error_hooks(context, Exception(result.error))
@@ -277,6 +334,10 @@ class ToolExecutor:
                         execution_time_ms=execution_time_ms,
                         timestamp=timestamp,
                     )
+                    # Enrich with error categorization metadata
+                    result = self._enrich_result_with_error_metadata(
+                        result, error_type="ToolAuthenticationError", error_message=auth_error
+                    )
                     await self._log_execution(result, context, parameters)
                     await self._run_error_hooks(context, ToolAuthenticationError(auth_error))
                     auth_exception = ToolAuthenticationError(auth_error)
@@ -289,14 +350,19 @@ class ToolExecutor:
                 is_valid, validation_error = await tool.validate_parameters(parameters)
                 if not is_valid:
                     execution_time_ms = (time.time() - start_time) * 1000
+                    error_msg = f"Parameter validation failed: {validation_error}"
                     result = ToolResult(
                         request_id=context.request_id,
                         tool_id=tool_id,
                         status=ToolExecutionStatus.FAILED,
-                        error=f"Parameter validation failed: {validation_error}",
+                        error=error_msg,
                         error_type="ToolValidationError",
                         execution_time_ms=execution_time_ms,
                         timestamp=timestamp,
+                    )
+                    # Enrich with error categorization metadata
+                    result = self._enrich_result_with_error_metadata(
+                        result, error_type="ToolValidationError", error_message=error_msg
                     )
                     await self._log_execution(result, context, parameters)
                     await self._run_error_hooks(context, ToolValidationError(validation_error))
@@ -330,6 +396,10 @@ class ToolExecutor:
                                 execution_time_ms=execution_time_ms,
                                 timestamp=timestamp,
                                 metadata={"retry_after": e.retry_after},
+                            )
+                            # Enrich with error categorization metadata
+                            result = self._enrich_result_with_error_metadata(
+                                result, error_type="RateLimitExceeded", error_message=str(e)
                             )
                             await self._log_execution(result, context, parameters)
                             await self._run_error_hooks(context, e)
@@ -394,6 +464,10 @@ class ToolExecutor:
                     timestamp=timestamp,
                     metadata={"retry_after": e.retry_after},
                 )
+                # Enrich with error categorization metadata
+                result = self._enrich_result_with_error_metadata(
+                    result, error_type="RateLimitExceeded", error_message=str(e)
+                )
                 await self._log_execution(result, context, parameters)
                 await self._run_error_hooks(context, e)
                 return result
@@ -402,14 +476,19 @@ class ToolExecutor:
                 # Catch-all for unexpected errors
                 record_exception(e)
                 execution_time_ms = (time.time() - start_time) * 1000
+                error_msg = f"Unexpected error: {str(e)}"
                 result = ToolResult(
                     request_id=context.request_id,
                     tool_id=tool_id,
                     status=ToolExecutionStatus.FAILED,
-                    error=f"Unexpected error: {str(e)}",
+                    error=error_msg,
                     error_type=type(e).__name__,
                     execution_time_ms=execution_time_ms,
                     timestamp=timestamp,
+                )
+                # Enrich with error categorization metadata
+                result = self._enrich_result_with_error_metadata(
+                    result, error_type=type(e).__name__, error_message=error_msg
                 )
                 await self._log_execution(result, context, parameters)
                 await self._run_error_hooks(context, e)
@@ -530,14 +609,19 @@ class ToolExecutor:
                 return result
             except asyncio.TimeoutError:
                 execution_time_ms = (time.time() - start_time) * 1000
-                return ToolResult(
+                error_msg = f"Tool execution exceeded timeout of {timeout} seconds"
+                result = ToolResult(
                     request_id=context.request_id,
                     tool_id=tool.metadata.tool_id,
                     status=ToolExecutionStatus.TIMEOUT,
-                    error=f"Tool execution exceeded timeout of {timeout} seconds",
+                    error=error_msg,
                     error_type="ToolTimeoutError",
                     execution_time_ms=execution_time_ms,
                     timestamp=timestamp,
+                )
+                # Enrich with error categorization metadata
+                return self._enrich_result_with_error_metadata(
+                    result, error_type="ToolTimeoutError", error_message=error_msg
                 )
 
         def on_retry_callback(exception: Exception, attempt: int, delay: float) -> None:

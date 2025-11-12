@@ -457,7 +457,7 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_error_categorization(self):
-        """Test that errors are properly categorized."""
+        """Test that errors are properly categorized with enriched metadata."""
         registry = ToolRegistry()
         executor = ToolExecutor(registry)
 
@@ -466,18 +466,35 @@ class TestErrorHandling:
         # Test ToolNotFoundError
         result = await executor.execute_tool("nonexistent", {}, context)
         assert result.error_type == "ToolNotFoundError"
+        assert result.metadata is not None
+        assert result.metadata["error_category"] == "not_found_error"
+        assert result.metadata["error_code"] == "TOOL_E1301"
+        assert result.metadata["recovery_strategy"] == "user_intervention"
+        assert result.metadata["is_retryable"] is False
+        assert "user_message" in result.metadata
+        assert "recovery_guidance" in result.metadata
 
         # Test ToolValidationError
         tool = MockSuccessTool()
         registry.register(tool)
         result = await executor.execute_tool("success_tool", {}, context)  # Missing param
         assert result.error_type == "ToolValidationError"
+        assert result.metadata is not None
+        assert result.metadata["error_category"] == "validation_error"
+        assert result.metadata["error_code"] == "TOOL_E1001"
+        assert result.metadata["recovery_strategy"] == "user_intervention"
+        assert result.metadata["is_retryable"] is False
 
         # Test ToolAuthenticationError
         auth_tool = MockAuthTool()
         registry.register(auth_tool)
         result = await executor.execute_tool("auth_tool", {}, ExecutionContext())  # No auth
         assert result.error_type == "ToolAuthenticationError"
+        assert result.metadata is not None
+        assert result.metadata["error_category"] == "authentication_error"
+        assert result.metadata["error_code"] == "TOOL_E1102"
+        assert result.metadata["recovery_strategy"] == "user_intervention"
+        assert result.metadata["is_retryable"] is False
 
 
 class TestExecutionMetrics:
