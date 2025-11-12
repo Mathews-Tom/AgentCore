@@ -212,15 +212,22 @@ async def tools_get(tool_id: str) -> dict[str, Any]:
 @register_jsonrpc_method("tools.execute")
 async def handle_tools_execute(request: JsonRpcRequest) -> dict[str, Any]:
     """
-    Execute a tool.
+    Execute a tool with A2A authentication integration.
 
     Method: tools.execute
     Params:
         - tool_id: string - Tool to execute
         - parameters: dict - Tool parameters
-        - agent_id: string - Requesting agent ID
+        - agent_id: string - Requesting agent ID (optional if A2A context provided)
         - execution_context: dict (optional) - Execution context (trace_id, session_id, etc.)
         - timeout_override: number (optional) - Timeout override in seconds
+
+    A2A Context:
+        If request.a2a_context is provided, it will be used for authentication:
+        - source_agent: Requesting agent identifier
+        - trace_id: Distributed tracing ID
+        - session_id: Session identifier
+        - target_agent: Target agent (if tool execution is delegated)
 
     Returns:
         Tool execution result with metadata
@@ -232,14 +239,21 @@ async def handle_tools_execute(request: JsonRpcRequest) -> dict[str, Any]:
     execution_context = params.get("execution_context")
     timeout_override = params.get("timeout_override")
 
+    # Extract A2A context for authentication
+    a2a_context = request.a2a_context
+
+    # Use A2A context source_agent if agent_id not provided
+    if not agent_id and a2a_context:
+        agent_id = a2a_context.source_agent
+
     if not tool_id:
         raise ValueError("tool_id parameter required")
 
     if not agent_id:
-        raise ValueError("agent_id parameter required")
+        raise ValueError("agent_id parameter required or must be provided via A2A context")
 
     return await tools_execute(
-        tool_id, parameters, agent_id, execution_context, timeout_override
+        tool_id, parameters, agent_id, execution_context, timeout_override, a2a_context
     )
 
 
@@ -249,9 +263,10 @@ async def tools_execute(
     agent_id: str,
     execution_context: dict[str, str] | None = None,
     timeout_override: int | None = None,
+    a2a_context: Any = None,
 ) -> dict[str, Any]:
     """
-    Execute a tool.
+    Execute a tool with A2A authentication support.
 
     Args:
         tool_id: Tool to execute
@@ -259,17 +274,40 @@ async def tools_execute(
         agent_id: Requesting agent ID
         execution_context: Optional execution context (trace_id, session_id, etc.)
         timeout_override: Optional timeout override
+        a2a_context: Optional A2A protocol context (A2AContext model)
 
     Returns:
         Dictionary with execution result
     """
     executor = get_tool_executor()
 
+    # Build execution context from A2A context or legacy execution_context
+    trace_id = None
+    session_id = None
+
+    if a2a_context:
+        # Prefer A2A context for distributed tracing
+        trace_id = a2a_context.trace_id
+        session_id = a2a_context.session_id
+        logger.info(
+            "tools_execute_with_a2a_context",
+            tool_id=tool_id,
+            source_agent=a2a_context.source_agent,
+            target_agent=a2a_context.target_agent,
+            trace_id=trace_id,
+            session_id=session_id,
+        )
+    elif execution_context:
+        # Fall back to legacy execution_context
+        trace_id = execution_context.get("trace_id")
+        session_id = execution_context.get("session_id")
+
     # Create execution context
     context = ExecutionContext(
         agent_id=agent_id,
-        user_id=agent_id,
-        trace_id=execution_context.get("trace_id") if execution_context else None,
+        user_id=agent_id,  # In A2A, agent acts as user
+        trace_id=trace_id,
+        session_id=session_id,
     )
 
     # Execute tool
@@ -387,7 +425,7 @@ async def tools_search(
 @register_jsonrpc_method("tools.execute_batch")
 async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
     """
-    Execute multiple tools in batch with concurrency control.
+    Execute multiple tools in batch with concurrency control and A2A authentication.
 
     Method: tools.execute_batch
     Params:
@@ -395,8 +433,12 @@ async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
             Each request contains:
                 - tool_id: string
                 - parameters: dict
-                - agent_id: string
+                - agent_id: string (optional if A2A context provided)
         - max_concurrent: int (optional) - Maximum concurrent executions (default: 5)
+
+    A2A Context:
+        If request.a2a_context is provided, trace_id and session_id will be
+        propagated to all batch executions for distributed tracing.
 
     Returns:
         - results: list of execution results (preserves order)
@@ -407,12 +449,18 @@ async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
     params = request.params or {}
     requests = params.get("requests")
     max_concurrent = params.get("max_concurrent", 5)
+    a2a_context = request.a2a_context
 
     if not requests or not isinstance(requests, list) or len(requests) == 0:
         raise ValueError("requests parameter required and must be non-empty list")
 
     start_time = datetime.utcnow()
     executor = get_tool_executor()
+
+    # Extract A2A context values for reuse
+    a2a_trace_id = a2a_context.trace_id if a2a_context else None
+    a2a_session_id = a2a_context.session_id if a2a_context else None
+    a2a_source_agent = a2a_context.source_agent if a2a_context else None
 
     # Create execution contexts and tasks
     tasks = []
@@ -421,13 +469,22 @@ async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
         parameters = req.get("parameters", {})
         agent_id = req.get("agent_id")
 
+        # Use A2A source_agent if agent_id not provided
+        if not agent_id and a2a_source_agent:
+            agent_id = a2a_source_agent
+
         if not tool_id or not agent_id:
-            raise ValueError("Each request must have tool_id and agent_id")
+            raise ValueError("Each request must have tool_id and agent_id (or A2A context with source_agent)")
+
+        # Prefer A2A context trace_id, fall back to per-request execution_context
+        trace_id = a2a_trace_id or (req.get("execution_context", {}).get("trace_id") if "execution_context" in req else None)
+        session_id = a2a_session_id or (req.get("execution_context", {}).get("session_id") if "execution_context" in req else None)
 
         context = ExecutionContext(
             agent_id=agent_id,
             user_id=agent_id,
-            trace_id=req.get("execution_context", {}).get("trace_id") if "execution_context" in req else None,
+            trace_id=trace_id,
+            session_id=session_id,
         )
 
         tasks.append((tool_id, parameters, context))
@@ -484,7 +541,7 @@ async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
 @register_jsonrpc_method("tools.execute_parallel")
 async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, Any]:
     """
-    Execute tools in parallel with dependency management.
+    Execute tools in parallel with dependency management and A2A authentication.
 
     Method: tools.execute_parallel
     Params:
@@ -493,9 +550,13 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
                 - task_id: string - Unique task identifier
                 - tool_id: string
                 - parameters: dict
-                - agent_id: string
+                - agent_id: string (optional if A2A context provided)
                 - dependencies: list[string] - Task IDs this task depends on
         - max_concurrent: int (optional) - Maximum concurrent executions (default: 10)
+
+    A2A Context:
+        If request.a2a_context is provided, trace_id and session_id will be
+        propagated to all parallel executions for distributed tracing.
 
     Returns:
         - results: dict[task_id -> execution result]
@@ -507,9 +568,15 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
     params = request.params or {}
     tasks = params.get("tasks")
     max_concurrent = params.get("max_concurrent", 10)
+    a2a_context = request.a2a_context
 
     if not tasks or not isinstance(tasks, list):
         raise ValueError("tasks parameter required and must be a list")
+
+    # Extract A2A context values for reuse
+    a2a_trace_id = a2a_context.trace_id if a2a_context else None
+    a2a_session_id = a2a_context.session_id if a2a_context else None
+    a2a_source_agent = a2a_context.source_agent if a2a_context else None
 
     # Validate task structure
     task_map = {}
@@ -517,8 +584,16 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
         task_id = task.get("task_id")
         if not task_id:
             raise ValueError("Each task must have task_id")
-        if not task.get("tool_id") or not task.get("agent_id"):
-            raise ValueError(f"Task {task_id} must have tool_id and agent_id")
+
+        agent_id = task.get("agent_id")
+        # Use A2A source_agent if agent_id not provided
+        if not agent_id and a2a_source_agent:
+            agent_id = a2a_source_agent
+            task["agent_id"] = agent_id  # Update task with resolved agent_id
+
+        if not task.get("tool_id") or not agent_id:
+            raise ValueError(f"Task {task_id} must have tool_id and agent_id (or A2A context with source_agent)")
+
         task_map[task_id] = task
 
     start_time = datetime.utcnow()
@@ -557,10 +632,15 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
         # Execute the tool
         async with semaphore:
             try:
+                # Prefer A2A context trace_id, fall back to per-task execution_context
+                trace_id = a2a_trace_id or (task.get("execution_context", {}).get("trace_id") if "execution_context" in task else None)
+                session_id = a2a_session_id or (task.get("execution_context", {}).get("session_id") if "execution_context" in task else None)
+
                 context = ExecutionContext(
                     agent_id=task["agent_id"],
                     user_id=task["agent_id"],
-                    trace_id=task.get("execution_context", {}).get("trace_id") if "execution_context" in task else None,
+                    trace_id=trace_id,
+                    session_id=session_id,
                 )
 
                 result = await executor.execute_tool(
@@ -615,15 +695,19 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
 @register_jsonrpc_method("tools.execute_with_fallback")
 async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[str, Any]:
     """
-    Execute a tool with fallback on failure.
+    Execute a tool with fallback on failure and A2A authentication.
 
     Method: tools.execute_with_fallback
     Params:
         - primary: dict - Primary tool execution request
             - tool_id: string
             - parameters: dict
-            - agent_id: string
+            - agent_id: string (optional if A2A context provided)
         - fallback: dict - Fallback tool execution request (same structure as primary)
+
+    A2A Context:
+        If request.a2a_context is provided, trace_id and session_id will be
+        propagated to both primary and fallback executions.
 
     Returns:
         - result: execution result (from primary or fallback)
@@ -634,11 +718,23 @@ async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[st
     params = request.params or {}
     primary = params.get("primary")
     fallback = params.get("fallback")
+    a2a_context = request.a2a_context
 
     if not primary:
         raise ValueError("primary parameter required")
     if not fallback:
         raise ValueError("fallback parameter required")
+
+    # Extract A2A context values for reuse
+    a2a_trace_id = a2a_context.trace_id if a2a_context else None
+    a2a_session_id = a2a_context.session_id if a2a_context else None
+    a2a_source_agent = a2a_context.source_agent if a2a_context else None
+
+    # Use A2A source_agent if agent_id not provided
+    if not primary.get("agent_id") and a2a_source_agent:
+        primary["agent_id"] = a2a_source_agent
+    if not fallback.get("agent_id") and a2a_source_agent:
+        fallback["agent_id"] = a2a_source_agent
 
     start_time = datetime.utcnow()
     executor = get_tool_executor()
@@ -649,10 +745,15 @@ async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[st
     result_data = None
 
     try:
+        # Prefer A2A context trace_id, fall back to execution_context
+        trace_id = a2a_trace_id or (primary.get("execution_context", {}).get("trace_id") if "execution_context" in primary else None)
+        session_id = a2a_session_id or (primary.get("execution_context", {}).get("session_id") if "execution_context" in primary else None)
+
         context = ExecutionContext(
             agent_id=primary["agent_id"],
             user_id=primary["agent_id"],
-            trace_id=primary.get("execution_context", {}).get("trace_id") if "execution_context" in primary else None,
+            trace_id=trace_id,
+            session_id=session_id,
         )
 
         result = await executor.execute_tool(
@@ -679,10 +780,15 @@ async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[st
 
         # Execute fallback
         try:
+            # Prefer A2A context trace_id, fall back to execution_context
+            trace_id = a2a_trace_id or (fallback.get("execution_context", {}).get("trace_id") if "execution_context" in fallback else None)
+            session_id = a2a_session_id or (fallback.get("execution_context", {}).get("session_id") if "execution_context" in fallback else None)
+
             context = ExecutionContext(
                 agent_id=fallback["agent_id"],
                 user_id=fallback["agent_id"],
-                trace_id=fallback.get("execution_context", {}).get("trace_id") if "execution_context" in fallback else None,
+                trace_id=trace_id,
+                session_id=session_id,
             )
 
             result = await executor.execute_tool(
