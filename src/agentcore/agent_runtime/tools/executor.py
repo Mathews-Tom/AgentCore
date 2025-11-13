@@ -28,6 +28,7 @@ from ..monitoring.tracing import (
     get_tracer,
     record_exception,
 )
+from ..services.metrics_collector import MetricsCollector
 from ..services.rate_limiter import RateLimitExceeded, RateLimiter
 from ..services.quota_manager import QuotaExceeded, QuotaManager
 from ..services.retry_handler import BackoffStrategy, RetryHandler
@@ -130,6 +131,7 @@ class ToolExecutor:
         rate_limiter: RateLimiter | None = None,
         quota_manager: QuotaManager | None = None,
         retry_handler: RetryHandler | None = None,
+        metrics_collector: MetricsCollector | None = None,
     ):
         """Initialize tool executor.
 
@@ -139,11 +141,13 @@ class ToolExecutor:
             rate_limiter: Optional rate limiter for tool execution
             quota_manager: Optional quota manager for tool execution quotas
             retry_handler: Optional retry handler (defaults to 3 retries with exponential backoff)
+            metrics_collector: Optional metrics collector for Prometheus metrics
         """
         self.registry = registry
         self.db_session = db_session
         self.rate_limiter = rate_limiter
         self.quota_manager = quota_manager
+        self.metrics_collector = metrics_collector
         self.retry_handler = retry_handler or RetryHandler(
             max_retries=3,
             base_delay=1.0,
@@ -159,6 +163,8 @@ class ToolExecutor:
         self.logger.info(
             "tool_executor_initialized",
             rate_limiter_enabled=rate_limiter is not None,
+            quota_manager_enabled=quota_manager is not None,
+            metrics_collector_enabled=metrics_collector is not None,
             max_retries=self.retry_handler.max_retries,
         )
 
@@ -324,6 +330,7 @@ class ToolExecutor:
                     )
                     await self._log_execution(result, context, parameters)
                     await self._run_error_hooks(context, Exception(result.error))
+                    self._emit_metrics(result)
                     record_exception(Exception(result.error))
                     return result
 
@@ -346,6 +353,7 @@ class ToolExecutor:
                     )
                     await self._log_execution(result, context, parameters)
                     await self._run_error_hooks(context, ToolAuthenticationError(auth_error))
+                    self._emit_metrics(result)
                     auth_exception = ToolAuthenticationError(auth_error)
                     record_exception(auth_exception)
                     return result
@@ -372,6 +380,7 @@ class ToolExecutor:
                     )
                     await self._log_execution(result, context, parameters)
                     await self._run_error_hooks(context, ToolValidationError(validation_error))
+                    self._emit_metrics(result)
                     validation_exception = ToolValidationError(validation_error)
                     record_exception(validation_exception)
                     return result
@@ -409,6 +418,7 @@ class ToolExecutor:
                             )
                             await self._log_execution(result, context, parameters)
                             await self._run_error_hooks(context, e)
+                            self._emit_metrics(result)
                             record_exception(e)
                             self.logger.warning(
                                 "tool_execution_rate_limited",
@@ -456,6 +466,7 @@ class ToolExecutor:
                         )
                         await self._log_execution(result, context, parameters)
                         await self._run_error_hooks(context, e)
+                        self._emit_metrics(result)
                         record_exception(e)
                         self.logger.warning(
                             "tool_execution_quota_exceeded",
@@ -482,6 +493,9 @@ class ToolExecutor:
                 # 7. Run after hooks
                 await self._run_after_hooks(result)
                 add_span_event("hooks.after_completed")
+
+                # 8. Emit Prometheus metrics
+                self._emit_metrics(result)
 
                 # Log success
                 if result.status == ToolExecutionStatus.SUCCESS:
@@ -524,6 +538,7 @@ class ToolExecutor:
                 )
                 await self._log_execution(result, context, parameters)
                 await self._run_error_hooks(context, e)
+                self._emit_metrics(result)
                 return result
 
             except Exception as e:
@@ -546,6 +561,7 @@ class ToolExecutor:
                 )
                 await self._log_execution(result, context, parameters)
                 await self._run_error_hooks(context, e)
+                self._emit_metrics(result)
                 self.logger.error(
                     "tool_execution_error",
                     tool_id=tool_id,
@@ -599,6 +615,43 @@ class ToolExecutor:
                     hook=hook.__name__,
                     error=str(e),
                 )
+
+    def _emit_metrics(self, result: ToolResult) -> None:
+        """Emit Prometheus metrics for tool execution.
+
+        Args:
+            result: Tool execution result with status, duration, and error info
+        """
+        if not self.metrics_collector:
+            return
+
+        try:
+            # Increment execution counter with status label
+            self.metrics_collector.tool_executions.labels(
+                tool_id=result.tool_id,
+                status=result.status.value,
+            ).inc()
+
+            # Record execution duration (convert ms to seconds for Prometheus)
+            if result.execution_time_ms is not None:
+                self.metrics_collector.tool_execution_duration.labels(
+                    tool_id=result.tool_id
+                ).observe(result.execution_time_ms / 1000.0)
+
+            # Increment error counter if execution failed
+            if result.status != ToolExecutionStatus.SUCCESS and result.error_type:
+                self.metrics_collector.tool_errors.labels(
+                    tool_id=result.tool_id,
+                    error_type=result.error_type,
+                ).inc()
+
+        except Exception as e:
+            # Don't let metrics emission failures break execution
+            self.logger.warning(
+                "metrics_emission_failed",
+                tool_id=result.tool_id,
+                error=str(e),
+            )
 
     async def _validate_authentication(
         self, tool: Tool, context: ExecutionContext
