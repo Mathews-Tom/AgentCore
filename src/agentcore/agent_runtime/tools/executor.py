@@ -29,6 +29,7 @@ from ..monitoring.tracing import (
     record_exception,
 )
 from ..services.rate_limiter import RateLimitExceeded, RateLimiter
+from ..services.quota_manager import QuotaExceeded, QuotaManager
 from ..services.retry_handler import BackoffStrategy, RetryHandler
 from .base import ExecutionContext, Tool
 from .errors import categorize_error, get_error_metadata
@@ -73,6 +74,7 @@ class ToolExecutor:
     - Distributed tracing support
     - Timeout management
     - Rate limiting (Redis-based sliding window)
+    - Quota management (daily/monthly limits)
     - Retry logic with exponential backoff
     - Lifecycle hooks (before/after/error)
 
@@ -82,6 +84,7 @@ class ToolExecutor:
         registry: ToolRegistry instance for tool lookup
         db_session: Optional database session for execution logging
         rate_limiter: Optional rate limiter for tool execution
+        quota_manager: Optional quota manager for execution quotas
         retry_handler: Retry handler with configurable backoff strategy
 
     Example:
@@ -125,6 +128,7 @@ class ToolExecutor:
         registry: ToolRegistry,
         db_session: AsyncSession | None = None,
         rate_limiter: RateLimiter | None = None,
+        quota_manager: QuotaManager | None = None,
         retry_handler: RetryHandler | None = None,
     ):
         """Initialize tool executor.
@@ -133,11 +137,13 @@ class ToolExecutor:
             registry: ToolRegistry instance for tool lookup
             db_session: Optional database session for execution logging
             rate_limiter: Optional rate limiter for tool execution
+            quota_manager: Optional quota manager for tool execution quotas
             retry_handler: Optional retry handler (defaults to 3 retries with exponential backoff)
         """
         self.registry = registry
         self.db_session = db_session
         self.rate_limiter = rate_limiter
+        self.quota_manager = quota_manager
         self.retry_handler = retry_handler or RetryHandler(
             max_retries=3,
             base_delay=1.0,
@@ -412,7 +418,55 @@ class ToolExecutor:
                             )
                             return result
 
-                # 5. Tool execution with timeout and retry
+                # 5. Check quota limits
+                daily_quota = getattr(tool.metadata, "daily_quota", None)
+                monthly_quota = getattr(tool.metadata, "monthly_quota", None)
+                if self.quota_manager and (daily_quota or monthly_quota):
+                    try:
+                        await self.quota_manager.check_quota(
+                            tool_id=tool_id,
+                            daily_quota=daily_quota,
+                            monthly_quota=monthly_quota,
+                            identifier=context.agent_id,
+                        )
+                        add_span_event(
+                            "quota.checked",
+                            daily_quota=daily_quota,
+                            monthly_quota=monthly_quota,
+                        )
+                    except QuotaExceeded as e:
+                        execution_time_ms = (time.time() - start_time) * 1000
+                        result = ToolResult(
+                            request_id=context.request_id,
+                            tool_id=tool_id,
+                            status=ToolExecutionStatus.FAILED,
+                            error=str(e),
+                            error_type="QuotaExceeded",
+                            execution_time_ms=execution_time_ms,
+                            timestamp=timestamp,
+                            metadata={
+                                "quota_type": e.quota_type,
+                                "limit": e.limit,
+                                "reset_at": e.reset_at.isoformat(),
+                            },
+                        )
+                        # Enrich with error categorization metadata
+                        result = self._enrich_result_with_error_metadata(
+                            result, error_type="QuotaExceeded", error_message=str(e)
+                        )
+                        await self._log_execution(result, context, parameters)
+                        await self._run_error_hooks(context, e)
+                        record_exception(e)
+                        self.logger.warning(
+                            "tool_execution_quota_exceeded",
+                            tool_id=tool_id,
+                            agent_id=context.agent_id,
+                            quota_type=e.quota_type,
+                            reset_at=e.reset_at.isoformat(),
+                        )
+                        return result
+
+                # 6. Tool execution with timeout and retry
                 add_span_event("tool.execution_started")
                 result, retry_count = await self._execute_with_retry(
                     tool, parameters, context, start_time, timestamp

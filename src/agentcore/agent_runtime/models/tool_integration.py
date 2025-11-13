@@ -104,6 +104,16 @@ class ToolDefinition(BaseModel):
         default_factory=dict,
         description="Rate limits (e.g., calls_per_minute: 60)",
     )
+    daily_quota: int | None = Field(
+        default=None,
+        ge=1,
+        description="Daily execution quota (None = unlimited)",
+    )
+    monthly_quota: int | None = Field(
+        default=None,
+        ge=1,
+        description="Monthly execution quota (None = unlimited)",
+    )
     cost_per_execution: float = Field(
         default=0.0,
         ge=0.0,

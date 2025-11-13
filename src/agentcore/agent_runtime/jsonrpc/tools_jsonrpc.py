@@ -17,6 +17,8 @@ from agentcore.agent_runtime.tools.base import ExecutionContext
 from agentcore.agent_runtime.tools.executor import ToolExecutor
 from agentcore.agent_runtime.tools.registry import ToolRegistry
 from agentcore.agent_runtime.tools.registration import register_native_builtin_tools
+from agentcore.agent_runtime.services.rate_limiter import get_rate_limiter
+from agentcore.agent_runtime.services.quota_manager import get_quota_manager
 
 # Global registry and executor
 _tool_registry: ToolRegistry | None = None
@@ -828,6 +830,128 @@ async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[st
         "used_fallback": used_fallback,
         "primary_error": primary_error,
         "total_time_ms": total_time_ms,
+    }
+
+
+@register_jsonrpc_method("tools.get_rate_limit_status")
+async def handle_tools_get_rate_limit_status(request: JsonRpcRequest) -> dict[str, Any]:
+    """
+    Get rate limit and quota status for a tool.
+
+    Method: tools.get_rate_limit_status
+    Params:
+        - tool_id: string - Tool identifier
+        - agent_id: string (optional) - Agent ID for per-user rate limits/quotas (optional if A2A context provided)
+
+    A2A Context:
+        If request.a2a_context is provided, source_agent will be used for per-user limits.
+
+    Returns:
+        - tool_id: string - Tool identifier
+        - rate_limit: dict | null - Rate limit status
+            - limit: int - Maximum requests per window
+            - remaining: int - Remaining requests in current window
+            - reset_at: string - When the window resets (ISO format)
+            - window_seconds: int - Window duration in seconds
+        - quota: dict | null - Quota status
+            - daily_limit: int | null - Daily quota limit (null if unlimited)
+            - daily_used: int - Used daily quota
+            - daily_remaining: int | null - Remaining daily quota (null if unlimited)
+            - daily_reset_at: string | null - When daily quota resets
+            - monthly_limit: int | null - Monthly quota limit (null if unlimited)
+            - monthly_used: int - Used monthly quota
+            - monthly_remaining: int | null - Remaining monthly quota (null if unlimited)
+            - monthly_reset_at: string | null - When monthly quota resets
+    """
+    params = request.params or {}
+    tool_id = params.get("tool_id")
+    agent_id = params.get("agent_id")
+    a2a_context = request.a2a_context
+
+    # Use A2A source_agent if agent_id not provided
+    if not agent_id and a2a_context:
+        agent_id = a2a_context.source_agent
+
+    if not tool_id:
+        raise ValueError("tool_id parameter required")
+
+    return await tools_get_rate_limit_status(tool_id, agent_id)
+
+
+async def tools_get_rate_limit_status(
+    tool_id: str,
+    agent_id: str | None = None,
+) -> dict[str, Any]:
+    """
+    Get rate limit and quota status for a tool.
+
+    Args:
+        tool_id: Tool identifier
+        agent_id: Optional agent ID for per-user limits/quotas
+
+    Returns:
+        Dictionary with rate limit and quota status
+    """
+    registry = get_tool_registry()
+    tool = registry.get(tool_id)
+
+    if not tool:
+        raise ValueError(f"Tool not found: {tool_id}")
+
+    # Get rate limit status
+    rate_limit_status = None
+    if tool.metadata.rate_limits:
+        # Check if there's a rate limit configuration
+        # Format: {"calls_per_minute": 60} or {"requests_per_second": 10}
+        rate_limiter = get_rate_limiter()
+
+        # Extract rate limit config (prefer calls_per_minute)
+        if "calls_per_minute" in tool.metadata.rate_limits:
+            limit = tool.metadata.rate_limits["calls_per_minute"]
+            window_seconds = 60
+        elif "requests_per_second" in tool.metadata.rate_limits:
+            limit = tool.metadata.rate_limits["requests_per_second"]
+            window_seconds = 1
+        elif "calls_per_hour" in tool.metadata.rate_limits:
+            limit = tool.metadata.rate_limits["calls_per_hour"]
+            window_seconds = 3600
+        else:
+            # Use first available rate limit config
+            key = next(iter(tool.metadata.rate_limits))
+            limit = tool.metadata.rate_limits[key]
+            # Default to 60 second window
+            window_seconds = 60
+
+        rate_limit_status = await rate_limiter.get_remaining(
+            tool_id=tool_id,
+            limit=limit,
+            window_seconds=window_seconds,
+            identifier=agent_id,
+        )
+
+    # Get quota status
+    quota_status = None
+    if tool.metadata.daily_quota is not None or tool.metadata.monthly_quota is not None:
+        quota_manager = get_quota_manager()
+        quota_status = await quota_manager.get_quota_status(
+            tool_id=tool_id,
+            daily_quota=tool.metadata.daily_quota,
+            monthly_quota=tool.metadata.monthly_quota,
+            identifier=agent_id,
+        )
+
+    logger.info(
+        "tools_get_rate_limit_status_called",
+        tool_id=tool_id,
+        agent_id=agent_id,
+        has_rate_limit=rate_limit_status is not None,
+        has_quota=quota_status is not None,
+    )
+
+    return {
+        "tool_id": tool_id,
+        "rate_limit": rate_limit_status,
+        "quota": quota_status,
     }
 
 
