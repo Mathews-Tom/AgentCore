@@ -10,14 +10,16 @@ from agentcore.agent_runtime.models.tool_integration import (
     ToolExecutionRequest,
     ToolExecutionStatus,
 )
-from agentcore.agent_runtime.services.tool_executor import ToolExecutor
-from agentcore.agent_runtime.services.tool_registry import get_tool_registry
+from agentcore.agent_runtime.tools.executor import ToolExecutor
+from agentcore.agent_runtime.tools.registry import ToolRegistry
+from agentcore.agent_runtime.tools.startup import register_builtin_tools
 
 
 @pytest.fixture
 def tool_executor() -> ToolExecutor:
     """Get tool executor with all built-in tools."""
-    registry = get_tool_registry()
+    registry = ToolRegistry()
+    register_builtin_tools(registry)
     return ToolExecutor(registry, enable_metrics=True)
 
 
