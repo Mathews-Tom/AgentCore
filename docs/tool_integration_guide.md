@@ -271,6 +271,257 @@ requests = [
 results = await parallel_exec.execute_batch(requests, max_concurrent=5)
 ```
 
+### A2A Authentication Integration
+
+The Tool Integration Framework supports Agent-to-Agent (A2A) protocol context for distributed agent communication and authentication:
+
+```python
+from agentcore.a2a_protocol.models.jsonrpc import A2AContext, JsonRpcRequest
+
+# Create A2A context for agent-to-agent communication
+a2a_context = A2AContext(
+    source_agent="agent-123",
+    target_agent="agent-456",
+    trace_id="trace-abc-123",
+    session_id="session-xyz-789",
+    conversation_id="conv-001",
+    timestamp="2024-01-15T10:30:00Z",
+)
+
+# Create JSON-RPC request with A2A context
+request = JsonRpcRequest(
+    method="tools.execute",
+    params={
+        "tool_id": "python_repl",
+        "parameters": {"code": "print('hello')"},
+        # agent_id is optional when A2A context is provided
+    },
+    id="req-001",
+    a2a_context=a2a_context,
+)
+
+# The executor automatically extracts agent_id from A2A source_agent
+# and propagates trace_id/session_id for distributed tracing
+```
+
+**A2A Context Propagation:**
+
+- `source_agent` → Used as `agent_id` when not explicitly provided
+- `trace_id` → Propagated through all tool executions for distributed tracing
+- `session_id` → Maintained across tool execution chain
+- `conversation_id` → Preserved for multi-turn agent interactions
+
+**Backward Compatibility:**
+
+The system maintains backward compatibility with legacy `execution_context` parameter:
+
+```python
+# Legacy approach (still supported)
+result = await executor.execute_tool(
+    tool_id="my_tool",
+    parameters={},
+    context=ExecutionContext(
+        agent_id="agent-123",
+        trace_id="trace-abc",
+        session_id="session-xyz",
+    )
+)
+
+# Modern A2A approach (preferred)
+result = await jsonrpc_processor.process_request(request_with_a2a_context)
+```
+
+### Error Categorization and Recovery
+
+Comprehensive error categorization system with hierarchical classification and recovery strategies:
+
+```python
+from agentcore.agent_runtime.tools.errors import (
+    ToolErrorCategory,
+    ToolErrorCode,
+    ErrorRecoveryStrategy,
+    categorize_error,
+    get_error_metadata,
+)
+
+# All tool execution errors are automatically categorized
+result = await executor.execute_tool("my_tool", {}, context)
+
+if result.status == ToolExecutionStatus.FAILED:
+    # Error metadata is automatically enriched
+    print(f"Error Category: {result.metadata['error_category']}")
+    print(f"Error Code: {result.metadata['error_code']}")
+    print(f"User Message: {result.metadata['user_message']}")
+    print(f"Recovery Strategy: {result.metadata['recovery_strategy']}")
+    print(f"Is Retryable: {result.metadata['is_retryable']}")
+    print(f"Recovery Guidance: {result.metadata['recovery_guidance']}")
+```
+
+**Error Categories:**
+
+- **Client Errors (4xx equivalent):**
+  - `VALIDATION_ERROR` - Invalid parameters, schema mismatch
+  - `AUTHENTICATION_ERROR` - Missing or invalid credentials
+  - `AUTHORIZATION_ERROR` - Insufficient permissions
+  - `NOT_FOUND_ERROR` - Tool or resource not found
+  - `RATE_LIMIT_ERROR` - Rate limit exceeded
+  - `QUOTA_ERROR` - Usage quota exceeded
+
+- **Execution Errors (5xx equivalent):**
+  - `TIMEOUT_ERROR` - Execution timeout
+  - `EXECUTION_ERROR` - Tool execution failed
+  - `NETWORK_ERROR` - Network/connectivity issues
+  - `RESOURCE_ERROR` - Insufficient resources (memory, disk, etc.)
+  - `DEPENDENCY_ERROR` - External dependency failed
+  - `INTERNAL_ERROR` - Unexpected internal error
+
+- **Configuration Errors:**
+  - `CONFIGURATION_ERROR` - Tool misconfiguration
+  - `SANDBOX_ERROR` - Sandbox/security constraint violation
+
+**Error Codes:**
+
+Specific error codes organized by ranges:
+- `TOOL_E1xxx` - Client errors (validation, auth, not found, rate limits, quotas)
+- `TOOL_E2xxx` - Execution errors (timeout, network, resources, dependencies)
+- `TOOL_E3xxx` - Configuration errors (misconfiguration, sandbox violations)
+
+Examples:
+- `TOOL_E1001` - Invalid parameters
+- `TOOL_E1301` - Tool not found
+- `TOOL_E1401` - Rate limit exceeded
+- `TOOL_E2001` - Execution timeout
+- `TOOL_E2201` - Network unreachable
+- `TOOL_E3101` - Sandbox violation
+
+**Recovery Strategies:**
+
+- `RETRY` - Retry the operation immediately (for transient errors)
+- `RETRY_WITH_BACKOFF` - Retry with exponential backoff (rate limits, network)
+- `FALLBACK` - Use fallback tool or method
+- `USER_INTERVENTION` - Require user to fix and retry (validation, auth)
+- `FAIL` - Fail immediately, no recovery possible (quota, sandbox)
+
+**Custom Error Handling:**
+
+```python
+from agentcore.agent_runtime.tools.errors import categorize_error
+
+# Categorize any error
+category, code, strategy = categorize_error(
+    error_type="ConnectionError",
+    error_message="Connection refused"
+)
+
+# Get user-friendly metadata
+metadata = get_error_metadata(category, code, strategy)
+```
+
+### Distributed Tracing with OpenTelemetry
+
+OpenTelemetry integration for comprehensive observability:
+
+```python
+from agentcore.agent_runtime.monitoring.tracing import (
+    configure_tracing,
+    get_tracer,
+    add_span_attributes,
+    add_span_event,
+    record_exception,
+    get_trace_id,
+    get_span_id,
+)
+
+# Configure tracing (typically done at application startup)
+configure_tracing(
+    service_name="agentcore-runtime",
+    service_version="1.0.0",
+    otlp_endpoint="http://jaeger:4317",  # Optional OTLP exporter
+    sample_rate=1.0,  # 0.0 to 1.0 (1.0 = 100% sampling)
+    enable_console_export=False,  # Enable for debugging
+)
+
+# Create custom spans
+tracer = get_tracer("my.tool.module")
+
+with tracer.start_as_current_span("custom_operation") as span:
+    # Add custom attributes
+    add_span_attributes(
+        tool_id="my_tool",
+        agent_id="agent-123",
+        custom_metadata="value"
+    )
+
+    # Add events to track significant points
+    add_span_event("validation_started", parameter_count=5)
+
+    try:
+        # Your operation
+        result = perform_operation()
+        add_span_event("validation_completed", status="success")
+    except Exception as e:
+        # Record exceptions with context
+        record_exception(e)
+        raise
+
+# Get current trace/span IDs for logging
+trace_id = get_trace_id()
+span_id = get_span_id()
+logger.info(f"Operation completed", trace_id=trace_id, span_id=span_id)
+```
+
+**Automatic Span Creation:**
+
+Tool execution automatically creates spans with:
+- Span name: `tool.execute.{tool_id}`
+- Attributes: `tool_id`, `user_id`, `agent_id`, `request_id`, `trace_id`
+- Events: `hooks.before_completed`, `authentication.validated`, `parameters.validated`,
+  `rate_limit.checked`, `tool.execution_started`, `tool.execution_completed`
+- Exception recording for all failures
+
+**Nested Spans:**
+
+Spans automatically nest to create execution hierarchy:
+
+```
+tool.execute.python_repl
+  ├─ hooks.before_completed
+  ├─ authentication.validated
+  ├─ parameters.validated
+  ├─ tool.execution_started
+  └─ tool.execution_completed
+```
+
+**Integration with A2A Protocol:**
+
+Trace IDs from A2A context are automatically propagated:
+
+```python
+# A2A context trace_id becomes OpenTelemetry trace_id
+a2a_context = A2AContext(
+    source_agent="agent-123",
+    trace_id="a2a-trace-xyz",  # Propagated to all spans
+    session_id="session-abc",
+)
+
+# All tool executions will use the same trace_id
+# enabling end-to-end distributed tracing across agents
+```
+
+**Viewing Traces:**
+
+Export traces to Jaeger, Zipkin, or any OTLP-compatible backend:
+
+```bash
+# Run Jaeger for local development
+docker run -d --name jaeger \
+  -p 4317:4317 \
+  -p 16686:16686 \
+  jaegertracing/all-in-one:latest
+
+# View traces at http://localhost:16686
+```
+
 ## Built-in Tools
 
 The framework includes several built-in tools:
