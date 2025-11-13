@@ -1,6 +1,6 @@
-# Load Testing for AgentCore Gateway
+# Load Testing for AgentCore
 
-Comprehensive load testing suite for gateway layer performance validation.
+Comprehensive load testing suite for gateway layer and tool integration framework performance validation.
 
 ## Test Scenarios
 
@@ -103,12 +103,71 @@ uv run locust -f tests/load/failure_scenario_test.py \
 - No memory leaks
 - System remains responsive
 
+### 6. Tool Integration Load Test (`tool_integration_load_test.py`)
+**Target:** 1,000+ concurrent tool executions
+
+Comprehensive load testing for tool execution, rate limiting, quota management, retry logic, and parallel execution features.
+
+```bash
+# Run with 1000 users for concurrent tool executions
+uv run locust -f tests/load/tool_integration_load_test.py \
+    --host=http://localhost:8001 \
+    --users=1000 \
+    --spawn-rate=50 \
+    --run-time=5m
+```
+
+**Test Users:**
+- **ToolExecutionUser**: Standard tool execution testing (echo, calculator, current_time)
+- **RateLimitingUser**: Burst traffic to test rate limiting (--users=500 --spawn-rate=100)
+- **QuotaEnforcementUser**: Quota management testing (--users=200 --spawn-rate=50)
+- **ParallelExecutionUser**: Batch and fallback execution testing
+
+**Run specific user classes:**
+```bash
+# Rate limiting test
+uv run locust -f tests/load/tool_integration_load_test.py \
+    --host=http://localhost:8001 \
+    --users=500 \
+    --spawn-rate=100 \
+    --run-time=3m \
+    --headless \
+    RateLimitingUser
+
+# Quota management test
+uv run locust -f tests/load/tool_integration_load_test.py \
+    --host=http://localhost:8001 \
+    --users=200 \
+    --spawn-rate=50 \
+    --run-time=5m \
+    --headless \
+    QuotaEnforcementUser
+```
+
+**Expected Results:**
+- Concurrent executions: 1,000+
+- P95 latency (lightweight): < 100ms
+- P95 latency (medium): < 1s
+- Error rate: < 1% (excluding quota/rate limit errors)
+- Rate limiting: Proper 429 responses during bursts
+- Quota enforcement: Consistent behavior with configured limits
+
+**Monitored Metrics:**
+- Tool execution rate (executions/sec)
+- Rate limit hit count
+- Quota exceeded count
+- Successful vs failed executions
+- Per-method latency percentiles
+
+**Visualization:**
+Monitor with Grafana Tool Integration Metrics dashboard at http://localhost:3000
+
 ## Running All Tests
 
 ### Sequential Execution
 ```bash
 # Run each test for 5 minutes
-for test in http_load_test websocket_load_test sustained_load_test burst_traffic_test failure_scenario_test; do
+for test in http_load_test websocket_load_test sustained_load_test burst_traffic_test failure_scenario_test tool_integration_load_test; do
     echo "Running $test..."
     uv run locust -f tests/load/${test}.py \
         --host=http://localhost:8001 \
@@ -139,8 +198,11 @@ uv run locust -f tests/load/http_load_test.py \
 |--------|--------|----------|
 | HTTP RPS | 60,000+ | 40,000+ |
 | WebSocket Connections | 10,000+ | 5,000+ |
-| P95 Latency | < 50ms | < 100ms |
-| P99 Latency | < 100ms | < 200ms |
+| P95 Latency (Gateway) | < 50ms | < 100ms |
+| P99 Latency (Gateway) | < 100ms | < 200ms |
+| Tool Executions (concurrent) | 1,000+ | 500+ |
+| P95 Latency (Lightweight Tools) | < 100ms | < 200ms |
+| P95 Latency (Medium Tools) | < 1s | < 2s |
 | Error Rate | < 0.1% | < 1% |
 | CPU Usage | < 50% | < 80% |
 | Memory Usage | < 4GB | < 8GB |
