@@ -1,0 +1,39 @@
+# Grafana Dashboard Provisioning Configuration for AgentCore
+#
+# This file configures dashboard providers for automatic dashboard loading
+
+apiVersion: 1
+
+providers:
+  # Tool Integration Metrics Dashboard Provider
+  - name: 'Tool Metrics'
+    orgId: 1
+    folder: 'AgentCore'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/tool-metrics-dashboard.json
+
+  # DSPy Optimization Dashboard Provider
+  - name: 'DSPy Optimization'
+    orgId: 1
+    folder: 'AgentCore'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/dspy-dashboard.json
+
+  # Reasoning Dashboard Provider
+  - name: 'Reasoning'
+    orgId: 1
+    folder: 'AgentCore'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/reasoning-dashboard.json

@@ -1,0 +1,325 @@
+{
+  "dashboard": {
+    "title": "Tool Integration Metrics",
+    "tags": ["tools", "integration", "agentcore", "executor"],
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "refresh": "30s",
+    "schemaVersion": 38,
+    "style": "dark",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h"]
+    },
+    "panels": [
+      {
+        "title": "Total Tool Executions (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(agentcore_tool_executions_total[24h]))",
+            "legendFormat": "Total Executions"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Success Rate (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(agentcore_tool_executions_total{status=\"success\"}[24h])) / sum(increase(agentcore_tool_executions_total[24h])) * 100",
+            "legendFormat": "Success %"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 95}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Active Tools",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(count by (tool_id) (agentcore_tool_executions_total))",
+            "legendFormat": "Active Tools"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "title": "Error Rate (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(agentcore_tool_errors_total[24h]))",
+            "legendFormat": "Errors"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10},
+                {"color": "red", "value": 50}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Avg Latency (p50)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "p50 (ms)"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 2,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 500}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "p95 Latency (ms)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "p95 (ms)"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 2,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 200},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Tool Execution Rate (by status)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(agentcore_tool_executions_total[5m])) by (status)",
+            "legendFormat": "{{ status }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "yaxes": [
+          {"label": "executions/sec", "show": true},
+          {"show": false}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "values": true, "avg": true, "current": true}
+      },
+      {
+        "title": "Tool Execution Latency (Percentiles)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "p99"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "yaxes": [
+          {"label": "milliseconds", "show": true},
+          {"show": false}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "values": true, "avg": true, "current": true}
+      },
+      {
+        "title": "Top 10 Tools by Execution Count",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(agentcore_tool_executions_total[5m])) by (tool_id))",
+            "legendFormat": "{{ tool_id }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "yaxes": [
+          {"label": "executions/sec", "show": true},
+          {"show": false}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "values": true, "avg": true, "current": true, "sort": "current", "sortDesc": true}
+      },
+      {
+        "title": "Tool Success vs Failure Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(agentcore_tool_executions_total{status=\"success\"}[5m]))",
+            "legendFormat": "Success"
+          },
+          {
+            "expr": "sum(rate(agentcore_tool_executions_total{status=\"failed\"}[5m]))",
+            "legendFormat": "Failed"
+          },
+          {
+            "expr": "sum(rate(agentcore_tool_executions_total{status=\"timeout\"}[5m]))",
+            "legendFormat": "Timeout"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "yaxes": [
+          {"label": "executions/sec", "show": true},
+          {"show": false}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "values": true, "avg": true, "current": true}
+      },
+      {
+        "title": "Error Distribution by Type",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(agentcore_tool_errors_total[5m])) by (error_type)",
+            "legendFormat": "{{ error_type }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "yaxes": [
+          {"label": "errors/sec", "show": true},
+          {"show": false}
+        ],
+        "legend": {"show": true, "alignAsTable": true, "values": true, "avg": true, "current": true, "sort": "current", "sortDesc": true}
+      },
+      {
+        "title": "Tool Execution Duration by Tool",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (le, tool_id)",
+            "legendFormat": "{{ tool_id }}",
+            "format": "heatmap"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "dataFormat": "tsbuckets",
+        "yAxis": {"format": "s"}
+      },
+      {
+        "title": "Tool Executions by Tool ID (24h)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(increase(agentcore_tool_executions_total[24h])) by (tool_id, status)",
+            "legendFormat": "",
+            "instant": true
+          }
+        ],
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 28},
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "tool_id": "Tool ID",
+                "status": "Status",
+                "Value": "Executions"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "Tool Error Details (24h)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(increase(agentcore_tool_errors_total[24h])) by (tool_id, error_type)",
+            "legendFormat": "",
+            "instant": true
+          }
+        ],
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 28},
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "tool_id": "Tool ID",
+                "error_type": "Error Type",
+                "Value": "Count"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}
