@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j
+  namespace: agentcore
+  labels:
+    app: neo4j
+    component: memory-system
+    version: v5.15.0
+spec:
+  serviceName: neo4j
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neo4j
+  template:
+    metadata:
+      labels:
+        app: neo4j
+        component: memory-system
+        version: v5.15.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2004"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 7474
+        fsGroup: 7474
+        seccompProfile:
+          type: RuntimeDefault
+
+      initContainers:
+      - name: init-plugins
+        image: neo4j:5.15-community
+        command: ["sh", "-c"]
+        args:
+          - |
+            # Install APOC plugin
+            wget -O /plugins/apoc.jar https://github.com/neo4j/apoc/releases/download/5.15.0/apoc-5.15.0-core.jar
+            # Install Graph Data Science plugin
+            wget -O /plugins/gds.jar https://github.com/neo4j/graph-data-science/releases/download/2.5.0/neo4j-graph-data-science-2.5.0.jar
+            chmod 644 /plugins/*.jar
+        volumeMounts:
+        - name: plugins
+          mountPath: /plugins
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 7474
+          capabilities:
+            drop:
+              - ALL
+
+      containers:
+      - name: neo4j
+        image: neo4j:5.15-community
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 7474
+          protocol: TCP
+        - name: bolt
+          containerPort: 7687
+          protocol: TCP
+        - name: metrics
+          containerPort: 2004
+          protocol: TCP
+
+        env:
+        - name: NEO4J_AUTH
+          valueFrom:
+            secretKeyRef:
+              name: neo4j-secret
+              key: auth
+        - name: NEO4J_PLUGINS
+          value: '["apoc", "graph-data-science"]'
+        - name: NEO4J_dbms_security_procedures_unrestricted
+          value: "apoc.*,gds.*"
+        - name: NEO4J_dbms_security_procedures_allowlist
+          value: "apoc.*,gds.*"
+        - name: NEO4J_apoc_export_file_enabled
+          value: "true"
+        - name: NEO4J_apoc_import_file_enabled
+          value: "true"
+        - name: NEO4J_apoc_import_file_use__neo4j__config
+          value: "true"
+        - name: NEO4J_server_memory_heap_initial__size
+          value: "4G"
+        - name: NEO4J_server_memory_heap_max__size
+          value: "4G"
+        - name: NEO4J_server_memory_pagecache_size
+          value: "2G"
+        - name: NEO4J_dbms_default__database
+          value: "agentcore"
+        - name: NEO4J_metrics_prometheus_enabled
+          value: "true"
+        - name: NEO4J_metrics_prometheus_endpoint
+          value: "0.0.0.0:2004"
+
+        livenessProbe:
+          tcpSocket:
+            port: bolt
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          exec:
+            command:
+              - cypher-shell
+              - --username
+              - neo4j
+              - --password
+              - $(NEO4J_PASSWORD)
+              - "RETURN 1"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "2000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 7474
+          capabilities:
+            drop:
+              - ALL
+
+        volumeMounts:
+        - name: neo4j-data
+          mountPath: /data
+        - name: neo4j-logs
+          mountPath: /logs
+        - name: neo4j-import
+          mountPath: /var/lib/neo4j/import
+        - name: plugins
+          mountPath: /plugins
+
+  volumeClaimTemplates:
+  - metadata:
+      name: neo4j-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 50Gi
+  - metadata:
+      name: neo4j-logs
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: neo4j-import
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: plugins
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
