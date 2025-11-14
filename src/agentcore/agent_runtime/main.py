@@ -43,6 +43,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         max_concurrent_agents=settings.max_concurrent_agents,
     )
 
+    # Native tool framework is now the default
+    logger.info("native_tool_framework_enabled")
+
     try:
         # Initialize container manager
         container_manager = ContainerManager()

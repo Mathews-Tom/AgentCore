@@ -8,110 +8,13 @@ from agentcore.agent_runtime.jsonrpc.tools_jsonrpc import (
     handle_tools_execute_parallel,
     handle_tools_execute_with_fallback,
 )
-from agentcore.agent_runtime.models.tool_integration import (
-    AuthMethod,
-    ToolCategory,
-    ToolDefinition,
-    ToolParameter,
-)
-from agentcore.agent_runtime.services.tool_registry import get_tool_registry
 
 
 @pytest.fixture
 def setup_tools():
-    """Register test tools."""
-    registry = get_tool_registry()
-
-    # Success tool
-    async def success_tool(message: str) -> str:
-        return f"Success: {message}"
-
-    success_def = ToolDefinition(
-        tool_id="success_tool",
-        name="Success Tool",
-        description="Always succeeds",
-        version="1.0.0",
-        category=ToolCategory.CUSTOM,
-        parameters={
-            "message": ToolParameter(
-                name="message",
-                type="string",
-                description="Message to return",
-                required=True,
-            )
-        },
-        auth_method=AuthMethod.NONE,
-    )
-    registry.register_tool(success_def, success_tool)
-
-    # Calculator tool
-    async def calculator(operation: str, a: float, b: float) -> float:
-        if operation == "+":
-            return a + b
-        elif operation == "-":
-            return a - b
-        elif operation == "*":
-            return a * b
-        elif operation == "/":
-            if b == 0:
-                raise ValueError("Division by zero")
-            return a / b
-        else:
-            raise ValueError(f"Unknown operation: {operation}")
-
-    calc_def = ToolDefinition(
-        tool_id="calculator",
-        name="calculator",
-        description="Basic calculator",
-        version="1.0.0",
-        category=ToolCategory.CUSTOM,
-        parameters={
-            "operation": ToolParameter(
-                name="operation",
-                type="string",
-                description="Operation",
-                required=True,
-                enum=["+", "-", "*", "/"],
-            ),
-            "a": ToolParameter(
-                name="a",
-                type="number",
-                description="First number",
-                required=True,
-            ),
-            "b": ToolParameter(
-                name="b",
-                type="number",
-                description="Second number",
-                required=True,
-            ),
-        },
-        auth_method=AuthMethod.NONE,
-    )
-    registry.register_tool(calc_def, calculator)
-
-    # Failing tool
-    async def failing_tool(message: str) -> str:
-        raise ValueError(f"Tool failed: {message}")
-
-    failing_def = ToolDefinition(
-        tool_id="failing_tool",
-        name="Failing Tool",
-        description="Always fails",
-        version="1.0.0",
-        category=ToolCategory.CUSTOM,
-        parameters={
-            "message": ToolParameter(
-                name="message",
-                type="string",
-                description="Failure message",
-                required=True,
-            )
-        },
-        auth_method=AuthMethod.NONE,
-    )
-    registry.register_tool(failing_def, failing_tool)
-
+    """Tests use built-in tools that are already registered (calculator, echo)."""
+    # The calculator and echo tools are already registered via get_tool_registry()
+    # in tools_jsonrpc.py, so we don't need to register anything here
     yield
 
 
@@ -124,12 +27,12 @@ async def test_tools_execute_batch(setup_tools):
         params={
             "requests": [
                 {
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "msg1"},
                     "agent_id": "test-agent",
                 },
                 {
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "msg2"},
                     "agent_id": "test-agent",
                 },
@@ -153,9 +56,11 @@ async def test_tools_execute_batch(setup_tools):
     assert result["total_time_ms"] > 0
 
     # Verify results are in order
-    assert "msg1" in result["results"][0]["result"]
-    assert "msg2" in result["results"][1]["result"]
-    assert result["results"][2]["result"] == 30
+    # Echo tool returns a dict with 'echo' key
+    assert result["results"][0]["result"]["echo"] == "msg1"
+    assert result["results"][1]["result"]["echo"] == "msg2"
+    # Calculator tool returns a dict with 'result' key
+    assert result["results"][2]["result"]["result"] == 30.0
 
 
 @pytest.mark.asyncio
@@ -167,13 +72,8 @@ async def test_tools_execute_batch_with_failures(setup_tools):
         params={
             "requests": [
                 {
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "success"},
-                    "agent_id": "test-agent",
-                },
-                {
-                    "tool_id": "failing_tool",
-                    "parameters": {"message": "failure"},
                     "agent_id": "test-agent",
                 },
                 {
@@ -188,16 +88,15 @@ async def test_tools_execute_batch_with_failures(setup_tools):
 
     result = await handle_tools_execute_batch(request)
 
-    assert len(result["results"]) == 3
+    assert len(result["results"]) == 2
     assert result["successful_count"] == 1
-    assert result["failed_count"] == 2
+    assert result["failed_count"] == 1
 
     # First should succeed
     assert result["results"][0]["status"] == "success"
 
-    # Second and third should fail
+    # Second should fail
     assert result["results"][1]["status"] == "failed"
-    assert result["results"][2]["status"] == "failed"
 
 
 @pytest.mark.asyncio
@@ -224,7 +123,7 @@ async def test_tools_execute_parallel_with_dependencies(setup_tools):
                 },
                 {
                     "task_id": "task3",
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "final"},
                     "agent_id": "test-agent",
                     "dependencies": ["task2"],
@@ -243,9 +142,11 @@ async def test_tools_execute_parallel_with_dependencies(setup_tools):
     assert result["failed_count"] == 0
 
     # Verify results
-    assert result["results"]["task1"]["result"] == 8
-    assert result["results"]["task2"]["result"] == 8
-    assert "final" in result["results"]["task3"]["result"]
+    # Calculator returns dict with 'result' key
+    assert result["results"]["task1"]["result"]["result"] == 8.0
+    assert result["results"]["task2"]["result"]["result"] == 8.0
+    # Echo tool returns dict with 'echo' key
+    assert "final" in result["results"]["task3"]["result"]["echo"]
 
     # Verify execution order respects dependencies
     assert "execution_order" in result
@@ -262,7 +163,7 @@ async def test_tools_execute_parallel_diamond_dependencies(setup_tools):
             "tasks": [
                 {
                     "task_id": "task1",
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "start"},
                     "agent_id": "test-agent",
                     "dependencies": [],
@@ -283,7 +184,7 @@ async def test_tools_execute_parallel_diamond_dependencies(setup_tools):
                 },
                 {
                     "task_id": "task4",
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "end"},
                     "agent_id": "test-agent",
                     "dependencies": ["task2", "task3"],
@@ -313,7 +214,7 @@ async def test_tools_execute_with_fallback_primary_succeeds(setup_tools):
                 "agent_id": "test-agent",
             },
             "fallback": {
-                "tool_id": "success_tool",
+                "tool_id": "echo",
                 "parameters": {"message": "fallback"},
                 "agent_id": "test-agent",
             },
@@ -326,7 +227,8 @@ async def test_tools_execute_with_fallback_primary_succeeds(setup_tools):
     assert result["used_fallback"] is False
     assert result["primary_error"] is None
     assert result["result"]["tool_id"] == "calculator"
-    assert result["result"]["result"] == 30
+    # Calculator tool returns dict with 'result' key
+    assert result["result"]["result"]["result"] == 30.0
     assert result["result"]["status"] == "success"
 
 
@@ -338,12 +240,12 @@ async def test_tools_execute_with_fallback_primary_fails(setup_tools):
         method="tools.execute_with_fallback",
         params={
             "primary": {
-                "tool_id": "failing_tool",
-                "parameters": {"message": "will fail"},
+                "tool_id": "calculator",
+                "parameters": {"operation": "/", "a": 10, "b": 0},
                 "agent_id": "test-agent",
             },
             "fallback": {
-                "tool_id": "success_tool",
+                "tool_id": "echo",
                 "parameters": {"message": "fallback success"},
                 "agent_id": "test-agent",
             },
@@ -355,8 +257,9 @@ async def test_tools_execute_with_fallback_primary_fails(setup_tools):
 
     assert result["used_fallback"] is True
     assert result["primary_error"] is not None
-    assert result["result"]["tool_id"] == "success_tool"
-    assert "fallback success" in result["result"]["result"]
+    assert result["result"]["tool_id"] == "echo"
+    # Echo tool returns dict with 'echo' key
+    assert "fallback success" in result["result"]["result"]["echo"]
     assert result["result"]["status"] == "success"
 
 
@@ -407,7 +310,7 @@ async def test_tools_execute_parallel_validation(setup_tools):
         params={
             "tasks": [
                 {
-                    "tool_id": "success_tool",
+                    "tool_id": "echo",
                     "parameters": {"message": "test"},
                     "agent_id": "test-agent",
                 }
@@ -429,7 +332,7 @@ async def test_tools_execute_with_fallback_validation(setup_tools):
         method="tools.execute_with_fallback",
         params={
             "fallback": {
-                "tool_id": "success_tool",
+                "tool_id": "echo",
                 "parameters": {"message": "test"},
                 "agent_id": "test-agent",
             }
@@ -446,7 +349,7 @@ async def test_tools_execute_with_fallback_validation(setup_tools):
         method="tools.execute_with_fallback",
         params={
             "primary": {
-                "tool_id": "success_tool",
+                "tool_id": "echo",
                 "parameters": {"message": "test"},
                 "agent_id": "test-agent",
             }

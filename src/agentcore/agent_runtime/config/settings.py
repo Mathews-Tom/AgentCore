@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     tool_retry_strategy: Literal["exponential", "linear", "fixed"] = "exponential"
     tool_retry_jitter: bool = True
 
+    # Google Custom Search API Configuration
+    google_api_key: str = ""
+    google_cse_id: str = ""
+
     # Rate Limiter Configuration
     rate_limiter_enabled: bool = False
     rate_limiter_redis_url: str = "redis://localhost:6379/1"

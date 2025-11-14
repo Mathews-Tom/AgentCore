@@ -8,7 +8,12 @@ import structlog
 
 from ..models.agent_config import AgentConfig
 from ..models.agent_state import AgentExecutionState
-from ..services.tool_registry import ToolRegistry, get_tool_registry
+
+from ..tools.base import ExecutionContext
+from ..tools.executor import ToolExecutor
+from ..tools.registry import ToolRegistry
+from ..tools.registration import register_native_builtin_tools
+
 from .base import PhilosophyEngine
 from .react_models import (
     ReActExecutionContext,
@@ -37,7 +42,11 @@ class ReActEngine(PhilosophyEngine):
             tool_registry: Tool registry (uses global if not provided)
         """
         super().__init__(config)
-        self.tool_registry = tool_registry or get_tool_registry()
+        if tool_registry is None:
+            tool_registry = ToolRegistry()
+            register_native_builtin_tools(tool_registry)
+        self.tool_registry = tool_registry
+        self.tool_executor = ToolExecutor(tool_registry)
         self.prompt_template = ReActPromptTemplate()
         self.context: ReActExecutionContext | None = None
 
@@ -78,7 +87,7 @@ class ReActEngine(PhilosophyEngine):
             agent_id=self.agent_id,
             goal=goal,
             max_iterations=max_iterations,
-            available_tools=[tool.tool_id for tool in self.tool_registry.list_tools()],
+            available_tools=[tool.metadata.tool_id for tool in self.tool_registry.list_all()],
         )
 
         logger.info(
@@ -114,7 +123,20 @@ class ReActEngine(PhilosophyEngine):
                     )
 
                     # Execute tool
-                    result = await self.tool_registry.execute_tool(action, self.agent_id)
+                    context = ExecutionContext(
+                        agent_id=self.agent_id,
+                        user_id=self.agent_id,
+                    )
+                    tool_result = await self.tool_executor.execute_tool(
+                        action.tool_name,
+                        action.parameters,
+                        context,
+                    )
+                    result = {
+                        "success": tool_result.status.value == "success",
+                        "result": tool_result.result,
+                        "error": tool_result.error,
+                    }
 
                     # Create observation
                     observation = self._create_observation(result)
@@ -339,12 +361,19 @@ class ReActEngine(PhilosophyEngine):
         Create observation from tool result.
 
         Args:
-            result: Tool execution result
+            result: Tool execution result (dict with 'success', 'result', 'error' keys)
 
         Returns:
             Observation string
         """
-        if result.success:
-            return f"Tool executed successfully. Result: {result.result}"
+        if isinstance(result, dict):
+            if result.get("success"):
+                return f"Tool executed successfully. Result: {result.get('result')}"
+            else:
+                return f"Tool execution failed. Error: {result.get('error')}"
         else:
-            return f"Tool execution failed. Error: {result.error}"
+            # Handle object with attributes (backwards compatibility)
+            if result.success:
+                return f"Tool executed successfully. Result: {result.result}"
+            else:
+                return f"Tool execution failed. Error: {result.error}"
