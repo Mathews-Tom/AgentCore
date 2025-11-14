@@ -237,6 +237,19 @@ class Settings(BaseSettings):
         default=300, gt=0, description="Signal cleanup interval in seconds (must be >0)"
     )
 
+    # Memory System - Cost Tracking and Budget Management
+    MONTHLY_TOKEN_BUDGET_USD: float = Field(
+        default=100.0,
+        gt=0.0,
+        description="Monthly budget limit for compression operations in USD (must be >0)"
+    )
+    COST_ALERT_THRESHOLD_PERCENTAGE: float = Field(
+        default=75.0,
+        ge=0.0,
+        le=100.0,
+        description="Budget consumption threshold for alerts (0-100 percentage)"
+    )
+
     # Routing Optimization Weights (must sum to 1.0)
     ROUTING_WEIGHT_LOAD: float = Field(
         default=0.25, ge=0.0, le=1.0, description="Weight for load score (0.0-1.0)"
