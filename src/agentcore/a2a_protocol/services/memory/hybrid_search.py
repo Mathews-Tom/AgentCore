@@ -662,23 +662,81 @@ class HybridSearchService:
         Returns:
             List of (memory, depth) tuples
         """
-        # TODO: This depends on GraphMemoryService API
-        # For now, return empty list as placeholder
-        # Will need to implement based on actual GraphMemoryService methods
+        try:
+            # Use GraphMemoryService traverse_graph method
+            # Note: traverse_graph returns paths, not memories directly
+            # We need to traverse to find Memory nodes
 
-        # Expected GraphMemoryService API:
-        # neighbors = await self.graph.get_related_memories(
-        #     memory_id=seed_id,
-        #     max_depth=max_depth,
-        #     relationship_types=relationship_types or ["RELATES_TO", "MENTIONS"]
-        # )
-        # return [(memory, depth) for memory, depth, _ in neighbors]
+            paths = await self.graph.traverse_graph(
+                start_id=seed_id,
+                max_depth=max_depth,
+                start_label="Memory",  # Start from Memory node
+            )
 
-        self._logger.debug(
-            "graph_traversal_placeholder",
-            seed_id=seed_id,
-            max_depth=max_depth,
-            message="GraphMemoryService integration pending",
-        )
+            # Extract unique memories from paths with their depths
+            memory_depths: dict[str, tuple[MemoryRecord, int]] = {}
 
-        return []
+            for path in paths:
+                # Path contains nodes and relationships
+                # Extract Memory nodes and calculate depth
+                nodes = path.get("nodes", [])
+
+                for i, node in enumerate(nodes):
+                    # Skip the seed node itself (depth 0)
+                    if i == 0:
+                        continue
+
+                    # Check if node is a Memory node
+                    if "Memory" in node.get("labels", []):
+                        memory_id = node.get("memory_id")
+                        if not memory_id:
+                            continue
+
+                        # Calculate depth (hop count from seed)
+                        depth = min(i, max_depth)
+
+                        # Reconstruct MemoryRecord from node properties
+                        # Note: This assumes Memory nodes store full memory data
+                        try:
+                            memory = MemoryRecord(
+                                memory_id=memory_id,
+                                memory_layer=node.get("memory_layer", "episodic"),
+                                content=node.get("content", ""),
+                                summary=node.get("summary", ""),
+                                embedding=node.get("embedding", []),
+                                agent_id=node.get("agent_id", ""),
+                                session_id=node.get("session_id"),
+                                task_id=node.get("task_id"),
+                                timestamp=node.get("timestamp"),
+                                entities=node.get("entities", []),
+                                facts=node.get("facts", []),
+                                keywords=node.get("keywords", []),
+                                stage_id=node.get("stage_id"),
+                                is_critical=node.get("is_critical", False),
+                                access_count=node.get("access_count", 0),
+                            )
+
+                            # Keep shortest path to this memory
+                            if memory_id not in memory_depths:
+                                memory_depths[memory_id] = (memory, depth)
+                            elif depth < memory_depths[memory_id][1]:
+                                memory_depths[memory_id] = (memory, depth)
+
+                        except Exception as e:
+                            self._logger.warning(
+                                "failed_to_reconstruct_memory_from_node",
+                                memory_id=memory_id,
+                                error=str(e),
+                            )
+                            continue
+
+            return list(memory_depths.values())
+
+        except Exception as e:
+            self._logger.warning(
+                "graph_traversal_failed",
+                seed_id=seed_id,
+                max_depth=max_depth,
+                error=str(e),
+            )
+            return []
