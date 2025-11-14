@@ -85,6 +85,8 @@ dependencies = [
     "psutil>=7.1.0",
     "pytest-rerunfailures>=16.1",
     "scipy>=1.16.2",
+    "qdrant-client>=1.7.0",
+    "testcontainers>=4.0.0",
 ]
 
 [project.urls]
