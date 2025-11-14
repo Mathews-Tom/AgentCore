@@ -87,6 +87,7 @@ dependencies = [
     "scipy>=1.16.2",
     "qdrant-client>=1.7.0",
     "testcontainers>=4.0.0",
+    "neo4j>=5.15.0",
 ]
 
 [project.urls]
@@ -103,6 +104,7 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
     "testcontainers[redis]>=3.7.0",
+    "testcontainers[neo4j]>=4.0.0",
     "httpx==0.24.1",
     "ruff>=0.1.0",
     "mypy>=1.7.0",
@@ -181,6 +183,7 @@ dev = [
     "respx==0.21.1",
     "ruff>=0.13.2",
     "testcontainers[redis]>=4.13.1",
+    "testcontainers[neo4j]>=4.13.1",
     "types-requests>=2.32.4.20250913",
     "websockets>=15.0.1",
 ]
