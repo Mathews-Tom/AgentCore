@@ -14,6 +14,17 @@ from agentcore.a2a_protocol.services.memory.ecl_pipeline import (
     task_registry,
 )
 from agentcore.a2a_protocol.services.memory.entity_extractor import EntityExtractor
+from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
+from agentcore.a2a_protocol.services.memory.hybrid_search import (
+    HybridSearchConfig,
+    HybridSearchMetadata,
+    HybridSearchService,
+)
+from agentcore.a2a_protocol.services.memory.retrieval_service import (
+    EnhancedRetrievalService,
+    RetrievalConfig,
+    ScoringBreakdown,
+)
 from agentcore.a2a_protocol.services.memory.stage_detector import (
     StageDetector,
     StageTransitionHandler,
@@ -38,4 +49,11 @@ __all__ = [
     "TaskStatus",
     "task_registry",
     "EntityExtractor",
+    "GraphMemoryService",
+    "HybridSearchService",
+    "HybridSearchConfig",
+    "HybridSearchMetadata",
+    "EnhancedRetrievalService",
+    "RetrievalConfig",
+    "ScoringBreakdown",
 ]

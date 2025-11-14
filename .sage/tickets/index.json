@@ -12076,7 +12076,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:27Z",
-      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task \u2192 stages \u2192 memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task → stages → memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 173,
@@ -12279,7 +12279,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:48Z",
-      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: \u226595%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: ≥95%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 180,
@@ -12476,7 +12476,7 @@
       "id": "MEM-020",
       "title": "Implement Enhanced Retrieval Service",
       "component": "memory-system",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "priority": "P0",
       "type": "implementation",
       "effort": 5,
@@ -12485,7 +12485,7 @@
         "MEM-007"
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
-      "updated": "2025-11-06T07:39:10Z",
+      "updated": "2025-11-14T19:46:41.711372+00:00",
       "notes": "Implement multi-factor importance scoring with stage relevance\n\n**Acceptance Criteria:**\n- [ ] Embedding similarity scoring (35% weight)\n- [ ] Recency decay scoring (15% weight)\n- [ ] Frequency scoring (10% weight)\n- [ ] Stage relevance scoring (20% weight)\n- [ ] Criticality boost (10% weight)\n- [ ] Error correction relevance (10% weight)\n- [ ] Configurable scoring weights\n- [ ] Unit tests for scoring algorithms\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
@@ -12505,7 +12505,7 @@
       "id": "MEM-021",
       "title": "Implement Hybrid Search (Vector + Graph)",
       "component": "memory-system",
-      "state": "UNPROCESSED",
+      "state": "IN_PROGRESS",
       "priority": "P0",
       "type": "implementation",
       "effort": 13,
@@ -12516,7 +12516,7 @@
         "MEM-020"
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
-      "updated": "2025-11-06T07:39:13Z",
+      "updated": "",
       "notes": "Implement hybrid search combining Qdrant vector search with Neo4j graph traversal\n\n**Acceptance Criteria:**\n- [ ] Vector search in Qdrant for semantic similarity\n- [ ] Graph traversal in Neo4j for contextual relationships\n- [ ] Merge and rank results from both databases\n- [ ] Relationship-based relevance boosting\n- [ ] Graph proximity scoring\n- [ ] <300ms hybrid search latency (p95)\n- [ ] 90%+ retrieval precision (target)\n- [ ] Integration tests with both databases\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 13 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "integration",
       "github": {
@@ -12546,7 +12546,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:39:16Z",
-      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity \u2192 relationship \u2192 entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity → relationship → entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 189,
