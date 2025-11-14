@@ -28,6 +28,7 @@ import structlog
 from agentcore.a2a_protocol.models.llm import LLMRequest
 from agentcore.a2a_protocol.models.memory import MemoryRecord
 from agentcore.a2a_protocol.services.llm_service import llm_service
+from agentcore.a2a_protocol.services.memory.cost_tracker import CostTracker
 
 logger = structlog.get_logger()
 
@@ -123,15 +124,18 @@ class ContextCompressor:
     INPUT_COST_PER_1M = 0.15  # $0.15 per 1M input tokens
     OUTPUT_COST_PER_1M = 0.60  # $0.60 per 1M output tokens
 
-    def __init__(self, trace_id: str | None = None):
+    def __init__(self, trace_id: str | None = None, agent_id: str | None = None):
         """
         Initialize ContextCompressor.
 
         Args:
             trace_id: Optional trace ID for request tracking
+            agent_id: Optional agent ID for cost tracking
         """
         self._logger = logger.bind(component="context_compressor")
         self._trace_id = trace_id
+        self._agent_id = agent_id
+        self._cost_tracker = CostTracker(trace_id=trace_id)
 
     async def compress_stage(
         self,
@@ -224,6 +228,33 @@ class ContextCompressor:
             # In production, we might retry with less aggressive compression
             # For now, we'll log and continue
 
+        # Calculate token counts and cost
+        input_tokens = input_length // 4
+        output_tokens = output_length // 4
+        cost_usd = self._calculate_cost(input_tokens, output_tokens)
+
+        # Record cost to database
+        try:
+            await self._cost_tracker.record_compression_cost(
+                compression_type="stage",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                compression_ratio=compression_ratio,
+                cost_usd=cost_usd,
+                model_used=self.COMPRESSION_MODEL,
+                stage_id=stage_id,
+                task_id=None,
+                agent_id=self._agent_id,
+                critical_fact_retention_rate=quality_score,
+                coherence_score=None,
+            )
+        except Exception as e:
+            self._logger.error(
+                "cost_tracking_failed",
+                stage_id=stage_id,
+                error=str(e),
+            )
+
         self._logger.info(
             "stage_compression_completed",
             stage_id=stage_id,
@@ -232,6 +263,7 @@ class ContextCompressor:
             latency_seconds=latency,
             input_length=input_length,
             output_length=output_length,
+            cost_usd=cost_usd,
         )
 
         return {
@@ -319,6 +351,28 @@ class ContextCompressor:
             model=self.COMPRESSION_MODEL,
             cost_usd=cost_usd,
         )
+
+        # Record cost to database
+        try:
+            await self._cost_tracker.record_compression_cost(
+                compression_type="task",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                compression_ratio=compression_ratio,
+                cost_usd=cost_usd,
+                model_used=self.COMPRESSION_MODEL,
+                stage_id=None,
+                task_id=task_id,
+                agent_id=self._agent_id,
+                critical_fact_retention_rate=quality_score,
+                coherence_score=None,
+            )
+        except Exception as e:
+            self._logger.error(
+                "cost_tracking_failed",
+                task_id=task_id,
+                error=str(e),
+            )
 
         # Check quality threshold
         if quality_score < self.MIN_QUALITY_SCORE:
