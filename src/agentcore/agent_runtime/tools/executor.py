@@ -14,14 +14,18 @@ Enhanced with:
 import asyncio
 import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.tool_integration import ToolExecutionStatus, ToolResult
+from ..models.tool_integration import (
+    ToolExecutionRequest,
+    ToolExecutionStatus,
+    ToolResult,
+)
 from ..monitoring.tracing import (
     add_span_attributes,
     add_span_event,
@@ -192,6 +196,33 @@ class ToolExecutor:
         """
         self._error_hooks.append(hook)
 
+    async def execute(self, request: ToolExecutionRequest) -> ToolResult:
+        """Execute a tool from a ToolExecutionRequest.
+
+        This is a convenience method that adapts the ToolExecutionRequest
+        to the execute_tool() interface.
+
+        Args:
+            request: ToolExecutionRequest containing tool_id, parameters, and context
+
+        Returns:
+            ToolResult containing execution status, result data, errors, and metadata
+        """
+        context = ExecutionContext(
+            user_id=request.execution_context.get("user_id"),
+            agent_id=request.agent_id,
+            trace_id=request.execution_context.get("trace_id"),
+            session_id=request.execution_context.get("session_id"),
+            request_id=request.request_id,
+            metadata=request.execution_context,
+        )
+
+        return await self.execute_tool(
+            tool_id=request.tool_id,
+            parameters=request.parameters,
+            context=context,
+        )
+
     def _enrich_result_with_error_metadata(
         self,
         result: ToolResult,
@@ -294,7 +325,7 @@ class ToolExecutor:
             )
 
             start_time = time.time()
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(UTC)
 
             self.logger.info(
                 "tool_execution_started",
@@ -820,7 +851,7 @@ class ToolExecutor:
                     "execution_context": context.to_dict(),
                     "execution_metadata": result.metadata or {},
                     "timestamp": result.timestamp,
-                    "created_at": datetime.utcnow(),
+                    "created_at": datetime.now(UTC),
                     "retry_count": result.retry_count or 0,
                     "success": success,
                 },
