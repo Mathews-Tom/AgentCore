@@ -44,6 +44,9 @@ class CompressionMetrics:
         output_tokens: int,
         model: str,
         cost_usd: float,
+        coherence_score: float | None = None,
+        fact_retention_rate: float | None = None,
+        contradiction_count: int | None = None,
     ):
         """
         Initialize compression metrics.
@@ -56,6 +59,9 @@ class CompressionMetrics:
             output_tokens: Output token count
             model: Model used for compression
             cost_usd: Estimated cost in USD
+            coherence_score: Optional overall coherence score (0-1)
+            fact_retention_rate: Optional fact retention rate (0-1)
+            contradiction_count: Optional number of contradictions detected
         """
         self.compression_ratio = compression_ratio
         self.quality_score = quality_score
@@ -64,10 +70,13 @@ class CompressionMetrics:
         self.output_tokens = output_tokens
         self.model = model
         self.cost_usd = cost_usd
+        self.coherence_score = coherence_score
+        self.fact_retention_rate = fact_retention_rate
+        self.contradiction_count = contradiction_count
 
     def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary for storage."""
-        return {
+        result = {
             "compression_ratio": self.compression_ratio,
             "quality_score": self.quality_score,
             "latency_seconds": self.latency_seconds,
@@ -76,6 +85,14 @@ class CompressionMetrics:
             "model": self.model,
             "cost_usd": self.cost_usd,
         }
+        # Add optional fields if present
+        if self.coherence_score is not None:
+            result["coherence_score"] = self.coherence_score
+        if self.fact_retention_rate is not None:
+            result["fact_retention_rate"] = self.fact_retention_rate
+        if self.contradiction_count is not None:
+            result["contradiction_count"] = self.contradiction_count
+        return result
 
 
 class ContextCompressor:
