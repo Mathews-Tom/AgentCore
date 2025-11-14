@@ -2,7 +2,7 @@
 
 from typing import Any
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 
 import structlog
 
@@ -112,11 +112,33 @@ async def tools_list(
         except ValueError:
             raise ValueError(f"Invalid category: {category}")
 
-    # Search tools (capabilities and tags filtering not yet implemented in new registry)
+    # Get tools by category if specified
     if tool_category:
         tools = registry.list_by_category(tool_category)
     else:
         tools = registry.list_all()
+
+    # Filter by capabilities (AND logic - all specified capabilities must be present)
+    if capabilities:
+        tools = [
+            tool
+            for tool in tools
+            if all(
+                cap in getattr(tool.metadata, "capabilities", [])
+                for cap in capabilities
+            )
+        ]
+
+    # Filter by tags (OR logic - at least one tag must match)
+    if tags:
+        tools = [
+            tool
+            for tool in tools
+            if any(
+                tag in getattr(tool.metadata, "tags", [])
+                for tag in tags
+            )
+        ]
 
     # Convert to JSON-serializable format
     tools_data = [
@@ -126,6 +148,8 @@ async def tools_list(
             "description": tool.metadata.description,
             "version": tool.metadata.version,
             "category": tool.metadata.category.value,
+            "capabilities": getattr(tool.metadata, "capabilities", []),
+            "tags": getattr(tool.metadata, "tags", []),
             "parameters": [
                 {
                     "name": param.name,
@@ -133,7 +157,7 @@ async def tools_list(
                     "description": param.description,
                     "required": param.required,
                 }
-                for param in tool.metadata.parameters
+                for param in tool.metadata.parameters.values()
             ],
         }
         for tool in tools
@@ -195,15 +219,19 @@ async def tools_get(tool_id: str) -> dict[str, Any]:
         "description": tool.metadata.description,
         "version": tool.metadata.version,
         "category": tool.metadata.category.value,
-        "parameters": [
-            {
+        "capabilities": getattr(tool.metadata, "capabilities", []),
+        "tags": getattr(tool.metadata, "tags", []),
+        "auth_method": tool.metadata.auth_method.value,
+        "timeout_seconds": tool.metadata.timeout_seconds,
+        "parameters": {
+            param.name: {
                 "name": param.name,
                 "type": param.type,
                 "description": param.description,
                 "required": param.required,
             }
-            for param in tool.metadata.parameters
-        ],
+            for param in tool.metadata.parameters.values()
+        },
     }
 
     logger.info("tools_get_called", tool_id=tool_id)
@@ -390,8 +418,30 @@ async def tools_search(
         except ValueError:
             raise ValueError(f"Invalid category: {category}")
 
-    # Search tools (capabilities and tags not yet implemented)
+    # Search tools
     tools = registry.search(query=name_query, category=tool_category)
+
+    # Apply capabilities filter (AND logic - all must match)
+    if capabilities:
+        tools = [
+            tool
+            for tool in tools
+            if all(
+                cap in getattr(tool.metadata, "capabilities", [])
+                for cap in capabilities
+            )
+        ]
+
+    # Apply tags filter (OR logic - any must match)
+    if tags:
+        tools = [
+            tool
+            for tool in tools
+            if any(
+                tag in getattr(tool.metadata, "tags", [])
+                for tag in tags
+            )
+        ]
 
     # Convert to JSON-serializable format
     tools_data = [
@@ -401,6 +451,8 @@ async def tools_search(
             "description": tool.metadata.description,
             "version": tool.metadata.version,
             "category": tool.metadata.category.value,
+            "capabilities": getattr(tool.metadata, "capabilities", []),
+            "tags": getattr(tool.metadata, "tags", []),
         }
         for tool in tools
     ]
@@ -456,7 +508,7 @@ async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
     if not requests or not isinstance(requests, list) or len(requests) == 0:
         raise ValueError("requests parameter required and must be non-empty list")
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
     executor = get_tool_executor()
 
     # Extract A2A context values for reuse
@@ -522,7 +574,7 @@ async def handle_tools_execute_batch(request: JsonRpcRequest) -> dict[str, Any]:
     # Calculate statistics
     successful_count = sum(1 for r in results if r["status"] == "success")
     failed_count = len(results) - successful_count
-    total_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+    total_time_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
     logger.info(
         "tools_execute_batch_called",
@@ -598,7 +650,7 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
 
         task_map[task_id] = task
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
     executor = get_tool_executor()
 
     # Track completed tasks and their results
@@ -675,7 +727,7 @@ async def handle_tools_execute_parallel(request: JsonRpcRequest) -> dict[str, An
     # Calculate statistics
     successful_count = sum(1 for r in completed.values() if r["status"] == "success")
     failed_count = len(completed) - successful_count
-    total_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+    total_time_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
     logger.info(
         "tools_execute_parallel_called",
@@ -738,7 +790,7 @@ async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[st
     if not fallback.get("agent_id") and a2a_source_agent:
         fallback["agent_id"] = a2a_source_agent
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
     executor = get_tool_executor()
 
     # Try primary execution
@@ -816,7 +868,7 @@ async def handle_tools_execute_with_fallback(request: JsonRpcRequest) -> dict[st
                 "execution_time_ms": 0,
             }
 
-    total_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+    total_time_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
     logger.info(
         "tools_execute_with_fallback_called",
