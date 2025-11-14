@@ -109,6 +109,32 @@ class Settings(BaseSettings):
         default=3, ge=0, description="Maximum retry attempts for Qdrant requests"
     )
 
+    # Neo4j Graph Database (Memory System - Knowledge Graphs)
+    NEO4J_URI: str = Field(
+        default="bolt://localhost:7687", description="Neo4j Bolt protocol URI"
+    )
+    NEO4J_USER: str = Field(
+        default="neo4j", description="Neo4j username"
+    )
+    NEO4J_PASSWORD: str = Field(
+        default="password", description="Neo4j password"
+    )
+    NEO4J_DATABASE: str = Field(
+        default="agentcore", description="Neo4j database name"
+    )
+    NEO4J_MAX_CONNECTION_LIFETIME: int = Field(
+        default=3600, gt=0, description="Neo4j connection lifetime in seconds"
+    )
+    NEO4J_MAX_CONNECTION_POOL_SIZE: int = Field(
+        default=50, ge=1, description="Maximum Neo4j connection pool size"
+    )
+    NEO4J_CONNECTION_ACQUISITION_TIMEOUT: int = Field(
+        default=60, gt=0, description="Neo4j connection acquisition timeout in seconds"
+    )
+    NEO4J_ENCRYPTED: bool = Field(
+        default=False, description="Enable TLS encryption for Neo4j connections"
+    )
+
     # Monitoring
     ENABLE_METRICS: bool = Field(default=True, description="Enable Prometheus metrics")
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
