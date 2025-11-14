@@ -143,7 +143,7 @@ class TestToolsJSONRPC:
 
         tool = data["result"]
         assert tool["tool_id"] == "calculator"
-        assert tool["name"] == "calculator"
+        assert tool["name"] == "Calculator"  # Display name is capitalized
         assert "description" in tool
         assert "version" in tool
         assert "category" in tool
@@ -212,7 +212,12 @@ class TestToolsJSONRPC:
         assert result["tool_id"] == "calculator"
         assert result["status"] == "success"  # Lowercase
         assert "result" in result
-        assert result["result"] == 4
+        # Calculator returns detailed result dict
+        assert isinstance(result["result"], dict)
+        assert result["result"]["result"] == 4.0
+        assert result["result"]["operation"] == "+"
+        assert result["result"]["operands"]["a"] == 2.0
+        assert result["result"]["operands"]["b"] == 2.0
         assert "execution_time_ms" in result
         assert "timestamp" in result
 
@@ -236,26 +241,50 @@ class TestToolsJSONRPC:
 
         result = data["result"]
         assert result["status"] == "success"  # Lowercase
-        assert result["result"] == "Hello, World!"
+        # Echo returns detailed result dict
+        assert isinstance(result["result"], dict)
+        assert result["result"]["echo"] == "Hello, World!"
+        assert result["result"]["original"] == "Hello, World!"
+        assert result["result"]["length"] == 13
+        assert result["result"]["uppercase"] is False
 
     @respx.mock
     async def test_tools_execute_wikipedia_search(
         self, async_client: AsyncClient, jsonrpc_request_template
     ):
         """Test tools.execute with Wikipedia search tool."""
-        # Mock Wikipedia API
-        mock_response = [
-            "Python",
-            ["Python (programming language)", "Python (genus)"],
-            ["High-level programming language", "Genus of snakes"],
-            [
-                "https://en.wikipedia.org/wiki/Python_(programming_language)",
-                "https://en.wikipedia.org/wiki/Python_(genus)",
-            ],
-        ]
+        # Mock Wikipedia API search response (action=query&list=search)
+        mock_search_response = {
+            "query": {
+                "search": [
+                    {
+                        "title": "Python (programming language)",
+                        "snippet": "High-level programming language",
+                    }
+                ]
+            }
+        }
 
-        respx.get("https://en.wikipedia.org/w/api.php").mock(
-            return_value=Response(200, json=mock_response)
+        # Mock Wikipedia API extract response (action=query&prop=extracts)
+        mock_extract_response = {
+            "query": {
+                "pages": {
+                    "12345": {
+                        "pageid": 12345,
+                        "title": "Python (programming language)",
+                        "extract": "Python is a high-level programming language. It supports multiple programming paradigms.",
+                        "fullurl": "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                    }
+                }
+            }
+        }
+
+        # Mock both API calls
+        respx.get("https://en.wikipedia.org/w/api.php", params__contains={"list": "search"}).mock(
+            return_value=Response(200, json=mock_search_response)
+        )
+        respx.get("https://en.wikipedia.org/w/api.php", params__contains={"prop": "extracts|info"}).mock(
+            return_value=Response(200, json=mock_extract_response)
         )
 
         request = jsonrpc_request_template(
@@ -274,10 +303,15 @@ class TestToolsJSONRPC:
 
         result = data["result"]
         assert result["status"] == "success"  # Lowercase
-        # Result is JSON string, need to parse it
-        import json
-        result_data = json.loads(result["result"]) if isinstance(result["result"], str) else result["result"]
-        assert "results" in result_data
+        # Wikipedia search returns detailed result dict
+        assert isinstance(result["result"], dict)
+        assert result["result"]["query"] == "Python"
+        assert result["result"]["total_results"] == 1
+        assert result["result"]["disambiguation"] is False
+        assert len(result["result"]["results"]) == 1
+        assert result["result"]["results"][0]["title"] == "Python (programming language)"
+        assert "summary" in result["result"]["results"][0]
+        assert "url" in result["result"]["results"][0]
 
     async def test_tools_execute_missing_tool_id(
         self, async_client: AsyncClient, jsonrpc_request_template

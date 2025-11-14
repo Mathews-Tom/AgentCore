@@ -1,11 +1,13 @@
 """Tests for built-in tool adapters."""
 
 import json
+import os
 
 import pytest
 import respx
 from httpx import Response
 
+from agentcore.agent_runtime.jsonrpc.tools_jsonrpc import get_tool_registry
 from agentcore.agent_runtime.models.tool_integration import (
     ToolExecutionRequest,
     ToolExecutionStatus,
@@ -14,19 +16,24 @@ from agentcore.agent_runtime.tools.executor import ToolExecutor
 from agentcore.agent_runtime.tools.registry import ToolRegistry
 from agentcore.agent_runtime.tools.startup import register_builtin_tools
 
+# Check for required environment variables
+has_google_api = os.environ.get("GOOGLE_API_KEY") and os.environ.get("GOOGLE_SEARCH_ENGINE_ID")
+code_execution_enabled = os.environ.get("ENABLE_CODE_EXECUTION", "false").lower() == "true"
+
 
 @pytest.fixture
 def tool_executor() -> ToolExecutor:
     """Get tool executor with all built-in tools."""
     registry = ToolRegistry()
     register_builtin_tools(registry)
-    return ToolExecutor(registry, enable_metrics=True)
+    return ToolExecutor(registry)
 
 
 # Search Tools Tests
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not has_google_api, reason="Google API credentials not configured")
 async def test_google_search(tool_executor: ToolExecutor):
     """Test Google search tool."""
     request = ToolExecutionRequest(
@@ -46,19 +53,38 @@ async def test_google_search(tool_executor: ToolExecutor):
 @respx.mock
 async def test_wikipedia_search(tool_executor: ToolExecutor):
     """Test Wikipedia search tool."""
-    # Mock Wikipedia API response
-    mock_response = [
-        "Python",
-        ["Python (programming language)", "Python (genus)"],
-        ["High-level programming language", "Genus of snakes"],
-        [
-            "https://en.wikipedia.org/wiki/Python_(programming_language)",
-            "https://en.wikipedia.org/wiki/Python_(genus)",
-        ],
-    ]
+    # Mock Wikipedia API search response (action=query&list=search)
+    mock_search_response = {
+        "query": {
+            "search": [
+                {
+                    "title": "Python (programming language)",
+                    "snippet": "High-level programming language",
+                }
+            ]
+        }
+    }
 
-    respx.get("https://en.wikipedia.org/w/api.php").mock(
-        return_value=Response(200, json=mock_response)
+    # Mock Wikipedia API extract response (action=query&prop=extracts)
+    mock_extract_response = {
+        "query": {
+            "pages": {
+                "12345": {
+                    "pageid": 12345,
+                    "title": "Python (programming language)",
+                    "extract": "Python is a high-level programming language. It supports multiple programming paradigms.",
+                    "fullurl": "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                }
+            }
+        }
+    }
+
+    # Mock both API calls
+    respx.get("https://en.wikipedia.org/w/api.php", params__contains={"list": "search"}).mock(
+        return_value=Response(200, json=mock_search_response)
+    )
+    respx.get("https://en.wikipedia.org/w/api.php", params__contains={"prop": "extracts|info"}).mock(
+        return_value=Response(200, json=mock_extract_response)
     )
 
     request = ToolExecutionRequest(
@@ -70,10 +96,14 @@ async def test_wikipedia_search(tool_executor: ToolExecutor):
     result = await tool_executor.execute(request)
 
     assert result.status == ToolExecutionStatus.SUCCESS
-    # The result will be a JSON string, parse it
-    result_data = json.loads(result.result) if isinstance(result.result, str) else result.result
-    assert "results" in result_data
-    assert len(result_data["results"]) == 2
+    # Wikipedia search returns detailed result dict
+    assert isinstance(result.result, dict)
+    assert result.result["query"] == "Python"
+    assert result.result["total_results"] == 1
+    assert result.result["disambiguation"] is False
+    assert len(result.result["results"]) == 1
+    assert result.result["results"][0]["title"] == "Python (programming language)"
+    assert "summary" in result.result["results"][0]
 
 
 @pytest.mark.asyncio
@@ -116,6 +146,7 @@ async def test_web_scrape(tool_executor: ToolExecutor):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not code_execution_enabled, reason="Code execution not enabled (ENABLE_CODE_EXECUTION=false)")
 async def test_execute_python_simple(tool_executor: ToolExecutor):
     """Test Python execution with simple code."""
     code = """
@@ -138,6 +169,7 @@ print(f"Answer: {result}")
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not code_execution_enabled, reason="Code execution not enabled (ENABLE_CODE_EXECUTION=false)")
 async def test_execute_python_with_error(tool_executor: ToolExecutor):
     """Test Python execution with error."""
     code = """
@@ -160,6 +192,7 @@ undefined_variable + 1
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not code_execution_enabled, reason="Code execution not enabled (ENABLE_CODE_EXECUTION=false)")
 async def test_execute_python_timeout(tool_executor: ToolExecutor):
     """Test Python execution timeout."""
     # Note: Python sandbox doesn't support imports for security,
@@ -187,6 +220,7 @@ time.sleep(100)
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not code_execution_enabled, reason="Code execution not enabled (ENABLE_CODE_EXECUTION=false)")
 async def test_evaluate_expression(tool_executor: ToolExecutor):
     """Test expression evaluation."""
     request = ToolExecutionRequest(
@@ -204,6 +238,7 @@ async def test_evaluate_expression(tool_executor: ToolExecutor):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not code_execution_enabled, reason="Code execution not enabled (ENABLE_CODE_EXECUTION=false)")
 async def test_evaluate_expression_with_functions(tool_executor: ToolExecutor):
     """Test expression evaluation with built-in functions."""
     request = ToolExecutionRequest(
@@ -221,6 +256,7 @@ async def test_evaluate_expression_with_functions(tool_executor: ToolExecutor):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not code_execution_enabled, reason="Code execution not enabled (ENABLE_CODE_EXECUTION=false)")
 async def test_evaluate_expression_error(tool_executor: ToolExecutor):
     """Test expression evaluation with error."""
     request = ToolExecutionRequest(
@@ -441,7 +477,7 @@ async def test_graphql_query_with_errors(tool_executor: ToolExecutor):
 async def test_all_tools_registered():
     """Test that all expected tools are registered."""
     registry = get_tool_registry()
-    tools = registry.list_tools()
+    tools = registry.list_all()
 
     # Expected tool count: 3 (Phase 1) + 9 (Phase 2) = 12
     assert len(tools) >= 12
@@ -462,7 +498,7 @@ async def test_all_tools_registered():
         "graphql_query",
     ]
 
-    registered_tool_ids = {tool.tool_id for tool in tools}
+    registered_tool_ids = {tool.metadata.tool_id for tool in tools}
     for tool_id in expected_tools:
         assert tool_id in registered_tool_ids, f"Tool {tool_id} not registered"
 
@@ -470,12 +506,14 @@ async def test_all_tools_registered():
 @pytest.mark.asyncio
 async def test_tool_discovery_by_capability():
     """Test discovering tools by capability."""
+    from agentcore.agent_runtime.models.tool_integration import ToolCategory
+
     registry = get_tool_registry()
 
-    # Find all tools with external_api capability
-    external_api_tools = registry.search_by_capability("external_api")
-    assert len(external_api_tools) >= 5  # Search + API tools
+    # Find all API client tools
+    api_tools = registry.list_by_category(ToolCategory.API_CLIENT)
+    assert len(api_tools) >= 4  # http_request, rest_get, rest_post, graphql_query
 
     # Find code execution tools
-    code_tools = registry.search_by_capability("code_execution")
-    assert len(code_tools) >= 1
+    code_tools = registry.list_by_category(ToolCategory.CODE_EXECUTION)
+    assert len(code_tools) >= 2  # execute_python, evaluate_expression

@@ -109,7 +109,7 @@ async def test_trajectory_recorder_with_real_engine(init_test_db):
         await engine.cleanup()
 
 
-@pytest.mark.skip(reason="Training tables not migrated - feature inactive")
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_end_to_end_trajectory_persistence(init_test_db):
     """Test end-to-end trajectory collection and persistence."""

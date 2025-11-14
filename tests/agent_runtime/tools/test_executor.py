@@ -1,7 +1,7 @@
 """Tests for tool executor implementation."""
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -54,7 +54,7 @@ class MockSuccessTool(Tool):
             status=ToolExecutionStatus.SUCCESS,
             result={"output": f"Processed: {parameters['input']}"},
             execution_time_ms=100.0,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 
@@ -90,7 +90,7 @@ class MockFailureTool(Tool):
             error="Simulated tool failure",
             error_type="MockError",
             execution_time_ms=50.0,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 
@@ -122,7 +122,7 @@ class MockTimeoutTool(Tool):
             status=ToolExecutionStatus.SUCCESS,
             result={},
             execution_time_ms=2000.0,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 
@@ -150,7 +150,7 @@ class MockAuthTool(Tool):
             status=ToolExecutionStatus.SUCCESS,
             result={"authenticated": True},
             execution_time_ms=100.0,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 

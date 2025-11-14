@@ -1,7 +1,7 @@
 """Tests for enhanced tool executor features (rate limiting, retry, hooks)."""
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
@@ -55,7 +55,7 @@ class MockToolWithRateLimit(Tool):
             status=ToolExecutionStatus.SUCCESS,
             result={"output": f"Processed: {parameters['input']}"},
             execution_time_ms=100.0,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 
@@ -92,7 +92,7 @@ class MockRetryableTool(Tool):
             status=ToolExecutionStatus.SUCCESS,
             result={"attempts": self.attempt_count},
             execution_time_ms=100.0,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
 
@@ -237,7 +237,7 @@ class TestLifecycleHooks:
                     status=ToolExecutionStatus.SUCCESS,
                     result={},
                     execution_time_ms=100.0,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                 )
 
         tool = SimpleTool()
@@ -288,7 +288,7 @@ class TestLifecycleHooks:
                     status=ToolExecutionStatus.SUCCESS,
                     result={},
                     execution_time_ms=100.0,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                 )
 
         tool = SimpleTool()
@@ -388,7 +388,7 @@ class TestLifecycleHooks:
                     status=ToolExecutionStatus.SUCCESS,
                     result={},
                     execution_time_ms=100.0,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(UTC),
                 )
 
         tool = SimpleTool()
