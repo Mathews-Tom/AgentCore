@@ -19,13 +19,12 @@ Ticket: MEM-021 (Implement Hybrid Search - Vector + Graph)
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, Self
 
 import structlog
 from pydantic import BaseModel, Field, model_validator
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qmodels
-from typing_extensions import Self
 
 from agentcore.a2a_protocol.models.memory import MemoryRecord, StageType
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
