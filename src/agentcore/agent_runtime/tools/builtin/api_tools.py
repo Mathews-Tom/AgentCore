@@ -720,12 +720,14 @@ class GraphQLQueryTool(Tool):
                     success=graphql_result["success"],
                 )
 
+                # Tool execution is SUCCESS if we got a valid HTTP response,
+                # even if GraphQL returned errors. The result contains error details.
                 return ToolResult(
                     request_id=context.request_id,
                     tool_id=self.metadata.tool_id,
-                    status=ToolExecutionStatus.SUCCESS if graphql_result["success"] else ToolExecutionStatus.FAILED,
+                    status=ToolExecutionStatus.SUCCESS,
                     result=graphql_result,
-                    error=str(graphql_result["errors"]) if graphql_result["errors"] else None,
+                    error=None,  # GraphQL errors are in result, not tool execution errors
                     execution_time_ms=execution_time_ms,
                     metadata={
                         "trace_id": context.trace_id,

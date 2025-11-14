@@ -361,12 +361,19 @@ class ReActEngine(PhilosophyEngine):
         Create observation from tool result.
 
         Args:
-            result: Tool execution result
+            result: Tool execution result (dict with 'success', 'result', 'error' keys)
 
         Returns:
             Observation string
         """
-        if result.success:
-            return f"Tool executed successfully. Result: {result.result}"
+        if isinstance(result, dict):
+            if result.get("success"):
+                return f"Tool executed successfully. Result: {result.get('result')}"
+            else:
+                return f"Tool execution failed. Error: {result.get('error')}"
         else:
-            return f"Tool execution failed. Error: {result.error}"
+            # Handle object with attributes (backwards compatibility)
+            if result.success:
+                return f"Tool executed successfully. Result: {result.result}"
+            else:
+                return f"Tool execution failed. Error: {result.error}"
