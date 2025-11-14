@@ -655,3 +655,629 @@ class SessionRepository:
             ),
             checkpoint_count=session_db.checkpoint_count,
         )
+
+
+# ==================== Memory System Repositories ====================
+
+
+class MemoryRepository:
+    """Repository for memory database operations."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession, memory_record: "MemoryRecord"
+    ) -> "MemoryModel":
+        """
+        Create memory from MemoryRecord.
+
+        Args:
+            session: Database session
+            memory_record: Pydantic memory record
+
+        Returns:
+            MemoryModel: Created memory ORM model
+
+        Example:
+            memory = await MemoryRepository.create(session, memory_record)
+        """
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        # Extract UUIDs from ID strings
+        def extract_uuid(id_str: str) -> UUID:
+            """Extract UUID from prefixed ID string."""
+            if "-" in id_str and not id_str.count("-") == 4:  # Has prefix
+                return UUID(id_str.split("-", 1)[1])
+            return UUID(id_str)
+
+        memory_db = MemoryModel(
+            memory_id=extract_uuid(memory_record.memory_id),
+            memory_layer=memory_record.memory_layer,
+            content=memory_record.content,
+            summary=memory_record.summary,
+            embedding=memory_record.embedding,
+            agent_id=extract_uuid(memory_record.agent_id)
+            if memory_record.agent_id
+            else None,
+            session_id=extract_uuid(memory_record.session_id)
+            if memory_record.session_id
+            else None,
+            user_id=extract_uuid(memory_record.user_id)
+            if memory_record.user_id
+            else None,
+            task_id=extract_uuid(memory_record.task_id)
+            if memory_record.task_id
+            else None,
+            timestamp=memory_record.timestamp,
+            entities=memory_record.entities,
+            facts=memory_record.facts,
+            keywords=memory_record.keywords,
+            related_memory_ids=[
+                extract_uuid(mid) for mid in memory_record.related_memory_ids
+            ],
+            parent_memory_id=extract_uuid(memory_record.parent_memory_id)
+            if memory_record.parent_memory_id
+            else None,
+            relevance_score=memory_record.relevance_score,
+            access_count=memory_record.access_count,
+            last_accessed=memory_record.last_accessed,
+            stage_id=extract_uuid(memory_record.stage_id)
+            if memory_record.stage_id
+            else None,
+            is_critical=memory_record.is_critical,
+            criticality_reason=memory_record.criticality_reason,
+            actions=memory_record.actions,
+            outcome=memory_record.outcome,
+            success=memory_record.success,
+        )
+        session.add(memory_db)
+        await session.flush()
+        return memory_db
+
+    @staticmethod
+    async def get_by_id(
+        session: AsyncSession, memory_id: str
+    ) -> "MemoryModel | None":
+        """Get memory by ID."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        result = await session.execute(
+            select(MemoryModel).where(MemoryModel.memory_id == UUID(memory_id))
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_stage_id(
+        session: AsyncSession, stage_id: str, limit: int = 100
+    ) -> list["MemoryModel"]:
+        """
+        Get memories filtered by stage_id.
+
+        Args:
+            session: Database session
+            stage_id: Stage ID to filter by
+            limit: Maximum number of results
+
+        Returns:
+            List of memory ORM models
+        """
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        result = await session.execute(
+            select(MemoryModel)
+            .where(MemoryModel.stage_id == UUID(stage_id))
+            .order_by(MemoryModel.timestamp.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_by_agent_and_layer(
+        session: AsyncSession,
+        agent_id: str,
+        layer: "MemoryLayer",
+        limit: int = 100,
+    ) -> list["MemoryModel"]:
+        """Get memories by agent and layer."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        result = await session.execute(
+            select(MemoryModel)
+            .where(
+                and_(
+                    MemoryModel.agent_id == UUID(agent_id),
+                    MemoryModel.memory_layer == layer,
+                )
+            )
+            .order_by(MemoryModel.timestamp.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_critical_memories(
+        session: AsyncSession, agent_id: str, limit: int = 50
+    ) -> list["MemoryModel"]:
+        """Get critical memories for agent."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        result = await session.execute(
+            select(MemoryModel)
+            .where(
+                and_(
+                    MemoryModel.agent_id == UUID(agent_id),
+                    MemoryModel.is_critical == True,
+                )
+            )
+            .order_by(MemoryModel.relevance_score.desc(), MemoryModel.timestamp.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def update_access(session: AsyncSession, memory_id: str) -> bool:
+        """Update memory access tracking."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        result = await session.execute(
+            update(MemoryModel)
+            .where(MemoryModel.memory_id == UUID(memory_id))
+            .values(
+                access_count=MemoryModel.access_count + 1,
+                last_accessed=datetime.now(UTC),
+            )
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def delete(session: AsyncSession, memory_id: str) -> bool:
+        """Delete memory."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import MemoryModel
+
+        result = await session.execute(
+            delete(MemoryModel).where(MemoryModel.memory_id == UUID(memory_id))
+        )
+        return result.rowcount > 0
+
+
+class StageMemoryRepository:
+    """Repository for stage memory database operations."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession, stage_memory: "StageMemory"
+    ) -> "StageMemoryModel":
+        """Create stage memory from StageMemory."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import StageMemoryModel
+
+        # Extract UUIDs from ID strings (handles "stage-{uuid}", "task-{uuid}", etc.)
+        def extract_uuid(id_str: str) -> UUID:
+            """Extract UUID from prefixed ID string."""
+            if "-" in id_str and not id_str.count("-") == 4:  # Has prefix
+                return UUID(id_str.split("-", 1)[1])
+            return UUID(id_str)
+
+        stage_db = StageMemoryModel(
+            stage_id=extract_uuid(stage_memory.stage_id),
+            task_id=extract_uuid(stage_memory.task_id),
+            agent_id=extract_uuid(stage_memory.agent_id),
+            stage_type=stage_memory.stage_type,
+            stage_summary=stage_memory.stage_summary,
+            stage_insights=stage_memory.stage_insights,
+            raw_memory_refs=[extract_uuid(ref) for ref in stage_memory.raw_memory_refs],
+            relevance_score=stage_memory.relevance_score,
+            compression_ratio=stage_memory.compression_ratio,
+            compression_model=stage_memory.compression_model,
+            quality_metrics={"quality_score": stage_memory.quality_score},
+            created_at=stage_memory.created_at,
+            updated_at=stage_memory.updated_at,
+            completed_at=stage_memory.completed_at,
+        )
+        session.add(stage_db)
+        await session.flush()
+        return stage_db
+
+    @staticmethod
+    async def get_by_id(
+        session: AsyncSession, stage_id: str
+    ) -> "StageMemoryModel | None":
+        """Get stage memory by ID."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import StageMemoryModel
+
+        result = await session.execute(
+            select(StageMemoryModel).where(StageMemoryModel.stage_id == UUID(stage_id))
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_task_and_stage(
+        session: AsyncSession, task_id: str, stage_type: "StageType"
+    ) -> list["StageMemoryModel"]:
+        """
+        Get stage memories by task and stage type.
+
+        Args:
+            session: Database session
+            task_id: Task ID to filter by
+            stage_type: Stage type to filter by
+
+        Returns:
+            List of stage memory ORM models
+        """
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import StageMemoryModel
+
+        result = await session.execute(
+            select(StageMemoryModel)
+            .where(
+                and_(
+                    StageMemoryModel.task_id == UUID(task_id),
+                    StageMemoryModel.stage_type == stage_type,
+                )
+            )
+            .order_by(StageMemoryModel.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_by_task(
+        session: AsyncSession, task_id: str
+    ) -> list["StageMemoryModel"]:
+        """Get all stage memories for a task."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import StageMemoryModel
+
+        result = await session.execute(
+            select(StageMemoryModel)
+            .where(StageMemoryModel.task_id == UUID(task_id))
+            .order_by(StageMemoryModel.created_at)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def update(
+        session: AsyncSession, stage_id: str, **updates: dict
+    ) -> bool:
+        """Update stage memory fields."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import StageMemoryModel
+
+        updates["updated_at"] = datetime.now(UTC)
+        result = await session.execute(
+            update(StageMemoryModel)
+            .where(StageMemoryModel.stage_id == UUID(stage_id))
+            .values(**updates)
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def delete(session: AsyncSession, stage_id: str) -> bool:
+        """Delete stage memory."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import StageMemoryModel
+
+        result = await session.execute(
+            delete(StageMemoryModel).where(
+                StageMemoryModel.stage_id == UUID(stage_id)
+            )
+        )
+        return result.rowcount > 0
+
+
+class TaskContextRepository:
+    """Repository for task context database operations."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession, task_context: "TaskContext"
+    ) -> "TaskContextModel":
+        """Create task context from TaskContext."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import TaskContextModel
+
+        # Extract UUIDs from ID strings
+        def extract_uuid(id_str: str) -> UUID:
+            """Extract UUID from prefixed ID string."""
+            if "-" in id_str and not id_str.count("-") == 4:  # Has prefix
+                return UUID(id_str.split("-", 1)[1])
+            return UUID(id_str)
+
+        task_db = TaskContextModel(
+            task_id=extract_uuid(task_context.task_id),
+            agent_id=extract_uuid(task_context.agent_id),
+            task_goal=task_context.task_goal,
+            current_stage_id=extract_uuid(task_context.current_stage_id)
+            if task_context.current_stage_id
+            else None,
+            task_progress_summary=task_context.task_progress_summary,
+            critical_constraints=task_context.critical_constraints,
+            performance_metrics=task_context.performance_metrics,
+            created_at=task_context.created_at,
+            updated_at=task_context.updated_at,
+        )
+        session.add(task_db)
+        await session.flush()
+        return task_db
+
+    @staticmethod
+    async def get_by_id(
+        session: AsyncSession, task_id: str
+    ) -> "TaskContextModel | None":
+        """Get task context by ID."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import TaskContextModel
+
+        result = await session.execute(
+            select(TaskContextModel).where(TaskContextModel.task_id == UUID(task_id))
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_current_stage(
+        session: AsyncSession, task_id: str
+    ) -> str | None:
+        """
+        Get current stage ID for a task.
+
+        Args:
+            session: Database session
+            task_id: Task ID
+
+        Returns:
+            Current stage ID or None
+        """
+        task_context = await TaskContextRepository.get_by_id(session, task_id)
+        if task_context and task_context.current_stage_id:
+            return str(task_context.current_stage_id)
+        return None
+
+    @staticmethod
+    async def update_progress(
+        session: AsyncSession,
+        task_id: str,
+        progress_summary: str,
+        current_stage_id: str | None = None,
+    ) -> bool:
+        """
+        Update task progress summary and current stage.
+
+        Args:
+            session: Database session
+            task_id: Task ID
+            progress_summary: Updated progress summary
+            current_stage_id: New current stage ID (optional)
+
+        Returns:
+            True if update successful
+        """
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import TaskContextModel
+
+        updates = {
+            "task_progress_summary": progress_summary,
+            "updated_at": datetime.now(UTC),
+        }
+        if current_stage_id:
+            updates["current_stage_id"] = UUID(current_stage_id)
+
+        result = await session.execute(
+            update(TaskContextModel)
+            .where(TaskContextModel.task_id == UUID(task_id))
+            .values(**updates)
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def update_metrics(
+        session: AsyncSession, task_id: str, metrics: dict
+    ) -> bool:
+        """Update task performance metrics."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import TaskContextModel
+
+        result = await session.execute(
+            update(TaskContextModel)
+            .where(TaskContextModel.task_id == UUID(task_id))
+            .values(performance_metrics=metrics, updated_at=datetime.now(UTC))
+        )
+        return result.rowcount > 0
+
+    @staticmethod
+    async def delete(session: AsyncSession, task_id: str) -> bool:
+        """Delete task context."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import TaskContextModel
+
+        result = await session.execute(
+            delete(TaskContextModel).where(TaskContextModel.task_id == UUID(task_id))
+        )
+        return result.rowcount > 0
+
+
+class ErrorRepository:
+    """Repository for error record database operations."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession, error_record: "ErrorRecord"
+    ) -> "ErrorModel":
+        """Create error record from ErrorRecord."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import ErrorModel
+
+        # Extract UUIDs from ID strings
+        def extract_uuid(id_str: str) -> UUID:
+            """Extract UUID from prefixed ID string."""
+            if "-" in id_str and not id_str.count("-") == 4:  # Has prefix
+                return UUID(id_str.split("-", 1)[1])
+            return UUID(id_str)
+
+        error_db = ErrorModel(
+            error_id=extract_uuid(error_record.error_id),
+            task_id=extract_uuid(error_record.task_id),
+            stage_id=extract_uuid(error_record.stage_id)
+            if error_record.stage_id
+            else None,
+            agent_id=extract_uuid(error_record.agent_id),
+            error_type=error_record.error_type,
+            error_description=error_record.error_description,
+            context_when_occurred=error_record.context_when_occurred,
+            recovery_action=error_record.recovery_action,
+            error_severity=error_record.error_severity,
+            recorded_at=error_record.recorded_at,
+        )
+        session.add(error_db)
+        await session.flush()
+        return error_db
+
+    @staticmethod
+    async def get_by_id(
+        session: AsyncSession, error_id: str
+    ) -> "ErrorModel | None":
+        """Get error record by ID."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import ErrorModel
+
+        result = await session.execute(
+            select(ErrorModel).where(ErrorModel.error_id == UUID(error_id))
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_recent_errors(
+        session: AsyncSession,
+        task_id: str,
+        hours: int = 24,
+        limit: int = 50,
+    ) -> list["ErrorModel"]:
+        """
+        Get recent errors for a task within time window.
+
+        Args:
+            session: Database session
+            task_id: Task ID to filter by
+            hours: Time window in hours
+            limit: Maximum number of results
+
+        Returns:
+            List of error ORM models
+        """
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import ErrorModel
+
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
+        result = await session.execute(
+            select(ErrorModel)
+            .where(
+                and_(
+                    ErrorModel.task_id == UUID(task_id),
+                    ErrorModel.recorded_at >= cutoff_time,
+                )
+            )
+            .order_by(ErrorModel.recorded_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def detect_patterns(
+        session: AsyncSession,
+        task_id: str,
+        error_type: "ErrorType | None" = None,
+        min_occurrences: int = 3,
+    ) -> dict[str, int]:
+        """
+        Detect error patterns by counting error types.
+
+        Args:
+            session: Database session
+            task_id: Task ID to analyze
+            error_type: Specific error type to filter (optional)
+            min_occurrences: Minimum occurrences to be considered a pattern
+
+        Returns:
+            Dictionary mapping error types to occurrence counts
+        """
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import ErrorModel
+
+        query = select(ErrorModel.error_type, func.count(ErrorModel.error_id)).where(
+            ErrorModel.task_id == UUID(task_id)
+        )
+
+        if error_type:
+            query = query.where(ErrorModel.error_type == error_type)
+
+        query = query.group_by(ErrorModel.error_type).having(
+            func.count(ErrorModel.error_id) >= min_occurrences
+        )
+
+        result = await session.execute(query)
+        return {str(error_type): count for error_type, count in result.all()}
+
+    @staticmethod
+    async def get_by_severity(
+        session: AsyncSession,
+        task_id: str,
+        min_severity: float = 0.7,
+        limit: int = 50,
+    ) -> list["ErrorModel"]:
+        """Get errors above severity threshold."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import ErrorModel
+
+        result = await session.execute(
+            select(ErrorModel)
+            .where(
+                and_(
+                    ErrorModel.task_id == UUID(task_id),
+                    ErrorModel.error_severity >= min_severity,
+                )
+            )
+            .order_by(ErrorModel.error_severity.desc(), ErrorModel.recorded_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def delete(session: AsyncSession, error_id: str) -> bool:
+        """Delete error record."""
+        from uuid import UUID
+
+        from agentcore.a2a_protocol.database.memory_models import ErrorModel
+
+        result = await session.execute(
+            delete(ErrorModel).where(ErrorModel.error_id == UUID(error_id))
+        )
+        return result.rowcount > 0
