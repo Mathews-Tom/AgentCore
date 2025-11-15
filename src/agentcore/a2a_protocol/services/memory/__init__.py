@@ -33,6 +33,17 @@ from agentcore.a2a_protocol.services.memory.stage_manager import (
     CompressionTrigger,
     StageManager,
 )
+from agentcore.a2a_protocol.services.memory.integration import (
+    ACEStrategicContext,
+    ACEStrategicContextInterface,
+    ArtifactMemoryRecord,
+    ArtifactMemoryStorage,
+    MemoryAwareRouter,
+    MemoryServiceIntegration,
+    RoutingMemoryInsight,
+    SessionContextProvider,
+    SessionMemoryContext,
+)
 
 # Register entity extractor with global task registry
 task_registry.register(EntityExtractor)
@@ -56,4 +67,14 @@ __all__ = [
     "EnhancedRetrievalService",
     "RetrievalConfig",
     "ScoringBreakdown",
+    # Service Integration (MEM-025)
+    "MemoryServiceIntegration",
+    "SessionContextProvider",
+    "SessionMemoryContext",
+    "MemoryAwareRouter",
+    "RoutingMemoryInsight",
+    "ArtifactMemoryStorage",
+    "ArtifactMemoryRecord",
+    "ACEStrategicContextInterface",
+    "ACEStrategicContext",
 ]
