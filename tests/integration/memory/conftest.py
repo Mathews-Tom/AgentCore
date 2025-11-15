@@ -9,6 +9,7 @@ from tests.integration.fixtures.qdrant import (
     qdrant_url,
 )
 
+# Re-export fixtures for pytest discovery
 __all__ = [
     "qdrant_container",
     "qdrant_url",
