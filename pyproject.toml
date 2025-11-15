@@ -88,6 +88,7 @@ dependencies = [
     "qdrant-client>=1.7.0",
     "testcontainers>=4.0.0",
     "neo4j>=5.15.0",
+    "croniter>=6.0.0",
 ]
 
 [project.urls]
