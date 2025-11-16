@@ -6204,7 +6204,7 @@
       "title": "Flow-Based Optimization Engine Implementation",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "component": "flow-based-optimization",
       "spec": "docs/specs/flow-based-optimization/spec.md",
       "created": "2025-10-15",
@@ -6230,7 +6230,7 @@
         "FLOW-020"
       ],
       "effort": 0,
-      "updated": "2025-11-06T07:39:58Z",
+      "updated": "2025-11-16T19:59:32Z",
       "validation_type": "generic",
       "github": {
         "issueNumber": 196,
@@ -6315,14 +6315,14 @@
       "title": "Reward Engine",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 1,
       "effort_sp": 5,
       "dependencies": [
         "FLOW-003"
       ],
-      "updated": "2025-11-06T07:40:12Z",
+      "updated": "2025-11-16T19:59:32Z",
       "completed": "2025-10-16T23:17:50Z",
       "state_history": [
         {
@@ -6355,14 +6355,14 @@
       "title": "GRPO Trainer Core",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 1,
       "effort_sp": 8,
       "dependencies": [
         "FLOW-004"
       ],
-      "updated": "2025-11-06T07:40:15Z",
+      "updated": "2025-11-16T19:59:32Z",
       "completed": "2025-10-16T23:23:31Z",
       "state_history": [
         {
@@ -6395,14 +6395,14 @@
       "title": "Policy Updater",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 1,
       "effort_sp": 5,
       "dependencies": [
         "FLOW-005"
       ],
-      "updated": "2025-11-06T07:40:17Z",
+      "updated": "2025-11-16T19:59:32Z",
       "completed": "2025-10-16T23:26:31Z",
       "state_history": [
         {
@@ -6435,7 +6435,7 @@
       "title": "Training Job Manager",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 2,
       "effort_sp": 5,
@@ -6443,7 +6443,7 @@
         "FLOW-002",
         "FLOW-005"
       ],
-      "updated": "2025-11-06T07:40:20Z",
+      "updated": "2025-11-16T19:59:32Z",
       "state_history": [
         {
           "state": "IN_PROGRESS",
@@ -6479,14 +6479,14 @@
       "title": "Training API Endpoints",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 2,
       "effort_sp": 5,
       "dependencies": [
         "FLOW-007"
       ],
-      "updated": "2025-11-06T07:40:23Z",
+      "updated": "2025-11-16T19:59:32Z",
       "state_history": [
         {
           "state": "IN_PROGRESS",
@@ -6522,14 +6522,14 @@
       "title": "Integration Tests Phase 1",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 2,
       "effort_sp": 5,
       "dependencies": [
         "FLOW-008"
       ],
-      "updated": "2025-11-06T07:40:26Z",
+      "updated": "2025-11-16T19:59:32Z",
       "state_history": [
         {
           "state": "IN_PROGRESS",
@@ -6569,7 +6569,7 @@
         "FLOW-003"
       ],
       "notes": "- Tool accuracy computed when trajectories use tools (type=\"tool_call\")\n- Statistical significance threshold: p < 0.05\n- Supports configurable evaluation intervals for periodic assessment\n- Ready for integration with TrainingJobManager in FLOW-019\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-06T07:40:29Z",
+      "updated": "2025-11-17T00:50:30Z",
       "git": {
         "commits": [
           "9c0633d"
@@ -6594,7 +6594,7 @@
       "title": "Budget Enforcement",
       "type": "implementation",
       "priority": "P0",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 3,
       "effort_sp": 3,
@@ -6602,7 +6602,7 @@
         "FLOW-007"
       ],
       "notes": "- Decimal type used for precise monetary calculations\n- Structured logging for budget events and threshold crossings\n- Integration ready with TrainingJobManager for automatic enforcement\n- Phase 1: Budget tracking; Phase 2: Portkey API integration for real-time cost monitoring\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-06T07:40:32Z",
+      "updated": "2025-11-16T19:59:32Z",
       "git": {
         "commits": [
           "de8fadb"
@@ -6635,7 +6635,7 @@
         "FLOW-005"
       ],
       "notes": "- Phase 1: JSON file persistence for development and testing\n- Phase 2: PostgreSQL metadata + S3 for large policy weights (production)\n- Checkpoints sorted by validation score for best selection\n- Automatic cleanup prevents disk space issues\n- Ready for integration with TrainingJobManager\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-06T07:40:35Z",
+      "updated": "2025-11-17T00:50:30Z",
       "git": {
         "commits": [
           "95ff204"
@@ -6668,7 +6668,7 @@
         "FLOW-007"
       ],
       "notes": "- Prometheus client library integrated\n- Histogram buckets tuned for training workloads\n- Ready for production monitoring with Prometheus + Grafana\n- Alert rules included for proactive monitoring\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-06T07:40:38Z",
+      "updated": "2025-11-17T00:50:30Z",
       "git": {
         "commits": [
           "a728137"
@@ -6701,7 +6701,7 @@
         "FLOW-002"
       ],
       "notes": "- Phase 1: Returns empty results as trajectories are simulated, not stored in DB\n- Phase 2: Will return actual trajectories from PostgreSQL with full filtering\n- Authorization checks (data_export permission) deferred to Phase 2\n- Ready for integration in FLOW-019 (Integration Tests Phase 2)\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-06T07:40:41Z",
+      "updated": "2025-11-17T00:50:30Z",
       "git": {
         "commits": [
           "fc9e562"
@@ -6757,7 +6757,7 @@
       "title": "Multi-Step Credit Assignment",
       "type": "implementation",
       "priority": "P1",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 4,
       "effort_sp": 5,
@@ -6765,7 +6765,7 @@
         "FLOW-005"
       ],
       "notes": "- Default gamma=0.99 provides strong temporal signal without over-discounting\n- Per-step advantages currently computed but not yet used in policy updates (trajectory-level advantages used instead)\n- Future enhancement: Per-step policy gradients for finer-grained updates\n- Convergence benchmark deferred to integration testing phase (FLOW-019)\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-06T07:40:44Z",
+      "updated": "2025-11-16T19:59:32Z",
       "git": {
         "commits": [
           "39a657e"
@@ -6790,14 +6790,14 @@
       "title": "Training Job Scheduling",
       "type": "implementation",
       "priority": "P1",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 4,
       "effort_sp": 3,
       "dependencies": [
         "FLOW-007"
       ],
-      "updated": "2025-11-06T07:40:47Z",
+      "updated": "2025-11-16T19:59:32Z",
       "notes": "- Phase 1: Basic Redis queue integration without persistent job storage\n- Phase 2: Full PostgreSQL integration for job queue persistence (FLOW-019)\n- Performance tests created but require Redis server for execution\n- HPA requires Prometheus custom metrics adapter for queue depth metric\n- Default pool size recommendation: 5-10 workers for development, 20-50 for production\n\n---\n\n*Created: unknown*\n*Updated: 2025-10-17T14:25:52Z*",
       "git": {
         "commits": [
@@ -6824,14 +6824,14 @@
       "title": "Advanced Reward Shaping",
       "type": "implementation",
       "priority": "P2",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 4,
       "effort_sp": 3,
       "dependencies": [
         "FLOW-004"
       ],
-      "updated": "2025-11-06T07:40:51Z",
+      "updated": "2025-11-16T19:59:32Z",
       "git": {
         "commits": [
           "e0e2824",
@@ -12076,7 +12076,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:27Z",
-      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task \u2192 stages \u2192 memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Create SQLAlchemy models matching database schema with async support\n\n**Acceptance Criteria:**\n- [ ] StageMemoryModel with JSONB for raw_memory_refs\n- [ ] TaskContextModel with foreign key to stage_memories\n- [ ] ErrorModel with error_type constraint validation\n- [ ] CompressionMetricsModel for cost tracking\n- [ ] All models use AsyncSession\n- [ ] Relationships configured (task → stages → memories)\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 1 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 173,
@@ -12279,7 +12279,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:38:48Z",
-      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: \u226595%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement quality metrics for compression validation (fact retention, coherence)\n\n**Acceptance Criteria:**\n- [ ] Critical fact retention tracking (target: ≥95%)\n- [ ] Compression ratio validation (10:1, 5:1)\n- [ ] Coherence score (no contradictions)\n- [ ] Quality degradation alerts\n- [ ] Fallback to less aggressive compression if quality drops\n- [ ] Integration tests with real compression\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 2 (8-week timeline)\n**Effort:** 5 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 180,
@@ -12546,7 +12546,7 @@
       ],
       "created": "2025-11-05T22:39:04.223165+00:00",
       "updated": "2025-11-06T07:39:16Z",
-      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity \u2192 relationship \u2192 entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
+      "notes": "Implement context expansion using graph relationships for retrieval results\n\n**Acceptance Criteria:**\n- [ ] For each vector result, traverse Neo4j for related entities\n- [ ] Include 1-hop neighbors (direct connections)\n- [ ] Include 2-hop neighbors for critical memories\n- [ ] Preserve graph structure in context\n- [ ] Entity → relationship → entity format\n- [ ] Integration tests with hybrid search\n\n**Context:**\n- Specs: docs/specs/memory-service/spec.md (Hybrid Architecture)\n- Plans: docs/specs/memory-service/plan.md\n- Tasks: docs/specs/memory-service/tasks.md\n\n**Sprint:** 3 (8-week timeline)\n**Effort:** 3 story points\n\n---\n\n*Created: 2025-11-05T22:39:04.223165+00:00*\n*Updated: 2025-11-05T22:39:04.223165+00:00*",
       "validation_type": "stateflow",
       "github": {
         "issueNumber": 189,
