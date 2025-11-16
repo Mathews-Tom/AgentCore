@@ -194,7 +194,9 @@ class TestEntityNodeOperations:
         call_args = mock_session.run.call_args
         params = call_args[0][1]
         assert params["name"] == "authentication"
-        assert params["properties"] == {"domain": "security"}
+        # Properties are serialized as JSON string
+        import json
+        assert params["properties_json"] == json.dumps({"domain": "security"})
         assert params["memory_refs"] == ["mem-001"]
 
 

@@ -13,9 +13,10 @@ Performance targets:
 - 95%+ relationship relevance after pruning
 """
 
+import json
 import time
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from typing import AsyncGenerator
 from uuid import uuid4
 
 import pytest
@@ -33,11 +34,14 @@ from agentcore.a2a_protocol.models.memory import (
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
 
 
+# Use module-scoped event loop for all tests (matches fixture scope)
+pytestmark = pytest.mark.asyncio(loop_scope="module")
+
+
 @pytest.fixture(scope="module")
 def neo4j_container():
     """Start Neo4j test container."""
-    container = Neo4jContainer(image="neo4j:5.15-community")
-    container.with_env("NEO4J_AUTH", "neo4j/testpassword")
+    container = Neo4jContainer(image="neo4j:5.15-community", password="testpassword")
     container.with_env("NEO4J_PLUGINS", '["apoc"]')  # Enable APOC plugin
 
     container.start()
@@ -47,7 +51,7 @@ def neo4j_container():
     container.stop()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def neo4j_driver(neo4j_container) -> AsyncGenerator[AsyncDriver, None]:
     """Create Neo4j async driver for tests."""
     uri = neo4j_container.get_connection_url()
@@ -56,12 +60,13 @@ async def neo4j_driver(neo4j_container) -> AsyncGenerator[AsyncDriver, None]:
         auth=("neo4j", "testpassword"),
     )
 
+    await driver.verify_connectivity()
     yield driver
 
     await driver.close()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function", loop_scope="module")
 async def graph_service(neo4j_driver) -> AsyncGenerator[GraphMemoryService, None]:
     """Create GraphMemoryService with real Neo4j."""
     service = GraphMemoryService(neo4j_driver)
@@ -72,8 +77,7 @@ async def graph_service(neo4j_driver) -> AsyncGenerator[GraphMemoryService, None
     # Cleanup: delete all nodes and relationships
     async with neo4j_driver.session() as session:
         await session.run("MATCH (n) DETACH DELETE n")
-
-    await service.close()
+    # Note: Don't close the service here as it would close the shared module-scoped driver
 
 
 @pytest.fixture
@@ -109,7 +113,7 @@ def sample_entity():
 class TestGraphMemoryServiceInitialization:
     """Test service initialization with real Neo4j."""
 
-    @pytest.mark.asyncio
+
     async def test_initialize_creates_indexes(self, graph_service, neo4j_driver):
         """Test that indexes are created successfully."""
         # Verify indexes exist
@@ -117,26 +121,43 @@ class TestGraphMemoryServiceInitialization:
             result = await session.run("SHOW INDEXES")
             indexes = [record async for record in result]
 
-            # Should have indexes for entity_type, entity_name, memory_task, memory_stage, concept_name
-            index_names = [idx["name"] for idx in indexes if "name" in idx]
-            assert len(index_names) >= 5
+            # Neo4j 5.x returns indexes with different keys
+            # Check for at least some indexes (system + user-created)
+            assert len(indexes) >= 5, f"Expected at least 5 indexes, got {len(indexes)}"
 
-    @pytest.mark.asyncio
+            # Verify we have custom indexes by checking labelsOrTypes
+            custom_indexes = [
+                idx for idx in indexes
+                if idx.get("labelsOrTypes") and any(
+                    label in str(idx.get("labelsOrTypes", []))
+                    for label in ["Memory", "Entity", "Concept"]
+                )
+            ]
+            assert len(custom_indexes) >= 1, "Expected at least one custom index on Memory/Entity/Concept"
+
+
     async def test_initialize_creates_constraints(self, graph_service, neo4j_driver):
         """Test that uniqueness constraints are created."""
         async with neo4j_driver.session() as session:
             result = await session.run("SHOW CONSTRAINTS")
             constraints = [record async for record in result]
 
-            # Should have constraint for entity_id uniqueness
-            constraint_names = [c["name"] for c in constraints if "name" in c]
-            assert any("entity_id" in name.lower() for name in constraint_names)
+            # Should have at least one constraint
+            assert len(constraints) >= 1, f"Expected at least 1 constraint, got {len(constraints)}"
+
+            # Check that we have a uniqueness constraint on entity_id
+            has_entity_id_constraint = any(
+                "entity_id" in str(c.get("properties", [])).lower() or
+                "entity_id" in str(c.get("name", "")).lower()
+                for c in constraints
+            )
+            assert has_entity_id_constraint, "Expected constraint on entity_id"
 
 
 class TestMemoryNodeOperations:
     """Test memory node storage and retrieval."""
 
-    @pytest.mark.asyncio
+
     async def test_store_and_retrieve_memory_node(
         self, graph_service, sample_memory, neo4j_driver
     ):
@@ -158,7 +179,7 @@ class TestMemoryNodeOperations:
             assert mem_data["content"] == sample_memory.content
             assert mem_data["is_critical"] == sample_memory.is_critical
 
-    @pytest.mark.asyncio
+
     async def test_store_multiple_memory_nodes(self, graph_service):
         """Test storing multiple memory nodes."""
         memories = [
@@ -184,7 +205,7 @@ class TestMemoryNodeOperations:
 class TestEntityNodeOperations:
     """Test entity node storage and retrieval."""
 
-    @pytest.mark.asyncio
+
     async def test_store_and_retrieve_entity_node(
         self, graph_service, sample_entity, neo4j_driver
     ):
@@ -206,7 +227,7 @@ class TestEntityNodeOperations:
             assert ent_data["entity_name"] == sample_entity.entity_name
             assert ent_data["entity_type"] == sample_entity.entity_type.value
 
-    @pytest.mark.asyncio
+
     async def test_store_concept_node(self, graph_service, neo4j_driver):
         """Test storing concept nodes."""
         concept_id = await graph_service.store_concept_node(
@@ -233,7 +254,7 @@ class TestEntityNodeOperations:
 class TestRelationshipOperations:
     """Test relationship creation and traversal."""
 
-    @pytest.mark.asyncio
+
     async def test_create_mention_relationship(
         self, graph_service, sample_memory, sample_entity, neo4j_driver
     ):
@@ -264,9 +285,11 @@ class TestRelationshipOperations:
 
             assert record is not None
             rel_data = dict(record["r"])
-            assert rel_data["properties"]["confidence"] == 0.95
+            # Properties are serialized as JSON string to avoid Neo4j Map type issues
+            properties = json.loads(rel_data["properties_json"])
+            assert properties["confidence"] == 0.95
 
-    @pytest.mark.asyncio
+
     async def test_create_temporal_relationships(self, graph_service):
         """Test creating FOLLOWS/PRECEDES temporal relationships."""
         # Create two memories
@@ -306,7 +329,7 @@ class TestRelationshipOperations:
 
         assert rel_id.startswith("rel-")
 
-    @pytest.mark.asyncio
+
     async def test_create_hierarchical_relationships(self, graph_service):
         """Test creating PART_OF hierarchical relationships."""
         # Create parent and child entities
@@ -338,7 +361,7 @@ class TestRelationshipOperations:
 class TestGraphTraversal:
     """Test graph traversal and path finding."""
 
-    @pytest.mark.asyncio
+
     async def test_traverse_graph_single_hop(self, graph_service):
         """Test 1-hop graph traversal."""
         # Create entity chain: ent1 -> ent2
@@ -371,7 +394,7 @@ class TestGraphTraversal:
             for path in paths
         )
 
-    @pytest.mark.asyncio
+
     async def test_traverse_graph_multi_hop(self, graph_service):
         """Test 2-hop graph traversal."""
         # Create entity chain: ent1 -> ent2 -> ent3
@@ -406,7 +429,7 @@ class TestGraphTraversal:
             for path in paths
         )
 
-    @pytest.mark.asyncio
+
     async def test_find_related_entities(self, graph_service):
         """Test finding directly related entities."""
         # Create central entity with multiple connections
@@ -445,7 +468,7 @@ class TestGraphTraversal:
 class TestTemporalOperations:
     """Test temporal relationship queries."""
 
-    @pytest.mark.asyncio
+
     async def test_get_temporal_sequence(self, graph_service):
         """Test retrieving temporal sequence of memories."""
         task_id = "task-temporal"
@@ -481,7 +504,7 @@ class TestTemporalOperations:
 
         assert len(sequence) == 5
 
-    @pytest.mark.asyncio
+
     async def test_find_memories_by_entity(self, graph_service):
         """Test finding memories that mention an entity."""
         entity = EntityNode(
@@ -519,7 +542,7 @@ class TestTemporalOperations:
 class TestPerformance:
     """Test performance requirements."""
 
-    @pytest.mark.asyncio
+
     async def test_two_hop_traversal_performance(self, graph_service):
         """Test p95 latency <200ms for 2-hop graph traversal."""
         # Create graph with multiple paths
@@ -556,7 +579,7 @@ class TestPerformance:
             p95_latency < 200
         ), f"p95 latency {p95_latency:.2f}ms exceeds 200ms target"
 
-    @pytest.mark.asyncio
+
     async def test_concurrent_operations(self, graph_service):
         """Test concurrent memory and entity operations."""
         import asyncio
@@ -594,7 +617,7 @@ class TestPerformance:
 class TestUtilityOperations:
     """Test utility methods."""
 
-    @pytest.mark.asyncio
+
     async def test_update_relationship_access(self, graph_service):
         """Test incrementing relationship access count."""
         # Create entities and relationship
@@ -620,7 +643,7 @@ class TestUtilityOperations:
         success = await graph_service.update_relationship_access(rel_id)
         assert success is True
 
-    @pytest.mark.asyncio
+
     async def test_get_node_degree(self, graph_service):
         """Test getting node connection degree."""
         # Create central node with multiple connections
@@ -647,7 +670,7 @@ class TestUtilityOperations:
         degree = await graph_service.get_node_degree("ent-degree")
         assert degree == 5
 
-    @pytest.mark.asyncio
+
     async def test_find_shortest_path(self, graph_service):
         """Test finding shortest path between entities."""
         # Create path: ent1 -> ent2 -> ent3

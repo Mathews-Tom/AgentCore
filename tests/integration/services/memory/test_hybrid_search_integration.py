@@ -11,11 +11,70 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from neo4j import AsyncGraphDatabase
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qmodels
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.waiting_utils import wait_for_logs
+
+# Check Docker availability before importing testcontainers
+# These tests require pulling Docker images which can fail with credential store issues
+DOCKER_AVAILABLE = False
+DOCKER_SKIP_REASON = "Docker integration tests disabled - credential store issues"
+
+try:
+    import docker
+    from docker.credentials.errors import StoreError
+
+    docker_client = docker.from_env()
+    docker_client.ping()
+    # Test that we can actually interact with registry (not just list local images)
+    # Try to get info which tests credential store access
+    info = docker_client.info()
+    # Check if credential store is configured (potential source of issues)
+    creds_store = info.get("RegistryConfig", {}).get("CredentialHelpers", {})
+    if creds_store or "docker-credential-desktop" in str(info):
+        # Desktop credential store can be problematic - test by actually trying to pull
+        # Try pulling a small test image to trigger credential store
+        try:
+            # Use a very small image that should trigger credential store access
+            docker_client.images.pull("hello-world", platform="linux/amd64")
+            docker_client.images.list()
+            DOCKER_AVAILABLE = True
+            DOCKER_SKIP_REASON = ""
+        except StoreError as store_err:
+            DOCKER_SKIP_REASON = f"Docker credential store error: {store_err}"
+        except Exception as pull_err:
+            # Check if it's a nested StoreError
+            if "StoreError" in str(type(pull_err).__name__) or "credential" in str(
+                pull_err
+            ).lower():
+                DOCKER_SKIP_REASON = f"Docker credential store error: {pull_err}"
+            else:
+                DOCKER_SKIP_REASON = f"Docker pull error: {pull_err}"
+    else:
+        docker_client.images.list()
+        DOCKER_AVAILABLE = True
+        DOCKER_SKIP_REASON = ""
+except ImportError:
+    DOCKER_SKIP_REASON = "docker-py not installed"
+except Exception as e:
+    # Catch credential store errors that happen during client creation
+    if "StoreError" in str(type(e).__name__) or "credential" in str(e).lower():
+        DOCKER_SKIP_REASON = f"Docker credential store error: {e}"
+    else:
+        DOCKER_SKIP_REASON = f"Docker not available: {type(e).__name__}: {e}"
+
+if DOCKER_AVAILABLE:
+    from testcontainers.core.container import DockerContainer
+    from testcontainers.core.waiting_utils import wait_for_logs
+else:
+    DockerContainer = None  # type: ignore[misc, assignment]
+    wait_for_logs = None  # type: ignore[assignment]
+
+pytestmark = pytest.mark.skipif(
+    not DOCKER_AVAILABLE,
+    reason=DOCKER_SKIP_REASON if not DOCKER_AVAILABLE else "",
+)
 
 from agentcore.a2a_protocol.models.memory import MemoryRecord, StageType
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
@@ -28,41 +87,65 @@ from agentcore.a2a_protocol.services.memory.retrieval_service import (
 )
 
 
+def _check_docker_error(e: Exception) -> None:
+    """Check if exception is a Docker credential store error and skip if so."""
+    error_str = str(e).lower()
+    type_str = str(type(e).__name__)
+    if (
+        "StoreError" in type_str
+        or "credential" in error_str
+        or "docker-credential-desktop" in error_str
+    ):
+        pytest.skip(f"Docker credential store error: {e}")
+
+
 @pytest.fixture(scope="module")
 def qdrant_container():
     """Start Qdrant container for testing."""
-    container = DockerContainer("qdrant/qdrant:latest")
-    container.with_exposed_ports(6333)
-    container.with_env("QDRANT__SERVICE__GRPC_PORT", "6334")
+    container = None
+    try:
+        container = DockerContainer("qdrant/qdrant:latest")
+        container.with_exposed_ports(6333)
+        container.with_env("QDRANT__SERVICE__GRPC_PORT", "6334")
 
-    container.start()
-    wait_for_logs(container, "Qdrant gRPC listening", timeout=30)
+        container.start()
+        wait_for_logs(container, "Qdrant gRPC listening", timeout=30)
+    except Exception as e:
+        _check_docker_error(e)
+        raise
 
     yield container
 
-    container.stop()
+    if container:
+        container.stop()
 
 
 @pytest.fixture(scope="module")
 def neo4j_container():
     """Start Neo4j container for testing."""
-    container = DockerContainer("neo4j:5.15")
-    container.with_exposed_ports(7687)
-    container.with_env("NEO4J_AUTH", "neo4j/testpassword")
-    container.with_env("NEO4J_PLUGINS", '["apoc"]')
+    container = None
+    try:
+        container = DockerContainer("neo4j:5.15")
+        container.with_exposed_ports(7687)
+        container.with_env("NEO4J_AUTH", "neo4j/testpassword")
+        container.with_env("NEO4J_PLUGINS", '["apoc"]')
 
-    container.start()
-    wait_for_logs(container, "Started", timeout=60)
+        container.start()
+        wait_for_logs(container, "Started", timeout=60)
 
-    # Wait for Neo4j to be ready
-    time.sleep(5)
+        # Wait for Neo4j to be ready
+        time.sleep(5)
+    except Exception as e:
+        _check_docker_error(e)
+        raise
 
     yield container
 
-    container.stop()
+    if container:
+        container.stop()
 
 
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def qdrant_client(qdrant_container):
     """Create Qdrant client connected to test container."""
     port = qdrant_container.get_exposed_port(6333)
@@ -83,7 +166,7 @@ async def qdrant_client(qdrant_container):
     await client.close()
 
 
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def neo4j_driver(neo4j_container):
     """Create Neo4j driver connected to test container."""
     port = neo4j_container.get_exposed_port(7687)

@@ -14,11 +14,14 @@ Component ID: MEM-026
 Ticket: MEM-026 (Implement JSON-RPC Methods)
 """
 
-from unittest.mock import AsyncMock, patch
+from collections.abc import Generator
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from agentcore.a2a_protocol.models.jsonrpc import A2AContext, JsonRpcRequest
+from agentcore.a2a_protocol.services.memory.graph_optimizer import OptimizationMetrics
 from agentcore.a2a_protocol.services.memory_jsonrpc import (
     _error_store,
     _memory_store,
@@ -39,6 +42,29 @@ def clear_stores() -> None:
     _memory_store.clear()
     _stage_store.clear()
     _error_store.clear()
+
+
+@pytest.fixture(autouse=True)
+def mock_storage_backend() -> Generator[None, None, None]:
+    """Mock storage backend to force fallback to in-memory storage for unit tests."""
+    mock_backend = MagicMock()
+    # Make storage methods raise RuntimeError to trigger in-memory fallback
+    mock_backend.store_memory = AsyncMock(
+        side_effect=RuntimeError("Storage backend not initialized")
+    )
+    mock_backend.store_stage_memory = AsyncMock(
+        side_effect=RuntimeError("Storage backend not initialized")
+    )
+    mock_backend.store_error = AsyncMock(
+        side_effect=RuntimeError("Storage backend not initialized")
+    )
+    mock_backend.retrieve_memories = AsyncMock(return_value=[])
+
+    with patch(
+        "agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend",
+        return_value=mock_backend,
+    ):
+        yield
 
 
 class TestMemoryStore:
@@ -771,9 +797,38 @@ class TestMemoryGetStrategicContext:
 class TestMemoryRunMemify:
     """Test suite for memory.run_memify JSON-RPC handler."""
 
+    @pytest.fixture
+    def mock_optimization_metrics(self) -> OptimizationMetrics:
+        """Create mock optimization metrics for testing."""
+        metrics = OptimizationMetrics()
+        metrics.entities_analyzed = 100
+        metrics.entities_merged = 5
+        metrics.low_value_edges_removed = 10
+        metrics.patterns_detected = 3
+        metrics.consolidation_accuracy = 0.95
+        metrics.duplicate_rate = 0.02
+        metrics.duration_seconds = 2.5
+        return metrics
+
     @pytest.mark.asyncio
-    async def test_run_memify_success(self) -> None:
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend")
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc.GraphOptimizer")
+    async def test_run_memify_success(
+        self,
+        mock_optimizer_class: MagicMock,
+        mock_get_storage: MagicMock,
+        mock_optimization_metrics: OptimizationMetrics,
+    ) -> None:
         """Test successful memify operation."""
+        # Setup mocks
+        mock_storage = MagicMock()
+        mock_storage.neo4j_driver = MagicMock()
+        mock_get_storage.return_value = mock_storage
+
+        mock_optimizer = AsyncMock()
+        mock_optimizer.optimize.return_value = mock_optimization_metrics
+        mock_optimizer_class.return_value = mock_optimizer
+
         request = JsonRpcRequest(
             method="memory.run_memify",
             params={
@@ -787,19 +842,44 @@ class TestMemoryRunMemify:
         result = await handle_memory_run_memify(request)
 
         assert "optimization_id" in result
-        assert result["entities_analyzed"] >= 0
-        assert result["entities_merged"] >= 0
-        assert result["relationships_pruned"] >= 0
-        assert result["patterns_detected"] >= 0
-        assert result["consolidation_accuracy"] >= 0.0
-        assert result["duplicate_rate"] >= 0.0
-        assert result["duration_seconds"] >= 0.0
+        assert result["entities_analyzed"] == 100
+        assert result["entities_merged"] == 5
+        assert result["relationships_pruned"] == 10
+        assert result["patterns_detected"] == 3
+        assert result["consolidation_accuracy"] == 0.95
+        assert result["duplicate_rate"] == 0.02
+        assert result["duration_seconds"] == 2.5
         assert result["scheduled_job_id"] is None
         assert result["next_run"] is None
 
+        # Verify GraphOptimizer was created with correct params
+        mock_optimizer_class.assert_called_once_with(
+            driver=mock_storage.neo4j_driver,
+            similarity_threshold=0.90,
+            min_access_count=2,
+            batch_size=100,
+        )
+        mock_optimizer.optimize.assert_called_once()
+
     @pytest.mark.asyncio
-    async def test_run_memify_with_defaults(self) -> None:
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend")
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc.GraphOptimizer")
+    async def test_run_memify_with_defaults(
+        self,
+        mock_optimizer_class: MagicMock,
+        mock_get_storage: MagicMock,
+        mock_optimization_metrics: OptimizationMetrics,
+    ) -> None:
         """Test memify with default parameters."""
+        # Setup mocks
+        mock_storage = MagicMock()
+        mock_storage.neo4j_driver = MagicMock()
+        mock_get_storage.return_value = mock_storage
+
+        mock_optimizer = AsyncMock()
+        mock_optimizer.optimize.return_value = mock_optimization_metrics
+        mock_optimizer_class.return_value = mock_optimizer
+
         request = JsonRpcRequest(
             method="memory.run_memify",
             params={},
@@ -809,11 +889,37 @@ class TestMemoryRunMemify:
         result = await handle_memory_run_memify(request)
 
         assert "optimization_id" in result
-        assert result["duration_seconds"] >= 0.0
+        assert result["duration_seconds"] == 2.5
+
+        # Verify defaults were used
+        mock_optimizer_class.assert_called_once_with(
+            driver=mock_storage.neo4j_driver,
+            similarity_threshold=0.90,
+            min_access_count=2,
+            batch_size=100,
+        )
 
     @pytest.mark.asyncio
-    async def test_run_memify_with_scheduling(self) -> None:
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend")
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc.GraphOptimizer")
+    async def test_run_memify_with_scheduling(
+        self,
+        mock_optimizer_class: MagicMock,
+        mock_get_storage: MagicMock,
+        mock_optimization_metrics: OptimizationMetrics,
+    ) -> None:
         """Test memify with cron scheduling."""
+        # Setup mocks
+        mock_storage = MagicMock()
+        mock_storage.neo4j_driver = MagicMock()
+        mock_get_storage.return_value = mock_storage
+
+        mock_optimizer = MagicMock()
+        mock_optimizer.optimize = AsyncMock(return_value=mock_optimization_metrics)
+        mock_optimizer.schedule_optimization.return_value = "opt-job-123"
+        mock_optimizer.get_next_scheduled_run.return_value = datetime.now(UTC)
+        mock_optimizer_class.return_value = mock_optimizer
+
         request = JsonRpcRequest(
             method="memory.run_memify",
             params={
@@ -824,12 +930,34 @@ class TestMemoryRunMemify:
 
         result = await handle_memory_run_memify(request)
 
-        assert result["scheduled_job_id"] is not None
+        assert result["scheduled_job_id"] == "opt-job-123"
         assert result["next_run"] is not None
 
+        mock_optimizer.schedule_optimization.assert_called_once_with("0 2 * * *")
+        mock_optimizer.get_next_scheduled_run.assert_called_once()
+
     @pytest.mark.asyncio
-    async def test_run_memify_invalid_cron(self) -> None:
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend")
+    @patch("agentcore.a2a_protocol.services.memory_jsonrpc.GraphOptimizer")
+    async def test_run_memify_invalid_cron(
+        self,
+        mock_optimizer_class: MagicMock,
+        mock_get_storage: MagicMock,
+        mock_optimization_metrics: OptimizationMetrics,
+    ) -> None:
         """Test error with invalid cron expression."""
+        # Setup mocks
+        mock_storage = MagicMock()
+        mock_storage.neo4j_driver = MagicMock()
+        mock_get_storage.return_value = mock_storage
+
+        mock_optimizer = MagicMock()
+        mock_optimizer.optimize = AsyncMock(return_value=mock_optimization_metrics)
+        mock_optimizer.schedule_optimization.side_effect = ValueError(
+            "Invalid cron expression: invalid cron"
+        )
+        mock_optimizer_class.return_value = mock_optimizer
+
         request = JsonRpcRequest(
             method="memory.run_memify",
             params={
@@ -985,3 +1113,329 @@ class TestMemoryJSONRPCIntegration:
         result = await handle_memory_store(request)
         assert result["success"] is True
         # A2A context should be available in request for logging/tracing
+
+
+class TestStorageBackendIntegration:
+    """Tests for storage backend integration paths."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self) -> Generator[None, None, None]:
+        """Setup and cleanup for each test."""
+        _memory_store.clear()
+        _stage_store.clear()
+        _error_store.clear()
+        yield
+        _memory_store.clear()
+        _stage_store.clear()
+        _error_store.clear()
+
+    @pytest.mark.asyncio
+    async def test_retrieve_with_embedding_vector_search_fallback(self) -> None:
+        """Test retrieval with embedding falls back when storage backend not initialized."""
+        # Pre-populate some memories
+        for i in range(3):
+            request = JsonRpcRequest(
+                method="memory.store",
+                params={
+                    "content": f"Memory content {i}",
+                    "agent_id": "agent-test",
+                    "session_id": "session-test",
+                    "task_id": "task-test",
+                    "memory_layer": "episodic",
+                },
+                id=i,
+            )
+            await handle_memory_store(request)
+
+        # Mock storage backend to raise RuntimeError (simulates uninitialized backend)
+        with patch(
+            "agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend"
+        ) as mock_backend:
+            mock_backend.return_value.vector_search = AsyncMock(
+                side_effect=RuntimeError("StorageBackendService not initialized")
+            )
+
+            # Now retrieve with embedding (will fall back to in-memory due to RuntimeError)
+            retrieve_request = JsonRpcRequest(
+                method="memory.retrieve",
+                params={
+                    "agent_id": "agent-test",
+                    "session_id": "session-test",
+                    "task_id": "task-test",
+                    "query_embedding": [0.1] * 768,  # 768-dim embedding
+                    "limit": 10,
+                },
+                id=100,
+            )
+
+            result = await handle_memory_retrieve(retrieve_request)
+            assert "memories" in result
+            assert "total_count" in result
+            assert isinstance(result["memories"], list)
+            # Should find the 3 memories we stored
+            assert len(result["memories"]) == 3
+            assert result["total_count"] == 3
+
+    @pytest.mark.asyncio
+    async def test_retrieve_with_embedding_and_stage_context(self) -> None:
+        """Test retrieval with embedding and current stage context."""
+        # Pre-populate memories
+        for i in range(5):
+            request = JsonRpcRequest(
+                method="memory.store",
+                params={
+                    "content": f"Memory for stage test {i}",
+                    "agent_id": "agent-stage",
+                    "memory_layer": "episodic",
+                },
+                id=i,
+            )
+            await handle_memory_store(request)
+
+        # Mock storage backend to raise RuntimeError
+        with patch(
+            "agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend"
+        ) as mock_backend:
+            mock_backend.return_value.vector_search = AsyncMock(
+                side_effect=RuntimeError("StorageBackendService not initialized")
+            )
+
+            # Retrieve with stage context
+            retrieve_request = JsonRpcRequest(
+                method="memory.retrieve",
+                params={
+                    "agent_id": "agent-stage",
+                    "query_embedding": [0.2] * 768,
+                    "limit": 3,
+                    "current_stage": "planning",
+                    "has_recent_errors": True,
+                },
+                id=200,
+            )
+
+            result = await handle_memory_retrieve(retrieve_request)
+            assert "memories" in result
+            assert "total_count" in result
+            assert len(result["memories"]) <= 3
+
+    @pytest.mark.asyncio
+    async def test_retrieve_with_memory_layer_filter(self) -> None:
+        """Test retrieval with embedding filters by memory layer."""
+        # Store different layer memories
+        for layer in ["episodic", "semantic", "procedural"]:
+            request = JsonRpcRequest(
+                method="memory.store",
+                params={
+                    "content": f"Memory for {layer} layer",
+                    "agent_id": "agent-layers",
+                    "memory_layer": layer,
+                },
+                id=hash(layer),
+            )
+            await handle_memory_store(request)
+
+        # Mock storage backend to raise RuntimeError
+        with patch(
+            "agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend"
+        ) as mock_backend:
+            mock_backend.return_value.vector_search = AsyncMock(
+                side_effect=RuntimeError("StorageBackendService not initialized")
+            )
+
+            # Retrieve only episodic with embedding
+            retrieve_request = JsonRpcRequest(
+                method="memory.retrieve",
+                params={
+                    "agent_id": "agent-layers",
+                    "query_embedding": [0.3] * 768,
+                    "memory_layer": "EPISODIC",  # Test case insensitivity
+                    "limit": 10,
+                },
+                id=300,
+            )
+
+            result = await handle_memory_retrieve(retrieve_request)
+            assert "memories" in result
+            assert "total_count" in result
+            # Should only find episodic memories
+            for mem in result["memories"]:
+                assert mem["memory_layer"] == "episodic"
+
+    @pytest.mark.asyncio
+    async def test_complete_stage_storage_backend_fallback(self) -> None:
+        """Test stage completion falls back when storage backend not initialized."""
+        # Mock storage backend to raise RuntimeError
+        with patch(
+            "agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend"
+        ) as mock_backend:
+            mock_backend.return_value.store_stage_memory = AsyncMock(
+                side_effect=RuntimeError("StorageBackendService not initialized")
+            )
+
+            request = JsonRpcRequest(
+                method="memory.complete_stage",
+                params={
+                    "stage_id": "stage-fallback",
+                    "task_id": "task-stage-fallback",
+                    "agent_id": "agent-fallback",
+                    "stage_type": "planning",
+                    "stage_summary": "Stage completed with fallback",
+                    "stage_insights": ["Test insight"],
+                    "raw_memory_refs": [],
+                },
+                id=400,
+            )
+
+            result = await handle_memory_complete_stage(request)
+            assert result["success"] is True
+            assert result["stage_id"] == "stage-fallback"
+            assert result["task_id"] == "task-stage-fallback"
+            assert result["compression_ratio"] >= 1.0
+            assert result["quality_score"] > 0.0
+            # Should be stored in in-memory fallback
+            assert "stage-fallback" in _stage_store
+
+    @pytest.mark.asyncio
+    async def test_record_error_storage_backend_fallback(self) -> None:
+        """Test error recording falls back when storage backend not initialized."""
+        # Mock storage backend to raise RuntimeError
+        with patch(
+            "agentcore.a2a_protocol.services.memory_jsonrpc._get_storage_backend"
+        ) as mock_backend:
+            mock_backend.return_value.store_error = AsyncMock(
+                side_effect=RuntimeError("StorageBackendService not initialized")
+            )
+
+            # Mock error tracker to avoid database dependency
+            with patch(
+                "agentcore.a2a_protocol.services.memory_jsonrpc._get_error_tracker"
+            ) as mock_tracker:
+                mock_error_tracker = AsyncMock()
+                mock_tracker.return_value = mock_error_tracker
+                mock_error_tracker.record_error = AsyncMock()
+
+                request = JsonRpcRequest(
+                    method="memory.record_error",
+                    params={
+                        "task_id": "task-error-fallback",
+                        "agent_id": "agent-error-fallback",
+                        "error_type": "context_degradation",
+                        "error_description": "Error recorded with fallback",
+                        "error_severity": 0.5,
+                    },
+                    id=500,
+                )
+
+                result = await handle_memory_record_error(request)
+                assert result["success"] is True
+                assert result["task_id"] == "task-error-fallback"
+                # Check error was stored in memory
+                assert len(_error_store) == 1
+
+
+class TestSingletonInitialization:
+    """Tests for singleton initialization paths."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self) -> Generator[None, None, None]:
+        """Setup and cleanup for each test."""
+        _memory_store.clear()
+        _stage_store.clear()
+        _error_store.clear()
+        # Reset singleton instances to test initialization paths
+        import agentcore.a2a_protocol.services.memory_jsonrpc as mem_jsonrpc
+
+        old_stage_manager = mem_jsonrpc._stage_manager
+        old_error_tracker = mem_jsonrpc._error_tracker
+        mem_jsonrpc._stage_manager = None
+        mem_jsonrpc._error_tracker = None
+        yield
+        _memory_store.clear()
+        _stage_store.clear()
+        _error_store.clear()
+        mem_jsonrpc._stage_manager = old_stage_manager
+        mem_jsonrpc._error_tracker = old_error_tracker
+
+    @pytest.mark.asyncio
+    async def test_stage_manager_singleton_creation(self) -> None:
+        """Test StageManager singleton is created on first use."""
+        # First call should create the singleton
+        request1 = JsonRpcRequest(
+            method="memory.complete_stage",
+            params={
+                "stage_id": "stage-singleton-1",
+                "task_id": "task-singleton-1",
+                "agent_id": "agent-singleton",
+                "stage_type": "planning",
+                "stage_summary": "First singleton test",
+                "stage_insights": [],
+                "raw_memory_refs": [],
+            },
+            id=1,
+        )
+        result1 = await handle_memory_complete_stage(request1)
+        assert result1["success"] is True
+
+        # Second call should reuse the same singleton
+        request2 = JsonRpcRequest(
+            method="memory.complete_stage",
+            params={
+                "stage_id": "stage-singleton-2",
+                "task_id": "task-singleton-2",
+                "agent_id": "agent-singleton",
+                "stage_type": "execution",
+                "stage_summary": "Second singleton test",
+                "stage_insights": [],
+                "raw_memory_refs": [],
+            },
+            id=2,
+        )
+        result2 = await handle_memory_complete_stage(request2)
+        assert result2["success"] is True
+
+        # Both should succeed
+        assert len(_stage_store) == 2
+
+    @pytest.mark.asyncio
+    async def test_error_tracker_singleton_creation(self) -> None:
+        """Test ErrorTracker singleton is created on first use."""
+        # Mock error tracker to avoid database dependency
+        with patch(
+            "agentcore.a2a_protocol.services.memory_jsonrpc._get_error_tracker"
+        ) as mock_tracker:
+            mock_error_tracker = AsyncMock()
+            mock_tracker.return_value = mock_error_tracker
+            mock_error_tracker.record_error = AsyncMock()
+
+            # First call should create the singleton
+            request1 = JsonRpcRequest(
+                method="memory.record_error",
+                params={
+                    "task_id": "task-error-1",
+                    "agent_id": "agent-error-singleton",
+                    "error_type": "context_degradation",
+                    "error_description": "First error",
+                    "error_severity": 0.3,
+                },
+                id=1,
+            )
+            result1 = await handle_memory_record_error(request1)
+            assert result1["success"] is True
+
+            # Second call should reuse the same singleton
+            request2 = JsonRpcRequest(
+                method="memory.record_error",
+                params={
+                    "task_id": "task-error-2",
+                    "agent_id": "agent-error-singleton",
+                    "error_type": "hallucination",
+                    "error_description": "Second error",
+                    "error_severity": 0.8,
+                },
+                id=2,
+            )
+            result2 = await handle_memory_record_error(request2)
+            assert result2["success"] is True
+
+            # Both should succeed
+            assert len(_error_store) == 2

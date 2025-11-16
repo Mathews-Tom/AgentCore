@@ -13,7 +13,8 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 
-pytestmark = pytest.mark.asyncio
+# Use session-scoped event loop to match fixture scope
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 class TestQdrantDeployment:
@@ -30,7 +31,8 @@ class TestQdrantDeployment:
         import httpx
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{qdrant_url}/health")
+            # Qdrant uses /healthz endpoint (Kubernetes-style)
+            response = await client.get(f"{qdrant_url}/healthz")
             assert response.status_code == 200
 
 
@@ -95,8 +97,8 @@ class TestQdrantVectorSearch:
         qdrant_sample_points: list[dict[str, Any]],
     ) -> None:
         """Test vector similarity search."""
-        # Search with a query vector similar to first point
-        query_vector = [0.1] * 1536
+        # Search with a query vector matching first point's pattern (even indices)
+        query_vector = [0.1 if i % 2 == 0 else 0.0 for i in range(1536)]
         results = await qdrant_client.search(
             collection_name=qdrant_test_collection,
             query_vector=query_vector,
@@ -117,7 +119,8 @@ class TestQdrantVectorSearch:
         """Test filtered search by memory_layer."""
         from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-        query_vector = [0.2] * 1536
+        # Use vector pattern matching second point (every 3rd index)
+        query_vector = [0.1 if i % 3 == 0 else 0.0 for i in range(1536)]
         results = await qdrant_client.search(
             collection_name=qdrant_test_collection,
             query_vector=query_vector,

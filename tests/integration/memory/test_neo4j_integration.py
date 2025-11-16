@@ -6,8 +6,13 @@ Validates MEM-003 acceptance criteria.
 """
 
 import pytest
+import pytest_asyncio
 from neo4j import AsyncGraphDatabase, AsyncDriver
 from testcontainers.neo4j import Neo4jContainer
+
+
+# Use module-scoped event loop for all tests (matches fixture scope)
+pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 
 @pytest.fixture(scope="module")
@@ -31,7 +36,7 @@ def neo4j_container() -> Neo4jContainer:
     container.stop()
 
 
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def neo4j_driver(neo4j_container: Neo4jContainer) -> AsyncDriver:
     """
     Create async Neo4j driver from testcontainer.
@@ -59,7 +64,6 @@ async def neo4j_driver(neo4j_container: Neo4jContainer) -> AsyncDriver:
     await driver.close()
 
 
-@pytest.mark.asyncio
 async def test_neo4j_connectivity(neo4j_driver: AsyncDriver) -> None:
     """
     Test basic Neo4j connectivity.
@@ -74,7 +78,6 @@ async def test_neo4j_connectivity(neo4j_driver: AsyncDriver) -> None:
         assert record["value"] == 1
 
 
-@pytest.mark.asyncio
 async def test_apoc_plugin_installed(neo4j_driver: AsyncDriver) -> None:
     """
     Test APOC plugin is installed and available.
@@ -98,7 +101,6 @@ async def test_apoc_plugin_installed(neo4j_driver: AsyncDriver) -> None:
         print(f"\nAPOC version: {version}")
 
 
-@pytest.mark.asyncio
 async def test_gds_plugin_installed(neo4j_driver: AsyncDriver) -> None:
     """
     Test Graph Data Science plugin is installed and available.
@@ -124,7 +126,6 @@ async def test_gds_plugin_installed(neo4j_driver: AsyncDriver) -> None:
         print(f"\nGDS version: {version}")
 
 
-@pytest.mark.asyncio
 async def test_graph_schema_constraints(neo4j_driver: AsyncDriver) -> None:
     """
     Test graph schema constraints can be created.
@@ -169,7 +170,6 @@ async def test_graph_schema_constraints(neo4j_driver: AsyncDriver) -> None:
         print(f"\nCreated {len(records)} constraints")
 
 
-@pytest.mark.asyncio
 async def test_graph_schema_indexes(neo4j_driver: AsyncDriver) -> None:
     """
     Test graph schema indexes can be created.
@@ -211,7 +211,6 @@ async def test_graph_schema_indexes(neo4j_driver: AsyncDriver) -> None:
         print(f"\nCreated {len(records)} indexes")
 
 
-@pytest.mark.asyncio
 async def test_connection_pooling(neo4j_driver: AsyncDriver) -> None:
     """
     Test connection pooling configuration.
@@ -237,7 +236,6 @@ async def test_connection_pooling(neo4j_driver: AsyncDriver) -> None:
     print("\nConnection pooling working: 10 concurrent queries successful")
 
 
-@pytest.mark.asyncio
 async def test_create_memory_node(neo4j_driver: AsyncDriver) -> None:
     """
     Test creating Memory nodes with required properties.
@@ -284,7 +282,6 @@ async def test_create_memory_node(neo4j_driver: AsyncDriver) -> None:
         print(f"\nCreated Memory node: {memory_id}")
 
 
-@pytest.mark.asyncio
 async def test_create_entity_node(neo4j_driver: AsyncDriver) -> None:
     """
     Test creating Entity nodes with required properties.
@@ -326,7 +323,6 @@ async def test_create_entity_node(neo4j_driver: AsyncDriver) -> None:
         print(f"\nCreated Entity node: {entity_id}")
 
 
-@pytest.mark.asyncio
 async def test_create_concept_node(neo4j_driver: AsyncDriver) -> None:
     """
     Test creating Concept nodes with required properties.
