@@ -38,9 +38,16 @@ async def test_db_engine():
         echo=False
     )
 
-    # Create all tables (including ACE tables)
+    # Create tables excluding memory models (they use PostgreSQL-specific types)
+    # Memory models use ARRAY(Float) which is incompatible with SQLite
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # Get tables that are SQLite-compatible (exclude memory tables)
+        memory_tables = ["memories", "stage_memories", "task_contexts", "error_records", "compression_metrics"]
+        tables_to_create = [
+            table for table in Base.metadata.sorted_tables
+            if table.name not in memory_tables
+        ]
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=tables_to_create))
 
     yield engine
 

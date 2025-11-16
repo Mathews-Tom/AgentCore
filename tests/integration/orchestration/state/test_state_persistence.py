@@ -77,9 +77,19 @@ async def db_engine(postgres_container=None):
             connect_args={"check_same_thread": False},
             poolclass=StaticPool)
 
-    # Create tables
+    # Create only orchestration state tables (not memory tables which use VECTOR type)
+    tables_to_create = [
+        WorkflowExecutionDB.__table__,
+        WorkflowStateDB.__table__,
+        WorkflowStateVersion.__table__,
+    ]
+
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(
+            lambda sync_conn: Base.metadata.create_all(
+                sync_conn, tables=tables_to_create
+            )
+        )
 
     yield engine
 

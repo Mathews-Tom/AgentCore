@@ -19,6 +19,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "bandit" },
     { name = "cloudpickle" },
+    { name = "croniter" },
     { name = "docker" },
     { name = "dspy-ai" },
     { name = "fastapi" },
@@ -26,6 +27,7 @@ dependencies = [
     { name = "google-generativeai" },
     { name = "httpx", extra = ["http2"] },
     { name = "mlflow" },
+    { name = "neo4j" },
     { name = "networkx" },
     { name = "openai" },
     { name = "opentelemetry-api" },
@@ -44,6 +46,7 @@ dependencies = [
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
     { name = "pyyaml" },
+    { name = "qdrant-client" },
     { name = "redis" },
     { name = "restrictedpython" },
     { name = "rich" },
@@ -52,6 +55,7 @@ dependencies = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "sse-starlette" },
     { name = "structlog" },
+    { name = "testcontainers" },
     { name = "tiktoken" },
     { name = "torch" },
     { name = "typer" },
@@ -69,7 +73,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "ruff" },
-    { name = "testcontainers", extra = ["redis"] },
+    { name = "testcontainers", extra = ["neo4j", "redis"] },
 ]
 test = [
     { name = "httpx" },
@@ -94,7 +98,7 @@ dev = [
     { name = "pytest-timeout" },
     { name = "respx" },
     { name = "ruff" },
-    { name = "testcontainers", extra = ["redis"] },
+    { name = "testcontainers", extra = ["neo4j", "redis"] },
     { name = "types-requests" },
     { name = "websockets" },
 ]
@@ -108,6 +112,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "bandit", specifier = ">=1.8.6" },
     { name = "cloudpickle", specifier = ">=3.1.1" },
+    { name = "croniter", specifier = ">=6.0.0" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "dspy-ai", specifier = ">=2.5.43" },
     { name = "fastapi", specifier = ">=0.104.0" },
@@ -118,6 +123,7 @@ requires-dist = [
     { name = "httpx", extras = ["http2"], specifier = "==0.24.1" },
     { name = "mlflow", specifier = ">=3.5.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.0" },
+    { name = "neo4j", specifier = ">=5.15.0" },
     { name = "networkx", specifier = ">=3.2" },
     { name = "openai", specifier = "==1.54.0" },
     { name = "opentelemetry-api", specifier = ">=1.21.0" },
@@ -145,6 +151,7 @@ requires-dist = [
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0" },
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "qdrant-client", specifier = ">=1.7.0" },
     { name = "redis", specifier = ">=5.0.0" },
     { name = "restrictedpython", specifier = ">=8.0" },
     { name = "rich", specifier = ">=13.0.0" },
@@ -154,6 +161,8 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.0" },
     { name = "sse-starlette", specifier = ">=3.0.2" },
     { name = "structlog", specifier = ">=23.2.0" },
+    { name = "testcontainers", specifier = ">=4.0.0" },
+    { name = "testcontainers", extras = ["neo4j"], marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "testcontainers", extras = ["redis"], marker = "extra == 'dev'", specifier = ">=3.7.0" },
     { name = "testcontainers", extras = ["redis"], marker = "extra == 'test'", specifier = ">=3.7.0" },
     { name = "tiktoken", specifier = ">=0.12.0" },
@@ -178,6 +187,7 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "respx", specifier = "==0.21.1" },
     { name = "ruff", specifier = ">=0.13.2" },
+    { name = "testcontainers", extras = ["neo4j"], specifier = ">=4.13.1" },
     { name = "testcontainers", extras = ["redis"], specifier = ">=4.13.1" },
     { name = "types-requests", specifier = ">=2.32.4.20250913" },
     { name = "websockets", specifier = ">=15.0.1" },
@@ -827,6 +837,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/4c/a1/74c51803fc70a8a40d7346660379e144be772bab4ac7bb6e6b905152345c/coverage-7.10.7-cp314-cp314t-win_amd64.whl", hash = "sha256:e1ed71194ef6dea7ed2d5cb5f7243d4bcd334bfb63e59878519be558078f848d", size = 222905 },
     { url = "https://files.pythonhosted.org/packages/12/65/f116a6d2127df30bcafbceef0302d8a64ba87488bf6f73a6d8eebf060873/coverage-7.10.7-cp314-cp314t-win_arm64.whl", hash = "sha256:7fe650342addd8524ca63d77b2362b02345e5f1a093266787d210c70a50b471a", size = 220922 },
     { url = "https://files.pythonhosted.org/packages/ec/16/114df1c291c22cac3b0c127a73e0af5c12ed7bbb6558d310429a0ae24023/coverage-7.10.7-py3-none-any.whl", hash = "sha256:f7941f6f2fe6dd6807a1208737b8a0cbcf1cc6d7b07d24998ad2d63590868260", size = 209952 },
+]
+
+[[package]]
+name = "croniter"
+version = "6.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ad/2f/44d1ae153a0e27be56be43465e5cb39b9650c781e001e7864389deb25090/croniter-6.0.0.tar.gz", hash = "sha256:37c504b313956114a983ece2c2b07790b1f1094fe9d81cc94739214748255577", size = 64481 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/4b/290b4c3efd6417a8b0c284896de19b1d5855e6dbdb97d2a35e68fa42de85/croniter-6.0.0-py2.py3-none-any.whl", hash = "sha256:2f878c3856f17896979b2a4379ba1f09c83e374931ea15cc835c5dd2eee9b368", size = 25468 },
 ]
 
 [[package]]
@@ -2594,6 +2617,18 @@ wheels = [
 ]
 
 [[package]]
+name = "neo4j"
+version = "6.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/b2/87534fc0520e5f9db1432bacc3f8d0ce024608010babc4f65b96e0c34906/neo4j-6.0.3.tar.gz", hash = "sha256:7fb79e166e281aafd67d521f6611763ebcdc529f26db506c5605f91ddcd825ea", size = 239653 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/fe/55ed1d4636defb57fae1f7be7818820aa8071d45949c91ef8649930e70c5/neo4j-6.0.3-py3-none-any.whl", hash = "sha256:a92023854da96aed4270e0d03d6429cdd7f0d3335eae977370934f4732de5678", size = 325433 },
+]
+
+[[package]]
 name = "networkx"
 version = "3.5"
 source = { registry = "https://pypi.org/simple" }
@@ -3175,6 +3210,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538 },
+]
+
+[[package]]
+name = "portalocker"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5e/77/65b857a69ed876e1951e88aaba60f5ce6120c33703f7cb61a3c894b8c1b6/portalocker-3.2.0.tar.gz", hash = "sha256:1f3002956a54a8c3730586c5c77bf18fae4149e07eaf1c29fc3faf4d5a3f89ac", size = 95644 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/a6/38c8e2f318bf67d338f4d629e93b0b4b9af331f455f0390ea8ce4a099b26/portalocker-3.2.0-py3-none-any.whl", hash = "sha256:3cdc5f565312224bc570c49337bd21428bba0ef363bbcf58b9ef4a9f11779968", size = 22424 },
 ]
 
 [[package]]
@@ -3841,6 +3888,24 @@ wheels = [
 ]
 
 [[package]]
+name = "qdrant-client"
+version = "1.15.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "grpcio" },
+    { name = "httpx", extra = ["http2"] },
+    { name = "numpy" },
+    { name = "portalocker" },
+    { name = "protobuf" },
+    { name = "pydantic" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/8b/76c7d325e11d97cb8eb5e261c3759e9ed6664735afbf32fdded5b580690c/qdrant_client-1.15.1.tar.gz", hash = "sha256:631f1f3caebfad0fd0c1fba98f41be81d9962b7bf3ca653bed3b727c0e0cbe0e", size = 295297 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ef/33/d8df6a2b214ffbe4138db9a1efe3248f67dc3c671f82308bea1582ecbbb7/qdrant_client-1.15.1-py3-none-any.whl", hash = "sha256:2b975099b378382f6ca1cfb43f0d59e541be6e16a5892f282a4b8de7eff5cb63", size = 337331 },
+]
+
+[[package]]
 name = "redis"
 version = "6.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4435,6 +4500,9 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+neo4j = [
+    { name = "neo4j" },
+]
 redis = [
     { name = "redis" },
 ]

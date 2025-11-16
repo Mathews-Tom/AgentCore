@@ -32,6 +32,45 @@ services:
       timeout: 5s
       retries: 3
 
+  # Qdrant vector database for memory system
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Neo4j graph database for knowledge graphs
+  neo4j:
+    image: neo4j:5.15-community
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*,gds.*
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_import_file_use__neo4j__config: "true"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # A2A Protocol Layer (development)
   a2a-protocol:
     build: .
@@ -42,10 +81,15 @@ services:
       - DATABASE_URL=postgresql://agentcore:password@postgres:5432/agentcore
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - QDRANT_URL=http://qdrant:6333
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
     volumes:
       - ./src:/app/src
@@ -58,3 +102,8 @@ services:
 volumes:
   redis_data:
   postgres_data:
+  qdrant_data:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:

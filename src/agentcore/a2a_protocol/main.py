@@ -5,14 +5,12 @@ Main application entry point for the Agent2Agent protocol implementation.
 Provides JSON-RPC 2.0 compliant endpoints for agent communication.
 """
 
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from agentcore.a2a_protocol.config import settings
@@ -20,14 +18,23 @@ from agentcore.a2a_protocol.database import close_db, init_db
 from agentcore.a2a_protocol.middleware import setup_middleware
 from agentcore.a2a_protocol.routers import health, jsonrpc, websocket, wellknown
 from agentcore.a2a_protocol.services.coordination_service import coordination_service
+from agentcore.a2a_protocol.services.memory.storage_backend import (
+    close_storage_backend,
+    initialize_storage_backend,
+)
+from agentcore.a2a_protocol.services.memory.working_memory import (
+    close_working_memory,
+    initialize_working_memory,
+)
 
 # Import JSON-RPC methods to register them
-from agentcore.a2a_protocol.services import (
+from agentcore.a2a_protocol.services import (  # noqa: F401
     agent_jsonrpc,
     coordination_jsonrpc,
     event_jsonrpc,
     health_jsonrpc,
     llm_jsonrpc,
+    memory_jsonrpc,
     routing_jsonrpc,
     security_jsonrpc,
     session_jsonrpc,
@@ -36,13 +43,13 @@ from agentcore.a2a_protocol.services import (
 
 # Import reasoning JSON-RPC methods
 # Import directly to avoid circular imports
-from agentcore.reasoning.services import (
+from agentcore.reasoning.services import (  # noqa: F401
     reasoning_execute_jsonrpc,
     reasoning_jsonrpc,
 )
 
 # Import training JSON-RPC methods
-from agentcore.training.services import training_jsonrpc
+from agentcore.training.services import training_jsonrpc  # noqa: F401
 
 # Import agent runtime tool JSON-RPC methods
 try:
@@ -54,6 +61,7 @@ except ImportError:
 # Import ACE JSON-RPC methods
 try:
     from agentcore.ace import jsonrpc as ace_jsonrpc
+
     # Import ACE integration module for runtime intervention support
     from agentcore.ace.integration import runtime_interface as ace_runtime_integration
 except ImportError:
@@ -74,12 +82,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await init_db()
         logger.info("Database initialized")
 
+        # Initialize memory storage backends (Qdrant, Neo4j)
+        try:
+            await initialize_storage_backend()
+            logger.info("Memory storage backends initialized (PostgreSQL, Qdrant, Neo4j)")
+        except Exception as e:
+            logger.warning(
+                "Memory storage backends initialization failed, using fallback mode",
+                error=str(e),
+            )
+
+        # Initialize Redis working memory
+        try:
+            await initialize_working_memory()
+            logger.info("Redis working memory initialized")
+        except Exception as e:
+            logger.warning(
+                "Redis working memory initialization failed, using fallback mode",
+                error=str(e),
+            )
+
         # Start coordination service cleanup task
         if settings.COORDINATION_ENABLE_REP:
             coordination_service.start_cleanup_task()
             logger.info("Coordination cleanup task started")
 
-        # TODO: Initialize Redis connection
         # TODO: Setup WebSocket manager
         yield
     finally:
@@ -90,11 +117,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await coordination_service.stop_cleanup_task()
             logger.info("Coordination cleanup task stopped")
 
+        # Close memory storage backends
+        try:
+            await close_storage_backend()
+            logger.info("Memory storage backends closed")
+        except Exception as e:
+            logger.warning("Memory storage backends cleanup failed", error=str(e))
+
+        # Close Redis working memory
+        try:
+            await close_working_memory()
+            logger.info("Redis working memory closed")
+        except Exception as e:
+            logger.warning("Redis working memory cleanup failed", error=str(e))
+
         # Cleanup database connections
         await close_db()
         logger.info("Database connections closed")
-
-        # TODO: Cleanup Redis connections
 
 
 def create_app() -> FastAPI:

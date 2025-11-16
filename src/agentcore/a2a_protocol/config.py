@@ -83,6 +83,58 @@ class Settings(BaseSettings):
         default=[], description="Redis cluster URLs (overrides REDIS_URL if provided)"
     )
 
+    # Qdrant Vector Database (Memory System)
+    QDRANT_URL: str = Field(
+        default="http://localhost:6333", description="Qdrant HTTP API connection URL"
+    )
+    QDRANT_GRPC_URL: str | None = Field(
+        default=None, description="Qdrant gRPC API connection URL (optional, for better performance)"
+    )
+    QDRANT_API_KEY: str | None = Field(
+        default=None, description="Qdrant API key (required for cloud deployment)"
+    )
+    QDRANT_COLLECTION_NAME: str = Field(
+        default="agentcore_memories", description="Qdrant collection name for memory storage"
+    )
+    QDRANT_VECTOR_SIZE: int = Field(
+        default=1536, ge=1, description="Vector dimension size for embeddings (1536 for OpenAI text-embedding-3-small)"
+    )
+    QDRANT_DISTANCE: str = Field(
+        default="Cosine", description="Distance metric for vector similarity (Cosine, Euclid, or Dot)"
+    )
+    QDRANT_TIMEOUT: int = Field(
+        default=30, gt=0, description="Qdrant request timeout in seconds"
+    )
+    QDRANT_MAX_RETRIES: int = Field(
+        default=3, ge=0, description="Maximum retry attempts for Qdrant requests"
+    )
+
+    # Neo4j Graph Database (Memory System - Knowledge Graphs)
+    NEO4J_URI: str = Field(
+        default="bolt://localhost:7687", description="Neo4j Bolt protocol URI"
+    )
+    NEO4J_USER: str = Field(
+        default="neo4j", description="Neo4j username"
+    )
+    NEO4J_PASSWORD: str = Field(
+        default="password", description="Neo4j password"
+    )
+    NEO4J_DATABASE: str = Field(
+        default="agentcore", description="Neo4j database name"
+    )
+    NEO4J_MAX_CONNECTION_LIFETIME: int = Field(
+        default=3600, gt=0, description="Neo4j connection lifetime in seconds"
+    )
+    NEO4J_MAX_CONNECTION_POOL_SIZE: int = Field(
+        default=50, ge=1, description="Maximum Neo4j connection pool size"
+    )
+    NEO4J_CONNECTION_ACQUISITION_TIMEOUT: int = Field(
+        default=60, gt=0, description="Neo4j connection acquisition timeout in seconds"
+    )
+    NEO4J_ENCRYPTED: bool = Field(
+        default=False, description="Enable TLS encryption for Neo4j connections"
+    )
+
     # Monitoring
     ENABLE_METRICS: bool = Field(default=True, description="Enable Prometheus metrics")
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
@@ -183,6 +235,19 @@ class Settings(BaseSettings):
     )
     COORDINATION_CLEANUP_INTERVAL: int = Field(
         default=300, gt=0, description="Signal cleanup interval in seconds (must be >0)"
+    )
+
+    # Memory System - Cost Tracking and Budget Management
+    MONTHLY_TOKEN_BUDGET_USD: float = Field(
+        default=100.0,
+        gt=0.0,
+        description="Monthly budget limit for compression operations in USD (must be >0)"
+    )
+    COST_ALERT_THRESHOLD_PERCENTAGE: float = Field(
+        default=75.0,
+        ge=0.0,
+        le=100.0,
+        description="Budget consumption threshold for alerts (0-100 percentage)"
     )
 
     # Routing Optimization Weights (must sum to 1.0)
