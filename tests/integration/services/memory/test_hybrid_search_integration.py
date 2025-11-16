@@ -6,7 +6,6 @@ Measures performance metrics (p95 latency) and retrieval precision.
 """
 
 import asyncio
-import re
 import time
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -110,8 +109,10 @@ def qdrant_container():
         container.with_env("QDRANT__SERVICE__GRPC_PORT", "6334")
 
         container.start()
-        # Use re.compile() pattern to avoid deprecation warning
-        wait_for_logs(container, re.compile(r"Qdrant gRPC listening"), timeout=30)
+        # Use callable predicate to avoid deprecation warning
+        wait_for_logs(
+            container, lambda logs: "Qdrant gRPC listening" in logs, timeout=30
+        )
     except Exception as e:
         _check_docker_error(e)
         raise
@@ -133,8 +134,8 @@ def neo4j_container():
         container.with_env("NEO4J_PLUGINS", '["apoc"]')
 
         container.start()
-        # Use re.compile() pattern to avoid deprecation warning
-        wait_for_logs(container, re.compile(r"Started"), timeout=60)
+        # Use callable predicate to avoid deprecation warning
+        wait_for_logs(container, lambda logs: "Started" in logs, timeout=60)
 
         # Wait for Neo4j to be ready
         time.sleep(5)
