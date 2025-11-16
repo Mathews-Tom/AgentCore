@@ -457,11 +457,12 @@ class TestVectorGraphCoordination:
 
         # Vector similarity search
         query_vector = [0.15] * 1536  # Between 0.1 and 0.2
-        vector_results = await qdrant_client.search(
+        vector_response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=3,
         )
+        vector_results = vector_response.points
 
         assert len(vector_results) == 3
         # First result should be closest to query vector
@@ -869,11 +870,12 @@ class TestHybridSearchAccuracy:
         query_vector = [0.25] * 1536  # Between embeddings
 
         # Step 1: Vector search
-        vector_results = await qdrant_client.search(
+        vector_response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=3,
         )
+        vector_results = vector_response.points
 
         vector_memory_ids = [r.payload["memory_id"] for r in vector_results]
         assert len(vector_memory_ids) == 3
@@ -972,11 +974,12 @@ class TestMemoryPersistence:
         assert info1.points_count == 5
 
         # Perform search (simulating read operation)
-        results = await qdrant_client.search(
+        response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=[0.3] * 1536,
+            query=[0.3] * 1536,
             limit=10,
         )
+        results = response.points
         assert len(results) == 5
 
         # Update a point

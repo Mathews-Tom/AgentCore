@@ -307,6 +307,7 @@ class GraphRepository:
         """
         query = """
         MATCH ()-[r {relationship_id: $relationship_id}]-()
+        WITH r LIMIT 1
         SET r.access_count = r.access_count + 1
         RETURN r
         """

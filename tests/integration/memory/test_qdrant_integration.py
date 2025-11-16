@@ -99,11 +99,12 @@ class TestQdrantVectorSearch:
         """Test vector similarity search."""
         # Search with a query vector matching first point's pattern (even indices)
         query_vector = [0.1 if i % 2 == 0 else 0.0 for i in range(1536)]
-        results = await qdrant_client.search(
+        response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=3,
         )
+        results = response.points
 
         assert len(results) == 3
         # First result should be closest (highest score)
@@ -121,9 +122,9 @@ class TestQdrantVectorSearch:
 
         # Use vector pattern matching second point (every 3rd index)
         query_vector = [0.1 if i % 3 == 0 else 0.0 for i in range(1536)]
-        results = await qdrant_client.search(
+        response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=Filter(
                 must=[
                     FieldCondition(
@@ -134,6 +135,7 @@ class TestQdrantVectorSearch:
             ),
             limit=10,
         )
+        results = response.points
 
         assert len(results) == 1
         assert results[0].payload["memory_layer"] == "semantic"
@@ -148,9 +150,9 @@ class TestQdrantVectorSearch:
         from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         query_vector = [0.15] * 1536
-        results = await qdrant_client.search(
+        response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=Filter(
                 must=[
                     FieldCondition(
@@ -161,6 +163,7 @@ class TestQdrantVectorSearch:
             ),
             limit=10,
         )
+        results = response.points
 
         assert len(results) == 3
         for result in results:
@@ -176,9 +179,9 @@ class TestQdrantVectorSearch:
         from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         query_vector = [0.15] * 1536
-        results = await qdrant_client.search(
+        response = await qdrant_client.query_points(
             collection_name=qdrant_test_collection,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=Filter(
                 must=[
                     FieldCondition(
@@ -189,6 +192,7 @@ class TestQdrantVectorSearch:
             ),
             limit=10,
         )
+        results = response.points
 
         assert len(results) == 2
         for result in results:
@@ -234,9 +238,9 @@ class TestQdrantPerformance:
 
         for _ in range(100):
             start_time = time.perf_counter()
-            await qdrant_client.search(
+            await qdrant_client.query_points(
                 collection_name=qdrant_test_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=10,
             )
             end_time = time.perf_counter()
@@ -289,9 +293,9 @@ class TestQdrantPerformance:
 
         for i in range(50):
             start_time = time.perf_counter()
-            await qdrant_client.search(
+            await qdrant_client.query_points(
                 collection_name=qdrant_test_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 query_filter=Filter(
                     must=[
                         FieldCondition(

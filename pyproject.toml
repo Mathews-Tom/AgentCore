@@ -150,6 +150,10 @@ python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"
 addopts = "--cov=src --cov-report=term-missing --cov-fail-under=90"
+filterwarnings = [
+    # Suppress third-party library deprecation warnings we cannot fix
+    "ignore:The wait_for_logs function with string.*:DeprecationWarning:testcontainers",
+]
 
 [tool.coverage.run]
 source = ["src"]
