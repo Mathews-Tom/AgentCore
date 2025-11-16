@@ -39,12 +39,14 @@ class GraphRepository:
         Example:
             node = await GraphRepository.create_node(session, entity_node)
         """
+        import json
+
         query = """
         CREATE (e:Entity {
             entity_id: $entity_id,
             entity_name: $entity_name,
             entity_type: $entity_type,
-            properties: $properties,
+            properties_json: $properties_json,
             memory_refs: $memory_refs,
             created_at: datetime($created_at),
             updated_at: datetime($updated_at)
@@ -56,7 +58,7 @@ class GraphRepository:
             "entity_id": entity.entity_id,
             "entity_name": entity.entity_name,
             "entity_type": entity.entity_type.value,
-            "properties": entity.properties,
+            "properties_json": json.dumps(entity.properties),
             "memory_refs": entity.memory_refs,
             "created_at": entity.created_at.isoformat(),
             "updated_at": entity.updated_at.isoformat(),
@@ -93,6 +95,8 @@ class GraphRepository:
         Example:
             rel = await GraphRepository.create_relationship(session, rel_edge)
         """
+        import json
+
         # Dynamically create relationship type from enum value
         rel_type = relationship.relationship_type.value.upper()
 
@@ -101,7 +105,7 @@ class GraphRepository:
         MATCH (target:Entity {{entity_id: $target_id}})
         CREATE (source)-[r:{rel_type} {{
             relationship_id: $relationship_id,
-            properties: $properties,
+            properties_json: $properties_json,
             memory_refs: $memory_refs,
             created_at: datetime($created_at),
             access_count: $access_count
@@ -113,7 +117,7 @@ class GraphRepository:
             "source_id": relationship.source_entity_id,
             "target_id": relationship.target_entity_id,
             "relationship_id": relationship.relationship_id,
-            "properties": relationship.properties,
+            "properties_json": json.dumps(relationship.properties),
             "memory_refs": relationship.memory_refs,
             "created_at": relationship.created_at.isoformat(),
             "access_count": relationship.access_count,

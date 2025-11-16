@@ -41,6 +41,10 @@ from agentcore.a2a_protocol.services.memory.retrieval_service import (
     EnhancedRetrievalService,
 )
 from agentcore.a2a_protocol.services.memory.stage_manager import StageManager
+from agentcore.a2a_protocol.services.memory.storage_backend import get_storage_backend
+from agentcore.a2a_protocol.services.memory.working_memory import (
+    get_working_memory_service,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -294,7 +298,13 @@ def _get_retrieval_service() -> EnhancedRetrievalService:
     return _retrieval_service
 
 
-# Store memories in-memory for now (can be replaced with actual storage)
+def _get_storage_backend():
+    """Get storage backend instance (uses global singleton)."""
+    return get_storage_backend()
+
+
+# Legacy in-memory stores (deprecated, kept for fallback during migration)
+# These will be removed once storage backend is fully integrated
 _memory_store: dict[str, MemoryRecord] = {}
 _stage_store: dict[str, StageMemory] = {}
 _error_store: dict[str, ErrorRecord] = {}
@@ -362,8 +372,31 @@ async def handle_memory_store(request: JsonRpcRequest) -> dict[str, Any]:
             criticality_reason=params.criticality_reason,
         )
 
-        # Store memory
-        _memory_store[memory.memory_id] = memory
+        # Route memory to appropriate backend based on layer
+        if memory_layer_enum == MemoryLayer.WORKING:
+            # Store in Redis with TTL for working memory
+            working_memory = get_working_memory_service()
+            try:
+                await working_memory.store_working_memory(memory)
+            except RuntimeError:
+                # Redis not initialized, fall back to in-memory
+                logger.warning(
+                    "Redis working memory not initialized, using in-memory storage",
+                    memory_id=memory.memory_id,
+                )
+                _memory_store[memory.memory_id] = memory
+        else:
+            # Store in PostgreSQL + Qdrant for persistent memory layers
+            storage_backend = _get_storage_backend()
+            try:
+                await storage_backend.store_memory(memory)
+            except RuntimeError:
+                # Storage backend not initialized, fall back to in-memory (dev mode)
+                logger.warning(
+                    "Storage backend not initialized, using in-memory storage",
+                    memory_id=memory.memory_id,
+                )
+                _memory_store[memory.memory_id] = memory
 
         result = MemoryStoreResult(
             memory_id=memory.memory_id,
@@ -421,55 +454,126 @@ async def handle_memory_retrieve(request: JsonRpcRequest) -> dict[str, Any]:
         # Get retrieval service
         retrieval = _get_retrieval_service()
 
-        # Filter memories based on criteria
-        filtered_memories = list(_memory_store.values())
+        # Try to use vector search if embedding is provided and storage backend is initialized
+        memories = []
+        storage_backend = _get_storage_backend()
 
-        if params.agent_id:
-            filtered_memories = [
-                m for m in filtered_memories if m.agent_id == params.agent_id
-            ]
+        if params.query_embedding and len(params.query_embedding) > 0:
+            # Use vector search from Qdrant
+            try:
+                vector_results = await storage_backend.vector_search(
+                    query_embedding=params.query_embedding,
+                    limit=params.limit,
+                    filter_agent_id=params.agent_id,
+                    filter_session_id=params.session_id,
+                    filter_task_id=params.task_id,
+                    filter_memory_layer=params.memory_layer.lower() if params.memory_layer else None,
+                )
 
-        if params.session_id:
-            filtered_memories = [
-                m for m in filtered_memories if m.session_id == params.session_id
-            ]
+                # Convert vector search results to memory records
+                for memory_id, score, payload in vector_results:
+                    # Fetch full memory record from PostgreSQL
+                    memory = await storage_backend.get_memory_by_id(payload.get("memory_id", memory_id))
+                    if memory:
+                        memory_dict = memory.model_dump(mode="json")
+                        memory_dict["_vector_score"] = score
+                        memories.append(memory_dict)
 
-        if params.task_id:
-            filtered_memories = [
-                m for m in filtered_memories if m.task_id == params.task_id
-            ]
+            except RuntimeError:
+                # Storage backend not initialized, fall back to in-memory
+                logger.warning("Storage backend not initialized, using in-memory retrieval")
+                filtered_memories = list(_memory_store.values())
 
-        if params.memory_layer:
-            filtered_memories = [
-                m
-                for m in filtered_memories
-                if m.memory_layer.value == params.memory_layer.lower()
-            ]
+                if params.agent_id:
+                    filtered_memories = [
+                        m for m in filtered_memories if m.agent_id == params.agent_id
+                    ]
 
-        # Map stage string to enum if provided
-        current_stage_enum = None
-        if params.current_stage:
-            stage_map = {
-                "planning": StageType.PLANNING,
-                "execution": StageType.EXECUTION,
-                "reflection": StageType.REFLECTION,
-                "verification": StageType.VERIFICATION,
-            }
-            current_stage_enum = stage_map.get(params.current_stage.lower())
+                if params.session_id:
+                    filtered_memories = [
+                        m for m in filtered_memories if m.session_id == params.session_id
+                    ]
 
-        # Score and rank memories
-        if filtered_memories:
-            scored = await retrieval.retrieve_top_k(
-                memories=filtered_memories,
-                k=params.limit,
-                query_embedding=params.query_embedding,
-                current_stage=current_stage_enum,
-                has_recent_errors=params.has_recent_errors,
-            )
+                if params.task_id:
+                    filtered_memories = [
+                        m for m in filtered_memories if m.task_id == params.task_id
+                    ]
 
-            memories = [mem.model_dump(mode="json") for mem, _, _ in scored]
+                if params.memory_layer:
+                    filtered_memories = [
+                        m
+                        for m in filtered_memories
+                        if m.memory_layer.value == params.memory_layer.lower()
+                    ]
+
+                # Map stage string to enum if provided
+                current_stage_enum = None
+                if params.current_stage:
+                    stage_map = {
+                        "planning": StageType.PLANNING,
+                        "execution": StageType.EXECUTION,
+                        "reflection": StageType.REFLECTION,
+                        "verification": StageType.VERIFICATION,
+                    }
+                    current_stage_enum = stage_map.get(params.current_stage.lower())
+
+                # Score and rank memories using retrieval service
+                if filtered_memories:
+                    scored = await retrieval.retrieve_top_k(
+                        memories=filtered_memories,
+                        k=params.limit,
+                        query_embedding=params.query_embedding,
+                        current_stage=current_stage_enum,
+                        has_recent_errors=params.has_recent_errors,
+                    )
+                    memories = [mem.model_dump(mode="json") for mem, _, _ in scored]
         else:
-            memories = []
+            # No embedding provided, use in-memory filtering (legacy mode)
+            filtered_memories = list(_memory_store.values())
+
+            if params.agent_id:
+                filtered_memories = [
+                    m for m in filtered_memories if m.agent_id == params.agent_id
+                ]
+
+            if params.session_id:
+                filtered_memories = [
+                    m for m in filtered_memories if m.session_id == params.session_id
+                ]
+
+            if params.task_id:
+                filtered_memories = [
+                    m for m in filtered_memories if m.task_id == params.task_id
+                ]
+
+            if params.memory_layer:
+                filtered_memories = [
+                    m
+                    for m in filtered_memories
+                    if m.memory_layer.value == params.memory_layer.lower()
+                ]
+
+            # Map stage string to enum if provided
+            current_stage_enum = None
+            if params.current_stage:
+                stage_map = {
+                    "planning": StageType.PLANNING,
+                    "execution": StageType.EXECUTION,
+                    "reflection": StageType.REFLECTION,
+                    "verification": StageType.VERIFICATION,
+                }
+                current_stage_enum = stage_map.get(params.current_stage.lower())
+
+            # Score and rank memories
+            if filtered_memories:
+                scored = await retrieval.retrieve_top_k(
+                    memories=filtered_memories,
+                    k=params.limit,
+                    query_embedding=params.query_embedding,
+                    current_stage=current_stage_enum,
+                    has_recent_errors=params.has_recent_errors,
+                )
+                memories = [mem.model_dump(mode="json") for mem, _, _ in scored]
 
         end_time = datetime.now(UTC)
         query_time_ms = (end_time - start_time).total_seconds() * 1000
@@ -672,8 +776,17 @@ async def handle_memory_complete_stage(request: JsonRpcRequest) -> dict[str, Any
             completed_at=datetime.now(UTC),
         )
 
-        # Store stage memory
-        _stage_store[stage_memory.stage_id] = stage_memory
+        # Store stage memory in production backend
+        storage_backend = _get_storage_backend()
+        try:
+            await storage_backend.store_stage_memory(stage_memory)
+        except RuntimeError:
+            # Storage backend not initialized, fall back to in-memory (dev mode)
+            logger.warning(
+                "Storage backend not initialized, using in-memory storage",
+                stage_id=stage_memory.stage_id,
+            )
+            _stage_store[stage_memory.stage_id] = stage_memory
 
         result = CompleteStageResult(
             stage_id=stage_memory.stage_id,
@@ -757,8 +870,17 @@ async def handle_memory_record_error(request: JsonRpcRequest) -> dict[str, Any]:
             stage_id=params.stage_id,
         )
 
-        # Store error
-        _error_store[error_record.error_id] = error_record
+        # Store error in production backend
+        storage_backend = _get_storage_backend()
+        try:
+            await storage_backend.store_error(error_record)
+        except RuntimeError:
+            # Storage backend not initialized, fall back to in-memory (dev mode)
+            logger.warning(
+                "Storage backend not initialized, using in-memory storage",
+                error_id=error_record.error_id,
+            )
+            _error_store[error_record.error_id] = error_record
 
         # Also track in error tracker for pattern detection
         error_tracker = _get_error_tracker()
@@ -769,7 +891,7 @@ async def handle_memory_record_error(request: JsonRpcRequest) -> dict[str, Any]:
             error_description=params.error_description,
             context_when_occurred=params.context_when_occurred,
             recovery_action=params.recovery_action,
-            severity=params.error_severity,
+            severity_override=params.error_severity,
         )
 
         result = RecordErrorResult(
@@ -898,50 +1020,37 @@ async def handle_memory_run_memify(request: JsonRpcRequest) -> dict[str, Any]:
         # Validate parameters
         params = RunMemifyParams(**params_dict)
 
-        # Note: In production, this would connect to actual Neo4j driver
-        # For now, return mock optimization results
-        # This demonstrates the API contract without requiring Neo4j
+        # Get storage backend to access Neo4j driver
+        storage_backend = _get_storage_backend()
 
-        from uuid import uuid4
+        # Create GraphOptimizer with Neo4j driver
+        optimizer = GraphOptimizer(
+            driver=storage_backend.neo4j_driver,
+            similarity_threshold=params.similarity_threshold,
+            min_access_count=params.min_access_count,
+            batch_size=params.batch_size,
+        )
 
-        optimization_id = f"opt-{uuid4()}"
-        start_time = datetime.now(UTC)
-
-        # Mock optimization results (in production, would call GraphOptimizer.optimize())
-        # Real implementation would be:
-        # optimizer = GraphOptimizer(
-        #     driver=neo4j_driver,
-        #     similarity_threshold=params.similarity_threshold,
-        #     min_access_count=params.min_access_count,
-        #     batch_size=params.batch_size,
-        # )
-        # metrics = await optimizer.optimize()
-
-        end_time = datetime.now(UTC)
-        duration = (end_time - start_time).total_seconds()
+        # Run optimization
+        metrics = await optimizer.optimize()
 
         # Track scheduling if requested
         scheduled_job_id = None
         next_run = None
         if params.schedule_cron:
-            from croniter import croniter
-
-            if not croniter.is_valid(params.schedule_cron):
-                raise ValueError(f"Invalid cron expression: {params.schedule_cron}")
-
-            scheduled_job_id = f"opt-job-{uuid4()}"
-            cron = croniter(params.schedule_cron, datetime.now(UTC))
-            next_run = cron.get_next(datetime).isoformat()
+            scheduled_job_id = optimizer.schedule_optimization(params.schedule_cron)
+            next_run_dt = optimizer.get_next_scheduled_run()
+            next_run = next_run_dt.isoformat() if next_run_dt else None
 
         result = RunMemifyResult(
-            optimization_id=optimization_id,
-            entities_analyzed=0,  # Would be populated from actual optimization
-            entities_merged=0,
-            relationships_pruned=0,
-            patterns_detected=0,
-            consolidation_accuracy=1.0,
-            duplicate_rate=0.0,
-            duration_seconds=duration,
+            optimization_id=metrics.optimization_id,
+            entities_analyzed=metrics.entities_analyzed,
+            entities_merged=metrics.entities_merged,
+            relationships_pruned=metrics.low_value_edges_removed,
+            patterns_detected=metrics.patterns_detected,
+            consolidation_accuracy=metrics.consolidation_accuracy,
+            duplicate_rate=metrics.duplicate_rate,
+            duration_seconds=metrics.duration_seconds,
             scheduled_job_id=scheduled_job_id,
             next_run=next_run,
         )
@@ -951,7 +1060,11 @@ async def handle_memory_run_memify(request: JsonRpcRequest) -> dict[str, Any]:
             optimization_id=result.optimization_id,
             entities_analyzed=result.entities_analyzed,
             entities_merged=result.entities_merged,
+            relationships_pruned=result.relationships_pruned,
+            patterns_detected=result.patterns_detected,
             duration_seconds=result.duration_seconds,
+            consolidation_accuracy=result.consolidation_accuracy,
+            duplicate_rate=result.duplicate_rate,
             scheduled=scheduled_job_id is not None,
             method="memory.run_memify",
         )

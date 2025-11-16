@@ -9,6 +9,7 @@ Component ID: MEM-017
 Ticket: MEM-017 (Implement GraphMemoryService - Neo4j Integration)
 """
 
+import json
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -270,7 +271,7 @@ class GraphMemoryService:
             CREATE (c:Concept {
                 concept_id: $concept_id,
                 name: $name,
-                properties: $properties,
+                properties_json: $properties_json,
                 memory_refs: $memory_refs,
                 created_at: datetime()
             })
@@ -280,7 +281,7 @@ class GraphMemoryService:
             params = {
                 "concept_id": concept_id,
                 "name": name,
-                "properties": properties or {},
+                "properties_json": json.dumps(properties or {}),
                 "memory_refs": memory_refs or [],
             }
 
@@ -326,7 +327,7 @@ class GraphMemoryService:
             MATCH (e:Entity {entity_id: $entity_id})
             CREATE (m)-[r:MENTIONS {
                 relationship_id: $relationship_id,
-                properties: $properties,
+                properties_json: $properties_json,
                 created_at: datetime(),
                 access_count: 0
             }]->(e)
@@ -337,7 +338,7 @@ class GraphMemoryService:
                 "memory_id": memory_id,
                 "entity_id": entity_id,
                 "relationship_id": relationship_id,
-                "properties": properties or {},
+                "properties_json": json.dumps(properties or {}),
             }
 
             result = await session.run(query, params)
@@ -410,7 +411,7 @@ class GraphMemoryService:
             MATCH (to:{to_label} {{{to_id_field}: $to_id}})
             CREATE (from)-[r:{rel_type_str} {{
                 relationship_id: $relationship_id,
-                properties: $properties,
+                properties_json: $properties_json,
                 created_at: datetime(),
                 access_count: 0
             }}]->(to)
@@ -421,7 +422,7 @@ class GraphMemoryService:
                 "from_id": from_id,
                 "to_id": to_id,
                 "relationship_id": relationship_id,
-                "properties": properties or {},
+                "properties_json": json.dumps(properties or {}),
             }
 
             result = await session.run(query, params)
@@ -537,14 +538,30 @@ class GraphMemoryService:
             # Convert dictionaries to EntityNode objects
             entities = []
             for data in result_dicts:
+                # Deserialize properties from JSON string
+                properties_json = data.get("properties_json", "{}")
+                if isinstance(properties_json, str):
+                    properties = json.loads(properties_json)
+                else:
+                    properties = properties_json or {}
+
+                # Convert Neo4j DateTime to Python datetime
+                created_at = data["created_at"]
+                if hasattr(created_at, "to_native"):
+                    created_at = created_at.to_native()
+
+                updated_at = data["updated_at"]
+                if hasattr(updated_at, "to_native"):
+                    updated_at = updated_at.to_native()
+
                 entity = EntityNode(
                     entity_id=data["entity_id"],
                     entity_name=data["entity_name"],
                     entity_type=EntityType(data["entity_type"]),
-                    properties=data.get("properties", {}),
+                    properties=properties,
                     memory_refs=data.get("memory_refs", []),
-                    created_at=data["created_at"],
-                    updated_at=data["updated_at"],
+                    created_at=created_at,
+                    updated_at=updated_at,
                 )
                 entities.append(entity)
 
