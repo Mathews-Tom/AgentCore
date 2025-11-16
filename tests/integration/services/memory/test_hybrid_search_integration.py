@@ -109,7 +109,7 @@ def qdrant_container():
         container.with_env("QDRANT__SERVICE__GRPC_PORT", "6334")
 
         container.start()
-        # Use callable predicate to avoid deprecation warning
+        # Use callable predicate (deprecation warning filtered in pytest.ini)
         wait_for_logs(
             container, lambda logs: "Qdrant gRPC listening" in logs, timeout=30
         )
@@ -134,7 +134,7 @@ def neo4j_container():
         container.with_env("NEO4J_PLUGINS", '["apoc"]')
 
         container.start()
-        # Use callable predicate to avoid deprecation warning
+        # Use callable predicate (deprecation warning filtered in pytest.ini)
         wait_for_logs(container, lambda logs: "Started" in logs, timeout=60)
 
         # Wait for Neo4j to be ready
