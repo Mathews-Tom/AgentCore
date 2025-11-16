@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import pytest_asyncio
 import redis.asyncio as aioredis
 from testcontainers.redis import RedisContainer
 
@@ -20,7 +21,7 @@ def redis_container():
         yield redis
 
 
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def real_redis_client(redis_container):
     """Create real Redis client for integration tests.
 
