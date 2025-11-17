@@ -6561,7 +6561,7 @@
       "title": "Evaluation Framework",
       "type": "implementation",
       "priority": "P1",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 3,
       "effort_sp": 5,
@@ -6569,7 +6569,7 @@
         "FLOW-003"
       ],
       "notes": "- Tool accuracy computed when trajectories use tools (type=\"tool_call\")\n- Statistical significance threshold: p < 0.05\n- Supports configurable evaluation intervals for periodic assessment\n- Ready for integration with TrainingJobManager in FLOW-019\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-17T00:50:30Z",
+      "updated": "2025-11-17T21:01:04Z",
       "git": {
         "commits": [
           "9c0633d"
@@ -6627,7 +6627,7 @@
       "title": "Checkpoint Manager",
       "type": "implementation",
       "priority": "P1",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 3,
       "effort_sp": 5,
@@ -6635,7 +6635,7 @@
         "FLOW-005"
       ],
       "notes": "- Phase 1: JSON file persistence for development and testing\n- Phase 2: PostgreSQL metadata + S3 for large policy weights (production)\n- Checkpoints sorted by validation score for best selection\n- Automatic cleanup prevents disk space issues\n- Ready for integration with TrainingJobManager\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-17T00:50:30Z",
+      "updated": "2025-11-17T21:01:04Z",
       "git": {
         "commits": [
           "95ff204"
@@ -6660,7 +6660,7 @@
       "title": "Prometheus Metrics",
       "type": "implementation",
       "priority": "P1",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 3,
       "effort_sp": 3,
@@ -6668,7 +6668,7 @@
         "FLOW-007"
       ],
       "notes": "- Prometheus client library integrated\n- Histogram buckets tuned for training workloads\n- Ready for production monitoring with Prometheus + Grafana\n- Alert rules included for proactive monitoring\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-17T00:50:30Z",
+      "updated": "2025-11-17T21:01:04Z",
       "git": {
         "commits": [
           "a728137"
@@ -6693,7 +6693,7 @@
       "title": "Data Export API",
       "type": "implementation",
       "priority": "P1",
-      "state": "UNPROCESSED",
+      "state": "COMPLETED",
       "parent": "FLOW-001",
       "sprint": 3,
       "effort_sp": 3,
@@ -6701,7 +6701,7 @@
         "FLOW-002"
       ],
       "notes": "- Phase 1: Returns empty results as trajectories are simulated, not stored in DB\n- Phase 2: Will return actual trajectories from PostgreSQL with full filtering\n- Authorization checks (data_export permission) deferred to Phase 2\n- Ready for integration in FLOW-019 (Integration Tests Phase 2)\n\n---\n\n*Created: unknown*\n*Updated: unknown*",
-      "updated": "2025-11-17T00:50:30Z",
+      "updated": "2025-11-17T21:01:04Z",
       "git": {
         "commits": [
           "fc9e562"
