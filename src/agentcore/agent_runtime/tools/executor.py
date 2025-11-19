@@ -36,6 +36,7 @@ from ..services.metrics_collector import MetricsCollector
 from ..services.rate_limiter import RateLimitExceeded, RateLimiter
 from ..services.quota_manager import QuotaExceeded, QuotaManager
 from ..services.retry_handler import BackoffStrategy, RetryHandler
+from .auth import check_tool_access_permission
 from .base import ExecutionContext, Tool
 from .errors import categorize_error, get_error_metadata
 from .registry import ToolRegistry
@@ -689,9 +690,11 @@ class ToolExecutor:
     ) -> str | None:
         """Validate authentication requirements for tool execution.
 
-        Basic authentication check via ExecutionContext. Currently validates that
-        required identity fields (user_id, agent_id) are present when tool requires
-        authentication.
+        Enhanced authentication check with RBAC policy enforcement (TOOL-019).
+        Validates:
+        1. Required identity fields (user_id, agent_id) are present
+        2. JWT payload exists for authenticated tools
+        3. User/agent has permission to execute tool (RBAC)
 
         Args:
             tool: Tool instance to validate authentication for
@@ -707,6 +710,21 @@ class ToolExecutor:
                 return "Authentication required: user_id missing from context"
             if not context.agent_id:
                 return "Authentication required: agent_id missing from context"
+
+            # RBAC enforcement: check tool access permissions (TOOL-019)
+            # This requires JWT payload in context metadata
+            is_authorized, auth_error = check_tool_access_permission(
+                context, tool.metadata
+            )
+            if not is_authorized:
+                self.logger.warning(
+                    "tool_access_denied",
+                    tool_id=tool.metadata.tool_id,
+                    user_id=context.user_id,
+                    agent_id=context.agent_id,
+                    error=auth_error,
+                )
+                return auth_error
 
         return None
 

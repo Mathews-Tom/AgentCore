@@ -76,6 +76,10 @@ class ToolDefinition(BaseModel):
         default_factory=dict,
         description="Authentication configuration (e.g., token_url, scopes)",
     )
+    required_permissions: list[Any] = Field(
+        default_factory=list,
+        description="Required permissions for RBAC enforcement (list of Permission enums)",
+    )
 
     # Execution Configuration
     timeout_seconds: int = Field(
