@@ -3,7 +3,7 @@
 ## Metadata
 
 **ID:** FLOW-016
-**State:** UNPROCESSED
+**State:** COMPLETED
 **Priority:** P1
 **Type:** story
 **Component:** unknown
