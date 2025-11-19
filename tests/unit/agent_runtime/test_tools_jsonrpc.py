@@ -10,6 +10,7 @@ from agentcore.agent_runtime.jsonrpc.tools_jsonrpc import (
     handle_tools_execute,
     handle_tools_list,
     handle_tools_get,
+    handle_tools_search,
 )
 from agentcore.agent_runtime.models.tool_integration import (
     ToolExecutionStatus,
@@ -544,3 +545,172 @@ class TestToolsGetJSONRPC:
 
         with pytest.raises(ValueError, match="tool_id parameter required"):
             await handle_tools_get(request)
+
+
+@pytest.mark.asyncio
+class TestToolsSearchJSONRPC:
+    """Unit tests for tools.search JSON-RPC method."""
+
+    async def test_tools_search_by_name_query(self):
+        """Test searching tools by name query."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={"name_query": "calculator"},
+            id="1",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        assert "query" in result
+        assert isinstance(result["tools"], list)
+        assert result["count"] == len(result["tools"])
+        assert result["query"]["name"] == "calculator"
+        assert result["count"] > 0
+        # Verify that at least one tool has "calculator" in its name
+        tool_names = [tool["name"].lower() for tool in result["tools"]]
+        assert any("calculator" in name for name in tool_names)
+
+    async def test_tools_search_by_category(self):
+        """Test searching tools by category."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={"category": "utility"},
+            id="2",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        assert result["count"] > 0
+        # All tools should be utility category
+        for tool in result["tools"]:
+            assert tool["category"] == "utility"
+
+    async def test_tools_search_by_capabilities(self):
+        """Test searching tools by capabilities."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={"capabilities": ["external_api"]},
+            id="3",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        # All tools should have external_api capability
+        for tool in result["tools"]:
+            assert "external_api" in tool["capabilities"]
+
+    async def test_tools_search_by_tags(self):
+        """Test searching tools by tags."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={"tags": ["search"]},
+            id="4",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        # All tools should have search tag
+        for tool in result["tools"]:
+            assert "search" in tool["tags"]
+
+    async def test_tools_search_combined_filters(self):
+        """Test searching tools with multiple filters."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={
+                "category": "search",
+                "capabilities": ["external_api"],
+                "tags": ["search"],
+            },
+            id="5",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        # Verify filters are applied correctly
+        for tool in result["tools"]:
+            assert tool["category"] == "search"
+            assert "external_api" in tool["capabilities"]
+            assert "search" in tool["tags"]
+
+    async def test_tools_search_no_results(self):
+        """Test searching tools with query that matches nothing."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={"name_query": "nonexistent_tool_xyz123"},
+            id="6",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        assert result["count"] == 0
+        assert result["tools"] == []
+
+    async def test_tools_search_empty_params(self):
+        """Test searching tools with no filters (should return all tools)."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={},
+            id="7",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "tools" in result
+        assert "count" in result
+        assert result["count"] > 0
+        # Should return all tools when no filters specified
+        assert isinstance(result["tools"], list)
+
+    async def test_tools_search_invalid_category(self):
+        """Test searching tools with invalid category."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={"category": "INVALID_CATEGORY"},
+            id="8",
+        )
+
+        with pytest.raises(ValueError, match="Invalid category"):
+            await handle_tools_search(request)
+
+    async def test_tools_search_returns_query_info(self):
+        """Test that tools.search returns query information."""
+        request = JsonRpcRequest(
+            jsonrpc="2.0",
+            method="tools.search",
+            params={
+                "name_query": "test",
+                "category": "utility",
+                "capabilities": ["math"],
+                "tags": ["basic"],
+            },
+            id="9",
+        )
+
+        result = await handle_tools_search(request)
+
+        assert "query" in result
+        assert result["query"]["name"] == "test"
+        assert result["query"]["category"] == "utility"
+        assert result["query"]["capabilities"] == ["math"]
+        assert result["query"]["tags"] == ["basic"]
