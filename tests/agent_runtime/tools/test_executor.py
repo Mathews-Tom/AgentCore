@@ -1,12 +1,13 @@
 """Tests for tool executor implementation."""
 
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from agentcore.a2a_protocol.models.security import Role, TokenPayload, TokenType
 from agentcore.agent_runtime.models.tool_integration import (
     AuthMethod,
     ToolCategory,
@@ -324,13 +325,26 @@ class TestAuthentication:
 
     @pytest.mark.asyncio
     async def test_execute_auth_tool_with_complete_context(self):
-        """Test auth tool succeeds with complete context."""
+        """Test auth tool succeeds with complete context including JWT payload."""
         registry = ToolRegistry()
         tool = MockAuthTool()
         registry.register(tool)
         executor = ToolExecutor(registry)
 
-        context = ExecutionContext(user_id="user123", agent_id="agent456")
+        # Create JWT payload for authentication
+        jwt_payload = TokenPayload.create(
+            subject="user123",
+            role=Role.AGENT,
+            token_type=TokenType.ACCESS,
+            agent_id="agent456",
+            expiration_hours=1,
+        )
+
+        context = ExecutionContext(
+            user_id="user123",
+            agent_id="agent456",
+            metadata={"jwt_payload": jwt_payload},
+        )
         parameters = {}
 
         result = await executor.execute_tool("auth_tool", parameters, context)

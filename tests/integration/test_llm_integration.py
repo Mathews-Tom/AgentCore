@@ -186,12 +186,16 @@ class TestProviderIntegrationAnthropic:
         assert response.latency_ms > 0
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     @pytest.mark.skipif(
         not os.getenv("ANTHROPIC_API_KEY"),
         reason="ANTHROPIC_API_KEY not configured",
     )
     async def test_anthropic_stream_basic(self) -> None:
-        """Test basic Anthropic streaming with real API."""
+        """Test basic Anthropic streaming with real API.
+
+        Note: Marked as flaky due to occasional Anthropic API errors (500, overload).
+        """
         service = LLMService()
 
         request = LLMRequest(

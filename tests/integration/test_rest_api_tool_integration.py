@@ -9,13 +9,34 @@ implementation with actual network calls. Tests cover:
 - Timeout scenarios
 
 Note: These tests require internet connectivity to httpbin.org
+
+WARNING: These tests depend on the external httpbin.org service which can be
+intermittently unavailable. The module checks availability at import time and
+skips all tests if httpbin returns a non-200 status. However, httpbin may
+become unavailable between the check and test execution, causing flaky failures.
+
+For CI/CD: Consider running these tests separately with retry logic or mocking
+httpbin responses for more reliable test execution.
 """
 
+import httpx
 import pytest
 
 from agentcore.agent_runtime.models.tool_integration import ToolExecutionStatus
 from agentcore.agent_runtime.tools.base import ExecutionContext
 from agentcore.agent_runtime.tools.builtin.api_tools import RESTAPITool
+
+# Mark all tests in this module as external_api
+pytestmark = pytest.mark.external_api
+
+# Check httpbin availability at module import time
+# Note: This is a best-effort check - httpbin may still fail during test execution
+try:
+    _response = httpx.get("https://httpbin.org/status/200", timeout=5.0)
+    if _response.status_code != 200:
+        pytest.skip("httpbin.org is not responding correctly", allow_module_level=True)
+except Exception as e:
+    pytest.skip(f"httpbin.org is unavailable: {e}", allow_module_level=True)
 
 
 @pytest.fixture

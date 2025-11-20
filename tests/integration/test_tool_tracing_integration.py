@@ -8,12 +8,17 @@ This module validates that distributed tracing works end-to-end:
 - Exceptions are properly recorded in spans
 
 Tests TOOL-020 acceptance criteria.
+
+Note: All tests in this module are marked with @pytest.mark.tracing to indicate
+they use OpenTelemetry tracing infrastructure and may have special isolation needs.
 """
 
 import asyncio
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+
+pytestmark = pytest.mark.tracing
 from opentelemetry import trace
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
@@ -143,31 +148,81 @@ class MockFailureTool(Tool):
         )
 
 
-@pytest.fixture(scope="module")
-def span_exporter():
-    """Set up in-memory span exporter for integration tests."""
-    exporter = InMemorySpanExporter()
+@pytest.fixture(scope="module", autouse=True)
+def setup_tracing_for_module():
+    """Set up tracing for the entire test module (runs once per module)."""
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.sampling import ALWAYS_ON
+    from opentelemetry.sdk.resources import Resource
 
-    # Configure tracing with in-memory exporter (module-scoped)
-    provider = configure_tracing(
-        service_name="test-tool-integration",
-        service_version="1.0.0",
-        sample_rate=1.0,
-        enable_console_export=False,
+    # Create resource for this test module
+    resource = Resource.create(
+        {
+            "service.name": "test-tool-tracing",
+            "test.module": "test_tool_tracing_integration",
+        }
     )
 
-    # Add in-memory span processor
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    # Create a tracer provider for this module
+    provider = TracerProvider(sampler=ALWAYS_ON, resource=resource)
 
-    return exporter
+    # Set as global provider - this will be used by all tests in this module
+    # OpenTelemetry's set_tracer_provider only sets it once (singleton pattern)
+    # So we need to force reset if already set
+    import opentelemetry.trace as otel_trace
+
+    # Store the previous provider to restore later
+    _previous_provider = getattr(otel_trace, '_TRACER_PROVIDER', None)
+
+    # Force reset the provider
+    otel_trace._TRACER_PROVIDER = None
+    trace.set_tracer_provider(provider)
+
+    yield provider
+
+    # Cleanup after all tests in module
+    provider.force_flush(timeout_millis=5000)
+    provider.shutdown()
+
+    # Restore previous provider
+    otel_trace._TRACER_PROVIDER = _previous_provider
+
+
+@pytest.fixture(scope="function")
+def span_exporter(setup_tracing_for_module):
+    """Set up in-memory span exporter for each test function."""
+    exporter = InMemorySpanExporter()
+
+    # Add span processor to the module-level tracer provider
+    processor = SimpleSpanProcessor(exporter)
+    setup_tracing_for_module.add_span_processor(processor)
+
+    yield exporter
+
+    # Flush and remove the processor after the test
+    # Check if provider has force_flush method (not available in ProxyTracerProvider)
+    if hasattr(setup_tracing_for_module, 'force_flush'):
+        setup_tracing_for_module.force_flush(timeout_millis=1000)
+    # Note: SimpleSpanProcessor doesn't have a remove method, so we just clear spans
+    exporter.clear()
 
 
 @pytest.fixture(autouse=True)
-def clear_spans_between_tests(span_exporter):
-    """Clear spans before each test."""
-    span_exporter.clear()
-    yield
-    span_exporter.clear()
+def clear_spans(request):
+    """Clear spans before and after each test."""
+    # Only clear if the test uses span_exporter
+    if 'span_exporter' in request.fixturenames:
+        exporter = request.getfixturevalue('span_exporter')
+        exporter.clear()
+        yield
+        # Force flush to ensure all spans are exported
+        # Check if provider has force_flush method (not available in ProxyTracerProvider)
+        provider = trace.get_tracer_provider()
+        if hasattr(provider, 'force_flush'):
+            provider.force_flush(timeout_millis=1000)
+        exporter.clear()
+    else:
+        yield
 
 
 @pytest.fixture

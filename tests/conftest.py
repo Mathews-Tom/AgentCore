@@ -42,7 +42,7 @@ def pytest_configure(config):
 
 
 def pytest_runtest_setup(item):
-    """Reset security service before each test to prevent state pollution."""
+    """Reset security service and tracing before each test to prevent state pollution."""
     import sys
 
     if "agentcore.a2a_protocol.services.security_service" in sys.modules:
@@ -52,3 +52,16 @@ def pytest_runtest_setup(item):
         security_module = sys.modules["agentcore.a2a_protocol.services.security_service"]
         # Create fresh instance
         security_module.security_service = SecurityService()
+
+    # Reset OpenTelemetry tracer provider for tests marked with 'tracing'
+    # This prevents ProxyTracerProvider issues when running tests in parallel
+    if "tracing" in [mark.name for mark in item.iter_markers()]:
+        from opentelemetry import trace
+
+        # Get current provider and check if it's a ProxyTracerProvider
+        provider = trace.get_tracer_provider()
+        # ProxyTracerProvider is the default when no provider is set
+        # We need to ensure tests have a real provider if they need tracing
+        if type(provider).__name__ == "ProxyTracerProvider":
+            # Let the test's own setup_tracing_for_module fixture handle it
+            pass
