@@ -54,9 +54,11 @@ from agentcore.training.services import training_jsonrpc  # noqa: F401
 # Import agent runtime tool JSON-RPC methods
 try:
     from agentcore.agent_runtime.jsonrpc import tools_jsonrpc
+    from agentcore.agent_runtime.tools.startup import initialize_tool_system
 except ImportError:
     # Agent runtime tools optional
     tools_jsonrpc = None
+    initialize_tool_system = None
 
 # Import ACE JSON-RPC methods
 try:
@@ -106,6 +108,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.COORDINATION_ENABLE_REP:
             coordination_service.start_cleanup_task()
             logger.info("Coordination cleanup task started")
+
+        # Initialize tool system and register built-in tools
+        if initialize_tool_system is not None:
+            try:
+                tool_registry = await initialize_tool_system()
+                app.state.tool_registry = tool_registry
+                logger.info(
+                    "Tool system initialized",
+                    total_tools=len(tool_registry.list_all()),
+                )
+            except Exception as e:
+                logger.warning(
+                    "Tool system initialization failed, continuing without tools",
+                    error=str(e),
+                )
+        else:
+            logger.info("Tool system not available (agent_runtime not installed)")
 
         # TODO: Setup WebSocket manager
         yield

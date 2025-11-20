@@ -139,7 +139,7 @@ class HttpRequestTool(Tool):
                 timeout=timeout,
             )
 
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
                 # Prepare request
                 request_kwargs: dict[str, Any] = {
                     "method": method,
@@ -341,7 +341,7 @@ class RestGetTool(Tool):
 
             self.logger.info("rest_get_executing", url=url)
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 response = await client.get(url, headers=headers)
 
                 # Parse response
@@ -922,7 +922,7 @@ class RESTAPITool(Tool):
                 timeout=timeout,
             )
 
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
                 # Prepare request
                 request_kwargs: dict[str, Any] = {
                     "method": method,

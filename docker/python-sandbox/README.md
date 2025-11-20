@@ -38,12 +38,14 @@ docker run --rm \
   python3 -c "print('Secure execution')"
 ```
 
-## Security Profile
+## Security Profiles
+
+### AppArmor Profile
 
 The AppArmor profile (`apparmor-profile`) provides additional security restrictions:
 
 ```bash
-# Load the AppArmor profile
+# Load the AppArmor profile (Linux only)
 sudo apparmor_parser -r -W apparmor-profile
 
 # Run container with AppArmor profile
@@ -51,6 +53,38 @@ docker run --rm \
   --security-opt apparmor=agentcore-python-sandbox \
   agentcore-python-sandbox \
   python3 -c "print('Protected execution')"
+```
+
+### Seccomp Profile
+
+The seccomp profile (`seccomp-profile.json`) restricts system calls to a minimal safe set:
+
+```bash
+# Run container with seccomp profile
+docker run --rm \
+  --security-opt seccomp=seccomp-profile.json \
+  agentcore-python-sandbox \
+  python3 -c "print('Restricted syscalls')"
+```
+
+### Combined Security
+
+For maximum security, use both profiles:
+
+```bash
+docker run --rm \
+  --memory=512m \
+  --cpus=1 \
+  --network=none \
+  --read-only \
+  --tmpfs /tmp/sandbox:rw,size=100m,mode=1777 \
+  --security-opt=no-new-privileges \
+  --security-opt apparmor=agentcore-python-sandbox \
+  --security-opt seccomp=seccomp-profile.json \
+  --cap-drop=ALL \
+  --user=sandbox \
+  agentcore-python-sandbox \
+  python3 -c "print('Maximum security')"
 ```
 
 ## Usage in ExecutePythonTool

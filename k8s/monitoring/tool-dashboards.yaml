@@ -1,0 +1,511 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-tool-integration
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  tool-integration.json: |
+    {
+      "dashboard": {
+        "title": "AgentCore Tool Integration",
+        "tags": ["agentcore", "tools", "monitoring"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Tool Execution Rate",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_executions_total[5m])) by (tool_id, status)",
+                "legendFormat": "{{tool_id}} - {{status}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Executions/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" },
+            "legend": { "show": true, "values": true, "current": true }
+          },
+          {
+            "id": 2,
+            "title": "Tool Execution Latency (p95)",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (tool_id, le))",
+                "legendFormat": "{{tool_id}} p95",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(agentcore_tool_execution_seconds_bucket[5m])) by (tool_id, le))",
+                "legendFormat": "{{tool_id}} p99",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 3,
+            "title": "Rate Limit Hits",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+            "targets": [
+              {
+                "expr": "sum(increase(rate_limit_exceeded_total[5m]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 10, "color": "yellow" },
+                { "value": 100, "color": "red" }
+              ]
+            }
+          },
+          {
+            "id": 4,
+            "title": "Tool Success Rate",
+            "type": "gauge",
+            "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_executions_total{status=\"success\"}[5m])) / sum(rate(agentcore_tool_executions_total[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 5,
+            "title": "Error Rate by Type",
+            "type": "piechart",
+            "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_errors_total[5m])) by (error_type)",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "legend": { "displayMode": "table", "placement": "right" },
+              "pieType": "pie",
+              "tooltip": { "mode": "single" }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Framework Overhead",
+            "type": "graph",
+            "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(framework_overhead_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p95 overhead",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ms", "label": "Overhead" },
+              { "format": "short" }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [100], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High Framework Overhead",
+              "noDataState": "no_data",
+              "notifications": []
+            }
+          },
+          {
+            "id": 7,
+            "title": "Tool Registry Size",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 12 },
+            "targets": [
+              {
+                "expr": "tool_registry_size",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 8,
+            "title": "Top 10 Tools by Usage",
+            "type": "bargauge",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+            "targets": [
+              {
+                "expr": "topk(10, sum(rate(agentcore_tool_executions_total[5m])) by (tool_id))",
+                "legendFormat": "{{tool_id}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 9,
+            "title": "Quota Usage by Tool",
+            "type": "table",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+            "targets": [
+              {
+                "expr": "quota_used / quota_limit * 100",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "transformations": [
+              { "id": "organize", "options": { "excludeByName": {}, "indexByName": {}, "renameByName": { "tool_id": "Tool", "Value": "Usage %" } } }
+            ]
+          },
+          {
+            "id": 10,
+            "title": "Error Rate Threshold",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_errors_total[5m])) / sum(rate(agentcore_tool_executions_total[5m])) * 100",
+                "legendFormat": "Error Rate %",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "percent", "label": "Error Rate" },
+              { "format": "short" }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [10], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High Tool Error Rate",
+              "noDataState": "no_data",
+              "notifications": []
+            },
+            "thresholds": [
+              { "value": 10, "colorMode": "critical", "op": "gt", "fill": true, "line": true }
+            ]
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-tool-performance
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  tool-performance.json: |
+    {
+      "dashboard": {
+        "title": "AgentCore Tool Performance",
+        "tags": ["agentcore", "tools", "performance"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "10s",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Latency Heatmap",
+            "type": "heatmap",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+            "targets": [
+              {
+                "expr": "sum(increase(agentcore_tool_execution_seconds_bucket[1m])) by (le)",
+                "format": "heatmap",
+                "legendFormat": "{{le}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "calculate": false,
+              "cellGap": 2,
+              "cellRadius": 0,
+              "color": { "mode": "spectrum", "scheme": "Spectral" },
+              "yAxis": { "format": "s", "decimals": 3 }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Throughput (executions/sec)",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_executions_total[1m]))",
+                "legendFormat": "Total Throughput",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [{ "format": "ops" }, { "format": "short" }]
+          },
+          {
+            "id": 3,
+            "title": "Retry Rate",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+            "targets": [
+              {
+                "expr": "sum(rate(tool_execution_retries_total[5m])) by (tool_id)",
+                "legendFormat": "{{tool_id}}",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Timeout Rate",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_errors_total{error_type=\"timeout\"}[5m])) by (tool_id)",
+                "legendFormat": "{{tool_id}}",
+                "refId": "A"
+              }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [0.2], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High Timeout Rate (>20%)",
+              "noDataState": "no_data",
+              "notifications": []
+            }
+          },
+          {
+            "id": 5,
+            "title": "Auth Failure Rate",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+            "targets": [
+              {
+                "expr": "sum(rate(agentcore_tool_errors_total{error_type=\"authentication\"}[5m]))",
+                "legendFormat": "Auth Failures",
+                "refId": "A"
+              }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [0.05], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High Auth Failure Rate (>5%)",
+              "noDataState": "no_data",
+              "notifications": []
+            }
+          }
+        ],
+        "time": { "from": "now-1h", "to": "now" }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-tool-costs
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  tool-costs.json: |
+    {
+      "dashboard": {
+        "title": "AgentCore Tool Costs & Quotas",
+        "tags": ["agentcore", "tools", "costs", "quotas"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "1m",
+        "panels": [
+          {
+            "id": 1,
+            "title": "API Calls Per Tool (Daily)",
+            "type": "bargauge",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+            "targets": [
+              {
+                "expr": "sum(increase(agentcore_tool_executions_total[24h])) by (tool_id)",
+                "legendFormat": "{{tool_id}}",
+                "refId": "A"
+              }
+            ],
+            "options": { "displayMode": "gradient", "orientation": "vertical" }
+          },
+          {
+            "id": 2,
+            "title": "Quota Status",
+            "type": "table",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+            "targets": [
+              {
+                "expr": "quota_remaining",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "renameByName": { "tool_id": "Tool", "quota_type": "Type", "Value": "Remaining" }
+                }
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Rate Limit Status",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 8, "x": 0, "y": 8 },
+            "targets": [
+              {
+                "expr": "rate_limit_remaining",
+                "refId": "A"
+              }
+            ],
+            "options": { "colorMode": "background", "graphMode": "area" },
+            "thresholds": {
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 10, "color": "yellow" },
+                { "value": 50, "color": "green" }
+              ]
+            }
+          },
+          {
+            "id": 4,
+            "title": "Cost Projection (Monthly)",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 8, "x": 8, "y": 8 },
+            "targets": [
+              {
+                "expr": "sum(increase(agentcore_tool_executions_total[30d])) * 0.001",
+                "refId": "A"
+              }
+            ],
+            "options": { "colorMode": "value", "graphMode": "area" },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 5,
+            "title": "Top Users by Tool Usage",
+            "type": "table",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+            "targets": [
+              {
+                "expr": "topk(20, sum(increase(agentcore_tool_executions_total[24h])) by (user_id, tool_id))",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          }
+        ],
+        "time": { "from": "now-24h", "to": "now" }
+      }
+    }

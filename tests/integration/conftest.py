@@ -210,3 +210,56 @@ async def init_test_db(init_test_db_fast):
     2. Use init_real_db fixture directly (auto-discovered from tests/integration/fixtures/database.py)
     """
     return init_test_db_fast
+
+
+# Tool Integration Test Fixtures (TOOL-015)
+
+
+@pytest.fixture
+def tool_execution_context():
+    """Create execution context for tool integration tests.
+
+    Provides a standardized ExecutionContext for testing all built-in tools
+    with consistent trace IDs, user IDs, and agent IDs.
+    """
+    from agentcore.agent_runtime.tools.base import ExecutionContext
+
+    return ExecutionContext(
+        user_id="integration-test-user",
+        agent_id="integration-test-agent",
+        trace_id="integration-trace-001",
+        session_id="integration-session-001",
+    )
+
+
+@pytest.fixture
+def skip_if_no_google_credentials():
+    """Skip test if Google API credentials are not configured.
+
+    Checks for GOOGLE_API_KEY and GOOGLE_CSE_ID environment variables.
+    Use with pytest.mark.usefixtures("skip_if_no_google_credentials")
+    """
+    import os
+
+    api_key = os.getenv("GOOGLE_API_KEY")
+    cse_id = os.getenv("GOOGLE_CSE_ID")
+
+    if not (api_key and cse_id):
+        pytest.skip("Google API credentials not configured (GOOGLE_API_KEY, GOOGLE_CSE_ID)")
+
+
+@pytest.fixture
+def tool_temp_workspace():
+    """Create temporary workspace for file operations tool tests.
+
+    Provides a clean temporary directory for each test that requires
+    file operations. Automatically cleaned up after test completion.
+    """
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        workspace = Path(tmpdir) / "workspace"
+        workspace.mkdir()
+        yield workspace
+        # Cleanup handled by TemporaryDirectory context manager

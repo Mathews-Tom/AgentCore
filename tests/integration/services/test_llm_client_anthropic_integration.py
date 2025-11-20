@@ -14,6 +14,9 @@ These tests require ANTHROPIC_API_KEY environment variable to be set.
 They are skipped if the API key is not available.
 
 Target model: claude-haiku-4-5-20251001 (fast and cost-effective for testing)
+
+Note: All tests in this module are marked with @pytest.mark.external_api to indicate
+they depend on external services and may be subject to rate limiting or service issues.
 """
 
 from __future__ import annotations
@@ -27,10 +30,14 @@ from agentcore.a2a_protocol.services.llm_client_anthropic import LLMClientAnthro
 
 
 # Skip all tests if ANTHROPIC_API_KEY is not set
-pytestmark = pytest.mark.skipif(
-    not os.getenv("ANTHROPIC_API_KEY"),
-    reason="ANTHROPIC_API_KEY environment variable not set",
-)
+# Mark all tests as external_api since they depend on Anthropic's service
+pytestmark = [
+    pytest.mark.skipif(
+        not os.getenv("ANTHROPIC_API_KEY"),
+        reason="ANTHROPIC_API_KEY environment variable not set",
+    ),
+    pytest.mark.external_api,
+]
 
 
 @pytest.fixture
@@ -243,11 +250,15 @@ class TestLLMClientAnthropicIntegrationStream:
         assert "hello" in full_response.lower()
 
     @pytest.mark.asyncio
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
     async def test_stream_progressive_delivery(
         self,
         anthropic_client: LLMClientAnthropic,
     ) -> None:
-        """Test that streaming delivers tokens progressively."""
+        """Test that streaming delivers tokens progressively.
+
+        Note: Marked as flaky due to occasional Anthropic API errors (500, overload).
+        """
         request = LLMRequest(
             model="claude-haiku-4-5-20251001",
             messages=[

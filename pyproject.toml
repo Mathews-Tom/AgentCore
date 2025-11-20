@@ -150,6 +150,12 @@ python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"
 addopts = "--cov=src --cov-report=term-missing --cov-fail-under=90"
+markers = [
+    "parallel_safe: Tests that can safely run in parallel",
+    "sequential: Tests that must run sequentially",
+    "external_api: Tests that depend on external APIs (may be flaky)",
+    "tracing: Tests that use OpenTelemetry tracing infrastructure",
+]
 filterwarnings = [
     # Suppress third-party library deprecation warnings we cannot fix
     "ignore:The wait_for_logs function with string.*:DeprecationWarning:testcontainers",

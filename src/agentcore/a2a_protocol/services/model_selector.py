@@ -58,7 +58,7 @@ TIER_MODEL_MAP: dict[ModelTier, list[str]] = {
         "gemini-2.5-flash-lite",
     ],
     ModelTier.BALANCED: [
-        "gpt-5",
+        "gpt-5.1",
         "claude-sonnet-4-5-20250929",
         "gemini-2.5-flash",
     ],
@@ -190,7 +190,9 @@ class ModelSelector:
             extra={
                 "tier": tier.value,
                 "selected_model": selected_model,
-                "provider": provider.value if hasattr(provider, "value") else str(provider),
+                "provider": provider.value
+                if hasattr(provider, "value")
+                else str(provider),
                 "candidate_count": len(candidate_models),
                 "allowed_count": len(allowed_models),
             },
@@ -338,7 +340,9 @@ class ModelSelector:
             provider = MODEL_PROVIDER_MAP.get(model)
             if provider is None or self.provider_preference is None:
                 # Unknown provider or no preference, put at end
-                return len(self.provider_preference) if self.provider_preference else 999
+                return (
+                    len(self.provider_preference) if self.provider_preference else 999
+                )
 
             provider_name = provider.value
             # Return preference index if in preference list, otherwise put at end

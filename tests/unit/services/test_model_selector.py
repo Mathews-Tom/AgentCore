@@ -65,14 +65,14 @@ class TestModelSelector:
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
             mock_settings.ALLOWED_MODELS = [
-                "gpt-5",
+                "gpt-5.1",
                 "claude-haiku-4-5-20251001",
                 "gemini-2.5-flash",
             ]
 
             model = selector.select_model(ModelTier.BALANCED)
 
-            assert model == "gpt-5"
+            assert model == "gpt-5.1"
 
     def test_select_model_premium_tier(self) -> None:
         """Test selecting model for PREMIUM tier."""
@@ -166,12 +166,12 @@ class TestModelSelector:
         selector = ModelSelector()
 
         with patch("agentcore.a2a_protocol.services.model_selector.settings") as mock_settings:
-            mock_settings.ALLOWED_MODELS = ["gpt-5"]
+            mock_settings.ALLOWED_MODELS = ["gpt-5.1"]
 
             model = selector.select_model_by_complexity("medium")
 
-            # medium → BALANCED → gpt-5
-            assert model == "gpt-5"
+            # medium → BALANCED → gpt-5.1
+            assert model == "gpt-5.1"
 
     def test_select_model_by_complexity_high(self) -> None:
         """Test selecting model by 'high' complexity."""
@@ -223,7 +223,7 @@ class TestModelSelector:
             # All tier models allowed - one from each tier
             mock_settings.ALLOWED_MODELS = [
                 "gpt-5-mini",  # FAST
-                "gpt-5",  # BALANCED
+                "gpt-5.1",  # BALANCED
                 "gpt-5-pro",  # PREMIUM
             ]
 
@@ -239,7 +239,7 @@ class TestModelSelector:
             # Only FAST and BALANCED tiers have models, PREMIUM missing
             mock_settings.ALLOWED_MODELS = [
                 "gpt-5-mini",  # FAST
-                "gpt-5",  # BALANCED
+                "gpt-5.1",  # BALANCED
                 # PREMIUM tier has no allowed models
             ]
 
@@ -335,7 +335,7 @@ class TestModelSelector:
         balanced_models = TIER_MODEL_MAP[ModelTier.BALANCED]
 
         # Should include medium models
-        assert "gpt-5" in balanced_models
+        assert "gpt-5.1" in balanced_models
         assert "claude-sonnet-4-5-20250929" in balanced_models
         assert "gemini-2.5-flash" in balanced_models
 
