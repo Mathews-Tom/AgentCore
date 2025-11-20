@@ -6,15 +6,18 @@ and schema setup for the memory graph database.
 """
 
 import asyncio
+from pathlib import Path
 from typing import AsyncGenerator
 
 from neo4j import AsyncGraphDatabase, AsyncDriver, AsyncSession
 import structlog
 
 from agentcore.a2a_protocol.config import settings
-from agentcore.memory.graph import SCHEMA_FILE
 
 logger = structlog.get_logger(__name__)
+
+# Schema file location
+SCHEMA_FILE = Path(__file__).parent / "schema.cypher"
 
 # Global Neo4j driver instance
 _driver: AsyncDriver | None = None
