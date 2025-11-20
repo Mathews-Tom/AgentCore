@@ -217,7 +217,6 @@ __marimo__/
 
 # Developer workspace (Sage-Dev generated files)"
 .sage/
-!.sage/workflow-mode
 .docs/
 *-coverage.json
 
