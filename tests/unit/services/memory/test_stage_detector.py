@@ -677,6 +677,113 @@ class TestIntegrationWithStageManager:
             )
 
 
+class TestACEIntervention:
+    """Test ACE intervention signal handling."""
+
+    @pytest.mark.asyncio
+    async def test_ace_high_error_rate_triggers_reflection(
+        self, stage_detector: StageDetector
+    ):
+        """Test ACE high error rate triggers REFLECTION."""
+        signal = {
+            "intervention_type": "high_error_rate",
+            "metrics": {"error_rate": 0.35},
+        }
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.REFLECTION
+
+    @pytest.mark.asyncio
+    async def test_ace_slow_progress_triggers_planning(
+        self, stage_detector: StageDetector
+    ):
+        """Test ACE slow progress triggers PLANNING."""
+        signal = {
+            "intervention_type": "slow_progress",
+            "metrics": {"progress_rate": 0.15},
+        }
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.PLANNING
+
+    @pytest.mark.asyncio
+    async def test_ace_quality_issue_triggers_verification(
+        self, stage_detector: StageDetector
+    ):
+        """Test ACE quality issue triggers VERIFICATION."""
+        signal = {
+            "intervention_type": "quality_issue",
+            "metrics": {"quality_score": 0.65},
+        }
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.VERIFICATION
+
+    @pytest.mark.asyncio
+    async def test_ace_explicit_stage_override(self, stage_detector: StageDetector):
+        """Test ACE explicit stage override."""
+        signal = {"suggested_stage": "execution"}
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.EXECUTION
+
+    @pytest.mark.asyncio
+    async def test_ace_high_error_rate_by_metric(self, stage_detector: StageDetector):
+        """Test ACE detects high error rate from metrics alone."""
+        signal = {"metrics": {"error_rate": 0.4}}
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.REFLECTION
+
+    @pytest.mark.asyncio
+    async def test_ace_slow_progress_by_metric(self, stage_detector: StageDetector):
+        """Test ACE detects slow progress from metrics alone."""
+        signal = {"metrics": {"progress_rate": 0.1}}
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.PLANNING
+
+    @pytest.mark.asyncio
+    async def test_ace_quality_issue_by_metric(self, stage_detector: StageDetector):
+        """Test ACE detects quality issue from metrics alone."""
+        signal = {"metrics": {"quality_score": 0.5}}
+
+        stage = await stage_detector.handle_ace_intervention(signal)
+        assert stage == StageType.VERIFICATION
+
+    @pytest.mark.asyncio
+    async def test_ace_empty_signal_returns_none(self, stage_detector: StageDetector):
+        """Test empty ACE signal returns None."""
+        assert await stage_detector.handle_ace_intervention({}) is None
+        assert await stage_detector.handle_ace_intervention(None) is None
+
+    @pytest.mark.asyncio
+    async def test_ace_intervention_highest_priority(
+        self,
+        stage_detector: StageDetector,
+        mock_session: AsyncMock,
+        mock_stage_manager: AsyncMock,
+        sample_planning_stage: StageMemory,
+    ):
+        """Test ACE intervention has highest priority."""
+        mock_stage_manager.get_current_stage = AsyncMock(
+            return_value=sample_planning_stage
+        )
+
+        # ACE says REFLECTION, but actions suggest EXECUTION
+        should, stage_type = await stage_detector.should_transition(
+            session=mock_session,
+            task_id=sample_planning_stage.task_id,
+            recent_actions=["execute_api", "run_test", "perform_action"],
+            recent_content="[STAGE:VERIFICATION] Verifying",
+            ace_signal={"intervention_type": "high_error_rate", "metrics": {"error_rate": 0.4}},
+        )
+
+        # ACE signal should win
+        assert should is True
+        assert stage_type == StageType.REFLECTION
+
+
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 

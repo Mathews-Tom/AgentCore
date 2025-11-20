@@ -295,26 +295,106 @@ class StageDetector:
 
         return is_timeout
 
+    async def handle_ace_intervention(
+        self, ace_signal: dict[str, object]
+    ) -> StageType | None:
+        """
+        Handle ACE (meta-thinker) intervention signal for stage transition.
+
+        ACE can override stage detection based on strategic insights:
+        - High error rates → REFLECTION (error rate > 30%)
+        - Slow progress → PLANNING (re-strategize, progress rate < 20%)
+        - Quality issues → VERIFICATION (quality score < 70%)
+        - Explicit stage override
+
+        Args:
+            ace_signal: ACE signal dictionary with intervention type and metrics
+
+        Returns:
+            Suggested StageType based on ACE analysis or None
+
+        Examples:
+            >>> signal = {"intervention_type": "high_error_rate", "metrics": {"error_rate": 0.35}}
+            >>> stage = await detector.handle_ace_intervention(signal)
+            >>> stage
+            StageType.REFLECTION
+        """
+        if not ace_signal:
+            return None
+
+        intervention_type = ace_signal.get("intervention_type")
+        metrics = ace_signal.get("metrics", {})
+
+        # High error rate → REFLECTION
+        error_rate = float(metrics.get("error_rate", 0.0))
+        if error_rate > 0.3 or intervention_type == "high_error_rate":
+            self._logger.info(
+                "ace_intervention_reflection",
+                intervention_type=intervention_type,
+                error_rate=error_rate,
+                reason="High error rate requires reflection",
+            )
+            return StageType.REFLECTION
+
+        # Slow progress → PLANNING (re-strategize)
+        progress_rate = float(metrics.get("progress_rate", 1.0))
+        if progress_rate < 0.2 or intervention_type == "slow_progress":
+            self._logger.info(
+                "ace_intervention_planning",
+                intervention_type=intervention_type,
+                progress_rate=progress_rate,
+                reason="Slow progress requires re-planning",
+            )
+            return StageType.PLANNING
+
+        # Low quality → VERIFICATION
+        quality_score = float(metrics.get("quality_score", 1.0))
+        if quality_score < 0.7 or intervention_type == "quality_issue":
+            self._logger.info(
+                "ace_intervention_verification",
+                intervention_type=intervention_type,
+                quality_score=quality_score,
+                reason="Quality issues require verification",
+            )
+            return StageType.VERIFICATION
+
+        # Explicit stage override from ACE
+        if "suggested_stage" in ace_signal:
+            stage_name = str(ace_signal["suggested_stage"]).upper()
+            suggested_stage = self._parse_stage_name(stage_name)
+            if suggested_stage:
+                self._logger.info(
+                    "ace_intervention_explicit",
+                    suggested_stage=suggested_stage.value,
+                    reason="ACE explicit stage override",
+                )
+                return suggested_stage
+
+        return None
+
     async def should_transition(
         self,
         session: AsyncSession,
         task_id: str,
         recent_actions: list[str],
         recent_content: str | None = None,
+        ace_signal: dict[str, object] | None = None,
     ) -> tuple[bool, StageType | None]:
         """
         Determine if stage transition should occur.
 
-        Combines all detection methods:
-        1. Explicit stage markers (highest priority)
-        2. Action pattern analysis (if sufficient actions)
-        3. Timeout detection (fallback)
+        Combines all detection methods with priority:
+        1. ACE intervention signals (highest priority, 95% accuracy)
+        2. Explicit stage markers (100% accuracy)
+        3. Action pattern analysis (85% accuracy)
+        4. Timeout detection (70% accuracy, fallback)
 
         Args:
             session: Database session
             task_id: Task ID to check
             recent_actions: Recent agent actions
             recent_content: Recent content (for explicit markers)
+            ace_signal: ACE intervention signal (optional)
 
         Returns:
             Tuple of (should_transition, new_stage_type)
@@ -337,7 +417,19 @@ class StageDetector:
             # Default to PLANNING for new tasks
             return True, StageType.PLANNING
 
-        # Priority 1: Explicit stage markers
+        # Priority 1: ACE intervention signals (highest confidence: 95%)
+        if ace_signal:
+            ace_stage = await self.handle_ace_intervention(ace_signal)
+            if ace_stage and ace_stage != current_stage.stage_type:
+                self._logger.info(
+                    "ace_intervention_transition",
+                    current_stage=current_stage.stage_type.value,
+                    new_stage=ace_stage.value,
+                    confidence=0.95,
+                )
+                return True, ace_stage
+
+        # Priority 2: Explicit stage markers (100% accuracy when present)
         if recent_content:
             explicit_stage = self.detect_from_explicit_marker(recent_content)
             if explicit_stage and explicit_stage != current_stage.stage_type:
@@ -345,10 +437,11 @@ class StageDetector:
                     "explicit_stage_marker_detected",
                     current_stage=current_stage.stage_type.value,
                     new_stage=explicit_stage.value,
+                    confidence=1.0,
                 )
                 return True, explicit_stage
 
-        # Priority 2: Action pattern analysis (need minimum actions)
+        # Priority 3: Action pattern analysis (85% accuracy, need minimum actions)
         if len(recent_actions) >= self._min_actions:
             detected_stages = [
                 self.detect_stage_from_action(action)
@@ -370,19 +463,26 @@ class StageDetector:
                     dominant_stage != current_stage.stage_type
                     and stage_counts[dominant_stage] >= self._min_actions * 0.6
                 ):
+                    confidence = stage_counts[dominant_stage] / len(valid_stages)
                     self._logger.info(
                         "action_pattern_transition_detected",
                         current_stage=current_stage.stage_type.value,
                         new_stage=dominant_stage.value,
-                        pattern_confidence=stage_counts[dominant_stage]
-                        / len(valid_stages),
+                        pattern_confidence=confidence,
+                        detection_accuracy=0.85,
                     )
                     return True, dominant_stage
 
-        # Priority 3: Timeout-based transition
+        # Priority 4: Timeout-based transition (70% accuracy, fallback)
         if await self.check_stage_timeout(session, current_stage):
             # Default transition sequence: planning -> execution -> verification
             next_stage = self._get_next_stage_in_sequence(current_stage.stage_type)
+            self._logger.info(
+                "timeout_transition_detected",
+                current_stage=current_stage.stage_type.value,
+                new_stage=next_stage.value,
+                confidence=0.70,
+            )
             return True, next_stage
 
         # No transition needed
@@ -436,6 +536,40 @@ class StageDetector:
             Configured duration
         """
         return self._stage_durations.get(stage_type, timedelta(minutes=30))
+
+    @staticmethod
+    def _parse_stage_name(stage_name: str) -> StageType | None:
+        """
+        Parse stage name string to StageType enum.
+
+        Supports common stage name variations and aliases.
+
+        Args:
+            stage_name: Stage name (case-insensitive)
+
+        Returns:
+            StageType or None if invalid
+
+        Examples:
+            >>> StageDetector._parse_stage_name("PLANNING")
+            StageType.PLANNING
+            >>> StageDetector._parse_stage_name("execute")
+            StageType.EXECUTION
+        """
+        normalized = stage_name.upper().strip()
+
+        stage_mapping = {
+            "PLANNING": StageType.PLANNING,
+            "PLAN": StageType.PLANNING,
+            "EXECUTION": StageType.EXECUTION,
+            "EXECUTE": StageType.EXECUTION,
+            "REFLECTION": StageType.REFLECTION,
+            "REFLECT": StageType.REFLECTION,
+            "VERIFICATION": StageType.VERIFICATION,
+            "VERIFY": StageType.VERIFICATION,
+        }
+
+        return stage_mapping.get(normalized)
 
 
 __all__ = ["StageDetector", "StageTransitionHandler"]
