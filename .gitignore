@@ -226,3 +226,7 @@ __marimo__/
 .actrc
 .secrets
 .env.test
+.approval_tests_temp
+.benchmarks
+.checkpoints
+.test-results

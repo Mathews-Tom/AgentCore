@@ -1,28 +1,13 @@
 #!/usr/bin/env bash
-# Full test suite
+# Full test suite - Python runner with rich display
 #
-# Runs all tests including both fast and real integration tests.
-# If Docker is not available, skips real integration tests.
+# Wrapper script that calls the Python test runner for better
+# visual feedback and progress tracking.
 
 set -e
 
-echo "🧪 Running Full Test Suite"
-echo "=========================="
-echo ""
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Run all tests (requires Docker for full coverage)
-if ! docker info > /dev/null 2>&1; then
-    echo "⚠️  Docker not running - skipping integration tests marked for real services"
-    echo "   Starting Docker Desktop will enable full test coverage"
-    echo ""
-    ./scripts/test-fast.sh "$@"
-else
-    echo "Uses: All test modes (fast + real integration)"
-    echo "Docker: Available"
-    echo ""
-    # Override pytest.ini default marker filter to include integration tests
-    uv run pytest -m "" "$@"
-fi
-
-echo ""
-echo "✅ All tests complete!"
+# Run the Python test runner
+exec uv run python "$SCRIPT_DIR/test_runner.py" "$@"
