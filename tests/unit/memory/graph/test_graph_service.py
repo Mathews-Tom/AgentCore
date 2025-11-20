@@ -642,3 +642,245 @@ class TestRelationshipType:
         assert RelationshipType.CONTRADICTS.value == "contradicts"
         assert RelationshipType.CAUSES.value == "causes"
         assert RelationshipType.ENABLES.value == "enables"
+
+
+class TestGraphQueryPatterns:
+    """Test graph query pattern methods (MEM-019)."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create mock Neo4j session."""
+        session = AsyncMock()
+        session.run = AsyncMock()
+        return session
+
+    @pytest.fixture
+    def mock_get_session(self, mock_session):
+        """Mock get_session context manager."""
+        with patch("agentcore.memory.graph.service.get_session") as mock:
+            mock.return_value.__aenter__.return_value = mock_session
+            mock.return_value.__aexit__.return_value = None
+            yield mock
+
+    @pytest.mark.asyncio
+    async def test_get_neighbors_1hop(self, mock_get_session, mock_session):
+        """Test 1-hop neighbor query."""
+        mock_result = AsyncMock()
+        mock_records = [
+            {
+                "neighbor": {"entity_id": "entity-1", "name": "Python"},
+                "neighbor_type": "Entity",
+                "relationship_type": "MENTIONS",
+                "relationship_properties": {"position": 0},
+            },
+        ]
+
+        async def async_iter():
+            for record in mock_records:
+                yield record
+
+        mock_result.__aiter__ = lambda self: async_iter()
+        mock_session.run.return_value = mock_result
+
+        service = GraphMemoryService()
+        neighbors = await service.get_neighbors_1hop(
+            node_id=SAMPLE_MEMORY_ID,
+            node_type="Memory",
+        )
+
+        assert len(neighbors) == 1
+        assert neighbors[0]["node_type"] == "Entity"
+        assert neighbors[0]["relationship_type"] == "MENTIONS"
+
+    @pytest.mark.asyncio
+    async def test_get_neighbors_1hop_invalid_node_type(self, mock_get_session):
+        """Test validation for invalid node type."""
+        service = GraphMemoryService()
+
+        with pytest.raises(ValueError, match="Node type must be"):
+            await service.get_neighbors_1hop(
+                node_id=SAMPLE_MEMORY_ID,
+                node_type="InvalidType",
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_paths_2hop(self, mock_get_session, mock_session):
+        """Test 2-hop path query."""
+        mock_result = AsyncMock()
+        mock_records = [
+            {
+                "nodes": [
+                    {"id": 1, "labels": ["Memory"], "properties": {}},
+                    {"id": 2, "labels": ["Entity"], "properties": {}},
+                    {"id": 3, "labels": ["Concept"], "properties": {}},
+                ],
+                "relationships": [
+                    {"type": "MENTIONS", "properties": {}},
+                    {"type": "PART_OF", "properties": {}},
+                ],
+            },
+        ]
+
+        async def async_iter():
+            for record in mock_records:
+                yield record
+
+        mock_result.__aiter__ = lambda self: async_iter()
+        mock_session.run.return_value = mock_result
+
+        service = GraphMemoryService()
+        paths = await service.get_paths_2hop(
+            start_node_id=SAMPLE_MEMORY_ID,
+            start_node_type="Memory",
+        )
+
+        assert len(paths) == 1
+        assert paths[0]["length"] == 2
+        assert len(paths[0]["nodes"]) == 3
+        assert len(paths[0]["relationships"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_find_shortest_path_3hop(self, mock_get_session, mock_session):
+        """Test shortest path finding (max 3 hops)."""
+        mock_result = AsyncMock()
+        mock_result.single = AsyncMock(
+            return_value={
+                "path_length": 2,
+                "nodes": [
+                    {"id": 1, "labels": ["Memory"], "properties": {}},
+                    {"id": 2, "labels": ["Entity"], "properties": {}},
+                    {"id": 3, "labels": ["Memory"], "properties": {}},
+                ],
+                "relationships": [
+                    {"type": "MENTIONS", "properties": {}},
+                    {"type": "MENTIONS", "properties": {}},
+                ],
+            }
+        )
+        mock_session.run.return_value = mock_result
+
+        service = GraphMemoryService()
+        path = await service.find_shortest_path_3hop(
+            start_node_id=SAMPLE_MEMORY_ID,
+            end_node_id=str(uuid4()),
+            start_node_type="Memory",
+            end_node_type="Memory",
+        )
+
+        assert path is not None
+        assert path["length"] == 2
+        assert len(path["nodes"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_find_shortest_path_no_path(self, mock_get_session, mock_session):
+        """Test shortest path returns None when no path exists."""
+        mock_result = AsyncMock()
+        mock_result.single = AsyncMock(return_value=None)
+        mock_session.run.return_value = mock_result
+
+        service = GraphMemoryService()
+        path = await service.find_shortest_path_3hop(
+            start_node_id=SAMPLE_MEMORY_ID,
+            end_node_id=str(uuid4()),
+        )
+
+        assert path is None
+
+    @pytest.mark.asyncio
+    async def test_find_similar_entities(self, mock_get_session, mock_session):
+        """Test entity similarity query."""
+        mock_result = AsyncMock()
+        mock_records = [
+            {
+                "entity_id": "entity-2",
+                "name": "FastAPI",
+                "entity_type": "tool",
+                "confidence": 0.95,
+                "similarity_score": 0.75,
+                "shared_connections": 5,
+            },
+            {
+                "entity_id": "entity-3",
+                "name": "Flask",
+                "entity_type": "tool",
+                "confidence": 0.90,
+                "similarity_score": 0.60,
+                "shared_connections": 3,
+            },
+        ]
+
+        async def async_iter():
+            for record in mock_records:
+                yield record
+
+        mock_result.__aiter__ = lambda self: async_iter()
+        mock_session.run.return_value = mock_result
+
+        service = GraphMemoryService()
+        similar = await service.find_similar_entities(
+            entity_id=SAMPLE_ENTITY_ID,
+            min_similarity=0.5,
+            max_results=10,
+        )
+
+        assert len(similar) == 2
+        assert similar[0]["name"] == "FastAPI"
+        assert similar[0]["similarity_score"] == 0.75
+        assert similar[1]["similarity_score"] == 0.60
+
+    @pytest.mark.asyncio
+    async def test_find_similar_entities_invalid_similarity(self, mock_get_session):
+        """Test validation for similarity score out of range."""
+        service = GraphMemoryService()
+
+        with pytest.raises(ValueError, match="Min similarity must be in range"):
+            await service.find_similar_entities(
+                entity_id=SAMPLE_ENTITY_ID,
+                min_similarity=1.5,
+            )
+
+    @pytest.mark.asyncio
+    async def test_aggregate_relationship_strengths(self, mock_get_session, mock_session):
+        """Test relationship strength aggregation."""
+        mock_result = AsyncMock()
+        mock_records = [
+            {
+                "entity_id": "entity-2",
+                "name": "Database",
+                "entity_type": "tool",
+                "relationship_types": ["depends_on", "enables"],
+                "avg_strength": 0.85,
+                "max_strength": 0.90,
+                "relationship_count": 2,
+                "total_reinforcements": 10,
+            },
+        ]
+
+        async def async_iter():
+            for record in mock_records:
+                yield record
+
+        mock_result.__aiter__ = lambda self: async_iter()
+        mock_session.run.return_value = mock_result
+
+        service = GraphMemoryService()
+        aggregations = await service.aggregate_relationship_strengths(
+            source_entity_id=SAMPLE_ENTITY_ID,
+            min_strength=0.5,
+        )
+
+        assert len(aggregations) == 1
+        assert aggregations[0]["avg_strength"] == 0.85
+        assert aggregations[0]["max_strength"] == 0.90
+        assert aggregations[0]["relationship_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_aggregate_relationship_strengths_invalid_strength(self, mock_get_session):
+        """Test validation for strength out of range."""
+        service = GraphMemoryService()
+
+        with pytest.raises(ValueError, match="Min strength must be in range"):
+            await service.aggregate_relationship_strengths(
+                source_entity_id=SAMPLE_ENTITY_ID,
+                min_strength=-0.1,
+            )

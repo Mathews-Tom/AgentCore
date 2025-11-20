@@ -863,3 +863,429 @@ class GraphMemoryService:
         except Neo4jError as e:
             logger.error("Failed to retrieve entity", error=str(e), name=name)
             raise
+
+    # ====================================================================================
+    # Graph Query Patterns (MEM-019)
+    # ====================================================================================
+
+    async def get_neighbors_1hop(
+        self, node_id: str, node_type: str = "Memory", relationship_types: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """Get 1-hop neighbors of a node.
+
+        Args:
+            node_id: Node UUID (memory_id, entity_id, or concept_id)
+            node_type: Node label (Memory, Entity, Concept)
+            relationship_types: Optional list of relationship types to traverse
+
+        Returns:
+            List of neighbor node dictionaries with relationship info
+
+        Raises:
+            ValueError: If node_type invalid
+            Neo4jError: If database operation fails
+        """
+        if node_type not in ("Memory", "Entity", "Concept"):
+            raise ValueError(f"Node type must be Memory, Entity, or Concept, got {node_type}")
+
+        # Build relationship filter
+        rel_filter = ""
+        if relationship_types:
+            rel_types = "|".join(relationship_types)
+            rel_filter = f":{rel_types}"
+
+        # Determine ID field based on node type
+        id_field = f"{node_type.lower()}_id"
+
+        query = f"""
+        MATCH (n:{node_type} {{{id_field}: $node_id}})-[r{rel_filter}]-(neighbor)
+        RETURN
+            neighbor,
+            labels(neighbor)[0] AS neighbor_type,
+            type(r) AS relationship_type,
+            properties(r) AS relationship_properties
+        """
+
+        try:
+            async with get_session() as session:
+                result = await session.run(query, node_id=node_id)
+
+                neighbors = []
+                async for record in result:
+                    neighbor = record["neighbor"]
+                    neighbors.append(
+                        {
+                            "node": dict(neighbor),
+                            "node_type": record["neighbor_type"],
+                            "relationship_type": record["relationship_type"],
+                            "relationship_properties": record["relationship_properties"],
+                        }
+                    )
+
+                logger.debug(
+                    "Retrieved 1-hop neighbors",
+                    node_id=node_id,
+                    node_type=node_type,
+                    count=len(neighbors),
+                )
+
+                return neighbors
+
+        except Neo4jError as e:
+            logger.error(
+                "Failed to retrieve 1-hop neighbors",
+                error=str(e),
+                node_id=node_id,
+            )
+            raise
+
+    async def get_paths_2hop(
+        self,
+        start_node_id: str,
+        end_node_id: str | None = None,
+        start_node_type: str = "Memory",
+        max_paths: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Get 2-hop paths between nodes.
+
+        Args:
+            start_node_id: Starting node UUID
+            end_node_id: Optional ending node UUID (if None, returns all 2-hop paths)
+            start_node_type: Starting node label
+            max_paths: Maximum number of paths to return
+
+        Returns:
+            List of path dictionaries with nodes and relationships
+
+        Raises:
+            ValueError: If start_node_type invalid
+            Neo4jError: If database operation fails
+        """
+        if start_node_type not in ("Memory", "Entity", "Concept"):
+            raise ValueError(f"Node type must be Memory, Entity, or Concept, got {start_node_type}")
+
+        id_field = f"{start_node_type.lower()}_id"
+
+        # Build query based on whether end node is specified
+        if end_node_id:
+            query = f"""
+            MATCH path = (start:{start_node_type} {{{id_field}: $start_node_id}})-[*2]-(end)
+            WHERE id(end) = $end_node_id
+            RETURN
+                [node IN nodes(path) | {{id: id(node), labels: labels(node), properties: properties(node)}}] AS nodes,
+                [rel IN relationships(path) | {{type: type(rel), properties: properties(rel)}}] AS relationships
+            LIMIT $max_paths
+            """
+            params = {"start_node_id": start_node_id, "end_node_id": end_node_id, "max_paths": max_paths}
+        else:
+            query = f"""
+            MATCH path = (start:{start_node_type} {{{id_field}: $start_node_id}})-[*2]-(end)
+            RETURN
+                [node IN nodes(path) | {{id: id(node), labels: labels(node), properties: properties(node)}}] AS nodes,
+                [rel IN relationships(path) | {{type: type(rel), properties: properties(rel)}}] AS relationships
+            LIMIT $max_paths
+            """
+            params = {"start_node_id": start_node_id, "max_paths": max_paths}
+
+        try:
+            async with get_session() as session:
+                result = await session.run(query, **params)
+
+                paths = []
+                async for record in result:
+                    paths.append(
+                        {
+                            "nodes": record["nodes"],
+                            "relationships": record["relationships"],
+                            "length": 2,
+                        }
+                    )
+
+                logger.debug(
+                    "Retrieved 2-hop paths",
+                    start_node_id=start_node_id,
+                    count=len(paths),
+                )
+
+                return paths
+
+        except Neo4jError as e:
+            logger.error(
+                "Failed to retrieve 2-hop paths",
+                error=str(e),
+                start_node_id=start_node_id,
+            )
+            raise
+
+    async def find_shortest_path_3hop(
+        self,
+        start_node_id: str,
+        end_node_id: str,
+        start_node_type: str = "Memory",
+        end_node_type: str = "Memory",
+    ) -> dict[str, Any] | None:
+        """Find shortest path between two nodes (max 3 hops).
+
+        Args:
+            start_node_id: Starting node UUID
+            end_node_id: Ending node UUID
+            start_node_type: Starting node label
+            end_node_type: Ending node label
+
+        Returns:
+            Path dictionary or None if no path exists
+
+        Raises:
+            ValueError: If node types invalid
+            Neo4jError: If database operation fails
+        """
+        if start_node_type not in ("Memory", "Entity", "Concept"):
+            raise ValueError(f"Start node type must be Memory, Entity, or Concept, got {start_node_type}")
+
+        if end_node_type not in ("Memory", "Entity", "Concept"):
+            raise ValueError(f"End node type must be Memory, Entity, or Concept, got {end_node_type}")
+
+        start_id_field = f"{start_node_type.lower()}_id"
+        end_id_field = f"{end_node_type.lower()}_id"
+
+        query = f"""
+        MATCH path = shortestPath(
+            (start:{start_node_type} {{{start_id_field}: $start_node_id}})
+            -[*..3]-
+            (end:{end_node_type} {{{end_id_field}: $end_node_id}})
+        )
+        RETURN
+            length(path) AS path_length,
+            [node IN nodes(path) | {{id: id(node), labels: labels(node), properties: properties(node)}}] AS nodes,
+            [rel IN relationships(path) | {{type: type(rel), properties: properties(rel)}}] AS relationships
+        """
+
+        try:
+            async with get_session() as session:
+                result = await session.run(
+                    query,
+                    start_node_id=start_node_id,
+                    end_node_id=end_node_id,
+                )
+
+                record = await result.single()
+                if not record:
+                    logger.debug(
+                        "No path found between nodes",
+                        start_node_id=start_node_id,
+                        end_node_id=end_node_id,
+                    )
+                    return None
+
+                path = {
+                    "length": record["path_length"],
+                    "nodes": record["nodes"],
+                    "relationships": record["relationships"],
+                }
+
+                logger.debug(
+                    "Found shortest path",
+                    start_node_id=start_node_id,
+                    end_node_id=end_node_id,
+                    path_length=record["path_length"],
+                )
+
+                return path
+
+        except Neo4jError as e:
+            logger.error(
+                "Failed to find shortest path",
+                error=str(e),
+                start_node_id=start_node_id,
+                end_node_id=end_node_id,
+            )
+            raise
+
+    async def find_similar_entities(
+        self,
+        entity_id: str,
+        min_similarity: float = 0.5,
+        max_results: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Find entities similar to given entity based on shared relationships.
+
+        Similarity is calculated based on:
+        - Shared memories (entities mentioned in same memories)
+        - Shared concepts (entities in same concepts)
+        - Direct RELATES_TO relationships
+
+        Args:
+            entity_id: Entity UUID
+            min_similarity: Minimum similarity score (0.0-1.0)
+            max_results: Maximum number of results
+
+        Returns:
+            List of similar entity dictionaries with similarity scores
+
+        Raises:
+            ValueError: If min_similarity out of range
+            Neo4jError: If database operation fails
+        """
+        if not 0.0 <= min_similarity <= 1.0:
+            raise ValueError(f"Min similarity must be in range [0.0, 1.0], got {min_similarity}")
+
+        query = """
+        MATCH (e:Entity {entity_id: $entity_id})
+
+        // Find entities in shared memories
+        OPTIONAL MATCH (e)<-[:MENTIONS]-(m:Memory)-[:MENTIONS]->(similar1:Entity)
+        WHERE similar1.entity_id <> $entity_id
+
+        // Find entities in shared concepts
+        OPTIONAL MATCH (e)-[:PART_OF]->(c:Concept)<-[:PART_OF]-(similar2:Entity)
+        WHERE similar2.entity_id <> $entity_id
+
+        // Find directly related entities
+        OPTIONAL MATCH (e)-[r:RELATES_TO]-(similar3:Entity)
+        WHERE similar3.entity_id <> $entity_id
+
+        WITH e,
+             collect(DISTINCT similar1) + collect(DISTINCT similar2) + collect(DISTINCT similar3) AS similar_entities
+
+        UNWIND similar_entities AS similar
+
+        WITH e, similar, count(*) AS shared_connections
+
+        // Calculate simple similarity score based on shared connections
+        WITH e, similar, shared_connections,
+             1.0 * shared_connections / (shared_connections + 3) AS similarity_score
+
+        WHERE similarity_score >= $min_similarity
+
+        RETURN
+            similar.entity_id AS entity_id,
+            similar.name AS name,
+            similar.entity_type AS entity_type,
+            similar.confidence AS confidence,
+            similarity_score,
+            shared_connections
+        ORDER BY similarity_score DESC, shared_connections DESC
+        LIMIT $max_results
+        """
+
+        try:
+            async with get_session() as session:
+                result = await session.run(
+                    query,
+                    entity_id=entity_id,
+                    min_similarity=min_similarity,
+                    max_results=max_results,
+                )
+
+                similar_entities = []
+                async for record in result:
+                    similar_entities.append(
+                        {
+                            "entity_id": record["entity_id"],
+                            "name": record["name"],
+                            "entity_type": record["entity_type"],
+                            "confidence": record["confidence"],
+                            "similarity_score": record["similarity_score"],
+                            "shared_connections": record["shared_connections"],
+                        }
+                    )
+
+                logger.info(
+                    "Found similar entities",
+                    entity_id=entity_id,
+                    count=len(similar_entities),
+                )
+
+                return similar_entities
+
+        except Neo4jError as e:
+            logger.error(
+                "Failed to find similar entities",
+                error=str(e),
+                entity_id=entity_id,
+            )
+            raise
+
+    async def aggregate_relationship_strengths(
+        self,
+        source_entity_id: str,
+        min_strength: float = 0.0,
+    ) -> list[dict[str, Any]]:
+        """Aggregate relationship strengths from an entity.
+
+        Groups all RELATES_TO relationships by target entity and aggregates
+        strength scores to identify strongest connections.
+
+        Args:
+            source_entity_id: Source Entity UUID
+            min_strength: Minimum aggregated strength threshold
+
+        Returns:
+            List of relationship aggregations sorted by strength
+
+        Raises:
+            ValueError: If min_strength out of range
+            Neo4jError: If database operation fails
+        """
+        if not 0.0 <= min_strength <= 1.0:
+            raise ValueError(f"Min strength must be in range [0.0, 1.0], got {min_strength}")
+
+        query = """
+        MATCH (source:Entity {entity_id: $source_entity_id})-[r:RELATES_TO]->(target:Entity)
+        WITH target,
+             collect(r.relationship_type) AS relationship_types,
+             avg(r.strength) AS avg_strength,
+             max(r.strength) AS max_strength,
+             count(r) AS relationship_count,
+             sum(r.reinforcement_count) AS total_reinforcements
+        WHERE avg_strength >= $min_strength
+        RETURN
+            target.entity_id AS entity_id,
+            target.name AS name,
+            target.entity_type AS entity_type,
+            relationship_types,
+            avg_strength,
+            max_strength,
+            relationship_count,
+            total_reinforcements
+        ORDER BY avg_strength DESC, max_strength DESC
+        """
+
+        try:
+            async with get_session() as session:
+                result = await session.run(
+                    query,
+                    source_entity_id=source_entity_id,
+                    min_strength=min_strength,
+                )
+
+                aggregations = []
+                async for record in result:
+                    aggregations.append(
+                        {
+                            "entity_id": record["entity_id"],
+                            "name": record["name"],
+                            "entity_type": record["entity_type"],
+                            "relationship_types": record["relationship_types"],
+                            "avg_strength": record["avg_strength"],
+                            "max_strength": record["max_strength"],
+                            "relationship_count": record["relationship_count"],
+                            "total_reinforcements": record["total_reinforcements"],
+                        }
+                    )
+
+                logger.info(
+                    "Aggregated relationship strengths",
+                    source_entity_id=source_entity_id,
+                    count=len(aggregations),
+                )
+
+                return aggregations
+
+        except Neo4jError as e:
+            logger.error(
+                "Failed to aggregate relationship strengths",
+                error=str(e),
+                source_entity_id=source_entity_id,
+            )
+            raise
