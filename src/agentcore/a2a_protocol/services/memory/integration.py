@@ -261,6 +261,12 @@ class SessionContextProvider:
         # Store in memory
         self._memory_store[memory.memory_id] = memory
 
+        # Ensure session context exists
+        if session_id not in self._session_contexts:
+            self._session_contexts[session_id] = SessionMemoryContext(
+                session_id=session_id
+            )
+
         self._logger.info(
             "session_state_persisted",
             session_id=session_id,

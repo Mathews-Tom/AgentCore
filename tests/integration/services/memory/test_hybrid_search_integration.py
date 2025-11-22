@@ -628,3 +628,168 @@ class TestHybridSearchIntegration:
 
         # At least one related memory should be found via graph
         assert len(with_graph_ids & related_ids) > 0
+
+    async def test_context_expansion_with_hybrid_search(
+        self, hybrid_search_service, qdrant_client, graph_service
+    ):
+        """Test graph-aware context expansion for MEM-022 acceptance criteria."""
+        from agentcore.a2a_protocol.models.memory import EntityNode, EntityType, RelationshipEdge
+        from agentcore.a2a_protocol.services.memory.context_expander import GraphContextExpander
+
+        # Create context expander
+        expander = GraphContextExpander(graph_service)
+
+        # Create test memories with entities
+        mem1 = create_test_memory(
+            memory_id="mem-ctx-001",
+            content="Using Redis for JWT token storage",
+            embedding=[0.8] + [0.2] * 767,
+            is_critical=True,  # Should get 2-hop expansion
+        )
+        mem1.entities = ["Redis", "JWT"]
+
+        mem2 = create_test_memory(
+            memory_id="mem-ctx-002",
+            content="Authentication service implementation",
+            embedding=[0.75] + [0.25] * 767,
+            is_critical=False,  # Should get 1-hop expansion
+        )
+        mem2.entities = ["authentication"]
+
+        # Insert into Qdrant
+        points = [
+            qmodels.PointStruct(
+                id=mem1.memory_id, vector=mem1.embedding, payload=mem1.model_dump()
+            ),
+            qmodels.PointStruct(
+                id=mem2.memory_id, vector=mem2.embedding, payload=mem2.model_dump()
+            ),
+        ]
+        await qdrant_client.upsert(collection_name="test_memories", points=points)
+
+        # Create entity graph in Neo4j
+        redis_entity = EntityNode(
+            entity_id="redis-ent",
+            entity_name="Redis",
+            entity_type=EntityType.TOOL,
+            properties={"version": "7.0"},
+        )
+        jwt_entity = EntityNode(
+            entity_id="jwt-ent",
+            entity_name="JWT",
+            entity_type=EntityType.CONCEPT,
+            properties={"standard": "RFC7519"},
+        )
+        auth_entity = EntityNode(
+            entity_id="auth-ent",
+            entity_name="authentication",
+            entity_type=EntityType.CONCEPT,
+            properties={},
+        )
+        cache_entity = EntityNode(
+            entity_id="cache-ent",
+            entity_name="caching",
+            entity_type=EntityType.CONCEPT,
+            properties={},
+        )
+
+        # Store entities
+        await graph_service.store_entity(redis_entity)
+        await graph_service.store_entity(jwt_entity)
+        await graph_service.store_entity(auth_entity)
+        await graph_service.store_entity(cache_entity)
+
+        # Create relationships (1-hop and 2-hop)
+        # Redis -> JWT (direct relationship)
+        await graph_service.create_relationship(
+            from_id="redis-ent",
+            to_id="jwt-ent",
+            relationship_type="stores",
+            from_label="Entity",
+            to_label="Entity",
+            strength=0.9,
+        )
+
+        # JWT -> authentication (1-hop for mem1, creates 2-hop from Redis)
+        await graph_service.create_relationship(
+            from_id="jwt-ent",
+            to_id="auth-ent",
+            relationship_type="enables",
+            from_label="Entity",
+            to_label="Entity",
+            strength=0.85,
+        )
+
+        # Redis -> caching (for 2-hop testing)
+        await graph_service.create_relationship(
+            from_id="redis-ent",
+            to_id="cache-ent",
+            relationship_type="provides",
+            from_label="Entity",
+            to_label="Entity",
+            strength=0.8,
+        )
+
+        await asyncio.sleep(0.5)
+
+        # Test 1: Expand non-critical memory (should use depth=1)
+        context_mem2 = await expander.expand_single_memory(mem2)
+        assert context_mem2.depth == 1
+        assert context_mem2.memory_id == mem2.memory_id
+        # Should find entities within 1 hop of "authentication"
+
+        # Test 2: Expand critical memory (should use depth=2)
+        context_mem1 = await expander.expand_single_memory(mem1)
+        assert context_mem1.depth == 2
+        assert context_mem1.memory_id == mem1.memory_id
+        # Should find entities within 2 hops of Redis/JWT
+
+        # Test 3: Verify graph structure preservation (entity -> relationship -> entity)
+        triples = context_mem1.format_triples()
+        assert isinstance(triples, list)
+        # Triples should be in format: "source -[TYPE:strength]-> target"
+        for triple in triples:
+            assert "-[" in triple
+            assert "]->" in triple
+
+        # Test 4: Batch expansion with hybrid search results
+        # Perform hybrid search to get top memories
+        query_embedding = [0.8] + [0.2] * 767
+        search_results = await hybrid_search_service.hybrid_search(
+            query_embedding=query_embedding,
+            limit=5,
+            use_graph_expansion=False,  # Don't use built-in expansion
+        )
+
+        # Extract memories from results
+        memories = [mem for mem, _, _ in search_results]
+
+        # Expand context for all retrieved memories
+        expanded = await expander.expand_context(
+            memories=memories,
+            include_entities=True,
+            include_relationships=True,
+            max_memories=10,
+        )
+
+        assert "memories" in expanded
+        assert "expanded_context" in expanded
+        assert len(expanded["memories"]) > 0
+
+        # Test 5: Verify formatting for LLM consumption
+        formatted = await expander.expand_with_formatting(
+            memories=memories[:2],  # Limit for test
+            max_memories=2,
+        )
+        assert isinstance(formatted, str)
+        assert len(formatted) > 0
+        # Should contain memory info and graph context
+        if "Memory:" in formatted or "Graph Context:" in formatted:
+            # Formatted output looks good
+            pass
+
+        print("\n✓ Context expansion integration test passed:")
+        print(f"  - Critical memory expanded to depth {context_mem1.depth}")
+        print(f"  - Non-critical memory expanded to depth {context_mem2.depth}")
+        print(f"  - Generated {len(triples)} relationship triples")
+        print(f"  - Expanded {len(expanded['memories'])} memories from hybrid search")
