@@ -13,6 +13,13 @@ from tests.integration.fixtures.qdrant import (
     qdrant_test_collection,
     qdrant_url,
 )
+from tests.integration.fixtures.neo4j import (
+    clean_neo4j_db,
+    neo4j_container,
+    neo4j_driver,
+    neo4j_session_with_sample_graph,
+    neo4j_uri,
+)
 
 
 @pytest.fixture(scope="function")
@@ -76,6 +83,11 @@ __all__ = [
     "qdrant_client",
     "qdrant_test_collection",
     "qdrant_sample_points",
+    "neo4j_container",
+    "neo4j_uri",
+    "neo4j_driver",
+    "neo4j_session_with_sample_graph",
+    "clean_neo4j_db",
     "test_db_engine",
     "init_test_db",
 ]
