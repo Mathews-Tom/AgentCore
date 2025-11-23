@@ -37,6 +37,7 @@ from agentcore.modular.interfaces import (
 )
 from agentcore.modular.planner import Planner
 from agentcore.modular.verifier import Verifier
+from agentcore.modular.coordinator import ModuleCoordinator, CoordinationContext
 
 logger = structlog.get_logger()
 
@@ -104,6 +105,13 @@ class ExecutionTrace(BaseModel):
     confidence_score: float = Field(
         ..., ge=0.0, le=1.0, description="Final confidence score"
     )
+    transitions: list[dict[str, Any]] = Field(
+        default_factory=list, description="Module transition events"
+    )
+    refinement_history: list[dict[str, Any]] = Field(
+        default_factory=list, description="History of plan refinements"
+    )
+    timeout: bool = Field(default=False, description="Whether execution timed out")
 
 
 class ModularSolveResponse(BaseModel):
@@ -213,15 +221,16 @@ async def _orchestrate_execution(
     a2a_context: A2AContext,
 ) -> ModularSolveResponse:
     """
-    Orchestrate execution through PEVG modules.
+    Orchestrate execution through PEVG modules with refinement loop.
 
-    Basic orchestration flow (MOD-017 - simple implementation):
+    Full orchestration flow (MOD-018 - coordination loop with refinement):
     1. Planner: Create execution plan from query
     2. Executor: Execute plan steps with tool invocation
     3. Verifier: Validate execution results
-    4. Generator: Synthesize final response
-
-    Note: Full refinement loop will be implemented in MOD-018.
+    4. If verification fails AND iterations < max:
+       - Planner: Refine plan with verifier feedback
+       - Goto step 2 (execute refined plan)
+    5. Generator: Synthesize final response
 
     Args:
         query: User query to solve
@@ -234,9 +243,6 @@ async def _orchestrate_execution(
     Raises:
         RuntimeError: If execution fails
     """
-    start_time = time.time()
-    modules_invoked: list[str] = []
-
     logger.info(
         "orchestration_started",
         query=query,
@@ -247,108 +253,46 @@ async def _orchestrate_execution(
     # Create module instances
     planner, executor, verifier, generator = _create_modules(a2a_context, config)
 
-    # Step 1: Planning
-    logger.info("step_1_planning", trace_id=a2a_context.trace_id)
-    modules_invoked.append("planner")
+    # Create coordinator and set context
+    coordinator = ModuleCoordinator()
+    coordination_context = CoordinationContext(
+        execution_id=str(uuid4()),
+        trace_id=a2a_context.trace_id,
+        session_id=a2a_context.session_id,
+        iteration=0,
+    )
+    coordinator.set_context(coordination_context)
 
-    planner_query = PlannerQuery(
+    # Execute coordination loop with refinement
+    result = await coordinator.execute_with_refinement(
         query=query,
-        context={},
-        constraints={"max_iterations": config.max_iterations},
-    )
-
-    plan = await planner.analyze_query(planner_query)
-    logger.info(
-        "planning_complete",
-        plan_id=plan.plan_id,
-        step_count=len(plan.steps),
-        trace_id=a2a_context.trace_id,
-    )
-
-    # Step 2: Execution
-    logger.info("step_2_execution", trace_id=a2a_context.trace_id, plan_id=plan.plan_id)
-    modules_invoked.append("executor")
-
-    execution_results = await executor.execute_plan(plan)
-    successful_steps = sum(1 for r in execution_results if r.success)
-    failed_steps = sum(1 for r in execution_results if not r.success)
-
-    logger.info(
-        "execution_complete",
-        plan_id=plan.plan_id,
-        total_steps=len(execution_results),
-        successful=successful_steps,
-        failed=failed_steps,
-        trace_id=a2a_context.trace_id,
-    )
-
-    # Step 3: Verification
-    logger.info("step_3_verification", trace_id=a2a_context.trace_id)
-    modules_invoked.append("verifier")
-
-    verification_request = VerificationRequest(
-        results=execution_results,
-        expected_json_schema=None,
-        consistency_rules=["no_null_results"],
-    )
-
-    verification_result = await verifier.validate_results(verification_request)
-    logger.info(
-        "verification_complete",
-        valid=verification_result.valid,
-        errors_count=len(verification_result.errors),
-        warnings_count=len(verification_result.warnings),
-        confidence=verification_result.confidence,
-        trace_id=a2a_context.trace_id,
-    )
-
-    # Step 4: Generation
-    logger.info("step_4_generation", trace_id=a2a_context.trace_id)
-    modules_invoked.append("generator")
-
-    generation_request = GenerationRequest(
-        verified_results=execution_results,
-        format=config.output_format,
+        planner=planner,
+        executor=executor,
+        verifier=verifier,
+        generator=generator,
+        max_iterations=config.max_iterations,
+        timeout_seconds=config.timeout_seconds,
+        confidence_threshold=config.confidence_threshold,
+        output_format=config.output_format,
         include_reasoning=config.include_reasoning,
-        max_length=None,
     )
 
-    generated_response = await generator.synthesize_response(generation_request)
-    logger.info(
-        "generation_complete",
-        content_length=len(generated_response.content),
-        has_reasoning=generated_response.reasoning is not None,
-        sources_count=len(generated_response.sources),
-        trace_id=a2a_context.trace_id,
-    )
-
-    # Build execution trace
-    total_duration_ms = int((time.time() - start_time) * 1000)
-
-    execution_trace = ExecutionTrace(
-        plan_id=plan.plan_id,
-        iterations=1,  # Simple implementation - no refinement yet
-        modules_invoked=modules_invoked,
-        total_duration_ms=total_duration_ms,
-        verification_passed=verification_result.valid,
-        step_count=len(execution_results),
-        successful_steps=successful_steps,
-        failed_steps=failed_steps,
-        confidence_score=verification_result.confidence,
-    )
+    # Convert result dict to ModularSolveResponse
+    execution_trace = ExecutionTrace(**result["execution_trace"])
 
     logger.info(
         "orchestration_complete",
         trace_id=a2a_context.trace_id,
-        duration_ms=total_duration_ms,
-        verification_passed=verification_result.valid,
+        duration_ms=execution_trace.total_duration_ms,
+        verification_passed=execution_trace.verification_passed,
+        iterations=execution_trace.iterations,
     )
 
     return ModularSolveResponse(
-        answer=generated_response.content,
+        answer=result["answer"],
         execution_trace=execution_trace,
-        reasoning=generated_response.reasoning,
-        sources=generated_response.sources,
+        reasoning=result.get("reasoning"),
+        sources=result.get("sources", []),
     )
 
 
