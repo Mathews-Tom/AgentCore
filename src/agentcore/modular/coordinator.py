@@ -82,6 +82,21 @@ class ModuleMessage(BaseModel):
     )
 
 
+class RefinementIteration(BaseModel):
+    """Record of a single refinement iteration."""
+
+    iteration: int = Field(..., description="Iteration number")
+    plan_id: str = Field(..., description="Plan ID for this iteration")
+    confidence: float = Field(..., description="Verification confidence score")
+    valid: bool = Field(..., description="Verification result")
+    errors: list[str] = Field(default_factory=list, description="Verification errors")
+    feedback: str | None = Field(None, description="Feedback provided")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Iteration timestamp",
+    )
+
+
 class CoordinationContext(BaseModel):
     """Context maintained during module coordination."""
 
@@ -92,6 +107,9 @@ class CoordinationContext(BaseModel):
     )
     session_id: str | None = Field(None, description="Session identifier")
     iteration: int = Field(default=0, description="Current iteration number")
+    refinement_history: list[RefinementIteration] = Field(
+        default_factory=list, description="History of refinement iterations"
+    )
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional context data"
     )
@@ -516,6 +534,8 @@ class ModuleCoordinator:
         max_iterations: int = 5,
         timeout_seconds: float = 300.0,
         confidence_threshold: float = 0.7,
+        convergence_window: int = 2,
+        convergence_threshold: float = 0.01,
         output_format: str = "text",
         include_reasoning: bool = False,
     ) -> dict[str, Any]:
@@ -531,6 +551,11 @@ class ModuleCoordinator:
            - Goto step 2 (execute refined plan)
         5. Generate final response
 
+        Convergence Detection:
+        - Tracks confidence scores across iterations
+        - Stops if no improvement detected over convergence_window iterations
+        - Improvement defined as confidence increase > convergence_threshold
+
         Args:
             query: User query to solve
             planner: Planner module instance
@@ -540,6 +565,8 @@ class ModuleCoordinator:
             max_iterations: Maximum refinement iterations (default: 5)
             timeout_seconds: Overall execution timeout (default: 300)
             confidence_threshold: Minimum confidence for success (default: 0.7)
+            convergence_window: Number of iterations to check for improvement (default: 2)
+            convergence_threshold: Minimum confidence improvement to continue (default: 0.01)
             output_format: Output format for generator (default: "text")
             include_reasoning: Include reasoning trace (default: False)
 
@@ -741,6 +768,17 @@ class ModuleCoordinator:
                             "iteration": iteration,
                         }
 
+                        # Track refinement history
+                        refinement_iter = RefinementIteration(
+                            iteration=iteration,
+                            plan_id=plan.plan_id if plan else "unknown",
+                            confidence=verification_result.confidence,
+                            valid=verification_result.valid,
+                            errors=verification_result.errors,
+                            feedback=verification_result.feedback,
+                        )
+                        self._context.refinement_history.append(refinement_iter)
+
                     # =======================================================
                     # Step 4: Check if refinement needed
                     # =======================================================
@@ -767,6 +805,25 @@ class ModuleCoordinator:
                             last_confidence=verification_result.confidence,
                         )
                         break  # Exit with partial results
+
+                    # Check for convergence (no improvement detected)
+                    if self._context and len(self._context.refinement_history) >= convergence_window:
+                        recent_confidences = [
+                            r.confidence for r in self._context.refinement_history[-convergence_window:]
+                        ]
+                        max_confidence = max(recent_confidences)
+                        min_confidence = min(recent_confidences)
+                        improvement = max_confidence - min_confidence
+
+                        if improvement < convergence_threshold:
+                            logger.warning(
+                                "convergence_detected_no_improvement",
+                                iteration=iteration,
+                                recent_confidences=recent_confidences,
+                                improvement=improvement,
+                                threshold=convergence_threshold,
+                            )
+                            break  # Exit due to convergence
 
                     # Continue to next iteration for refinement
                     logger.info(
@@ -814,6 +871,24 @@ class ModuleCoordinator:
                 # Build execution trace
                 total_duration_ms = int((time.time() - start_time) * 1000)
 
+                # Calculate refinement metrics
+                refinement_metrics = {}
+                if self._context and len(self._context.refinement_history) > 0:
+                    confidences = [r.confidence for r in self._context.refinement_history]
+                    refinement_metrics = {
+                        "total_refinements": len(self._context.refinement_history) - 1,  # Exclude initial iteration
+                        "confidence_progression": confidences,
+                        "initial_confidence": confidences[0] if confidences else 0.0,
+                        "final_confidence": confidences[-1] if confidences else 0.0,
+                        "confidence_improvement": (confidences[-1] - confidences[0]) if len(confidences) > 1 else 0.0,
+                        "max_confidence_reached": max(confidences) if confidences else 0.0,
+                        "converged": (
+                            len(confidences) >= convergence_window
+                            and (max(confidences[-convergence_window:]) - min(confidences[-convergence_window:])) < convergence_threshold
+                        ),
+                        "iterations_to_success": iteration if verification_result and verification_result.valid else None,
+                    }
+
                 execution_trace = {
                     "plan_id": plan.plan_id if plan else "unknown",
                     "iterations": iteration,
@@ -826,12 +901,9 @@ class ModuleCoordinator:
                     "confidence_score": verification_result.confidence if verification_result else 0.0,
                     "transitions": [t.model_dump() for t in transitions],
                     "refinement_history": [
-                        {
-                            "iteration": i + 1,
-                            "module": modules_invoked[i] if i < len(modules_invoked) else "unknown"
-                        }
-                        for i in range(iteration)
+                        r.model_dump() for r in (self._context.refinement_history if self._context else [])
                     ],
+                    "refinement_metrics": refinement_metrics,
                 }
 
                 logger.info(

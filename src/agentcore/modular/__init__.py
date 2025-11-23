@@ -69,6 +69,7 @@ from agentcore.modular.coordinator import (
     ModuleCapability,
     ModuleMessage,
     CoordinationContext,
+    RefinementIteration,
 )
 
 from agentcore.modular.state_manager import (
@@ -140,6 +141,7 @@ __all__ = [
     "ModuleCapability",
     "ModuleMessage",
     "CoordinationContext",
+    "RefinementIteration",
     # State Manager
     "StateManager",
     "ExecutionCheckpoint",
