@@ -5,26 +5,41 @@ Implements plan step execution with tool invocation for the modular agent core.
 Provides tool orchestration, parameter formatting, execution monitoring, and parallel execution
 where dependencies allow.
 
+Features:
+- Configurable retry strategies with exponential backoff and jitter
+- Circuit breaker pattern for fault tolerance
+- Error categorization (retryable vs non-retryable)
+- Graceful degradation when tools unavailable
+- Structured error reporting and recovery
+
 This module follows the PEVG (Planner, Executor, Verifier, Generator) architecture pattern.
 """
 
 from __future__ import annotations
 
 import asyncio
+import random
 import time
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
 
 import structlog
 
 from agentcore.a2a_protocol.models.jsonrpc import A2AContext
-from agentcore.agent_runtime.tools.base import ExecutionContext as ToolExecutionContext, Tool
-from agentcore.agent_runtime.tools.executor import ToolExecutor
-from agentcore.agent_runtime.tools.registry import ToolRegistry
+from agentcore.agent_runtime.models.error_types import CircuitBreakerConfig
 from agentcore.agent_runtime.models.tool_integration import (
     ToolExecutionStatus,
     ToolResult,
 )
+from agentcore.agent_runtime.services.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerError,
+    CircuitState,
+)
+from agentcore.agent_runtime.tools.base import ExecutionContext as ToolExecutionContext
+from agentcore.agent_runtime.tools.executor import ToolExecutor
+from agentcore.agent_runtime.tools.registry import ToolRegistry
 from agentcore.modular.base import BaseExecutor
 from agentcore.modular.interfaces import (
     ExecutionContext,
@@ -40,9 +55,20 @@ from agentcore.modular.models import (
 logger = structlog.get_logger()
 
 
+class ErrorCategory(str, Enum):
+    """Error categories for retry classification."""
+
+    TRANSIENT = "transient"  # Temporary errors that can be retried
+    PERMANENT = "permanent"  # Permanent errors that should not be retried
+    TIMEOUT = "timeout"  # Timeout errors
+    VALIDATION = "validation"  # Validation errors (non-retryable)
+    TOOL_NOT_FOUND = "tool_not_found"  # Tool not found (non-retryable)
+    CIRCUIT_OPEN = "circuit_open"  # Circuit breaker open (non-retryable)
+
+
 class ExecutorModule(BaseExecutor):
     """
-    Concrete Executor module implementation.
+    Concrete Executor module implementation with retry and error recovery.
 
     Executes plan steps by invoking tools from the Tool Integration Framework.
     Provides:
@@ -51,6 +77,10 @@ class ExecutorModule(BaseExecutor):
     3. Result collection and formatting
     4. Support for parallel tool execution where dependencies allow
     5. Integration with Tool Registry and ToolExecutor
+    6. Configurable retry strategies with exponential backoff
+    7. Circuit breaker pattern for failing tools
+    8. Error categorization and graceful degradation
+    9. Structured error reporting
 
     Integrates with Tool Integration Framework (TOOL-001).
     """
@@ -62,6 +92,9 @@ class ExecutorModule(BaseExecutor):
         a2a_context: A2AContext | None = None,
         logger_instance: Any | None = None,
         max_parallel_steps: int = 5,
+        enable_circuit_breaker: bool = True,
+        circuit_breaker_config: CircuitBreakerConfig | None = None,
+        default_retry_policy: RetryPolicy | None = None,
     ) -> None:
         """
         Initialize Executor module.
@@ -72,17 +105,164 @@ class ExecutorModule(BaseExecutor):
             a2a_context: A2A protocol context for tracing
             logger_instance: Structured logger instance
             max_parallel_steps: Maximum number of steps to execute in parallel
+            enable_circuit_breaker: Enable circuit breaker for tool fault tolerance
+            circuit_breaker_config: Configuration for circuit breakers
+            default_retry_policy: Default retry policy for failed executions
         """
         super().__init__(a2a_context, logger_instance)
         self.tool_registry = tool_registry
         self.tool_executor = tool_executor
         self.max_parallel_steps = max_parallel_steps
+        self.enable_circuit_breaker = enable_circuit_breaker
+
+        # Circuit breaker configuration and instances
+        self.circuit_breaker_config = circuit_breaker_config or CircuitBreakerConfig()
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+
+        # Default retry policy
+        self.default_retry_policy = default_retry_policy or RetryPolicy(
+            max_attempts=3,
+            backoff_seconds=1.0,
+            exponential=True,
+        )
 
         self.logger.info(
             "executor_initialized",
             max_parallel_steps=max_parallel_steps,
             registry_tool_count=len(tool_registry),
+            circuit_breaker_enabled=enable_circuit_breaker,
+            default_max_retries=self.default_retry_policy.max_attempts,
         )
+
+    def _get_circuit_breaker(self, tool_id: str) -> CircuitBreaker:
+        """
+        Get or create circuit breaker for a tool.
+
+        Args:
+            tool_id: Tool identifier
+
+        Returns:
+            Circuit breaker instance for the tool
+        """
+        if tool_id not in self._circuit_breakers:
+            self._circuit_breakers[tool_id] = CircuitBreaker(
+                name=f"tool_{tool_id}",
+                config=self.circuit_breaker_config,
+            )
+            self.logger.debug(
+                "circuit_breaker_created",
+                tool_id=tool_id,
+                config=self.circuit_breaker_config.model_dump(),
+            )
+        return self._circuit_breakers[tool_id]
+
+    def _categorize_error(
+        self,
+        error: Exception,
+        error_type: str | None = None,
+    ) -> ErrorCategory:
+        """
+        Categorize error to determine if it's retryable.
+
+        Args:
+            error: Exception that occurred
+            error_type: Error type from metadata (if available)
+
+        Returns:
+            Error category classification
+        """
+        # Circuit breaker errors are non-retryable
+        if isinstance(error, CircuitBreakerError):
+            return ErrorCategory.CIRCUIT_OPEN
+
+        # Timeout errors are retryable
+        if isinstance(error, asyncio.TimeoutError) or error_type == "TimeoutError":
+            return ErrorCategory.TIMEOUT
+
+        # Check error type from metadata
+        if error_type:
+            if error_type == "ToolNotFoundError":
+                return ErrorCategory.TOOL_NOT_FOUND
+            elif error_type == "ParameterValidationError":
+                return ErrorCategory.VALIDATION
+
+        # Check exception type
+        exception_name = type(error).__name__
+
+        # Non-retryable errors
+        if exception_name in {
+            "ValueError",
+            "TypeError",
+            "KeyError",
+            "AttributeError",
+        }:
+            return ErrorCategory.PERMANENT
+
+        # Retryable errors (network, temporary failures)
+        if exception_name in {
+            "ConnectionError",
+            "TimeoutError",
+            "OSError",
+            "RuntimeError",
+        }:
+            return ErrorCategory.TRANSIENT
+
+        # Default to transient (optimistic retry)
+        return ErrorCategory.TRANSIENT
+
+    def _is_retryable(self, error_category: ErrorCategory) -> bool:
+        """
+        Determine if an error category should be retried.
+
+        Args:
+            error_category: Error category
+
+        Returns:
+            True if error should be retried
+        """
+        non_retryable = {
+            ErrorCategory.PERMANENT,
+            ErrorCategory.VALIDATION,
+            ErrorCategory.TOOL_NOT_FOUND,
+            ErrorCategory.CIRCUIT_OPEN,
+        }
+        return error_category not in non_retryable
+
+    def _calculate_backoff(
+        self,
+        attempt: int,
+        base_delay: float,
+        exponential: bool,
+        max_delay: float = 60.0,
+    ) -> float:
+        """
+        Calculate backoff delay with exponential backoff and jitter.
+
+        Args:
+            attempt: Current attempt number (0-indexed)
+            base_delay: Base delay in seconds
+            exponential: Use exponential backoff
+            max_delay: Maximum delay cap
+
+        Returns:
+            Delay in seconds with jitter applied
+        """
+        if exponential:
+            # Exponential backoff: base_delay * 2^attempt
+            delay = base_delay * (2**attempt)
+        else:
+            # Linear backoff: base_delay * (attempt + 1)
+            delay = base_delay * (attempt + 1)
+
+        # Cap at max_delay
+        delay = min(delay, max_delay)
+
+        # Add jitter (±25% random variation)
+        jitter_factor = random.uniform(0.75, 1.25)
+        delay = delay * jitter_factor
+
+        # Ensure positive delay
+        return max(0.1, delay)
 
     async def _execute_step_impl(self, context: ExecutionContext) -> ExecutionResult:
         """
@@ -139,6 +319,8 @@ class ExecutorModule(BaseExecutor):
                     execution_time=execution_time,
                     metadata={
                         "error_type": "ToolNotFoundError",
+                        "error_category": ErrorCategory.TOOL_NOT_FOUND.value,
+                        "retryable": False,
                         "action": action,
                     },
                 )
@@ -160,6 +342,8 @@ class ExecutorModule(BaseExecutor):
                     execution_time=execution_time,
                     metadata={
                         "error_type": "ParameterValidationError",
+                        "error_category": ErrorCategory.VALIDATION.value,
+                        "retryable": False,
                         "validation_error": validation_error,
                     },
                 )
@@ -178,16 +362,57 @@ class ExecutorModule(BaseExecutor):
                 },
             )
 
-            # Execute tool with timeout
+            # Execute tool with timeout and circuit breaker protection
             try:
-                tool_result = await asyncio.wait_for(
-                    self.tool_executor.execute_tool(
-                        tool_id=tool_id,
-                        parameters=formatted_params,
-                        context=tool_context,
-                    ),
-                    timeout=context.timeout_seconds,
+                # Wrap tool execution with circuit breaker if enabled
+                if self.enable_circuit_breaker:
+                    circuit_breaker = self._get_circuit_breaker(tool_id)
+
+                    async def execute_tool_fn() -> ToolResult:
+                        return await self.tool_executor.execute_tool(
+                            tool_id=tool_id,
+                            parameters=formatted_params,
+                            context=tool_context,
+                        )
+
+                    tool_result = await asyncio.wait_for(
+                        circuit_breaker.call(execute_tool_fn),
+                        timeout=context.timeout_seconds,
+                    )
+                else:
+                    tool_result = await asyncio.wait_for(
+                        self.tool_executor.execute_tool(
+                            tool_id=tool_id,
+                            parameters=formatted_params,
+                            context=tool_context,
+                        ),
+                        timeout=context.timeout_seconds,
+                    )
+
+            except CircuitBreakerError as e:
+                execution_time = time.time() - start_time
+                error_msg = f"Circuit breaker open for tool '{tool_id}': {str(e)}"
+                self.logger.warning(
+                    "circuit_breaker_blocked_execution",
+                    tool_id=tool_id,
+                    step_id=step_id,
+                    circuit_state=circuit_breaker.state.value if self.enable_circuit_breaker else "disabled",
                 )
+                return ExecutionResult(
+                    step_id=step_id,
+                    success=False,
+                    result=None,
+                    error=error_msg,
+                    execution_time=execution_time,
+                    metadata={
+                        "error_type": "CircuitBreakerError",
+                        "error_category": ErrorCategory.CIRCUIT_OPEN.value,
+                        "retryable": False,
+                        "tool_id": tool_id,
+                        "circuit_state": circuit_breaker.state.value if self.enable_circuit_breaker else "disabled",
+                    },
+                )
+
             except asyncio.TimeoutError:
                 execution_time = time.time() - start_time
                 error_msg = f"Tool execution exceeded timeout of {context.timeout_seconds}s"
@@ -199,6 +424,8 @@ class ExecutorModule(BaseExecutor):
                     execution_time=execution_time,
                     metadata={
                         "error_type": "TimeoutError",
+                        "error_category": ErrorCategory.TIMEOUT.value,
+                        "retryable": True,
                         "timeout_seconds": context.timeout_seconds,
                     },
                 )
@@ -207,19 +434,41 @@ class ExecutorModule(BaseExecutor):
             execution_time = time.time() - start_time
             success = tool_result.status == ToolExecutionStatus.SUCCESS
 
+            # Categorize error if execution failed
+            error_category = None
+            retryable = True
+            if not success:
+                error_category = self._categorize_error(
+                    Exception(tool_result.error) if tool_result.error else Exception("Unknown error"),
+                    tool_result.error_type,
+                )
+                retryable = self._is_retryable(error_category)
+
+            # Build metadata with error categorization
+            metadata = {
+                "tool_id": tool_id,
+                "tool_execution_time_ms": tool_result.execution_time_ms,
+                "tool_status": tool_result.status.value,
+                "error_type": tool_result.error_type,
+                "retry_count": tool_result.retry_count,
+            }
+
+            if error_category:
+                metadata["error_category"] = error_category.value
+                metadata["retryable"] = retryable
+
+            if self.enable_circuit_breaker:
+                circuit_breaker = self._get_circuit_breaker(tool_id)
+                metadata["circuit_breaker_state"] = circuit_breaker.state.value
+                metadata["circuit_breaker_failures"] = circuit_breaker.failure_count
+
             result = ExecutionResult(
                 step_id=step_id,
                 success=success,
                 result=tool_result.result if success else None,
                 error=tool_result.error,
                 execution_time=execution_time,
-                metadata={
-                    "tool_id": tool_id,
-                    "tool_execution_time_ms": tool_result.execution_time_ms,
-                    "tool_status": tool_result.status.value,
-                    "error_type": tool_result.error_type,
-                    "retry_count": tool_result.retry_count,
-                },
+                metadata=metadata,
             )
 
             self.logger.info(
@@ -257,14 +506,15 @@ class ExecutorModule(BaseExecutor):
         self, context: ExecutionContext, policy: RetryPolicy
     ) -> ExecutionResult:
         """
-        Execute step with retry policy.
+        Execute step with intelligent retry policy.
 
-        Implementation:
+        Enhanced Implementation:
         1. Execute step with timeout
-        2. On failure, check if retryable
-        3. Apply backoff strategy (exponential or linear)
-        4. Retry up to max_attempts
-        5. Return last result (success or final failure)
+        2. On failure, categorize error (retryable vs non-retryable)
+        3. Skip retry for non-retryable errors (validation, tool not found, circuit open)
+        4. Apply exponential backoff with jitter for retryable errors
+        5. Track retry attempts in metadata
+        6. Return last result (success or final failure)
 
         Args:
             context: Execution context
@@ -274,7 +524,7 @@ class ExecutorModule(BaseExecutor):
             Execution result after retries
 
         Raises:
-            RuntimeError: If all retry attempts fail
+            RuntimeError: If all retry attempts fail for retryable errors
         """
         self.logger.info(
             "executing_with_retry",
@@ -285,7 +535,7 @@ class ExecutorModule(BaseExecutor):
         )
 
         last_result: ExecutionResult | None = None
-        backoff = policy.backoff_seconds
+        retry_count = 0
 
         for attempt in range(1, policy.max_attempts + 1):
             self.logger.debug(
@@ -298,36 +548,70 @@ class ExecutorModule(BaseExecutor):
             result = await self._execute_step_impl(context)
             last_result = result
 
+            # Add retry count to metadata
+            if result.metadata is None:
+                result.metadata = {}
+            result.metadata["retry_attempt"] = attempt
+            result.metadata["max_retry_attempts"] = policy.max_attempts
+
             if result.success:
                 self.logger.info(
                     "retry_succeeded",
                     step_id=context.step.step_id,
                     attempt=attempt,
+                    retry_count=retry_count,
                 )
                 return result
 
+            # Check if error is retryable
+            error_category_str = result.metadata.get("error_category")
+            retryable = result.metadata.get("retryable", True)
+
+            if not retryable:
+                self.logger.warning(
+                    "non_retryable_error",
+                    step_id=context.step.step_id,
+                    error_category=error_category_str,
+                    error=result.error,
+                    attempt=attempt,
+                )
+                # Return immediately for non-retryable errors
+                raise RuntimeError(
+                    f"Step {context.step.step_id} failed with non-retryable error "
+                    f"({error_category_str}): {result.error}"
+                )
+
+            retry_count += 1
+
             # If not last attempt, wait with backoff
             if attempt < policy.max_attempts:
+                backoff_delay = self._calculate_backoff(
+                    attempt=attempt - 1,
+                    base_delay=policy.backoff_seconds,
+                    exponential=policy.exponential,
+                    max_delay=60.0,
+                )
+
                 self.logger.warning(
                     "retry_failed_waiting",
                     step_id=context.step.step_id,
                     attempt=attempt,
-                    backoff_seconds=backoff,
+                    backoff_seconds=backoff_delay,
                     error=result.error,
+                    error_category=error_category_str,
+                    retryable=retryable,
                 )
-                await asyncio.sleep(backoff)
+                await asyncio.sleep(backoff_delay)
 
-                # Update backoff for next attempt
-                if policy.exponential:
-                    backoff *= 2
-
-        # All attempts failed
+        # All retry attempts exhausted
         if last_result:
             self.logger.error(
-                "all_retries_failed",
+                "all_retries_exhausted",
                 step_id=context.step.step_id,
                 max_attempts=policy.max_attempts,
+                total_retries=retry_count,
                 final_error=last_result.error,
+                error_category=last_result.metadata.get("error_category"),
             )
             raise RuntimeError(
                 f"Step {context.step.step_id} failed after {policy.max_attempts} attempts: {last_result.error}"
@@ -678,8 +962,16 @@ class ExecutorModule(BaseExecutor):
         Check executor health and readiness.
 
         Returns:
-            Health status dict with executor-specific metrics
+            Health status dict with executor-specific metrics including circuit breaker states
         """
+        # Collect circuit breaker statistics
+        circuit_breaker_stats = {}
+        for tool_id, breaker in self._circuit_breakers.items():
+            circuit_breaker_stats[tool_id] = {
+                "state": breaker.state.value,
+                "failure_count": breaker.failure_count,
+            }
+
         return {
             "status": "healthy",
             "module": self.module_name,
@@ -687,4 +979,7 @@ class ExecutorModule(BaseExecutor):
             "has_error": self.state.error is not None,
             "tool_registry_size": len(self.tool_registry),
             "max_parallel_steps": self.max_parallel_steps,
+            "circuit_breaker_enabled": self.enable_circuit_breaker,
+            "circuit_breakers": circuit_breaker_stats,
+            "default_max_retries": self.default_retry_policy.max_attempts,
         }
