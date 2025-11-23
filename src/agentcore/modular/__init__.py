@@ -93,6 +93,22 @@ from agentcore.modular.metrics import (
     set_metrics,
 )
 
+from agentcore.modular.config import (
+    # Configuration
+    ModularConfig,
+    ModularConfigSettings,
+    ModuleModelConfig,
+    TokenUsage,
+    ModuleName,
+    ModelTier,
+    # Global Instance
+    get_modular_config,
+    reset_modular_config,
+    # Constants
+    ALLOWED_MODELS,
+    MODEL_PRICING,
+)
+
 __all__ = [
     # Planner
     "PlannerQuery",
@@ -153,4 +169,15 @@ __all__ = [
     "ErrorType",
     "get_metrics",
     "set_metrics",
+    # Configuration
+    "ModularConfig",
+    "ModularConfigSettings",
+    "ModuleModelConfig",
+    "TokenUsage",
+    "ModuleName",
+    "ModelTier",
+    "get_modular_config",
+    "reset_modular_config",
+    "ALLOWED_MODELS",
+    "MODEL_PRICING",
 ]
