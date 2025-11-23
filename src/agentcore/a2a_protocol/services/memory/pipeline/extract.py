@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from typing import Any, AsyncIterator
 
+from agentcore.a2a_protocol.models.memory import MemoryLayer
 from agentcore.a2a_protocol.services.memory.pipeline.task_base import (
     RetryStrategy,
     TaskBase,
@@ -148,6 +149,161 @@ class ExtractTask(TaskBase):
             "data": [],
             "batch_index": 0,
             "is_last_batch": True,
+        }
+
+    async def extract_agent_interaction(
+        self, agent_interaction_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Extract agent interaction data into memory format.
+
+        Args:
+            agent_interaction_data: Dictionary containing agent interaction details
+
+        Returns:
+            Extracted memory with standardized format
+        """
+        agent_id = agent_interaction_data.get("agent_id", "unknown")
+        action = agent_interaction_data.get("action", "unknown")
+        input_text = agent_interaction_data.get("input", "")
+        output_text = agent_interaction_data.get("output", "")
+        timestamp = agent_interaction_data.get("timestamp", "")
+        metadata = agent_interaction_data.get("metadata", {})
+
+        # Format content from interaction
+        content = f"Agent {agent_id} performed {action}. "
+        if input_text:
+            content += f"Input: {input_text}. "
+        if output_text:
+            content += f"Output: {output_text}"
+
+        return {
+            "agent_id": agent_id,
+            "content": content,
+            "memory_layer": MemoryLayer.EPISODIC.value,
+            "timestamp": timestamp,
+            "metadata": metadata,
+        }
+
+    async def extract_session_context(
+        self, session_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Extract session context data into memory format.
+
+        Args:
+            session_data: Dictionary containing session context details
+
+        Returns:
+            Extracted memory with standardized format
+        """
+        session_id = session_data.get("session_id", "unknown")
+        user_id = session_data.get("user_id", "")
+        preferences = session_data.get("preferences", {})
+        auth_level = session_data.get("authentication_level", "")
+        start_time = session_data.get("start_time", "")
+
+        # Format content from session
+        content = f"Session {session_id}"
+        if user_id:
+            content += f" for user {user_id}"
+        if auth_level:
+            content += f" with {auth_level} access"
+        if preferences:
+            pref_str = ", ".join(f"{k}: {v}" for k, v in preferences.items())
+            content += f". Preferences: {pref_str}"
+
+        return {
+            "session_id": session_id,
+            "content": content,
+            "memory_layer": MemoryLayer.SEMANTIC.value,
+            "timestamp": start_time,
+            "metadata": {
+                "user_id": user_id,
+                "preferences": preferences,
+                "authentication_level": auth_level,
+            },
+        }
+
+    async def extract_task_artifact(
+        self, artifact_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Extract task artifact data into memory format.
+
+        Args:
+            artifact_data: Dictionary containing task artifact details
+
+        Returns:
+            Extracted memory with standardized format
+        """
+        task_id = artifact_data.get("task_id", "unknown")
+        artifact_type = artifact_data.get("artifact_type", "file")
+        artifact_name = artifact_data.get("artifact_name", "")
+        artifact_content = artifact_data.get("artifact_content", "")
+        timestamp = artifact_data.get("timestamp", "")
+        metadata = artifact_data.get("metadata", {})
+
+        # Format content from artifact
+        content = f"Task {task_id} produced {artifact_type}"
+        if artifact_name:
+            content += f" '{artifact_name}'"
+        if artifact_content:
+            content += f". Content: {artifact_content}"
+
+        return {
+            "task_id": task_id,
+            "content": content,
+            "memory_layer": MemoryLayer.PROCEDURAL.value,
+            "timestamp": timestamp,
+            "metadata": {
+                **metadata,
+                "artifact_type": artifact_type,
+                "artifact_name": artifact_name,
+            },
+        }
+
+    async def extract_error_record(
+        self, error_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Extract error record data into memory format.
+
+        Args:
+            error_data: Dictionary containing error record details
+
+        Returns:
+            Extracted memory with standardized format
+        """
+        error_type = error_data.get("error_type", "unknown")
+        error_message = error_data.get("error_message", "")
+        context = error_data.get("context", {})
+        recovery_action = error_data.get("recovery_action", "")
+        timestamp = error_data.get("timestamp", "")
+        task_id = error_data.get("task_id", "")
+        severity = error_data.get("severity", 0.0)
+
+        # Format content from error
+        content = f"Error occurred: {error_type}"
+        if error_message:
+            content += f". Message: {error_message}"
+        if recovery_action:
+            content += f". Recovery: {recovery_action}"
+        if context:
+            content += f". Context: {context}"
+        if task_id:
+            content += f" (Task: {task_id})"
+
+        return {
+            "content": content,
+            "error_type": error_type,
+            "severity": severity,
+            "memory_layer": MemoryLayer.EPISODIC.value,
+            "timestamp": timestamp,
+            "metadata": {
+                "error_type": error_type,
+                "error_message": error_message,
+                "context": context,
+                "recovery_action": recovery_action,
+                "task_id": task_id,
+                "severity": severity,
+            },
         }
 
 

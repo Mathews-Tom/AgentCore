@@ -278,14 +278,14 @@ class TaskRegistry:
         self._instances: dict[str, TaskBase] = {}
 
     def register(
-        self, task_class: type[TaskBase] | None = None, *, name: str | None = None
+        self, task_class: type[TaskBase] | str | None = None, *, name: str | None = None
     ) -> type[TaskBase] | Callable[[type[TaskBase]], type[TaskBase]]:
         """Register a task class in the registry.
 
         Can be used as a decorator or called directly.
 
         Args:
-            task_class: The task class to register
+            task_class: The task class to register or a string name
             name: Optional custom name (defaults to class name)
 
         Returns:
@@ -297,7 +297,12 @@ class TaskRegistry:
             class MyTask(TaskBase):
                 pass
 
-            # Or with custom name
+            # Or with custom name (positional)
+            @registry.register("custom_name")
+            class MyTask(TaskBase):
+                pass
+
+            # Or with custom name (keyword)
             @registry.register(name="custom_name")
             class MyTask(TaskBase):
                 pass
@@ -313,8 +318,19 @@ class TaskRegistry:
             return cls
 
         if task_class is None:
-            # Called with arguments: @register(name="...")
+            # Called with keyword arguments: @register(name="...")
             return decorator
+        elif isinstance(task_class, str):
+            # Called with positional string: @register("name")
+            # Use the string as the name
+            def string_decorator(cls: type[TaskBase]) -> type[TaskBase]:
+                task_name = task_class  # Use the string as the name
+                if task_name in self._tasks:
+                    logger.warning(f"Task {task_name} already registered, overwriting")
+                self._tasks[task_name] = cls
+                logger.info(f"Registered task: {task_name}")
+                return cls
+            return string_decorator
         else:
             # Called without arguments: @register
             return decorator(task_class)
