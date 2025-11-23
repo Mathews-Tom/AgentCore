@@ -126,10 +126,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         else:
             logger.info("Tool system not available (agent_runtime not installed)")
 
+        # Register PEVG modules as A2A agents
+        try:
+            from agentcore.modular.registration import register_module_agents
+            discovery_urls = await register_module_agents()
+            logger.info(
+                "PEVG modules registered as A2A agents",
+                modules=list(discovery_urls.keys()),
+            )
+        except Exception as e:
+            logger.warning(
+                "PEVG module registration failed, continuing without module agents",
+                error=str(e),
+            )
+
         # TODO: Setup WebSocket manager
         yield
     finally:
         logger.info("Shutting down A2A Protocol Layer")
+
+        # Unregister PEVG modules
+        try:
+            from agentcore.modular.registration import unregister_module_agents
+            await unregister_module_agents()
+            logger.info("PEVG modules unregistered")
+        except Exception as e:
+            logger.warning("PEVG module unregistration failed", error=str(e))
 
         # Stop coordination service cleanup task
         if settings.COORDINATION_ENABLE_REP:
