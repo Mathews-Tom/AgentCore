@@ -79,6 +79,19 @@ from agentcore.modular.state_manager import (
     RecoveryInfo,
 )
 
+from agentcore.modular.metrics import (
+    # Metrics Collector
+    ModularMetricsCollector,
+    # Trackers
+    ModuleExecutionTracker,
+    CoordinationExecutionTracker,
+    # Error Types
+    ErrorType,
+    # Global Instance
+    get_metrics,
+    set_metrics,
+)
+
 __all__ = [
     # Planner
     "PlannerQuery",
@@ -131,4 +144,11 @@ __all__ = [
     "StateManager",
     "ExecutionCheckpoint",
     "RecoveryInfo",
+    # Metrics
+    "ModularMetricsCollector",
+    "ModuleExecutionTracker",
+    "CoordinationExecutionTracker",
+    "ErrorType",
+    "get_metrics",
+    "set_metrics",
 ]
