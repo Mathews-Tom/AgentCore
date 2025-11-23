@@ -51,6 +51,13 @@ from agentcore.reasoning.services import (  # noqa: F401
 # Import training JSON-RPC methods
 from agentcore.training.services import training_jsonrpc  # noqa: F401
 
+# Import modular agent JSON-RPC methods
+try:
+    from agentcore.modular import jsonrpc as modular_jsonrpc  # noqa: F401
+except ImportError:
+    # Modular agent optional
+    modular_jsonrpc = None
+
 # Import agent runtime tool JSON-RPC methods
 try:
     from agentcore.agent_runtime.jsonrpc import tools_jsonrpc
