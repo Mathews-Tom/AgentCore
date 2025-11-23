@@ -101,18 +101,19 @@ class Pipeline:
 
     def __init__(
         self,
-        pipeline_id: str,
+        pipeline_id: str | None = None,
         parallel_execution: bool = False,
         max_parallel: int = 4,
     ):
         """Initialize pipeline.
 
         Args:
-            pipeline_id: Unique identifier for this pipeline
+            pipeline_id: Unique identifier for this pipeline (auto-generated if not provided)
             parallel_execution: Enable parallel task execution
             max_parallel: Maximum number of tasks to run in parallel
         """
-        self.pipeline_id = pipeline_id
+        from uuid import uuid4
+        self.pipeline_id = pipeline_id or f"pipeline-{uuid4()}"
         self.parallel_execution = parallel_execution
         self.max_parallel = max_parallel
         self._tasks: list[TaskBase] = []

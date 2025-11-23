@@ -60,7 +60,7 @@ class TestStageCompressionPipeline:
     @pytest.fixture
     async def cost_tracker(self) -> CostTracker:
         """Create cost tracker."""
-        return CostTracker()
+        return CostTracker(use_memory=True)
 
     @pytest.fixture
     async def stage_manager(
@@ -261,7 +261,7 @@ class TestStageCompressionPipeline:
         )
 
         # Track compression cost
-        cost_tracker.record_compression(
+        await cost_tracker.record_compression(
             operation_id="comp-001",
             input_tokens=compression_result.get("input_tokens", 0),
             output_tokens=compression_result.get("output_tokens", 0),
@@ -269,7 +269,7 @@ class TestStageCompressionPipeline:
         )
 
         # Assert - Cost tracked
-        metrics = cost_tracker.get_metrics()
+        metrics = await cost_tracker.get_monthly_usage()
         assert metrics["total_operations"] >= 1
         assert metrics["total_cost"] > 0.0
         assert metrics["total_input_tokens"] > 0
@@ -301,7 +301,7 @@ class TestStageCompressionPipeline:
         ]
 
         for i, op in enumerate(operations):
-            cost_tracker.record_compression(
+            await cost_tracker.record_compression(
                 operation_id=f"budget-test-{i}",
                 input_tokens=op["input_tokens"],
                 output_tokens=op["output_tokens"],
@@ -309,7 +309,7 @@ class TestStageCompressionPipeline:
             )
 
         # Act - Check budget status
-        budget_status = cost_tracker.get_budget_status()
+        budget_status = await cost_tracker.get_budget_status()
 
         # Assert - Budget tracked correctly
         assert "monthly_budget" in budget_status

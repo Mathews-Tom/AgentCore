@@ -113,15 +113,100 @@ class CostTracker:
     # Budget alert threshold (75% of monthly budget)
     ALERT_THRESHOLD_PERCENTAGE = 75.0
 
-    def __init__(self, trace_id: str | None = None):
+    def __init__(self, trace_id: str | None = None, use_memory: bool = False):
         """
         Initialize CostTracker.
 
         Args:
             trace_id: Optional trace ID for request tracking
+            use_memory: Use in-memory storage instead of database (for testing)
         """
         self._logger = logger.bind(component="cost_tracker")
         self._trace_id = trace_id
+        self._monthly_budget: float | None = None
+        self._use_memory = use_memory
+        self._memory_records: list[dict[str, Any]] = []
+
+    def set_monthly_budget(self, budget: float) -> None:
+        """
+        Set custom monthly budget for this tracker instance.
+
+        Args:
+            budget: Monthly budget in USD
+        """
+        self._monthly_budget = budget
+        self._logger.info(
+            "monthly_budget_set",
+            budget=budget,
+        )
+
+    async def record_compression(
+        self,
+        operation_id: str,
+        input_tokens: int,
+        output_tokens: int,
+        model: str,
+        compression_type: str = "stage",
+        compression_ratio: float = 0.0,
+    ) -> str:
+        """
+        Simplified compression recording interface.
+
+        Args:
+            operation_id: Unique operation identifier
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
+            model: Model used
+            compression_type: Type of compression (default: stage)
+            compression_ratio: Compression ratio (default: 0.0)
+
+        Returns:
+            Metric ID
+        """
+        # Calculate cost based on model pricing
+        if "gpt-4.1-mini" in model.lower():
+            cost = (input_tokens * 0.00015 / 1000) + (output_tokens * 0.0006 / 1000)
+        elif "gpt-4.1" in model.lower():
+            cost = (input_tokens * 0.0025 / 1000) + (output_tokens * 0.01 / 1000)
+        elif "gpt-5-mini" in model.lower():
+            cost = (input_tokens * 0.0002 / 1000) + (output_tokens * 0.0008 / 1000)
+        elif "gpt-5" in model.lower():
+            cost = (input_tokens * 0.003 / 1000) + (output_tokens * 0.015 / 1000)
+        else:
+            cost = 0.0
+
+        return await self.record_compression_cost(
+            compression_type=compression_type,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            compression_ratio=compression_ratio,
+            cost_usd=cost,
+            model_used=model,
+        )
+
+    async def get_budget_status(self) -> dict[str, Any]:
+        """
+        Get current budget status with spending details.
+
+        Returns:
+            Dictionary with budget status:
+            - monthly_budget: Total monthly budget
+            - current_spend: Current month spending
+            - remaining_budget: Remaining budget
+            - utilization_percentage: Budget utilization percentage
+        """
+        monthly_budget = self._monthly_budget if self._monthly_budget is not None else settings.MONTHLY_TOKEN_BUDGET_USD
+        usage = await self.get_monthly_usage()
+        current_spend = usage["total_cost"]
+        remaining = monthly_budget - current_spend
+        utilization = (current_spend / monthly_budget) * 100.0 if monthly_budget > 0 else 0.0
+
+        return {
+            "monthly_budget": monthly_budget,
+            "current_spend": current_spend,
+            "remaining_budget": remaining,
+            "utilization_percentage": utilization,
+        }
 
     async def record_compression_cost(
         self,
@@ -138,7 +223,7 @@ class CostTracker:
         coherence_score: float | None = None,
     ) -> str:
         """
-        Record compression cost to compression_metrics table.
+        Record compression cost to compression_metrics table or memory.
 
         Args:
             compression_type: Type of compression (stage, task)
@@ -157,46 +242,66 @@ class CostTracker:
             Metric ID (UUID string)
         """
         metric_id = uuid4()
+        recorded_at = datetime.now(UTC)
 
-        # Convert string IDs to UUIDs if provided
-        stage_uuid = UUID(stage_id) if stage_id else None
-        task_uuid = UUID(task_id) if task_id else None
-        agent_uuid = UUID(agent_id) if agent_id else None
+        if self._use_memory:
+            # Store in memory for testing
+            record = {
+                "metric_id": str(metric_id),
+                "stage_id": stage_id,
+                "task_id": task_id,
+                "agent_id": agent_id,
+                "compression_type": compression_type,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "compression_ratio": compression_ratio,
+                "critical_fact_retention_rate": critical_fact_retention_rate,
+                "coherence_score": coherence_score,
+                "cost_usd": cost_usd,
+                "model_used": model_used,
+                "recorded_at": recorded_at,
+            }
+            self._memory_records.append(record)
+        else:
+            # Convert string IDs to UUIDs if provided
+            stage_uuid = UUID(stage_id) if stage_id else None
+            task_uuid = UUID(task_id) if task_id else None
+            agent_uuid = UUID(agent_id) if agent_id else None
 
-        async with get_session() as session:
-            # Insert directly using raw SQL for better control
-            query = """
-                INSERT INTO compression_metrics (
-                    metric_id, stage_id, task_id, compression_type,
-                    input_tokens, output_tokens, compression_ratio,
-                    critical_fact_retention_rate, coherence_score,
-                    cost_usd, model_used, recorded_at
-                ) VALUES (
-                    :metric_id, :stage_id, :task_id, :compression_type,
-                    :input_tokens, :output_tokens, :compression_ratio,
-                    :critical_fact_retention_rate, :coherence_score,
-                    :cost_usd, :model_used, :recorded_at
+            async with get_session() as session:
+                # Insert directly using raw SQL for better control
+                query = """
+                    INSERT INTO compression_metrics (
+                        metric_id, stage_id, task_id, compression_type,
+                        input_tokens, output_tokens, compression_ratio,
+                        critical_fact_retention_rate, coherence_score,
+                        cost_usd, model_used, recorded_at
+                    ) VALUES (
+                        :metric_id, :stage_id, :task_id, :compression_type,
+                        :input_tokens, :output_tokens, :compression_ratio,
+                        :critical_fact_retention_rate, :coherence_score,
+                        :cost_usd, :model_used, :recorded_at
+                    )
+                """
+
+                await session.execute(
+                    query,
+                    {
+                        "metric_id": metric_id,
+                        "stage_id": stage_uuid,
+                        "task_id": task_uuid,
+                        "compression_type": compression_type,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "compression_ratio": compression_ratio,
+                        "critical_fact_retention_rate": critical_fact_retention_rate,
+                        "coherence_score": coherence_score,
+                        "cost_usd": Decimal(str(cost_usd)),
+                        "model_used": model_used,
+                        "recorded_at": recorded_at,
+                    },
                 )
-            """
-
-            await session.execute(
-                query,
-                {
-                    "metric_id": metric_id,
-                    "stage_id": stage_uuid,
-                    "task_id": task_uuid,
-                    "compression_type": compression_type,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "compression_ratio": compression_ratio,
-                    "critical_fact_retention_rate": critical_fact_retention_rate,
-                    "coherence_score": coherence_score,
-                    "cost_usd": Decimal(str(cost_usd)),
-                    "model_used": model_used,
-                    "recorded_at": datetime.now(UTC),
-                },
-            )
-            await session.commit()
+                await session.commit()
 
         self._logger.info(
             "compression_cost_recorded",
@@ -246,31 +351,42 @@ class CostTracker:
         else:
             period_end = datetime(year, month + 1, 1, tzinfo=UTC)
 
-        async with get_session() as session:
-            query = """
-                SELECT
-                    COALESCE(SUM(cost_usd), 0) as total_cost,
-                    COUNT(*) as total_operations,
-                    COALESCE(SUM(input_tokens), 0) as total_input_tokens,
-                    COALESCE(SUM(output_tokens), 0) as total_output_tokens
-                FROM compression_metrics
-                WHERE recorded_at >= :period_start
-                  AND recorded_at < :period_end
-            """
+        if self._use_memory:
+            # Calculate from in-memory records
+            filtered_records = [
+                r for r in self._memory_records
+                if period_start <= r["recorded_at"] < period_end
+            ]
+            total_cost = sum(r["cost_usd"] for r in filtered_records)
+            total_operations = len(filtered_records)
+            total_input_tokens = sum(r["input_tokens"] for r in filtered_records)
+            total_output_tokens = sum(r["output_tokens"] for r in filtered_records)
+        else:
+            async with get_session() as session:
+                query = """
+                    SELECT
+                        COALESCE(SUM(cost_usd), 0) as total_cost,
+                        COUNT(*) as total_operations,
+                        COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+                        COALESCE(SUM(output_tokens), 0) as total_output_tokens
+                    FROM compression_metrics
+                    WHERE recorded_at >= :period_start
+                      AND recorded_at < :period_end
+                """
 
-            result = await session.execute(
-                query,
-                {
-                    "period_start": period_start,
-                    "period_end": period_end,
-                },
-            )
-            row = result.fetchone()
+                result = await session.execute(
+                    query,
+                    {
+                        "period_start": period_start,
+                        "period_end": period_end,
+                    },
+                )
+                row = result.fetchone()
 
-        total_cost = float(row[0]) if row[0] else 0.0
-        total_operations = int(row[1]) if row[1] else 0
-        total_input_tokens = int(row[2]) if row[2] else 0
-        total_output_tokens = int(row[3]) if row[3] else 0
+            total_cost = float(row[0]) if row[0] else 0.0
+            total_operations = int(row[1]) if row[1] else 0
+            total_input_tokens = int(row[2]) if row[2] else 0
+            total_output_tokens = int(row[3]) if row[3] else 0
 
         avg_cost = total_cost / total_operations if total_operations > 0 else 0.0
 
@@ -293,7 +409,7 @@ class CostTracker:
         Returns:
             BudgetAlert if threshold exceeded, None otherwise
         """
-        monthly_budget = settings.MONTHLY_TOKEN_BUDGET_USD
+        monthly_budget = self._monthly_budget if self._monthly_budget is not None else settings.MONTHLY_TOKEN_BUDGET_USD
         usage = await self.get_monthly_usage()
 
         current_spend = usage["total_cost"]
