@@ -379,6 +379,21 @@ class ModularTracer:
 
         return None
 
+    def generate_trace_id(self) -> str:
+        """
+        Generate a new trace ID for query entry point.
+
+        This should be called at the query entry point to establish
+        the root trace ID that will be propagated throughout the
+        execution.
+
+        Returns:
+            New trace ID as hex string
+        """
+        from uuid import uuid4
+        # Generate UUID-based trace ID for consistency
+        return str(uuid4())
+
     def build_a2a_context_carrier(
         self, a2a_context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -709,3 +724,17 @@ def get_trace_context_for_a2a() -> dict[str, Any]:
         return {}
 
     return tracer.build_a2a_context_carrier()
+
+
+def bind_trace_id_to_logger(logger_instance: Any, trace_id: str) -> Any:
+    """
+    Bind trace_id to a structlog logger instance.
+
+    Args:
+        logger_instance: Structlog logger instance
+        trace_id: Trace ID to bind
+
+    Returns:
+        Logger with trace_id bound
+    """
+    return logger_instance.bind(trace_id=trace_id)

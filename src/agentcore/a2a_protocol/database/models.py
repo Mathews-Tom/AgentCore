@@ -511,6 +511,7 @@ class ModularExecutionDB(Base):
     id = Column(String(255), primary_key=True)
     query = Column(Text, nullable=False)
     plan_id = Column(String(255), nullable=True, index=True)
+    trace_id = Column(String(255), nullable=True, index=True)
     iterations = Column(Integer, nullable=False, default=0)
     final_result = Column(JSON, nullable=True)
     status = Column(String(50), nullable=False, index=True)

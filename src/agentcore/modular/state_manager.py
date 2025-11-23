@@ -116,6 +116,57 @@ class StateManager:
     # Checkpoint Management
     # ========================================================================
 
+    async def init_execution(
+        self,
+        execution_id: str,
+        query: str,
+        trace_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Initialize a new execution record in the database.
+
+        Args:
+            execution_id: Execution identifier
+            query: User query
+            trace_id: Trace ID for distributed tracing
+            metadata: Additional execution metadata
+        """
+        from agentcore.a2a_protocol.database.models import ModularExecutionDB
+
+        # Check if execution already exists
+        result = await self.session.execute(
+            select(ModularExecutionDB).where(
+                ModularExecutionDB.id == execution_id
+            )
+        )
+        existing = result.scalar_one_or_none()
+
+        if not existing:
+            # Create new execution record
+            execution_db = ModularExecutionDB(
+                id=execution_id,
+                query=query,
+                trace_id=trace_id,
+                status="IN_PROGRESS",
+                iterations=0,
+                execution_metadata=metadata or {},
+            )
+            self.session.add(execution_db)
+            await self.session.flush()
+
+            logger.info(
+                "Execution initialized",
+                execution_id=execution_id,
+                trace_id=trace_id,
+            )
+        else:
+            logger.debug(
+                "Execution already exists",
+                execution_id=execution_id,
+                trace_id=trace_id,
+            )
+
     async def create_checkpoint(
         self,
         execution_id: str,

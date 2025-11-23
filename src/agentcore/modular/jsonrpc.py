@@ -364,19 +364,39 @@ async def handle_modular_solve(request: JsonRpcRequest) -> dict[str, Any]:
         # Use default config if not provided
         config = solve_request.config or ModularSolveConfig()
 
-        # Build A2A context
+        # Build A2A context with trace_id generation at entry point
+        # Generate trace_id at query entry if not provided
+        from agentcore.modular.tracing import _get_global_tracer
+
+        trace_id = None
+        if request.a2a_context and request.a2a_context.trace_id:
+            trace_id = request.a2a_context.trace_id
+        else:
+            # Generate new trace_id at query entry point
+            tracer = _get_global_tracer()
+            if tracer:
+                trace_id = tracer.generate_trace_id()
+            else:
+                trace_id = str(uuid4())
+
         a2a_context = request.a2a_context or A2AContext(
             source_agent="user",
             target_agent="modular-agent",
-            trace_id=str(uuid4()),
+            trace_id=trace_id,
             timestamp=datetime.now(UTC).isoformat(),
         )
 
-        logger.info(
+        # Ensure trace_id is set even if a2a_context was provided
+        if not a2a_context.trace_id:
+            a2a_context.trace_id = trace_id
+
+        # Bind trace_id to logger for all subsequent log messages
+        bound_logger = logger.bind(trace_id=a2a_context.trace_id)
+
+        bound_logger.info(
             "modular_solve_request",
             query=solve_request.query,
             request_id=request.id,
-            trace_id=a2a_context.trace_id,
             max_iterations=config.max_iterations,
             timeout=config.timeout_seconds,
         )
@@ -394,20 +414,18 @@ async def handle_modular_solve(request: JsonRpcRequest) -> dict[str, Any]:
                 timeout=config.timeout_seconds,
             )
         except asyncio.TimeoutError:
-            logger.error(
+            bound_logger.error(
                 "execution_timeout",
                 request_id=request.id,
-                trace_id=a2a_context.trace_id,
                 timeout=config.timeout_seconds,
             )
             raise TimeoutError(
                 f"Execution exceeded timeout of {config.timeout_seconds} seconds"
             )
 
-        logger.info(
+        bound_logger.info(
             "modular_solve_success",
             request_id=request.id,
-            trace_id=a2a_context.trace_id,
             duration_ms=response.execution_trace.total_duration_ms,
             verification_passed=response.execution_trace.verification_passed,
         )
@@ -417,7 +435,14 @@ async def handle_modular_solve(request: JsonRpcRequest) -> dict[str, Any]:
 
     except ValueError as e:
         # Invalid parameters
-        logger.error(
+        # Get trace_id from request if available
+        trace_id = (
+            request.a2a_context.trace_id
+            if request.a2a_context
+            else None
+        )
+        error_logger = logger.bind(trace_id=trace_id) if trace_id else logger
+        error_logger.error(
             "invalid_params",
             request_id=request.id,
             error=str(e),
@@ -426,13 +451,20 @@ async def handle_modular_solve(request: JsonRpcRequest) -> dict[str, Any]:
             request_id=request.id,
             error_code=JsonRpcErrorCode.INVALID_PARAMS,
             message=str(e),
-            data={"details": str(e)},
+            data={"details": str(e), "trace_id": trace_id},
         )
         raise RuntimeError(error_response.model_dump_json()) from e
 
     except TimeoutError as e:
         # Timeout error
-        logger.error(
+        # Use bound_logger if available, otherwise get trace_id from request
+        trace_id = (
+            a2a_context.trace_id
+            if 'a2a_context' in locals() and a2a_context
+            else (request.a2a_context.trace_id if request.a2a_context else None)
+        )
+        error_logger = logger.bind(trace_id=trace_id) if trace_id else logger
+        error_logger.error(
             "timeout_error",
             request_id=request.id,
             error=str(e),
@@ -441,13 +473,20 @@ async def handle_modular_solve(request: JsonRpcRequest) -> dict[str, Any]:
             request_id=request.id,
             error_code=JsonRpcErrorCode.TIMEOUT_ERROR,
             message=str(e),
-            data={"details": str(e)},
+            data={"details": str(e), "trace_id": trace_id},
         )
         raise RuntimeError(error_response.model_dump_json()) from e
 
     except Exception as e:
         # Server error
-        logger.error(
+        # Use bound_logger if available, otherwise get trace_id from request
+        trace_id = (
+            a2a_context.trace_id
+            if 'a2a_context' in locals() and a2a_context
+            else (request.a2a_context.trace_id if request.a2a_context else None)
+        )
+        error_logger = logger.bind(trace_id=trace_id) if trace_id else logger
+        error_logger.error(
             "server_error",
             request_id=request.id,
             error=str(e),
@@ -461,6 +500,7 @@ async def handle_modular_solve(request: JsonRpcRequest) -> dict[str, Any]:
             data={
                 "details": str(e),
                 "error_type": type(e).__name__,
+                "trace_id": trace_id,
             },
         )
         raise RuntimeError(error_response.model_dump_json()) from e
