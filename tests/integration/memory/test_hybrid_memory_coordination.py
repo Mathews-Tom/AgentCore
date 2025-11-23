@@ -26,8 +26,8 @@ from agentcore.a2a_protocol.services.memory.hybrid_search import HybridSearchSer
 from agentcore.a2a_protocol.services.memory.entity_extractor import EntityExtractor
 
 
-# Use function-scoped event loop for all tests
-pytestmark = pytest.mark.asyncio
+# Use function-scoped event loop for all tests and mark as integration tests
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 
 class TestVectorGraphCoordination:
