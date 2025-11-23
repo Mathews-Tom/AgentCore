@@ -645,7 +645,10 @@ class TestPipelineRegistry:
 
     async def test_dynamic_pipeline_composition(self) -> None:
         """Test composing pipelines dynamically from registry."""
-        from agentcore.a2a_protocol.services.memory.pipeline.task_base import TaskRegistry
+        from agentcore.a2a_protocol.services.memory.pipeline.task_base import (
+            TaskRegistry,
+            TaskBase,
+        )
         from agentcore.a2a_protocol.services.memory.pipeline.pipeline import Pipeline
 
         # Arrange
@@ -653,24 +656,31 @@ class TestPipelineRegistry:
 
         # Register test tasks
         @registry.register("step1")
-        class Step1Task:
+        class Step1Task(TaskBase):
+            def __init__(self):
+                super().__init__(name="step1", description="Test step 1")
+
             async def execute(self, data: dict[str, Any]) -> dict[str, Any]:
                 return {**data, "step1": True}
 
         @registry.register("step2")
-        class Step2Task:
+        class Step2Task(TaskBase):
+            def __init__(self):
+                super().__init__(name="step2", description="Test step 2")
+
             async def execute(self, data: dict[str, Any]) -> dict[str, Any]:
                 return {**data, "step2": True}
 
         # Act - Compose pipeline
         pipeline = Pipeline()
-        pipeline.add_task("step1", Step1Task())
-        pipeline.add_task("step2", Step2Task())
+        pipeline.add_task(Step1Task())
+        pipeline.add_task(Step2Task())
 
         # Execute pipeline
         result = await pipeline.execute({"input": "test"})
 
         # Assert - All steps executed
-        assert result["step1"] is True
-        assert result["step2"] is True
-        assert result["input"] == "test"
+        assert result.is_success()
+        assert result.task_results["step1"].output["step1"] is True
+        assert result.task_results["step2"].output["step2"] is True
+        assert result.task_results["step1"].output["input"]["input"] == "test"

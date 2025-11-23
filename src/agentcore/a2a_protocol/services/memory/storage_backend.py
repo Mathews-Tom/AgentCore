@@ -61,11 +61,23 @@ class StorageBackendService:
         await backend.close()
     """
 
-    def __init__(self) -> None:
-        """Initialize storage backend service (connections not yet established)."""
-        self._qdrant: AsyncQdrantClient | None = None
-        self._neo4j_driver: AsyncDriver | None = None
-        self._initialized = False
+    def __init__(
+        self,
+        qdrant_client: AsyncQdrantClient | None = None,
+        neo4j_driver: AsyncDriver | None = None,
+        collection_name: str | None = None,
+    ) -> None:
+        """Initialize storage backend service.
+
+        Args:
+            qdrant_client: Optional Qdrant client for dependency injection (testing)
+            neo4j_driver: Optional Neo4j driver for dependency injection (testing)
+            collection_name: Optional collection name override
+        """
+        self._qdrant: AsyncQdrantClient | None = qdrant_client
+        self._neo4j_driver: AsyncDriver | None = neo4j_driver
+        self._collection_name: str | None = collection_name
+        self._initialized = qdrant_client is not None or neo4j_driver is not None
         self._logger = logger.bind(component="storage_backend")
 
     @property
@@ -105,25 +117,27 @@ class StorageBackendService:
             neo4j_uri=settings.NEO4J_URI,
         )
 
-        # Initialize Qdrant client
-        self._qdrant = AsyncQdrantClient(
-            url=settings.QDRANT_URL,
-            api_key=settings.QDRANT_API_KEY,
-            timeout=settings.QDRANT_TIMEOUT,
-        )
+        # Initialize Qdrant client (only if not already injected)
+        if self._qdrant is None:
+            self._qdrant = AsyncQdrantClient(
+                url=settings.QDRANT_URL,
+                api_key=settings.QDRANT_API_KEY,
+                timeout=settings.QDRANT_TIMEOUT,
+            )
 
         # Ensure Qdrant collection exists
         await self._ensure_qdrant_collection()
 
-        # Initialize Neo4j driver
-        self._neo4j_driver = AsyncGraphDatabase.driver(
-            settings.NEO4J_URI,
-            auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
-            max_connection_lifetime=settings.NEO4J_MAX_CONNECTION_LIFETIME,
-            max_connection_pool_size=settings.NEO4J_MAX_CONNECTION_POOL_SIZE,
-            connection_acquisition_timeout=settings.NEO4J_CONNECTION_ACQUISITION_TIMEOUT,
-            encrypted=settings.NEO4J_ENCRYPTED,
-        )
+        # Initialize Neo4j driver (only if not already injected)
+        if self._neo4j_driver is None:
+            self._neo4j_driver = AsyncGraphDatabase.driver(
+                settings.NEO4J_URI,
+                auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+                max_connection_lifetime=settings.NEO4J_MAX_CONNECTION_LIFETIME,
+                max_connection_pool_size=settings.NEO4J_MAX_CONNECTION_POOL_SIZE,
+                connection_acquisition_timeout=settings.NEO4J_CONNECTION_ACQUISITION_TIMEOUT,
+                encrypted=settings.NEO4J_ENCRYPTED,
+            )
 
         # Verify Neo4j connection
         await self._verify_neo4j_connection()
@@ -133,7 +147,7 @@ class StorageBackendService:
 
     async def _ensure_qdrant_collection(self) -> None:
         """Ensure Qdrant collection exists with correct schema."""
-        collection_name = settings.QDRANT_COLLECTION_NAME
+        collection_name = self._collection_name or settings.QDRANT_COLLECTION_NAME
 
         collections = await self._qdrant.get_collections()
         collection_names = [c.name for c in collections.collections]
@@ -206,12 +220,24 @@ class StorageBackendService:
         self._initialized = False
         self._logger.info("storage_backends_closed")
 
-    async def store_memory(self, memory: MemoryRecord) -> str:
+    async def store_memory(
+        self,
+        memory: MemoryRecord | None = None,
+        *,
+        memory_id: str | None = None,
+        content: str | None = None,
+        embedding: list[float] | None = None,
+        metadata: dict | None = None,
+    ) -> str:
         """
         Store memory record in PostgreSQL and optionally in Qdrant.
 
         Args:
-            memory: MemoryRecord to store
+            memory: MemoryRecord to store (if provided, other args are ignored)
+            memory_id: Memory ID (used if memory not provided)
+            content: Memory content (used if memory not provided)
+            embedding: Vector embedding (used if memory not provided)
+            metadata: Additional metadata (used if memory not provided)
 
         Returns:
             str: Memory ID of stored record
@@ -219,13 +245,44 @@ class StorageBackendService:
         If the memory has an embedding, it will also be stored in Qdrant
         for vector similarity search.
         """
-        # Store in PostgreSQL
-        async with get_session() as session:
-            await MemoryRepository.create(session, memory)
-            self._logger.info(
-                "memory_stored_postgresql",
+        from agentcore.a2a_protocol.models.memory import MemoryLayer
+
+        # If memory not provided, construct it from keyword arguments
+        if memory is None:
+            if memory_id is None or content is None:
+                raise ValueError("Either memory or (memory_id and content) must be provided")
+
+            memory_layer = MemoryLayer.EPISODIC
+            if metadata and "memory_layer" in metadata:
+                layer_str = metadata["memory_layer"]
+                if isinstance(layer_str, str):
+                    memory_layer = MemoryLayer(layer_str)
+
+            memory = MemoryRecord(
+                memory_id=memory_id,
+                content=content,
+                summary=content,  # Use content as summary when not provided
+                embedding=embedding or [],
+                memory_layer=memory_layer,
+            )
+
+        # Store in PostgreSQL if available
+        try:
+            async with get_session() as session:
+                await MemoryRepository.create(session, memory)
+                self._logger.info(
+                    "memory_stored_postgresql",
+                    memory_id=memory.memory_id,
+                    memory_layer=memory.memory_layer.value,
+                )
+        except RuntimeError as e:
+            # Database not initialized - skip PostgreSQL storage
+            if "Database not initialized" not in str(e):
+                raise
+            self._logger.debug(
+                "postgresql_storage_skipped",
                 memory_id=memory.memory_id,
-                memory_layer=memory.memory_layer.value,
+                reason="database_not_initialized",
             )
 
         # Store in Qdrant if embedding exists
@@ -236,8 +293,28 @@ class StorageBackendService:
 
     async def _store_memory_vector(self, memory: MemoryRecord) -> None:
         """Store memory embedding in Qdrant."""
-        # Extract UUID from memory_id (e.g., "mem-uuid" -> "uuid")
-        point_id = memory.memory_id.split("-", 1)[1] if "-" in memory.memory_id else memory.memory_id
+        import hashlib
+        from uuid import UUID
+
+        # Try to extract UUID from memory_id or convert to UUID
+        memory_id = memory.memory_id
+
+        # Try to parse as UUID directly
+        try:
+            point_id = str(UUID(memory_id))
+        except (ValueError, AttributeError):
+            # If memory_id contains "-", try extracting the part after first dash
+            if "-" in memory_id:
+                try:
+                    point_id = str(UUID(memory_id.split("-", 1)[1]))
+                except (ValueError, AttributeError):
+                    # Generate deterministic UUID from memory_id using hash
+                    hash_bytes = hashlib.md5(memory_id.encode()).digest()
+                    point_id = str(UUID(bytes=hash_bytes))
+            else:
+                # Generate deterministic UUID from memory_id using hash
+                hash_bytes = hashlib.md5(memory_id.encode()).digest()
+                point_id = str(UUID(bytes=hash_bytes))
 
         payload = {
             "memory_id": memory.memory_id,
@@ -259,7 +336,7 @@ class StorageBackendService:
         )
 
         await self._qdrant.upsert(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
+            collection_name=self._collection_name or settings.QDRANT_COLLECTION_NAME,
             points=[point],
             wait=True,
         )
@@ -376,7 +453,7 @@ class StorageBackendService:
 
         # Execute search
         results = await self._qdrant.search(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
+            collection_name=self._collection_name or settings.QDRANT_COLLECTION_NAME,
             query_vector=query_embedding,
             limit=limit,
             query_filter=query_filter,
@@ -390,7 +467,38 @@ class StorageBackendService:
             has_filters=len(filter_conditions) > 0,
         )
 
-        return [(str(r.id), r.score, r.payload) for r in results]
+        # Return list of dictionaries for easier access
+        return [
+            {
+                "id": r.payload.get("memory_id", str(r.id)),  # Use memory_id from payload
+                "score": r.score,
+                **r.payload,  # Include all payload fields
+            }
+            for r in results
+        ]
+
+    async def search_similar(
+        self,
+        query_embedding: list[float],
+        limit: int = 10,
+        **kwargs,
+    ) -> list[tuple[str, float, dict]]:
+        """
+        Alias for vector_search for convenience.
+
+        Args:
+            query_embedding: Query vector for similarity search
+            limit: Maximum number of results
+            **kwargs: Additional filter arguments
+
+        Returns:
+            List of tuples (memory_id, score, payload)
+        """
+        return await self.vector_search(
+            query_embedding=query_embedding,
+            limit=limit,
+            **kwargs,
+        )
 
     async def get_memory_by_id(self, memory_id: str) -> MemoryRecord | None:
         """
