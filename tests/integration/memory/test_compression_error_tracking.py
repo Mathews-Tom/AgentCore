@@ -33,10 +33,10 @@ from qdrant_client import AsyncQdrantClient
 from agentcore.a2a_protocol.models.memory import MemoryLayer, StageType
 from agentcore.a2a_protocol.services.memory.context_compressor import ContextCompressor
 from agentcore.a2a_protocol.services.memory.stage_manager import StageManager
-from agentcore.a2a_protocol.services.memory.quality_validator import CompressionQualityValidator
+from agentcore.a2a_protocol.services.memory.quality_validator import QualityValidator
 from agentcore.a2a_protocol.services.memory.cost_tracker import CostTracker
 from agentcore.a2a_protocol.services.memory.error_tracker import ErrorTracker
-from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackend
+from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackendService
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
 
 
@@ -53,9 +53,9 @@ class TestStageCompressionPipeline:
         return ContextCompressor(api_key="test-key", model="gpt-4.1-mini")
 
     @pytest.fixture
-    async def quality_validator(self) -> CompressionQualityValidator:
+    async def quality_validator(self) -> QualityValidator:
         """Create quality validator."""
-        return CompressionQualityValidator(api_key="test-key")
+        return QualityValidator(api_key="test-key")
 
     @pytest.fixture
     async def cost_tracker(self) -> CostTracker:
@@ -190,7 +190,7 @@ class TestStageCompressionPipeline:
     async def test_compression_quality_validation(
         self,
         context_compressor: ContextCompressor,
-        quality_validator: CompressionQualityValidator,
+        quality_validator: QualityValidator,
     ) -> None:
         """Test compression quality validation achieves ≥95% fact retention."""
         # Arrange - Original content with critical facts
@@ -339,7 +339,7 @@ class TestErrorTrackingWorkflow:
         clean_neo4j_db: None,
     ) -> ErrorTracker:
         """Create error tracker."""
-        storage_backend = StorageBackend(
+        storage_backend = StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )

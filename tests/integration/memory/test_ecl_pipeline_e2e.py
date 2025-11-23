@@ -19,14 +19,14 @@ from neo4j import AsyncDriver
 from qdrant_client import AsyncQdrantClient
 
 from agentcore.a2a_protocol.models.memory import MemoryLayer, StageType
-from agentcore.a2a_protocol.services.memory.pipeline.pipeline import MemoryPipeline
+from agentcore.a2a_protocol.services.memory.pipeline.pipeline import Pipeline
 from agentcore.a2a_protocol.services.memory.pipeline.extract import ExtractTask
 from agentcore.a2a_protocol.services.memory.pipeline.cognify import CognifyTask
 from agentcore.a2a_protocol.services.memory.pipeline.load import LoadTask
-from agentcore.a2a_protocol.services.memory.ecl_pipeline import ECLPipeline
+from agentcore.a2a_protocol.services.memory.ecl_pipeline import Pipeline as ECLPipeline
 from agentcore.a2a_protocol.services.memory.entity_extractor import EntityExtractor
-from agentcore.a2a_protocol.services.memory.relationship_detector import RelationshipDetector
-from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackend
+from agentcore.a2a_protocol.services.memory.relationship_detector import RelationshipDetectorTask
+from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackendService
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
 
 
@@ -154,15 +154,15 @@ class TestCognifyPhase:
         return EntityExtractor(api_key="test-key")
 
     @pytest.fixture
-    async def relationship_detector(self) -> RelationshipDetector:
+    async def relationship_detector(self) -> RelationshipDetectorTask:
         """Create relationship detector."""
-        return RelationshipDetector(api_key="test-key")
+        return RelationshipDetectorTask(api_key="test-key")
 
     @pytest.fixture
     async def cognify_task(
         self,
         entity_extractor: EntityExtractor,
-        relationship_detector: RelationshipDetector,
+        relationship_detector: RelationshipDetectorTask,
     ) -> CognifyTask:
         """Create cognify task instance."""
         return CognifyTask(
@@ -212,7 +212,7 @@ class TestCognifyPhase:
 
     async def test_relationship_detection_accuracy(
         self,
-        relationship_detector: RelationshipDetector,
+        relationship_detector: RelationshipDetectorTask,
         entity_extractor: EntityExtractor,
     ) -> None:
         """Test relationship detection achieves target accuracy."""
@@ -301,9 +301,9 @@ class TestLoadPhase:
         self,
         qdrant_client: AsyncQdrantClient,
         qdrant_test_collection: str,
-    ) -> StorageBackend:
+    ) -> StorageBackendService:
         """Create storage backend."""
-        return StorageBackend(
+        return StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )
@@ -322,7 +322,7 @@ class TestLoadPhase:
     @pytest.fixture
     async def load_task(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> LoadTask:
         """Create load task instance."""
@@ -334,7 +334,7 @@ class TestLoadPhase:
     async def test_load_to_qdrant_vector_storage(
         self,
         load_task: LoadTask,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
     ) -> None:
         """Test loading memory to Qdrant vector storage."""
         # Arrange
@@ -401,7 +401,7 @@ class TestLoadPhase:
     async def test_load_consistency_across_backends(
         self,
         load_task: LoadTask,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> None:
         """Test loading maintains consistency across all backends."""
@@ -454,7 +454,7 @@ class TestPipelineComposition:
         clean_neo4j_db: None,
     ) -> ECLPipeline:
         """Create full ECL pipeline."""
-        storage_backend = StorageBackend(
+        storage_backend = StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )
@@ -646,7 +646,7 @@ class TestPipelineRegistry:
     async def test_dynamic_pipeline_composition(self) -> None:
         """Test composing pipelines dynamically from registry."""
         from agentcore.a2a_protocol.services.memory.pipeline.task_base import TaskRegistry
-        from agentcore.a2a_protocol.services.memory.pipeline.pipeline import MemoryPipeline
+        from agentcore.a2a_protocol.services.memory.pipeline.pipeline import Pipeline
 
         # Arrange
         registry = TaskRegistry()
@@ -663,7 +663,7 @@ class TestPipelineRegistry:
                 return {**data, "step2": True}
 
         # Act - Compose pipeline
-        pipeline = MemoryPipeline()
+        pipeline = Pipeline()
         pipeline.add_task("step1", Step1Task())
         pipeline.add_task("step2", Step2Task())
 

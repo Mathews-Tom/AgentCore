@@ -30,7 +30,7 @@ from neo4j import AsyncDriver
 from qdrant_client import AsyncQdrantClient
 from testcontainers.core.container import DockerContainer
 
-from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackend
+from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackendService
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
 from agentcore.a2a_protocol.services.memory.hybrid_search import HybridSearchService
 from agentcore.a2a_protocol.services.memory.retrieval_service import EnhancedRetrievalService
@@ -48,9 +48,9 @@ class TestHybridSearchAccuracy:
         self,
         qdrant_client: AsyncQdrantClient,
         qdrant_test_collection: str,
-    ) -> StorageBackend:
+    ) -> StorageBackendService:
         """Create storage backend."""
-        return StorageBackend(
+        return StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )
@@ -69,7 +69,7 @@ class TestHybridSearchAccuracy:
     @pytest.fixture
     async def hybrid_search(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> HybridSearchService:
         """Create hybrid search service."""
@@ -81,9 +81,9 @@ class TestHybridSearchAccuracy:
     @pytest.fixture
     async def populated_knowledge_base(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
-    ) -> tuple[StorageBackend, GraphMemoryService]:
+    ) -> tuple[StorageBackendService, GraphMemoryService]:
         """Populate knowledge base with test data."""
         # Create a knowledge graph about web frameworks
         knowledge = [
@@ -169,7 +169,7 @@ class TestHybridSearchAccuracy:
 
     async def test_vector_search_baseline(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
     ) -> None:
         """Test pure vector similarity search baseline."""
         storage_backend, _ = populated_knowledge_base
@@ -195,7 +195,7 @@ class TestHybridSearchAccuracy:
 
     async def test_graph_search_enhancement(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
         graph_service: GraphMemoryService,
     ) -> None:
         """Test graph traversal for contextual expansion."""
@@ -215,9 +215,9 @@ class TestHybridSearchAccuracy:
 
     async def test_hybrid_search_outperforms_vector_only(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
         hybrid_search: HybridSearchService,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
     ) -> None:
         """Test hybrid search outperforms vector-only search."""
         # Arrange - Query about Python web frameworks
@@ -264,7 +264,7 @@ class TestHybridSearchAccuracy:
 
     async def test_hybrid_search_relationship_based_ranking(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
         hybrid_search: HybridSearchService,
     ) -> None:
         """Test hybrid search uses relationship strength for ranking."""
@@ -291,8 +291,8 @@ class TestHybridSearchAccuracy:
 
     async def test_vector_search_latency_target(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
-        storage_backend: StorageBackend,
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
+        storage_backend: StorageBackendService,
     ) -> None:
         """Test vector search meets <100ms (p95) latency target."""
         # Arrange - Multiple queries to measure p95 latency
@@ -321,7 +321,7 @@ class TestHybridSearchAccuracy:
 
     async def test_graph_traversal_latency_target(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
         graph_service: GraphMemoryService,
     ) -> None:
         """Test graph traversal meets <200ms (p95) latency target for 2-hop queries."""
@@ -350,7 +350,7 @@ class TestHybridSearchAccuracy:
 
     async def test_hybrid_search_latency_target(
         self,
-        populated_knowledge_base: tuple[StorageBackend, GraphMemoryService],
+        populated_knowledge_base: tuple[StorageBackendService, GraphMemoryService],
         hybrid_search: HybridSearchService,
     ) -> None:
         """Test hybrid search meets <300ms (p95) latency target."""
@@ -391,7 +391,7 @@ class TestMemoryPersistence:
     ) -> None:
         """Test Qdrant memories persist across container restart."""
         # Arrange - Store memories
-        storage_backend = StorageBackend(
+        storage_backend = StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )
@@ -498,7 +498,7 @@ class TestMemoryPersistence:
     ) -> None:
         """Test cross-database consistency maintained after restart."""
         # Arrange - Store memory across both databases
-        storage_backend = StorageBackend(
+        storage_backend = StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )
@@ -559,7 +559,7 @@ class TestMemoryPersistence:
     ) -> None:
         """Test hybrid search works correctly after restart."""
         # Arrange - Set up full hybrid search
-        storage_backend = StorageBackend(
+        storage_backend = StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )

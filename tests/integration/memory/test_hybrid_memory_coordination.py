@@ -20,7 +20,7 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import PointStruct, Distance, VectorParams
 
 from agentcore.a2a_protocol.models.memory import MemoryLayer, StageType
-from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackend
+from agentcore.a2a_protocol.services.memory.storage_backend import StorageBackendService
 from agentcore.a2a_protocol.services.memory.graph_service import GraphMemoryService
 from agentcore.a2a_protocol.services.memory.hybrid_search import HybridSearchService
 from agentcore.a2a_protocol.services.memory.entity_extractor import EntityExtractor
@@ -38,9 +38,9 @@ class TestVectorGraphCoordination:
         self,
         qdrant_client: AsyncQdrantClient,
         qdrant_test_collection: str,
-    ) -> StorageBackend:
+    ) -> StorageBackendService:
         """Create storage backend with Qdrant client."""
-        backend = StorageBackend(
+        backend = StorageBackendService(
             qdrant_client=qdrant_client,
             collection_name=qdrant_test_collection,
         )
@@ -65,7 +65,7 @@ class TestVectorGraphCoordination:
     @pytest.fixture
     async def hybrid_search(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> HybridSearchService:
         """Create hybrid search service."""
@@ -76,7 +76,7 @@ class TestVectorGraphCoordination:
 
     async def test_store_memory_in_both_databases(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
         entity_extractor: EntityExtractor,
     ) -> None:
@@ -136,7 +136,7 @@ class TestVectorGraphCoordination:
 
     async def test_hybrid_search_combines_vector_and_graph(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
         hybrid_search: HybridSearchService,
     ) -> None:
@@ -217,7 +217,7 @@ class TestVectorGraphCoordination:
 
     async def test_update_memory_maintains_consistency(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> None:
         """Test updating memory maintains consistency across databases."""
@@ -274,7 +274,7 @@ class TestVectorGraphCoordination:
 
     async def test_delete_memory_cascades_to_graph(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> None:
         """Test deleting memory cascades to graph database."""
@@ -318,7 +318,7 @@ class TestVectorGraphCoordination:
 
     async def test_cross_database_latency(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> None:
         """Test cross-database operations complete within latency targets."""
@@ -354,7 +354,7 @@ class TestVectorGraphCoordination:
 
     async def test_batch_storage_consistency(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> None:
         """Test batch storage operations maintain consistency."""
@@ -408,9 +408,9 @@ class TestHybridSearchAccuracy:
     @pytest.fixture
     async def populated_storage(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
-    ) -> tuple[StorageBackend, GraphMemoryService]:
+    ) -> tuple[StorageBackendService, GraphMemoryService]:
         """Populate storage with test data."""
         # Create knowledge graph of related concepts
         concepts = [
@@ -475,7 +475,7 @@ class TestHybridSearchAccuracy:
 
     async def test_graph_expansion_finds_related_memories(
         self,
-        populated_storage: tuple[StorageBackend, GraphMemoryService],
+        populated_storage: tuple[StorageBackendService, GraphMemoryService],
         hybrid_search: HybridSearchService,
     ) -> None:
         """Test graph expansion finds related memories."""
@@ -511,7 +511,7 @@ class TestConcurrentOperations:
 
     async def test_concurrent_writes(
         self,
-        storage_backend: StorageBackend,
+        storage_backend: StorageBackendService,
         graph_service: GraphMemoryService,
     ) -> None:
         """Test concurrent writes to both databases."""
