@@ -1,6 +1,36 @@
 # Load Testing for AgentCore
 
-Comprehensive load testing suite for gateway layer and tool integration framework performance validation.
+Comprehensive load testing suite for gateway layer, tool integration framework, and modular agent core performance validation.
+
+## Test Scenarios
+
+### 0. Modular Agent Core Load Test (`test_modular_load.py`)
+**Target:** 100+ concurrent modular executions per instance
+
+Tests modular.solve API under sustained load to validate NFR-1.4.
+
+```bash
+# Full load test (100 users, 10 minutes) - MOD-028 acceptance criteria
+./tests/load/run_modular_load_test.sh full
+
+# Quick validation (10 users, 2 minutes)
+./tests/load/run_modular_load_test.sh quick
+
+# Direct locust usage
+uv run locust -f tests/load/test_modular_load.py \
+    --host=http://localhost:8001 \
+    --users=100 \
+    --spawn-rate=10 \
+    --run-time=10m
+```
+
+**Expected Results:**
+- Success rate: >95%
+- p95 latency: <4500ms (3x baseline of 1500ms)
+- Throughput: 15-25 requests/second
+- No memory leaks or resource exhaustion
+
+**Documentation:** See `tests/load/MODULAR_LOAD_TESTING.md` for detailed information.
 
 ## Test Scenarios
 
