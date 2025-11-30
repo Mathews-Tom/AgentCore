@@ -24,7 +24,16 @@ from agentcore.a2a_protocol.models.jsonrpc import (
     create_error_response,
     create_success_response,
 )
-from agentcore.modular.models import ModuleType
+from agentcore.modular.models import ModuleType, ModuleTransition
+from agentcore.modular.interfaces import (
+    PlannerQuery,
+    PlanRefinement,
+    VerificationRequest,
+    GenerationRequest,
+    ExecutionResult,
+    VerificationResult,
+    GeneratedResponse,
+)
 
 logger = structlog.get_logger()
 
@@ -73,6 +82,21 @@ class ModuleMessage(BaseModel):
     )
 
 
+class RefinementIteration(BaseModel):
+    """Record of a single refinement iteration."""
+
+    iteration: int = Field(..., description="Iteration number")
+    plan_id: str = Field(..., description="Plan ID for this iteration")
+    confidence: float = Field(..., description="Verification confidence score")
+    valid: bool = Field(..., description="Verification result")
+    errors: list[str] = Field(default_factory=list, description="Verification errors")
+    feedback: str | None = Field(None, description="Feedback provided")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Iteration timestamp",
+    )
+
+
 class CoordinationContext(BaseModel):
     """Context maintained during module coordination."""
 
@@ -83,6 +107,9 @@ class CoordinationContext(BaseModel):
     )
     session_id: str | None = Field(None, description="Session identifier")
     iteration: int = Field(default=0, description="Current iteration number")
+    refinement_history: list[RefinementIteration] = Field(
+        default_factory=list, description="History of refinement iterations"
+    )
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional context data"
     )
@@ -492,6 +519,450 @@ class ModuleCoordinator:
                 data={"error_type": type(error).__name__},
             )
             future.set_result(error_response)
+
+    # ========================================================================
+    # Coordination Loop with Refinement
+    # ========================================================================
+
+    async def execute_with_refinement(
+        self,
+        query: str,
+        planner: Any,
+        executor: Any,
+        verifier: Any,
+        generator: Any,
+        max_iterations: int = 5,
+        timeout_seconds: float = 300.0,
+        confidence_threshold: float = 0.7,
+        convergence_window: int = 2,
+        convergence_threshold: float = 0.01,
+        output_format: str = "text",
+        include_reasoning: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Execute full PEVG workflow with iterative refinement.
+
+        Flow:
+        1. Plan (iteration 1)
+        2. Execute plan
+        3. Verify results
+        4. If verification fails AND iterations < max:
+           - Refine plan with verifier feedback
+           - Goto step 2 (execute refined plan)
+        5. Generate final response
+
+        Convergence Detection:
+        - Tracks confidence scores across iterations
+        - Stops if no improvement detected over convergence_window iterations
+        - Improvement defined as confidence increase > convergence_threshold
+
+        Args:
+            query: User query to solve
+            planner: Planner module instance
+            executor: Executor module instance
+            verifier: Verifier module instance
+            generator: Generator module instance
+            max_iterations: Maximum refinement iterations (default: 5)
+            timeout_seconds: Overall execution timeout (default: 300)
+            confidence_threshold: Minimum confidence for success (default: 0.7)
+            convergence_window: Number of iterations to check for improvement (default: 2)
+            convergence_threshold: Minimum confidence improvement to continue (default: 0.01)
+            output_format: Output format for generator (default: "text")
+            include_reasoning: Include reasoning trace (default: False)
+
+        Returns:
+            Dictionary with answer, execution_trace, reasoning, sources
+
+        Raises:
+            asyncio.TimeoutError: If execution exceeds timeout
+            RuntimeError: If execution fails after max iterations
+        """
+        import time
+
+        start_time = time.time()
+        iteration = 0
+        plan = None
+        execution_results: list[ExecutionResult] = []
+        verification_result: VerificationResult | None = None
+        transitions: list[ModuleTransition] = []
+        modules_invoked: list[str] = []
+
+        logger.info(
+            "coordination_loop_started",
+            query=query,
+            max_iterations=max_iterations,
+            timeout_seconds=timeout_seconds,
+            trace_id=self._context.trace_id if self._context else None,
+        )
+
+        try:
+            # Wrap entire coordination loop with timeout
+            async def _execute_loop() -> dict[str, Any]:
+                nonlocal iteration, plan, execution_results, verification_result
+
+                # Iteration loop
+                while iteration < max_iterations:
+                    iteration += 1
+                    iteration_start = time.time()
+
+                    logger.info(
+                        "iteration_started",
+                        iteration=iteration,
+                        max_iterations=max_iterations,
+                    )
+
+                    # =======================================================
+                    # Step 1: Planning (or Refinement)
+                    # =======================================================
+                    if iteration == 1:
+                        # Initial planning
+                        logger.info("step_planning", iteration=iteration)
+                        modules_invoked.append("planner")
+
+                        # Emit transition event
+                        transition = ModuleTransition(
+                            plan_id=str(uuid4()),
+                            iteration=iteration,
+                            from_module=ModuleType.PLANNER,
+                            to_module=ModuleType.EXECUTOR,
+                            reason="initial_planning_complete",
+                            trigger="query_received",
+                        )
+                        transitions.append(transition)
+
+                        planner_query = PlannerQuery(
+                            query=query,
+                            context={},
+                            constraints={"max_iterations": max_iterations},
+                        )
+
+                        plan = await planner.analyze_query(planner_query)
+                        logger.info(
+                            "planning_complete",
+                            plan_id=plan.plan_id,
+                            step_count=len(plan.steps),
+                            iteration=iteration,
+                        )
+
+                    else:
+                        # Plan refinement
+                        logger.info(
+                            "step_plan_refinement",
+                            iteration=iteration,
+                            feedback_available=verification_result is not None,
+                        )
+                        modules_invoked.append("planner")
+
+                        # Extract feedback from verification result
+                        feedback = "No specific feedback"
+                        if verification_result:
+                            if verification_result.feedback:
+                                feedback = verification_result.feedback
+                            elif verification_result.errors:
+                                feedback = f"Errors: {', '.join(verification_result.errors)}"
+
+                        # Emit transition event
+                        transition = ModuleTransition(
+                            plan_id=plan.plan_id if plan else str(uuid4()),
+                            iteration=iteration,
+                            from_module=ModuleType.PLANNER,
+                            to_module=ModuleType.EXECUTOR,
+                            reason="plan_refinement_complete",
+                            trigger="verification_failed",
+                            data={"feedback": feedback},
+                        )
+                        transitions.append(transition)
+
+                        # Refine plan with feedback
+                        refinement_request = PlanRefinement(
+                            plan_id=plan.plan_id if plan else str(uuid4()),
+                            feedback=feedback,
+                            constraints={
+                                "existing_plan": plan.model_dump() if plan else None,
+                                "original_query": query,
+                                "max_iterations": max_iterations,
+                                "verification_errors": verification_result.errors if verification_result else [],
+                            },
+                        )
+
+                        plan = await planner.refine_plan(refinement_request)
+                        logger.info(
+                            "plan_refined",
+                            new_plan_id=plan.plan_id,
+                            step_count=len(plan.steps),
+                            iteration=iteration,
+                        )
+
+                    # Persist state after planning
+                    if self._context:
+                        self._context.plan_id = plan.plan_id
+                        self._context.iteration = iteration
+
+                    # =======================================================
+                    # Step 2: Execution
+                    # =======================================================
+                    logger.info("step_execution", iteration=iteration, plan_id=plan.plan_id)
+                    modules_invoked.append("executor")
+
+                    # Emit transition event
+                    transition = ModuleTransition(
+                        plan_id=plan.plan_id,
+                        iteration=iteration,
+                        from_module=ModuleType.EXECUTOR,
+                        to_module=ModuleType.VERIFIER,
+                        reason="execution_complete",
+                        trigger="plan_received",
+                    )
+                    transitions.append(transition)
+
+                    execution_results = await executor.execute_plan(plan)
+                    successful_steps = sum(1 for r in execution_results if r.success)
+                    failed_steps = sum(1 for r in execution_results if not r.success)
+
+                    logger.info(
+                        "execution_complete",
+                        plan_id=plan.plan_id,
+                        total_steps=len(execution_results),
+                        successful=successful_steps,
+                        failed=failed_steps,
+                        iteration=iteration,
+                    )
+
+                    # =======================================================
+                    # Step 3: Verification
+                    # =======================================================
+                    logger.info("step_verification", iteration=iteration)
+                    modules_invoked.append("verifier")
+
+                    # Emit transition event
+                    transition = ModuleTransition(
+                        plan_id=plan.plan_id,
+                        iteration=iteration,
+                        from_module=ModuleType.VERIFIER,
+                        to_module=ModuleType.GENERATOR,
+                        reason="verification_complete",
+                        trigger="execution_received",
+                    )
+                    transitions.append(transition)
+
+                    verification_request = VerificationRequest(
+                        results=execution_results,
+                        expected_json_schema=None,
+                        consistency_rules=["no_null_results"],
+                    )
+
+                    verification_result = await verifier.validate_results(verification_request)
+                    logger.info(
+                        "verification_complete",
+                        valid=verification_result.valid,
+                        confidence=verification_result.confidence,
+                        errors_count=len(verification_result.errors),
+                        iteration=iteration,
+                    )
+
+                    # Persist state after verification
+                    if self._context:
+                        self._context.metadata["last_verification"] = {
+                            "valid": verification_result.valid,
+                            "confidence": verification_result.confidence,
+                            "iteration": iteration,
+                        }
+
+                        # Track refinement history
+                        refinement_iter = RefinementIteration(
+                            iteration=iteration,
+                            plan_id=plan.plan_id if plan else "unknown",
+                            confidence=verification_result.confidence,
+                            valid=verification_result.valid,
+                            errors=verification_result.errors,
+                            feedback=verification_result.feedback,
+                        )
+                        self._context.refinement_history.append(refinement_iter)
+
+                    # =======================================================
+                    # Step 4: Check if refinement needed
+                    # =======================================================
+                    # Success criteria: verification passed AND confidence >= threshold
+                    verification_passed = (
+                        verification_result.valid
+                        and verification_result.confidence >= confidence_threshold
+                    )
+
+                    if verification_passed:
+                        logger.info(
+                            "verification_success_early_exit",
+                            iteration=iteration,
+                            confidence=verification_result.confidence,
+                        )
+                        break  # Exit refinement loop
+
+                    # Check if we have more iterations
+                    if iteration >= max_iterations:
+                        logger.warning(
+                            "max_iterations_reached",
+                            iteration=iteration,
+                            max_iterations=max_iterations,
+                            last_confidence=verification_result.confidence,
+                        )
+                        break  # Exit with partial results
+
+                    # Check for convergence (no improvement detected)
+                    if self._context and len(self._context.refinement_history) >= convergence_window:
+                        recent_confidences = [
+                            r.confidence for r in self._context.refinement_history[-convergence_window:]
+                        ]
+                        max_confidence = max(recent_confidences)
+                        min_confidence = min(recent_confidences)
+                        improvement = max_confidence - min_confidence
+
+                        if improvement < convergence_threshold:
+                            logger.warning(
+                                "convergence_detected_no_improvement",
+                                iteration=iteration,
+                                recent_confidences=recent_confidences,
+                                improvement=improvement,
+                                threshold=convergence_threshold,
+                            )
+                            break  # Exit due to convergence
+
+                    # Continue to next iteration for refinement
+                    logger.info(
+                        "refinement_needed",
+                        iteration=iteration,
+                        confidence=verification_result.confidence,
+                        threshold=confidence_threshold,
+                        errors=verification_result.errors,
+                    )
+
+                # End of iteration loop
+
+                # =======================================================
+                # Step 5: Generation (after verification success or max iterations)
+                # =======================================================
+                logger.info("step_generation", final_iteration=iteration)
+                modules_invoked.append("generator")
+
+                # Emit final transition event
+                transition = ModuleTransition(
+                    plan_id=plan.plan_id if plan else str(uuid4()),
+                    iteration=iteration,
+                    from_module=ModuleType.GENERATOR,
+                    to_module=ModuleType.GENERATOR,  # Terminal state
+                    reason="generation_complete",
+                    trigger="verification_complete_or_max_iterations",
+                )
+                transitions.append(transition)
+
+                generation_request = GenerationRequest(
+                    verified_results=execution_results,
+                    format=output_format,
+                    include_reasoning=include_reasoning,
+                    max_length=None,
+                )
+
+                generated_response = await generator.synthesize_response(generation_request)
+                logger.info(
+                    "generation_complete",
+                    content_length=len(generated_response.content),
+                    has_reasoning=generated_response.reasoning is not None,
+                    sources_count=len(generated_response.sources),
+                )
+
+                # Build execution trace
+                total_duration_ms = int((time.time() - start_time) * 1000)
+
+                # Calculate refinement metrics
+                refinement_metrics = {}
+                if self._context and len(self._context.refinement_history) > 0:
+                    confidences = [r.confidence for r in self._context.refinement_history]
+                    refinement_metrics = {
+                        "total_refinements": len(self._context.refinement_history) - 1,  # Exclude initial iteration
+                        "confidence_progression": confidences,
+                        "initial_confidence": confidences[0] if confidences else 0.0,
+                        "final_confidence": confidences[-1] if confidences else 0.0,
+                        "confidence_improvement": (confidences[-1] - confidences[0]) if len(confidences) > 1 else 0.0,
+                        "max_confidence_reached": max(confidences) if confidences else 0.0,
+                        "converged": (
+                            len(confidences) >= convergence_window
+                            and (max(confidences[-convergence_window:]) - min(confidences[-convergence_window:])) < convergence_threshold
+                        ),
+                        "iterations_to_success": iteration if verification_result and verification_result.valid else None,
+                    }
+
+                execution_trace = {
+                    "plan_id": plan.plan_id if plan else "unknown",
+                    "iterations": iteration,
+                    "modules_invoked": modules_invoked,
+                    "total_duration_ms": total_duration_ms,
+                    "verification_passed": verification_result.valid if verification_result else False,
+                    "step_count": len(execution_results),
+                    "successful_steps": sum(1 for r in execution_results if r.success),
+                    "failed_steps": sum(1 for r in execution_results if not r.success),
+                    "confidence_score": verification_result.confidence if verification_result else 0.0,
+                    "transitions": [t.model_dump() for t in transitions],
+                    "refinement_history": [
+                        r.model_dump() for r in (self._context.refinement_history if self._context else [])
+                    ],
+                    "refinement_metrics": refinement_metrics,
+                }
+
+                logger.info(
+                    "coordination_loop_complete",
+                    iterations=iteration,
+                    duration_ms=total_duration_ms,
+                    verification_passed=verification_result.valid if verification_result else False,
+                )
+
+                return {
+                    "answer": generated_response.content,
+                    "execution_trace": execution_trace,
+                    "reasoning": generated_response.reasoning,
+                    "sources": generated_response.sources,
+                }
+
+            # Execute loop with timeout
+            result = await asyncio.wait_for(_execute_loop(), timeout=timeout_seconds)
+            return result
+
+        except asyncio.TimeoutError:
+            logger.error(
+                "coordination_loop_timeout",
+                timeout_seconds=timeout_seconds,
+                iterations_completed=iteration,
+                duration_ms=int((time.time() - start_time) * 1000),
+            )
+
+            # Return partial results if available
+            if execution_results:
+                return {
+                    "answer": f"Execution timed out after {timeout_seconds}s (partial results available)",
+                    "execution_trace": {
+                        "plan_id": plan.plan_id if plan else "unknown",
+                        "iterations": iteration,
+                        "modules_invoked": modules_invoked,
+                        "total_duration_ms": int((time.time() - start_time) * 1000),
+                        "verification_passed": False,
+                        "step_count": len(execution_results),
+                        "successful_steps": sum(1 for r in execution_results if r.success),
+                        "failed_steps": sum(1 for r in execution_results if not r.success),
+                        "confidence_score": verification_result.confidence if verification_result else 0.0,
+                        "timeout": True,
+                    },
+                    "reasoning": None,
+                    "sources": [],
+                }
+
+            raise
+
+        except Exception as e:
+            logger.error(
+                "coordination_loop_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                iterations_completed=iteration,
+                exc_info=True,
+            )
+            raise
 
     # ========================================================================
     # Status & Monitoring

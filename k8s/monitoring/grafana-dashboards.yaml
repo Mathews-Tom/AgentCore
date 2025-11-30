@@ -1,0 +1,2214 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-overview.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Overview",
+        "tags": ["agentcore", "modular", "overview"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "description": "System-wide overview of modular agent health and performance across all modules",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Overall Success Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "Percentage of successful module executions across all modules (target: >95%)",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{status=\"success\"}[5m])) / sum(rate(modular_agent_module_executions_total[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 2,
+            "title": "Coordination Completions (24h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Total number of coordination loops completed in the last 24 hours",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_completions_total{status=\"success\"}[24h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "blue" },
+                { "value": 100, "color": "green" }
+              ]
+            }
+          },
+          {
+            "id": 3,
+            "title": "Average Iteration Count",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Average number of refinement iterations per coordination loop",
+            "targets": [
+              {
+                "expr": "avg(modular_agent_iteration_count)",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 3, "color": "yellow" },
+                { "value": 5, "color": "red" }
+              ]
+            },
+            "decimals": 1
+          },
+          {
+            "id": 4,
+            "title": "Total Cost (24h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Total coordination cost in USD over the last 24 hours",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_cost_usd_total[24h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 5,
+            "title": "Module Execution Rate",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Executions per second for each module",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total[5m])) by (module, status)",
+                "legendFormat": "{{module}} - {{status}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Executions/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" },
+            "legend": { "show": true, "values": true, "current": true }
+          },
+          {
+            "id": 6,
+            "title": "Module Latency (p95)",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "95th percentile latency for each module",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket[5m])) by (module, le))",
+                "legendFormat": "{{module}} p95",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" },
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [5], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High Module Latency (p95 > 5s)",
+              "noDataState": "no_data",
+              "notifications": []
+            }
+          },
+          {
+            "id": 7,
+            "title": "Error Rate by Module",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+            "description": "Error rate percentage by module",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{status=\"failure\"}[5m])) by (module) / sum(rate(modular_agent_module_executions_total[5m])) by (module) * 100",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "percent", "label": "Error Rate" },
+              { "format": "short" }
+            ],
+            "thresholds": [
+              { "value": 5, "colorMode": "critical", "op": "gt", "fill": true, "line": true }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [5], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High Module Error Rate (>5%)",
+              "noDataState": "no_data",
+              "notifications": []
+            }
+          },
+          {
+            "id": 8,
+            "title": "Verification Pass Rate",
+            "type": "gauge",
+            "gridPos": { "h": 8, "w": 6, "x": 12, "y": 14 },
+            "description": "Percentage of verifications that passed (target: >80%)",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_verification_results_total{result=\"passed\"}[5m])) / sum(rate(modular_agent_verification_results_total[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 70, "color": "yellow" },
+                { "value": 80, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 9,
+            "title": "Iteration Outcomes",
+            "type": "piechart",
+            "gridPos": { "h": 8, "w": 6, "x": 18, "y": 14 },
+            "description": "Distribution of early exits vs max iterations reached",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_iteration_outcomes_total[5m])) by (outcome)",
+                "legendFormat": "{{outcome}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "legend": { "displayMode": "table", "placement": "right" },
+              "pieType": "pie",
+              "tooltip": { "mode": "single" }
+            }
+          },
+          {
+            "id": 10,
+            "title": "Coordination Latency Trend",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+            "description": "Overall coordination loop latency over time (p50, p95, p99)",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(modular_agent_coordination_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p50",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_coordination_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p95",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_coordination_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p99",
+                "refId": "C"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-planner
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-planner.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Planner Module",
+        "tags": ["agentcore", "modular", "planner"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "description": "Detailed metrics for the Planner module: query analysis, plan generation, and refinement",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Planner Success Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "Percentage of successful planner executions",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"planner\",status=\"success\"}[5m])) / sum(rate(modular_agent_module_executions_total{module=\"planner\"}[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 2,
+            "title": "Planner Executions (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Total planner executions in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_executions_total{module=\"planner\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Planner Token Usage",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Total tokens consumed by planner in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total{module=\"planner\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Planner Cost (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Total planner cost in USD over the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total{module=\"planner\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 5,
+            "title": "Planner Latency Distribution",
+            "type": "heatmap",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Heatmap showing planner execution latency distribution",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_latency_seconds_bucket{module=\"planner\"}[1m])) by (le)",
+                "format": "heatmap",
+                "legendFormat": "{{le}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "calculate": false,
+              "cellGap": 2,
+              "cellRadius": 0,
+              "color": { "mode": "spectrum", "scheme": "Spectral" },
+              "yAxis": { "format": "s", "decimals": 2 }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Planner Latency Percentiles",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "Planner execution latency at different percentiles",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"planner\"}[5m])) by (le))",
+                "legendFormat": "p50",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"planner\"}[5m])) by (le))",
+                "legendFormat": "p95",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"planner\"}[5m])) by (le))",
+                "legendFormat": "p99",
+                "refId": "C"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 7,
+            "title": "Planner Errors by Type",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+            "description": "Planner errors categorized by error type",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"planner\"}[5m])) by (error_type)",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Errors/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Planner Token Usage Histogram",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+            "description": "Distribution of token usage per planner execution",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_tokens_histogram_bucket{module=\"planner\"}[5m])) by (le)",
+                "legendFormat": "{{le}} tokens",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Frequency" },
+              { "format": "short" }
+            ]
+          },
+          {
+            "id": 9,
+            "title": "Planner Cost Per Execution",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+            "description": "Cost distribution per planner execution",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_cost_per_execution_usd_bucket{module=\"planner\"}[5m])) by (le)",
+                "legendFormat": "${{le}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Frequency" },
+              { "format": "short" }
+            ]
+          },
+          {
+            "id": 10,
+            "title": "Planner Throughput",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+            "description": "Planner executions per second over time",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"planner\"}[1m]))",
+                "legendFormat": "Executions/sec",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Throughput" },
+              { "format": "short" }
+            ]
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-executor
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-executor.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Executor Module",
+        "tags": ["agentcore", "modular", "executor"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "description": "Detailed metrics for the Executor module: plan execution, tool invocation, and result collection",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Executor Success Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "Percentage of successful executor executions",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"executor\",status=\"success\"}[5m])) / sum(rate(modular_agent_module_executions_total{module=\"executor\"}[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 2,
+            "title": "Executor Executions (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Total executor executions in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_executions_total{module=\"executor\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Executor Token Usage",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Total tokens consumed by executor in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total{module=\"executor\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Executor Cost (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Total executor cost in USD over the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total{module=\"executor\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 5,
+            "title": "Executor Latency Distribution",
+            "type": "heatmap",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Heatmap showing executor execution latency distribution",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_latency_seconds_bucket{module=\"executor\"}[1m])) by (le)",
+                "format": "heatmap",
+                "legendFormat": "{{le}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "calculate": false,
+              "cellGap": 2,
+              "cellRadius": 0,
+              "color": { "mode": "spectrum", "scheme": "Spectral" },
+              "yAxis": { "format": "s", "decimals": 2 }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Executor Latency Percentiles",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "Executor execution latency at different percentiles",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"executor\"}[5m])) by (le))",
+                "legendFormat": "p50",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"executor\"}[5m])) by (le))",
+                "legendFormat": "p95",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"executor\"}[5m])) by (le))",
+                "legendFormat": "p99",
+                "refId": "C"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 7,
+            "title": "Executor Errors by Type",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+            "description": "Executor errors categorized by error type (timeout, tool_error, etc.)",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"executor\"}[5m])) by (error_type)",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Errors/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Tool Error Rate",
+            "type": "stat",
+            "gridPos": { "h": 8, "w": 6, "x": 12, "y": 14 },
+            "description": "Rate of tool-related errors in executor",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"executor\",error_type=\"tool_error\"}[5m]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.1, "color": "yellow" },
+                { "value": 0.5, "color": "red" }
+              ]
+            },
+            "unit": "ops"
+          },
+          {
+            "id": 9,
+            "title": "Timeout Rate",
+            "type": "stat",
+            "gridPos": { "h": 8, "w": 6, "x": 18, "y": 14 },
+            "description": "Rate of timeout errors in executor",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"executor\",error_type=\"timeout\"}[5m]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.05, "color": "yellow" },
+                { "value": 0.2, "color": "red" }
+              ]
+            },
+            "unit": "ops"
+          },
+          {
+            "id": 10,
+            "title": "Executor Token Usage Histogram",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+            "description": "Distribution of token usage per executor execution",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_tokens_histogram_bucket{module=\"executor\"}[5m])) by (le)",
+                "legendFormat": "{{le}} tokens",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Frequency" },
+              { "format": "short" }
+            ]
+          },
+          {
+            "id": 11,
+            "title": "Executor Throughput",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+            "description": "Executor executions per second over time",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"executor\"}[1m]))",
+                "legendFormat": "Executions/sec",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Throughput" },
+              { "format": "short" }
+            ]
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-verifier
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-verifier.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Verifier Module",
+        "tags": ["agentcore", "modular", "verifier"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "description": "Detailed metrics for the Verifier module: result validation, confidence scoring, and feedback generation",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Verifier Success Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "Percentage of successful verifier executions",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"verifier\",status=\"success\"}[5m])) / sum(rate(modular_agent_module_executions_total{module=\"verifier\"}[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 2,
+            "title": "Verification Pass Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Percentage of verifications that passed validation",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_verification_results_total{result=\"passed\"}[5m])) / sum(rate(modular_agent_verification_results_total[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 70, "color": "yellow" },
+                { "value": 80, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 3,
+            "title": "Verifier Token Usage",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Total tokens consumed by verifier in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total{module=\"verifier\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Verifier Cost (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Total verifier cost in USD over the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total{module=\"verifier\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 5,
+            "title": "Verification Results Over Time",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Verification passed vs failed results over time",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_verification_results_total{result=\"passed\"}[5m]))",
+                "legendFormat": "Passed",
+                "refId": "A"
+              },
+              {
+                "expr": "sum(rate(modular_agent_verification_results_total{result=\"failed\"}[5m]))",
+                "legendFormat": "Failed",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Verifications/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 6,
+            "title": "Verifier Latency Percentiles",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "Verifier execution latency at different percentiles",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"verifier\"}[5m])) by (le))",
+                "legendFormat": "p50",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"verifier\"}[5m])) by (le))",
+                "legendFormat": "p95",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"verifier\"}[5m])) by (le))",
+                "legendFormat": "p99",
+                "refId": "C"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 7,
+            "title": "Confidence Score by Iteration",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+            "description": "Average verification confidence score per iteration number",
+            "targets": [
+              {
+                "expr": "avg(modular_agent_iteration_confidence) by (iteration)",
+                "legendFormat": "Iteration {{iteration}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "percentunit", "label": "Confidence", "min": 0, "max": 1 },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Verifier Errors by Type",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+            "description": "Verifier errors categorized by error type",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"verifier\"}[5m])) by (error_type)",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Errors/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 9,
+            "title": "Validation Error Rate",
+            "type": "stat",
+            "gridPos": { "h": 8, "w": 6, "x": 0, "y": 22 },
+            "description": "Rate of validation-related errors in verifier",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"verifier\",error_type=\"validation\"}[5m]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.05, "color": "yellow" },
+                { "value": 0.2, "color": "red" }
+              ]
+            },
+            "unit": "ops"
+          },
+          {
+            "id": 10,
+            "title": "Verifier Throughput",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 18, "x": 6, "y": 22 },
+            "description": "Verifier executions per second over time",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"verifier\"}[1m]))",
+                "legendFormat": "Executions/sec",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Throughput" },
+              { "format": "short" }
+            ]
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-generator
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-generator.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Generator Module",
+        "tags": ["agentcore", "modular", "generator"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "description": "Detailed metrics for the Generator module: response synthesis, formatting, and quality assurance",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Generator Success Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "Percentage of successful generator executions",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"generator\",status=\"success\"}[5m])) / sum(rate(modular_agent_module_executions_total{module=\"generator\"}[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 2,
+            "title": "Generator Executions (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Total generator executions in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_executions_total{module=\"generator\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Generator Token Usage",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Total tokens consumed by generator in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total{module=\"generator\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Generator Cost (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Total generator cost in USD over the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total{module=\"generator\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 5,
+            "title": "Generator Latency Distribution",
+            "type": "heatmap",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Heatmap showing generator execution latency distribution",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_latency_seconds_bucket{module=\"generator\"}[1m])) by (le)",
+                "format": "heatmap",
+                "legendFormat": "{{le}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "calculate": false,
+              "cellGap": 2,
+              "cellRadius": 0,
+              "color": { "mode": "spectrum", "scheme": "Spectral" },
+              "yAxis": { "format": "s", "decimals": 2 }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Generator Latency Percentiles",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "Generator execution latency at different percentiles",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"generator\"}[5m])) by (le))",
+                "legendFormat": "p50",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"generator\"}[5m])) by (le))",
+                "legendFormat": "p95",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_module_latency_seconds_bucket{module=\"generator\"}[5m])) by (le))",
+                "legendFormat": "p99",
+                "refId": "C"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 7,
+            "title": "Generator Errors by Type",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+            "description": "Generator errors categorized by error type",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"generator\"}[5m])) by (error_type)",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Errors/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Generator Token Usage Histogram",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+            "description": "Distribution of token usage per generator execution",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_tokens_histogram_bucket{module=\"generator\"}[5m])) by (le)",
+                "legendFormat": "{{le}} tokens",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Frequency" },
+              { "format": "short" }
+            ]
+          },
+          {
+            "id": 9,
+            "title": "LLM Error Rate",
+            "type": "stat",
+            "gridPos": { "h": 8, "w": 6, "x": 0, "y": 22 },
+            "description": "Rate of LLM-related errors in generator",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total{module=\"generator\",error_type=\"llm_error\"}[5m]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 0.05, "color": "yellow" },
+                { "value": 0.2, "color": "red" }
+              ]
+            },
+            "unit": "ops"
+          },
+          {
+            "id": 10,
+            "title": "Generator Throughput",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 18, "x": 6, "y": 22 },
+            "description": "Generator executions per second over time",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{module=\"generator\"}[1m]))",
+                "legendFormat": "Executions/sec",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Throughput" },
+              { "format": "short" }
+            ]
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-performance
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-performance.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Performance",
+        "tags": ["agentcore", "modular", "performance"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "10s",
+        "description": "Performance metrics: latency histograms, throughput rates, and percentile tracking across all modules",
+        "panels": [
+          {
+            "id": 1,
+            "title": "System-Wide Latency Heatmap",
+            "type": "heatmap",
+            "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+            "description": "Heatmap showing latency distribution across all module executions",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_latency_seconds_bucket[1m])) by (le)",
+                "format": "heatmap",
+                "legendFormat": "{{le}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "calculate": false,
+              "cellGap": 2,
+              "cellRadius": 0,
+              "color": { "mode": "spectrum", "scheme": "Spectral" },
+              "yAxis": { "format": "s", "decimals": 3 }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Module Latency Comparison (p95)",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+            "description": "95th percentile latency comparison across all modules",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket[5m])) by (module, le))",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "p95 Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 3,
+            "title": "Module Latency Comparison (p99)",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+            "description": "99th percentile latency comparison across all modules",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_module_latency_seconds_bucket[5m])) by (module, le))",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "p99 Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 4,
+            "title": "Throughput by Module",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+            "description": "Executions per second for each module",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total[1m])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Executions/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 5,
+            "title": "Overall System Throughput",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+            "description": "Total system throughput across all modules",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total[1m]))",
+                "legendFormat": "Total Executions/sec",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Throughput" },
+              { "format": "short" }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Module Transition Latency",
+            "type": "heatmap",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+            "description": "Latency distribution for transitions between modules",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_transition_latency_seconds_bucket[1m])) by (from_module, to_module, le)",
+                "format": "heatmap",
+                "legendFormat": "{{from_module}} -> {{to_module}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "calculate": false,
+              "cellGap": 2,
+              "cellRadius": 0,
+              "color": { "mode": "spectrum", "scheme": "Spectral" },
+              "yAxis": { "format": "s", "decimals": 3 }
+            }
+          },
+          {
+            "id": 7,
+            "title": "Coordination Loop Latency (p50, p95, p99)",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+            "description": "End-to-end coordination loop latency percentiles",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(modular_agent_coordination_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p50",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(modular_agent_coordination_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p95",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(modular_agent_coordination_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p99",
+                "refId": "C"
+              }
+            ],
+            "yaxes": [
+              { "format": "s", "label": "Latency" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Latency Target Compliance",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 34 },
+            "description": "Percentage of executions meeting p95 < 5s target",
+            "targets": [
+              {
+                "expr": "(sum(rate(modular_agent_module_latency_seconds_bucket{le=\"5.0\"}[5m])) / sum(rate(modular_agent_module_latency_seconds_count[5m]))) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 90, "color": "yellow" },
+                { "value": 95, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 9,
+            "title": "Slowest Module (p95)",
+            "type": "table",
+            "gridPos": { "h": 4, "w": 18, "x": 6, "y": 34 },
+            "description": "Modules ranked by p95 latency",
+            "targets": [
+              {
+                "expr": "sort_desc(histogram_quantile(0.95, sum(rate(modular_agent_module_latency_seconds_bucket[5m])) by (module, le)))",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "renameByName": { "module": "Module", "Value": "p95 Latency (s)" }
+                }
+              }
+            ]
+          }
+        ],
+        "time": { "from": "now-1h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-errors
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-errors.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Errors & Diagnostics",
+        "tags": ["agentcore", "modular", "errors", "diagnostics"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "description": "Error tracking dashboard: error rates by type, module-specific errors, and distributed tracing",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Overall Error Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "System-wide error rate percentage (target: <5%)",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{status=\"failure\"}[5m])) / sum(rate(modular_agent_module_executions_total[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 3, "color": "yellow" },
+                { "value": 5, "color": "red" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 2,
+            "title": "Total Errors (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Total number of errors in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_errors_total[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 10, "color": "yellow" },
+                { "value": 50, "color": "red" }
+              ]
+            }
+          },
+          {
+            "id": 3,
+            "title": "Coordination Failures (1h)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Number of failed coordination loops in the last hour",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_completions_total{status=\"failure\"}[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 5, "color": "yellow" },
+                { "value": 20, "color": "red" }
+              ]
+            }
+          },
+          {
+            "id": 4,
+            "title": "Error Recovery Rate",
+            "type": "gauge",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Percentage of errors recovered through refinement (target: >80%)",
+            "targets": [
+              {
+                "expr": "(sum(rate(modular_agent_iteration_outcomes_total{outcome=\"early_exit\"}[5m])) / (sum(rate(modular_agent_iteration_outcomes_total{outcome=\"early_exit\"}[5m])) + sum(rate(modular_agent_iteration_outcomes_total{outcome=\"max_iterations\"}[5m])))) * 100",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] },
+              "showThresholdLabels": true,
+              "showThresholdMarkers": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 70, "color": "yellow" },
+                { "value": 80, "color": "green" }
+              ]
+            },
+            "unit": "percent"
+          },
+          {
+            "id": 5,
+            "title": "Error Rate by Module",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Error rate percentage for each module over time",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{status=\"failure\"}[5m])) by (module) / sum(rate(modular_agent_module_executions_total[5m])) by (module) * 100",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "percent", "label": "Error Rate" },
+              { "format": "short" }
+            ],
+            "thresholds": [
+              { "value": 5, "colorMode": "critical", "op": "gt", "fill": true, "line": true }
+            ],
+            "tooltip": { "shared": true, "sort": 0, "value_type": "individual" }
+          },
+          {
+            "id": 6,
+            "title": "Error Distribution by Type",
+            "type": "piechart",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "Distribution of errors by error type across all modules",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total[5m])) by (error_type)",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+              "pieType": "pie",
+              "tooltip": { "mode": "single" }
+            }
+          },
+          {
+            "id": 7,
+            "title": "Errors by Module and Type",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+            "description": "Detailed error breakdown showing module and error type combinations",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_errors_total[5m])) by (module, error_type)",
+                "legendFormat": "{{module}} - {{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "ops", "label": "Errors/sec" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 2, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Top Error Types by Frequency",
+            "type": "bargauge",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+            "description": "Most frequent error types ranked by occurrence",
+            "targets": [
+              {
+                "expr": "topk(10, sum(increase(modular_agent_module_errors_total[1h])) by (error_type))",
+                "legendFormat": "{{error_type}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 9,
+            "title": "Error Rate Threshold Alert",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+            "description": "Overall error rate with alerting threshold",
+            "targets": [
+              {
+                "expr": "sum(rate(modular_agent_module_executions_total{status=\"failure\"}[5m])) / sum(rate(modular_agent_module_executions_total[5m])) * 100",
+                "legendFormat": "Error Rate %",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "percent", "label": "Error Rate" },
+              { "format": "short" }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [5], "type": "gt" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "5m", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1m",
+              "handler": 1,
+              "name": "High System Error Rate (>5%)",
+              "noDataState": "no_data",
+              "notifications": []
+            },
+            "thresholds": [
+              { "value": 5, "colorMode": "critical", "op": "gt", "fill": true, "line": true }
+            ]
+          },
+          {
+            "id": 10,
+            "title": "Recent Error Summary",
+            "type": "table",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+            "description": "Summary of recent errors by module and type",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_errors_total[5m])) by (module, error_type)",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "renameByName": { "module": "Module", "error_type": "Error Type", "Value": "Count (5m)" }
+                }
+              }
+            ]
+          }
+        ],
+        "time": { "from": "now-6h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-modular-costs
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  modular-costs.json: |
+    {
+      "dashboard": {
+        "title": "Modular Agent Core - Cost & Token Usage",
+        "tags": ["agentcore", "modular", "costs", "tokens"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "1m",
+        "description": "Cost tracking dashboard: token usage trends, model costs, and cost optimization insights",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Total Cost (Today)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+            "description": "Total coordination cost in USD for today",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_cost_usd_total[24h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 2,
+            "title": "Total Tokens (Today)",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+            "description": "Total tokens consumed across all modules today",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total[24h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Monthly Cost Projection",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+            "description": "Projected monthly cost based on current usage",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_cost_usd_total[24h])) * 30",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 4,
+            "title": "Average Cost Per Execution",
+            "type": "stat",
+            "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+            "description": "Average cost per coordination loop execution",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_cost_usd_total[1h])) / sum(increase(modular_agent_coordination_completions_total[1h]))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "value",
+              "graphMode": "area",
+              "orientation": "auto",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD",
+            "decimals": 4
+          },
+          {
+            "id": 5,
+            "title": "Cost Breakdown by Module",
+            "type": "piechart",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+            "description": "Distribution of costs across modules",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total[24h])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+              "pieType": "pie",
+              "tooltip": { "mode": "single" },
+              "unit": "currencyUSD"
+            }
+          },
+          {
+            "id": 6,
+            "title": "Token Usage by Module",
+            "type": "piechart",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+            "description": "Distribution of token usage across modules",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total[24h])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+              "pieType": "pie",
+              "tooltip": { "mode": "single" }
+            }
+          },
+          {
+            "id": 7,
+            "title": "Cost Trend Over Time",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+            "description": "Hourly cost trend by module",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total[1h])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "currencyUSD", "label": "Cost/hour" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 2, "value_type": "individual" }
+          },
+          {
+            "id": 8,
+            "title": "Token Usage Trend",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+            "description": "Hourly token usage trend by module",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total[1h])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              { "format": "short", "label": "Tokens/hour" },
+              { "format": "short" }
+            ],
+            "tooltip": { "shared": true, "sort": 2, "value_type": "individual" }
+          },
+          {
+            "id": 9,
+            "title": "Cost Per Execution by Module",
+            "type": "bargauge",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+            "description": "Average cost per execution for each module",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total[1h])) by (module) / sum(increase(modular_agent_module_executions_total[1h])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            },
+            "unit": "currencyUSD"
+          },
+          {
+            "id": 10,
+            "title": "Tokens Per Execution by Module",
+            "type": "bargauge",
+            "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+            "description": "Average tokens per execution for each module",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total[1h])) by (module) / sum(increase(modular_agent_module_executions_total[1h])) by (module)",
+                "legendFormat": "{{module}}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+            }
+          },
+          {
+            "id": 11,
+            "title": "Cost Anomaly Detection",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+            "description": "Hourly cost with anomaly detection threshold",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_coordination_cost_usd_total[1h]))",
+                "legendFormat": "Hourly Cost",
+                "refId": "A"
+              },
+              {
+                "expr": "avg_over_time(sum(increase(modular_agent_coordination_cost_usd_total[1h]))[24h:1h]) * 1.5",
+                "legendFormat": "Anomaly Threshold (1.5x avg)",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              { "format": "currencyUSD", "label": "Cost" },
+              { "format": "short" }
+            ],
+            "alert": {
+              "conditions": [
+                {
+                  "evaluator": { "params": [], "type": "no_value" },
+                  "operator": { "type": "and" },
+                  "query": { "params": ["A", "1h", "now"] },
+                  "reducer": { "params": [], "type": "avg" },
+                  "type": "query"
+                }
+              ],
+              "executionErrorState": "alerting",
+              "frequency": "1h",
+              "handler": 1,
+              "name": "Cost Anomaly Detected",
+              "noDataState": "no_data",
+              "notifications": []
+            }
+          },
+          {
+            "id": 12,
+            "title": "Cost Optimization Summary",
+            "type": "table",
+            "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
+            "description": "Module-level cost and token efficiency metrics",
+            "targets": [
+              {
+                "expr": "sum(increase(modular_agent_module_cost_usd_total[24h])) by (module)",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              },
+              {
+                "expr": "sum(increase(modular_agent_module_tokens_total[24h])) by (module)",
+                "format": "table",
+                "instant": true,
+                "refId": "B"
+              },
+              {
+                "expr": "sum(increase(modular_agent_module_executions_total[24h])) by (module)",
+                "format": "table",
+                "instant": true,
+                "refId": "C"
+              }
+            ],
+            "transformations": [
+              {
+                "id": "merge"
+              },
+              {
+                "id": "organize",
+                "options": {
+                  "renameByName": {
+                    "module": "Module",
+                    "Value #A": "Cost (24h)",
+                    "Value #B": "Tokens (24h)",
+                    "Value #C": "Executions (24h)"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "time": { "from": "now-24h", "to": "now" },
+        "timepicker": {
+          "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "datasource",
+              "type": "datasource",
+              "query": "prometheus",
+              "current": { "text": "Prometheus", "value": "Prometheus" }
+            }
+          ]
+        },
+        "annotations": { "list": [] }
+      }
+    }

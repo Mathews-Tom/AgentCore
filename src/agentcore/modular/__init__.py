@@ -69,6 +69,7 @@ from agentcore.modular.coordinator import (
     ModuleCapability,
     ModuleMessage,
     CoordinationContext,
+    RefinementIteration,
 )
 
 from agentcore.modular.state_manager import (
@@ -77,6 +78,35 @@ from agentcore.modular.state_manager import (
     # State Models
     ExecutionCheckpoint,
     RecoveryInfo,
+)
+
+from agentcore.modular.metrics import (
+    # Metrics Collector
+    ModularMetricsCollector,
+    # Trackers
+    ModuleExecutionTracker,
+    CoordinationExecutionTracker,
+    # Error Types
+    ErrorType,
+    # Global Instance
+    get_metrics,
+    set_metrics,
+)
+
+from agentcore.modular.config import (
+    # Configuration
+    ModularConfig,
+    ModularConfigSettings,
+    ModuleModelConfig,
+    TokenUsage,
+    ModuleName,
+    ModelTier,
+    # Global Instance
+    get_modular_config,
+    reset_modular_config,
+    # Constants
+    ALLOWED_MODELS,
+    MODEL_PRICING,
 )
 
 __all__ = [
@@ -127,8 +157,27 @@ __all__ = [
     "ModuleCapability",
     "ModuleMessage",
     "CoordinationContext",
+    "RefinementIteration",
     # State Manager
     "StateManager",
     "ExecutionCheckpoint",
     "RecoveryInfo",
+    # Metrics
+    "ModularMetricsCollector",
+    "ModuleExecutionTracker",
+    "CoordinationExecutionTracker",
+    "ErrorType",
+    "get_metrics",
+    "set_metrics",
+    # Configuration
+    "ModularConfig",
+    "ModularConfigSettings",
+    "ModuleModelConfig",
+    "TokenUsage",
+    "ModuleName",
+    "ModelTier",
+    "get_modular_config",
+    "reset_modular_config",
+    "ALLOWED_MODELS",
+    "MODEL_PRICING",
 ]
