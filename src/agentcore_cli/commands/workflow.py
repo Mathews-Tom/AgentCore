@@ -114,14 +114,14 @@ def run(
                 "definition": definition,
                 "parameters": params_dict,
             }
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             console.print(f"[green]✓[/green] Workflow started successfully")
             console.print(f"[bold]Workflow ID:[/bold] {workflow_id}")
             console.print(f"[bold]Name:[/bold] {definition.get('name', 'N/A')}")
             if params_dict:
                 console.print(f"[bold]Parameters:[/bold]")
-                console.print(json.dumps(params_dict, indent=2))
+                print(json.dumps(params_dict, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -201,7 +201,7 @@ def list(
 
         # Format output
         if json_output:
-            console.print(json.dumps(workflows, indent=2))
+            print(json.dumps(workflows, indent=2))
         else:
             if not workflows:
                 console.print("[yellow]No workflows found[/yellow]")
@@ -272,7 +272,7 @@ def info(
 
         # Format output
         if json_output:
-            console.print(json.dumps(workflow, indent=2))
+            print(json.dumps(workflow, indent=2))
         else:
             console.print(f"[bold]Workflow Information[/bold]")
             console.print(f"[bold]ID:[/bold] {workflow.get('workflow_id', 'N/A')}")
@@ -285,19 +285,19 @@ def info(
             definition = workflow.get("definition")
             if definition:
                 console.print(f"[bold]Definition:[/bold]")
-                console.print(json.dumps(definition, indent=2))
+                print(json.dumps(definition, indent=2))
 
             # Show parameters if present
             parameters = workflow.get("parameters")
             if parameters:
                 console.print(f"[bold]Parameters:[/bold]")
-                console.print(json.dumps(parameters, indent=2))
+                print(json.dumps(parameters, indent=2))
 
             # Show steps if present
             steps = workflow.get("steps")
             if steps:
                 console.print(f"[bold]Steps:[/bold]")
-                console.print(json.dumps(steps, indent=2))
+                print(json.dumps(steps, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -358,7 +358,7 @@ def stop(
         # Format output
         if json_output:
             result = {"success": success, "workflow_id": workflow_id}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             if success:
                 console.print(f"[green]✓[/green] Workflow stopped successfully")

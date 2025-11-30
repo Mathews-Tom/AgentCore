@@ -40,6 +40,14 @@ console = Console()
 @app.command()
 def create(
     name: Annotated[str, typer.Option("--name", "-n", help="Session name")],
+    description: Annotated[
+        str | None,
+        typer.Option(
+            "--description",
+            "-d",
+            help="Session description (optional)",
+        ),
+    ] = None,
     context: Annotated[
         str | None,
         typer.Option(
@@ -66,6 +74,9 @@ def create(
         # Create a simple session
         agentcore session create --name analysis-session
 
+        # Create with description
+        agentcore session create -n test-session -d "Test session for analysis"
+
         # Create with context
         agentcore session create -n test-session -c '{"user": "alice"}'
 
@@ -88,6 +99,7 @@ def create(
         # Call service method
         session_id = service.create(
             name=name,
+            description=description,
             context=context_dict,
         )
 
@@ -98,14 +110,14 @@ def create(
                 "name": name,
                 "context": context_dict,
             }
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             console.print(f"[green]✓[/green] Session created successfully")
             console.print(f"[bold]Session ID:[/bold] {session_id}")
             console.print(f"[bold]Name:[/bold] {name}")
             if context_dict:
                 console.print(f"[bold]Context:[/bold]")
-                console.print(json.dumps(context_dict, indent=2))
+                print(json.dumps(context_dict, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -130,7 +142,7 @@ def list(
         typer.Option(
             "--state",
             "-s",
-            help="Filter by state (active, inactive, archived)",
+            help="Filter by state (active, paused, suspended, completed, failed, expired)",
         ),
     ] = None,
     limit: Annotated[
@@ -185,7 +197,7 @@ def list(
 
         # Format output
         if json_output:
-            console.print(json.dumps(sessions, indent=2))
+            print(json.dumps(sessions, indent=2))
         else:
             if not sessions:
                 console.print("[yellow]No sessions found[/yellow]")
@@ -256,7 +268,7 @@ def info(
 
         # Format output
         if json_output:
-            console.print(json.dumps(session, indent=2))
+            print(json.dumps(session, indent=2))
         else:
             console.print(f"[bold]Session Information[/bold]")
             console.print(f"[bold]ID:[/bold] {session.get('session_id', 'N/A')}")
@@ -269,7 +281,7 @@ def info(
             context = session.get("context")
             if context:
                 console.print(f"[bold]Context:[/bold]")
-                console.print(json.dumps(context, indent=2))
+                print(json.dumps(context, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -291,12 +303,12 @@ def info(
 @app.command()
 def delete(
     session_id: Annotated[str, typer.Argument(help="Session identifier")],
-    force: Annotated[
+    hard: Annotated[
         bool,
         typer.Option(
-            "--force",
+            "--hard",
             "-f",
-            help="Force deletion even if session is active",
+            help="Permanent deletion (vs soft delete)",
         ),
     ] = False,
     json_output: Annotated[
@@ -311,11 +323,11 @@ def delete(
     """Delete a session.
 
     Examples:
-        # Delete a session
+        # Soft delete a session (can be recovered)
         agentcore session delete session-001
 
-        # Force deletion
-        agentcore session delete session-001 --force
+        # Permanent deletion
+        agentcore session delete session-001 --hard
 
         # Get JSON output
         agentcore session delete session-001 --json
@@ -325,12 +337,12 @@ def delete(
         service = get_session_service()
 
         # Call service method
-        success = service.delete(session_id, force=force)
+        success = service.delete(session_id, hard_delete=hard)
 
         # Format output
         if json_output:
             result = {"success": success, "session_id": session_id}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             if success:
                 console.print(f"[green]✓[/green] Session deleted successfully")
@@ -357,7 +369,7 @@ def delete(
 
 
 @app.command()
-def restore(
+def pause(
     session_id: Annotated[str, typer.Argument(help="Session identifier")],
     json_output: Annotated[
         bool,
@@ -368,38 +380,90 @@ def restore(
         ),
     ] = False,
 ) -> None:
-    """Restore a session from backup.
+    """Pause an active session.
 
-    This command restores a session's context from a previous backup,
-    allowing you to continue from a saved state.
+    This command pauses a session that is currently active,
+    allowing it to be resumed later.
 
     Examples:
-        # Restore a session
-        agentcore session restore session-001
+        # Pause a session
+        agentcore session pause session-001
 
         # Get JSON output
-        agentcore session restore session-001 --json
+        agentcore session pause session-001 --json
     """
     try:
         # Get service from DI container
         service = get_session_service()
 
         # Call service method
-        context = service.restore(session_id)
+        result_data = service.pause(session_id)
 
         # Format output
         if json_output:
-            result = {"session_id": session_id, "context": context}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result_data, indent=2))
         else:
-            console.print(f"[green]✓[/green] Session restored successfully")
+            console.print(f"[green]✓[/green] Session paused successfully")
             console.print(f"[bold]Session ID:[/bold] {session_id}")
+            if result_data.get("message"):
+                console.print(f"[dim]{result_data['message']}[/dim]")
 
-            if context:
-                console.print(f"[bold]Restored Context:[/bold]")
-                console.print(json.dumps(context, indent=2))
-            else:
-                console.print("[yellow]No context data in session[/yellow]")
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except SessionNotFoundError as e:
+        console.print(f"[red]Session not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def resume(
+    session_id: Annotated[str, typer.Argument(help="Session identifier")],
+    json_output: Annotated[
+        bool,
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
+    ] = False,
+) -> None:
+    """Resume a paused or suspended session.
+
+    This command resumes a session that was previously paused or suspended,
+    allowing it to continue processing.
+
+    Examples:
+        # Resume a session
+        agentcore session resume session-001
+
+        # Get JSON output
+        agentcore session resume session-001 --json
+    """
+    try:
+        # Get service from DI container
+        service = get_session_service()
+
+        # Call service method
+        result_data = service.resume(session_id)
+
+        # Format output
+        if json_output:
+            print(json.dumps(result_data, indent=2))
+        else:
+            console.print(f"[green]✓[/green] Session resumed successfully")
+            console.print(f"[bold]Session ID:[/bold] {session_id}")
+            if result_data.get("message"):
+                console.print(f"[dim]{result_data['message']}[/dim]")
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")

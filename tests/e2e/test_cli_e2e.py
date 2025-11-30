@@ -16,11 +16,6 @@ Requirements:
 
 Run on demand only (not in CI):
     uv run pytest tests/e2e/test_cli_e2e.py -v
-
-KNOWN ISSUES:
-- CLI agent registration currently incompatible with API (expects agent_card parameter)
-- CLI needs to be updated to match A2A protocol agent.register JSON-RPC method
-- Some tests marked as xfail until CLI-API compatibility is restored
 """
 
 from __future__ import annotations
@@ -34,11 +29,26 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import urllib.request
+import urllib.error
+
+
+def _check_api_available() -> bool:
+    """Check if the API server is running and healthy."""
+    try:
+        with urllib.request.urlopen("http://localhost:8001/api/v1/health", timeout=2) as resp:
+            data = json.loads(resp.read().decode())
+            return data.get("status") == "healthy"
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, OSError):
+        return False
 
 
 # Mark all tests in this module as requiring live API server
-# Skip by default - run manually with: pytest tests/e2e/test_cli_e2e.py -v
-pytestmark = pytest.mark.skip(reason="E2E tests require live API server at http://localhost:8001 - run manually with docker-compose up")
+# Conditionally skip if API is not available
+pytestmark = pytest.mark.skipif(
+    not _check_api_available(),
+    reason="E2E tests require live API server at http://localhost:8001 - start with docker-compose up"
+)
 
 
 # Constants
@@ -196,11 +206,7 @@ def run_cli_json(*args: str, **kwargs: Any) -> dict[str, Any]:
 
 
 class TestAgentLifecycle:
-    """Test agent registration, discovery, and management.
-
-    NOTE: These tests are currently marked as xfail due to CLI-API incompatibility.
-    The CLI sends parameters that don't match the A2A protocol's agent.register method.
-    """
+    """Test agent registration, discovery, and management."""
 
     def test_agent_register_and_list(
         self,
@@ -323,11 +329,7 @@ class TestAgentLifecycle:
 
 
 class TestTaskLifecycle:
-    """Test task creation, monitoring, and management.
-
-    NOTE: These tests are marked as xfail because they depend on agent registration,
-    which is currently incompatible between CLI and API.
-    """
+    """Test task creation, monitoring, and management."""
 
     def test_task_create_and_status(
         self,
@@ -350,12 +352,12 @@ class TestTaskLifecycle:
             "--description", "Generate text based on prompt",
             "--parameters", json.dumps({"prompt": "test"}))
 
-        assert "id" in task_result or "task_id" in task_result
-        task_id = task_result.get("id") or task_result.get("task_id")
+        assert "id" in task_result or "task_id" in task_result or "execution_id" in task_result
+        task_id = task_result.get("task_id") or task_result.get("execution_id") or task_result.get("id")
         cleanup_tasks.append(task_id)
 
-        # Get task status
-        status_result = run_cli_json("task", "status", task_id)
+        # Get task info (CLI uses 'info' not 'status')
+        status_result = run_cli_json("task", "info", task_id)
 
         assert "status" in status_result or "state" in status_result
 
@@ -378,7 +380,7 @@ class TestTaskLifecycle:
         task_result = run_cli_json(
             "task", "create",
             "--description", "Test task for listing")
-        task_id = task_result.get("id") or task_result.get("task_id")
+        task_id = task_result.get("task_id") or task_result.get("execution_id") or task_result.get("id")
         cleanup_tasks.append(task_id)
 
         # List tasks
@@ -392,8 +394,8 @@ class TestTaskLifecycle:
         else:
             tasks = []
 
-        # Our task should be in the list
-        task_ids = [t.get("id") or t.get("task_id") for t in tasks]
+        # Our task should be in the list (API returns execution_id as primary key)
+        task_ids = [t.get("execution_id") or t.get("id") or t.get("task_id") for t in tasks]
         assert task_id in task_ids, f"Task {task_id} not found in list"
 
     def test_task_cancel(
@@ -420,8 +422,8 @@ class TestTaskLifecycle:
         cancel_result = run_cli("task", "cancel", task_id)
         assert cancel_result.returncode == 0
 
-        # Verify status is cancelled
-        status_result = run_cli_json("task", "status", task_id)
+        # Verify status is cancelled (CLI uses 'info' not 'status')
+        status_result = run_cli_json("task", "info", task_id)
         status = status_result.get("status") or status_result.get("state")
 
         # Status might be "cancelled", "canceled", or "failed" depending on API
@@ -430,29 +432,25 @@ class TestTaskLifecycle:
 
 
 class TestSessionFlow:
-    """Test session save, list, resume, and delete.
+    """Test session save, list, resume, and delete."""
 
-    NOTE: Session tests may have API compatibility issues as well.
-    """
-
-    @pytest.mark.xfail(reason="Session API compatibility not verified")
-    def test_session_save_and_list(
+    def test_session_create_and_list(
         self,
         api_health_check: None,
         test_id: str,
         cleanup_sessions: list[str]) -> None:
-        """Test saving and listing sessions."""
+        """Test creating and listing sessions."""
         session_name = f"test-session-{test_id}"
 
-        # Save session
-        save_result = run_cli_json(
-            "session", "save",
+        # Create session
+        create_result = run_cli_json(
+            "session", "create",
             "--name", session_name,
             "--description", "E2E test session",
-            "--metadata", json.dumps({"test": "data"}))
+            "--context", json.dumps({"test": "data"}))
 
-        assert "id" in save_result or "session_id" in save_result
-        session_id = save_result.get("id") or save_result.get("session_id")
+        assert "id" in create_result or "session_id" in create_result
+        session_id = create_result.get("id") or create_result.get("session_id")
         cleanup_sessions.append(session_id)
 
         # List sessions
@@ -469,7 +467,6 @@ class TestSessionFlow:
         assert any(s.get("name") == session_name for s in sessions), \
             f"Session {session_name} not found"
 
-    @pytest.mark.xfail(reason="Session API compatibility not verified")
     def test_session_info(
         self,
         api_health_check: None,
@@ -478,22 +475,21 @@ class TestSessionFlow:
         """Test getting session information."""
         session_name = f"test-info-{test_id}"
 
-        # Save session
-        save_result = run_cli_json(
-            "session", "save",
+        # Create session
+        create_result = run_cli_json(
+            "session", "create",
             "--name", session_name,
             "--description", "Session info test",
-            "--metadata", json.dumps({"key": "value"}))
-        session_id = save_result.get("id") or save_result.get("session_id")
+            "--context", json.dumps({"key": "value"}))
+        session_id = create_result.get("id") or create_result.get("session_id")
         cleanup_sessions.append(session_id)
 
         # Get session info
         info_result = run_cli_json("session", "info", session_id)
 
         assert info_result.get("name") == session_name
-        assert "metadata" in info_result or "description" in info_result
+        assert "context" in info_result or "description" in info_result
 
-    @pytest.mark.xfail(reason="Session API compatibility not verified")
     def test_session_resume_and_delete(
         self,
         api_health_check: None,
@@ -501,20 +497,24 @@ class TestSessionFlow:
         """Test resuming and deleting sessions (no cleanup needed)."""
         session_name = f"test-resume-{test_id}"
 
-        # Save session
-        save_result = run_cli_json(
-            "session", "save",
+        # Create session
+        create_result = run_cli_json(
+            "session", "create",
             "--name", session_name,
             "--description", "Resume test",
-            "--metadata", json.dumps({"state": "active"}))
-        session_id = save_result.get("id") or save_result.get("session_id")
+            "--context", json.dumps({"state": "active"}))
+        session_id = create_result.get("id") or create_result.get("session_id")
 
-        # Resume session
+        # Pause session first (required before resume)
+        pause_result = run_cli_json("session", "pause", session_id)
+        assert "success" in pause_result or "session_id" in pause_result
+
+        # Resume session (only valid after pausing)
         resume_result = run_cli_json("session", "resume", session_id)
-        assert "metadata" in resume_result or "name" in resume_result
+        assert "success" in resume_result or "session_id" in resume_result
 
-        # Delete session
-        delete_result = run_cli("session", "delete", session_id, "--yes")
+        # Delete session (hard delete for cleanup)
+        delete_result = run_cli("session", "delete", session_id, "--hard")
         assert delete_result.returncode == 0
 
         # Verify it's gone
@@ -532,23 +532,20 @@ class TestSessionFlow:
 
 
 class TestWorkflowFlow:
-    """Test workflow creation, execution, and visualization.
+    """Test workflow creation, execution, and visualization."""
 
-    NOTE: Workflow tests may have API compatibility issues.
-    """
-
-    @pytest.mark.xfail(reason="Workflow API compatibility not verified")
-    def test_workflow_create_from_file(
+    def test_workflow_run_from_file(
         self,
         api_health_check: None,
         test_id: str,
         tmp_path: Path) -> None:
-        """Test creating workflow from YAML file."""
+        """Test running a workflow from YAML file."""
         # Create workflow definition file
         workflow_file = tmp_path / f"workflow-{test_id}.yaml"
         workflow_content = f"""
 name: e2e-workflow-{test_id}
 description: E2E test workflow
+pattern: sequential
 steps:
   - name: step1
     type: task
@@ -558,38 +555,93 @@ steps:
 """
         workflow_file.write_text(workflow_content)
 
-        # Create workflow
-        result = run_cli_json("workflow", "create", "--file", str(workflow_file))
+        # Run workflow
+        result = run_cli_json("workflow", "run", str(workflow_file))
 
-        assert "id" in result or "workflow_id" in result
+        assert "workflow_id" in result
+        workflow_id = result["workflow_id"]
+        assert workflow_id.startswith("wf-")
 
-    @pytest.mark.xfail(reason="Workflow API compatibility not verified")
-    def test_workflow_status(
+    def test_workflow_list(
         self,
         api_health_check: None,
         test_id: str,
-        tmp_path: Path,
-        cleanup_agents: list[str]) -> None:
-        """Test checking workflow status."""
-        # Create simple workflow
-        workflow_file = tmp_path / f"status-workflow-{test_id}.yaml"
+        tmp_path: Path) -> None:
+        """Test listing workflows."""
+        # First create a workflow
+        workflow_file = tmp_path / f"list-workflow-{test_id}.yaml"
         workflow_file.write_text(f"""
-name: status-test-{test_id}
+name: list-test-{test_id}
 steps:
   - name: test-step
     type: task
-    agent_capability: test
-    input: {{}}
 """)
 
-        create_result = run_cli_json("workflow", "create", "--file", str(workflow_file))
-        workflow_id = create_result.get("id") or create_result.get("workflow_id")
+        run_cli_json("workflow", "run", str(workflow_file))
 
-        # Get status (might fail if workflow execution not implemented yet)
-        status_result = run_cli("workflow", "status", workflow_id)
+        # List workflows
+        list_result = run_cli_json("workflow", "list")
 
-        # We just verify the command doesn't crash
-        assert status_result.returncode in (0, 1)  # May fail if not implemented
+        # Should return workflows array
+        if isinstance(list_result, dict) and "workflows" in list_result:
+            workflows = list_result["workflows"]
+        else:
+            workflows = list_result if isinstance(list_result, list) else []
+
+        assert isinstance(workflows, list)
+
+    def test_workflow_info(
+        self,
+        api_health_check: None,
+        test_id: str,
+        tmp_path: Path) -> None:
+        """Test getting workflow information."""
+        # Create and run a workflow
+        workflow_file = tmp_path / f"info-workflow-{test_id}.yaml"
+        workflow_file.write_text(f"""
+name: info-test-{test_id}
+steps:
+  - name: test-step
+    type: task
+""")
+
+        run_result = run_cli_json("workflow", "run", str(workflow_file))
+        workflow_id = run_result["workflow_id"]
+
+        # Get workflow info
+        info_result = run_cli_json("workflow", "info", workflow_id)
+
+        # Handle wrapped response
+        if "workflow" in info_result:
+            workflow = info_result["workflow"]
+        else:
+            workflow = info_result
+
+        assert workflow.get("name") == f"info-test-{test_id}"
+        assert "status" in workflow
+
+    def test_workflow_stop(
+        self,
+        api_health_check: None,
+        test_id: str,
+        tmp_path: Path) -> None:
+        """Test stopping a running workflow."""
+        # Create and run a workflow
+        workflow_file = tmp_path / f"stop-workflow-{test_id}.yaml"
+        workflow_file.write_text(f"""
+name: stop-test-{test_id}
+steps:
+  - name: test-step
+    type: task
+""")
+
+        run_result = run_cli_json("workflow", "run", str(workflow_file))
+        workflow_id = run_result["workflow_id"]
+
+        # Stop workflow
+        stop_result = run_cli_json("workflow", "stop", workflow_id)
+
+        assert stop_result.get("success") is True
 
 
 class TestConfiguration:
@@ -602,31 +654,51 @@ class TestConfiguration:
         assert "api" in result
         assert result["api"]["url"] == API_URL
 
-    @pytest.mark.xfail(
-        reason="Config init creates config at ~/.agentcore/config.toml, not in current directory"
-    )
-    def test_config_init(self, tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-        """Test initializing configuration file."""
-        # Change to tmp directory so config is created there
-        monkeypatch.chdir(tmp_path)
+    def test_config_init(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test initializing configuration file.
 
-        result = run_cli("config", "init")
+        Config init creates ~/.agentcore/config.toml (in home directory).
+        We use a temp directory as fake home to avoid modifying real config.
+        """
+        # Use temp directory as fake home to avoid modifying real config
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        monkeypatch.setenv("HOME", str(fake_home))
+
+        result = run_cli("config", "init", env={"HOME": str(fake_home)})
 
         assert result.returncode == 0
-        config_file = tmp_path / ".agentcore.yaml"
+        config_file = fake_home / ".agentcore" / "config.toml"
         assert config_file.exists()
 
-    @pytest.mark.xfail(reason="Config validate command not implemented")
+        # Verify config file has expected content
+        content = config_file.read_text()
+        assert "[api]" in content
+        assert "[auth]" in content
+        assert 'url = "http://localhost:8001"' in content
+
+    def test_config_get_value(self, api_health_check: None) -> None:
+        """Test getting a specific configuration value."""
+        # Get a known config value
+        result = run_cli("config", "get", "api.url")
+
+        assert result.returncode == 0
+        # Should output the API URL
+        assert "localhost" in result.stdout or "8001" in result.stdout
+
     def test_config_validate(self, tmp_path: Path) -> None:
         """Test validating configuration file."""
-        # Create valid config
-        config_file = tmp_path / ".agentcore.yaml"
+        # Create valid TOML config
+        config_file = tmp_path / "test-config.toml"
         config_file.write_text("""
-api:
-  url: http://localhost:8001
-  timeout: 30
-auth:
-  type: none
+[api]
+url = "http://localhost:8001"
+timeout = 30
+retries = 3
+verify_ssl = true
+
+[auth]
+type = "none"
 """)
 
         result = run_cli(
@@ -634,6 +706,29 @@ auth:
             "--config", str(config_file))
 
         assert result.returncode == 0
+        assert "valid" in result.stdout.lower() or "✓" in result.stdout
+
+    def test_config_validate_invalid(self, tmp_path: Path) -> None:
+        """Test validating invalid configuration file."""
+        # Create invalid config (bad timeout value)
+        config_file = tmp_path / "invalid-config.toml"
+        config_file.write_text("""
+[api]
+url = "http://localhost:8001"
+timeout = 999
+
+[auth]
+type = "invalid_type"
+""")
+
+        result = run_cli(
+            "config", "validate",
+            "--config", str(config_file))
+
+        # Should fail validation
+        assert result.returncode != 0
+        # Should report the errors
+        assert "timeout" in result.stdout.lower() or "error" in result.stdout.lower()
 
     def test_env_var_override(
         self,

@@ -81,7 +81,7 @@ def show(
                     "token": "***" if config.auth.token else None,
                 },
             }
-            console.print(json.dumps(config_dict, indent=2))
+            print(json.dumps(config_dict, indent=2))
         else:
             # Output as table
             console.print("[bold]Current Configuration[/bold]\n")
@@ -399,3 +399,169 @@ type = "none"
     except Exception as e:
         console.print(f"[red]Error creating configuration file:[/red] {str(e)}")
         raise typer.Exit(1)
+
+
+@app.command()
+def validate(
+    config_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Path to configuration file to validate",
+        ),
+    ] = None,
+) -> None:
+    """Validate a configuration file.
+
+    Checks the configuration file for syntax errors and validates
+    all settings against expected types and value ranges.
+
+    If no config file is specified, validates the default config file
+    at ~/.agentcore/config.toml if it exists.
+
+    Examples:
+        # Validate default config
+        agentcore config validate
+
+        # Validate specific config file
+        agentcore config validate --config ./my-config.toml
+    """
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Determine config file to validate
+    if config_path:
+        config_file = config_path
+    else:
+        # Check for default config file
+        config_file = DEFAULT_CONFIG_FILE
+        if not config_file.exists():
+            # Also check current directory
+            local_config = Path(".agentcore.toml")
+            if local_config.exists():
+                config_file = local_config
+            else:
+                console.print(
+                    "[yellow]No configuration file found.[/yellow]\n"
+                    f"Expected at: {DEFAULT_CONFIG_FILE}\n"
+                    "Run 'agentcore config init' to create one."
+                )
+                raise typer.Exit(0)
+
+    if not config_file.exists():
+        console.print(f"[red]Configuration file not found:[/red] {config_file}")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Validating:[/bold] {config_file}\n")
+
+    # Parse the config file
+    try:
+        content = config_file.read_text()
+        config_data = tomllib.loads(content)
+    except Exception as e:
+        console.print(f"[red]Failed to parse configuration file:[/red] {str(e)}")
+        raise typer.Exit(1)
+
+    # Validate [api] section
+    if "api" in config_data:
+        api = config_data["api"]
+
+        # Validate URL
+        if "url" in api:
+            url = api["url"]
+            if not isinstance(url, str):
+                errors.append("api.url must be a string")
+            elif not (url.startswith("http://") or url.startswith("https://")):
+                errors.append("api.url must start with http:// or https://")
+
+        # Validate timeout
+        if "timeout" in api:
+            timeout = api["timeout"]
+            if not isinstance(timeout, int):
+                errors.append("api.timeout must be an integer")
+            elif timeout < 1 or timeout > 300:
+                errors.append("api.timeout must be between 1 and 300 seconds")
+
+        # Validate retries
+        if "retries" in api:
+            retries = api["retries"]
+            if not isinstance(retries, int):
+                errors.append("api.retries must be an integer")
+            elif retries < 0 or retries > 10:
+                errors.append("api.retries must be between 0 and 10")
+
+        # Validate verify_ssl
+        if "verify_ssl" in api:
+            verify_ssl = api["verify_ssl"]
+            if not isinstance(verify_ssl, bool):
+                errors.append("api.verify_ssl must be a boolean (true/false)")
+    else:
+        warnings.append("Missing [api] section - defaults will be used")
+
+    # Validate [auth] section
+    if "auth" in config_data:
+        auth = config_data["auth"]
+
+        # Validate type
+        if "type" in auth:
+            auth_type = auth["type"]
+            valid_types = ["none", "jwt", "api_key"]
+            if not isinstance(auth_type, str):
+                errors.append("auth.type must be a string")
+            elif auth_type not in valid_types:
+                errors.append(f"auth.type must be one of: {', '.join(valid_types)}")
+
+        # Validate token
+        if "token" in auth:
+            token = auth["token"]
+            if not isinstance(token, str):
+                errors.append("auth.token must be a string")
+            elif len(token) < 8:
+                warnings.append("auth.token seems too short (less than 8 characters)")
+    else:
+        warnings.append("Missing [auth] section - defaults will be used")
+
+    # Check for unknown sections
+    known_sections = {"api", "auth"}
+    for section in config_data:
+        if section not in known_sections:
+            warnings.append(f"Unknown section [{section}] - will be ignored")
+
+    # Report results
+    if errors:
+        console.print("[red]✗ Validation failed[/red]\n")
+        console.print("[bold]Errors:[/bold]")
+        for error in errors:
+            console.print(f"  [red]•[/red] {error}")
+        if warnings:
+            console.print("\n[bold]Warnings:[/bold]")
+            for warning in warnings:
+                console.print(f"  [yellow]•[/yellow] {warning}")
+        raise typer.Exit(1)
+
+    if warnings:
+        console.print("[yellow]✓ Validation passed with warnings[/yellow]\n")
+        console.print("[bold]Warnings:[/bold]")
+        for warning in warnings:
+            console.print(f"  [yellow]•[/yellow] {warning}")
+    else:
+        console.print("[green]✓ Configuration is valid[/green]")
+
+    # Show parsed values
+    console.print("\n[bold]Parsed configuration:[/bold]")
+    if "api" in config_data:
+        api = config_data["api"]
+        console.print(f"  api.url: {api.get('url', '(default)')}")
+        console.print(f"  api.timeout: {api.get('timeout', '(default)')}")
+        console.print(f"  api.retries: {api.get('retries', '(default)')}")
+        console.print(f"  api.verify_ssl: {api.get('verify_ssl', '(default)')}")
+    if "auth" in config_data:
+        auth = config_data["auth"]
+        console.print(f"  auth.type: {auth.get('type', '(default)')}")
+        console.print(f"  auth.token: {'***' if auth.get('token') else '(not set)'}")

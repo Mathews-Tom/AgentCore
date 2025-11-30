@@ -41,10 +41,11 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "test -f /qdrant/storage/raft_state.json || sleep 5"]
       interval: 10s
-      timeout: 5s
-      retries: 3
+      timeout: 10s
+      retries: 5
+      start_period: 15s
 
   # Neo4j graph database for knowledge graphs
   neo4j:

@@ -66,9 +66,9 @@ class WorkflowExecutionDB(Base):
         String(50), nullable=False, index=True
     )  # supervisor, hierarchical, saga, etc.
 
-    # Status tracking
+    # Status tracking - use values_callable to use enum values (lowercase) for PostgreSQL native enum
     status = Column(
-        SQLEnum(WorkflowStatus, native_enum=False),
+        SQLEnum(WorkflowStatus, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=WorkflowStatus.PENDING,
         index=True,
@@ -111,15 +111,15 @@ class WorkflowExecutionDB(Base):
     completed_task_count = Column(Integer, nullable=False, default=0)
     failed_task_count = Column(Integer, nullable=False, default=0)
 
-    # Timing
+    # Timing - use timezone-naive datetimes for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
     created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None), index=True
     )
     updated_at = Column(
         DateTime,
         nullable=False,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
@@ -204,9 +204,9 @@ class WorkflowStateDB(Base):
     )  # List of fields changed from previous version
     change_reason = Column(String(255), nullable=True)  # Reason for state change
 
-    # Timestamp
+    # Timestamp - use timezone-naive datetimes for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
     created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None), index=True
     )
 
     # Metadata
@@ -251,9 +251,9 @@ class WorkflowStateVersion(Base):
     description = Column(Text, nullable=True)
     is_active = Column(Integer, nullable=False, default=True, index=True)
 
-    # Timestamps
+    # Timestamps - use timezone-naive datetimes for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
     created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None), index=True
     )
     deprecated_at = Column(DateTime, nullable=True)
 

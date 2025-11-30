@@ -115,7 +115,8 @@ def register(
                 "capabilities": cap_list,
                 "cost_per_request": cost_per_request,
             }
-            console.print(json.dumps(result, indent=2))
+            # Use print() for JSON to avoid Rich's text wrapping
+            print(json.dumps(result, indent=2))
         else:
             console.print(f"[green]✓[/green] Agent registered successfully")
             console.print(f"[bold]Agent ID:[/bold] {agent_id}")
@@ -189,7 +190,8 @@ def list(
 
         # Format output
         if json_output:
-            console.print(json.dumps(agents, indent=2))
+            # Use print() for JSON to avoid Rich's text wrapping
+            print(json.dumps(agents, indent=2))
         else:
             if not agents:
                 console.print("[yellow]No agents found[/yellow]")
@@ -257,7 +259,8 @@ def info(
 
         # Format output
         if json_output:
-            console.print(json.dumps(agent, indent=2))
+            # Use print() for JSON to avoid Rich's text wrapping
+            print(json.dumps(agent, indent=2))
         else:
             console.print(f"[bold]Agent Information[/bold]")
             console.print(f"[bold]ID:[/bold] {agent.get('agent_id', 'N/A')}")
@@ -347,7 +350,8 @@ def remove(
         # Format output
         if json_output:
             result = {"success": success, "agent_id": agent_id}
-            console.print(json.dumps(result, indent=2))
+            # Use print() for JSON to avoid Rich's text wrapping
+            print(json.dumps(result, indent=2))
         else:
             if success:
                 console.print(f"[green]✓[/green] Agent removed successfully")
@@ -421,7 +425,8 @@ def search(
 
         # Format output
         if json_output:
-            console.print(json.dumps(agents, indent=2))
+            # Use print() for JSON to avoid Rich's text wrapping
+            print(json.dumps(agents, indent=2))
         else:
             if not agents:
                 console.print(f"[yellow]No agents found with capability '{capability}'[/yellow]")

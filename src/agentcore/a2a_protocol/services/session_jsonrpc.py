@@ -117,7 +117,7 @@ async def handle_session_get(request: JsonRpcRequest) -> dict[str, Any]:
     if not session:
         raise ValueError(f"Session not found: {session_id}")
 
-    return session.model_dump()
+    return session.model_dump(mode="json")
 
 
 @register_jsonrpc_method("session.pause")
