@@ -126,7 +126,7 @@ def create(
                 "priority": priority,
                 "parameters": params_dict,
             }
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             console.print(f"[green]✓[/green] Task created successfully")
             console.print(f"[bold]Task ID:[/bold] {task_id}")
@@ -213,7 +213,7 @@ def list(
 
         # Format output
         if json_output:
-            console.print(json.dumps(tasks, indent=2))
+            print(json.dumps(tasks, indent=2))
         else:
             if not tasks:
                 console.print("[yellow]No tasks found[/yellow]")
@@ -286,7 +286,7 @@ def info(
 
         # Format output
         if json_output:
-            console.print(json.dumps(task, indent=2))
+            print(json.dumps(task, indent=2))
         else:
             console.print(f"[bold]Task Information[/bold]")
             console.print(f"[bold]ID:[/bold] {task.get('task_id', 'N/A')}")
@@ -299,7 +299,7 @@ def info(
             params = task.get("parameters")
             if params:
                 console.print(f"[bold]Parameters:[/bold]")
-                console.print(json.dumps(params, indent=2))
+                print(json.dumps(params, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -360,7 +360,7 @@ def cancel(
         # Format output
         if json_output:
             result = {"success": success, "task_id": task_id}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             if success:
                 console.print(f"[green]✓[/green] Task cancelled successfully")
@@ -439,7 +439,7 @@ def logs(
         # Format output
         if json_output:
             result = {"task_id": task_id, "logs": log_lines}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             if not log_lines:
                 console.print("[yellow]No logs available[/yellow]")

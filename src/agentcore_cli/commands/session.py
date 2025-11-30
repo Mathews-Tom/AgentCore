@@ -98,14 +98,14 @@ def create(
                 "name": name,
                 "context": context_dict,
             }
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             console.print(f"[green]✓[/green] Session created successfully")
             console.print(f"[bold]Session ID:[/bold] {session_id}")
             console.print(f"[bold]Name:[/bold] {name}")
             if context_dict:
                 console.print(f"[bold]Context:[/bold]")
-                console.print(json.dumps(context_dict, indent=2))
+                print(json.dumps(context_dict, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -185,7 +185,7 @@ def list(
 
         # Format output
         if json_output:
-            console.print(json.dumps(sessions, indent=2))
+            print(json.dumps(sessions, indent=2))
         else:
             if not sessions:
                 console.print("[yellow]No sessions found[/yellow]")
@@ -256,7 +256,7 @@ def info(
 
         # Format output
         if json_output:
-            console.print(json.dumps(session, indent=2))
+            print(json.dumps(session, indent=2))
         else:
             console.print(f"[bold]Session Information[/bold]")
             console.print(f"[bold]ID:[/bold] {session.get('session_id', 'N/A')}")
@@ -269,7 +269,7 @@ def info(
             context = session.get("context")
             if context:
                 console.print(f"[bold]Context:[/bold]")
-                console.print(json.dumps(context, indent=2))
+                print(json.dumps(context, indent=2))
 
     except ValidationError as e:
         console.print(f"[red]Validation error:[/red] {e.message}")
@@ -330,7 +330,7 @@ def delete(
         # Format output
         if json_output:
             result = {"success": success, "session_id": session_id}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             if success:
                 console.print(f"[green]✓[/green] Session deleted successfully")
@@ -390,14 +390,14 @@ def restore(
         # Format output
         if json_output:
             result = {"session_id": session_id, "context": context}
-            console.print(json.dumps(result, indent=2))
+            print(json.dumps(result, indent=2))
         else:
             console.print(f"[green]✓[/green] Session restored successfully")
             console.print(f"[bold]Session ID:[/bold] {session_id}")
 
             if context:
                 console.print(f"[bold]Restored Context:[/bold]")
-                console.print(json.dumps(context, indent=2))
+                print(json.dumps(context, indent=2))
             else:
                 console.print("[yellow]No context data in session[/yellow]")
 

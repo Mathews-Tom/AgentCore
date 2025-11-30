@@ -81,7 +81,7 @@ def show(
                     "token": "***" if config.auth.token else None,
                 },
             }
-            console.print(json.dumps(config_dict, indent=2))
+            print(json.dumps(config_dict, indent=2))
         else:
             # Output as table
             console.print("[bold]Current Configuration[/bold]\n")
