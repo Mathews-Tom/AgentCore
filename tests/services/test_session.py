@@ -38,7 +38,7 @@ class TestSessionServiceCreate:
         assert session_id == "session-001"
         mock_client.call.assert_called_once_with(
             "session.create",
-            {"name": "test-session"})
+            {"name": "test-session", "owner_agent": "agentcore.cli"})
 
     def test_create_with_context(self) -> None:
         """Test creation with context."""
@@ -56,7 +56,33 @@ class TestSessionServiceCreate:
         assert session_id == "session-002"
         mock_client.call.assert_called_once_with(
             "session.create",
-            {"name": "test-session", "context": {"user": "alice", "project": "foo"}})
+            {
+                "name": "test-session",
+                "owner_agent": "agentcore.cli",
+                "initial_context": {"user": "alice", "project": "foo"},
+            })
+
+    def test_create_with_description(self) -> None:
+        """Test creation with description."""
+        # Arrange
+        mock_client = Mock()
+        mock_client.call.return_value = {"session_id": "session-003"}
+        service = SessionService(mock_client)
+
+        # Act
+        session_id = service.create(
+            "test-session",
+            description="My test session")
+
+        # Assert
+        assert session_id == "session-003"
+        mock_client.call.assert_called_once_with(
+            "session.create",
+            {
+                "name": "test-session",
+                "owner_agent": "agentcore.cli",
+                "description": "My test session",
+            })
 
     def test_create_empty_name_raises_validation_error(self) -> None:
         """Test that empty name raises ValidationError."""
@@ -70,7 +96,7 @@ class TestSessionServiceCreate:
 
 
 class TestSessionServiceListSessions:
-    """Test SessionService.list() method."""
+    """Test SessionService.list_sessions() method."""
 
     def test_list_success(self) -> None:
         """Test successful session listing."""
@@ -90,7 +116,7 @@ class TestSessionServiceListSessions:
         # Assert
         assert len(sessions) == 2
         mock_client.call.assert_called_once_with(
-            "session.list",
+            "session.query",
             {"limit": 100, "offset": 0})
 
     def test_list_with_state_filter(self) -> None:
@@ -105,7 +131,7 @@ class TestSessionServiceListSessions:
 
         # Assert
         mock_client.call.assert_called_once_with(
-            "session.list",
+            "session.query",
             {"limit": 10, "offset": 0, "state": "active"})
 
     def test_list_invalid_state_raises_validation_error(self) -> None:
@@ -148,8 +174,10 @@ class TestSessionServiceGet:
         """Test successful session retrieval."""
         # Arrange
         mock_client = Mock()
+        # Service expects raw dict response (not wrapped in "session")
         mock_client.call.return_value = {
-            "session": {"session_id": "session-001", "name": "test-session"}
+            "session_id": "session-001",
+            "name": "test-session",
         }
         service = SessionService(mock_client)
 
@@ -158,6 +186,7 @@ class TestSessionServiceGet:
 
         # Assert
         assert session["session_id"] == "session-001"
+        assert session["name"] == "test-session"
 
     def test_get_not_found_raises_session_not_found_error(self) -> None:
         """Test that 'not found' error raises SessionNotFoundError."""
@@ -210,7 +239,23 @@ class TestSessionServiceDelete:
         assert success is True
         mock_client.call.assert_called_once_with(
             "session.delete",
-            {"session_id": "session-001", "force": False})
+            {"session_id": "session-001", "hard_delete": False})
+
+    def test_delete_with_hard_delete(self) -> None:
+        """Test deletion with hard_delete flag."""
+        # Arrange
+        mock_client = Mock()
+        mock_client.call.return_value = {"success": True}
+        service = SessionService(mock_client)
+
+        # Act
+        success = service.delete("session-001", hard_delete=True)
+
+        # Assert
+        assert success is True
+        mock_client.call.assert_called_once_with(
+            "session.delete",
+            {"session_id": "session-001", "hard_delete": True})
 
     def test_delete_not_found_raises_session_not_found_error(self) -> None:
         """Test that 'not found' error raises SessionNotFoundError."""
@@ -235,23 +280,31 @@ class TestSessionServiceDelete:
             service.delete("session-001")
 
 
-class TestSessionServiceRestore:
-    """Test SessionService.restore() method."""
+class TestSessionServiceResume:
+    """Test SessionService.resume() method."""
 
-    def test_restore_success(self) -> None:
-        """Test successful session restoration."""
+    def test_resume_success(self) -> None:
+        """Test successful session resume."""
         # Arrange
         mock_client = Mock()
-        mock_client.call.return_value = {"context": {"user": "alice"}}
+        mock_client.call.return_value = {
+            "success": True,
+            "session_id": "session-001",
+            "message": "Session resumed",
+        }
         service = SessionService(mock_client)
 
         # Act
-        context = service.restore("session-001")
+        result = service.resume("session-001")
 
         # Assert
-        assert context["user"] == "alice"
+        assert result["success"] is True
+        assert result["session_id"] == "session-001"
+        mock_client.call.assert_called_once_with(
+            "session.resume",
+            {"session_id": "session-001"})
 
-    def test_restore_not_found_raises_session_not_found_error(self) -> None:
+    def test_resume_not_found_raises_session_not_found_error(self) -> None:
         """Test that 'not found' error raises SessionNotFoundError."""
         # Arrange
         mock_client = Mock()
@@ -260,9 +313,9 @@ class TestSessionServiceRestore:
 
         # Act & Assert
         with pytest.raises(SessionNotFoundError, match="Session 'session-001' not found"):
-            service.restore("session-001")
+            service.resume("session-001")
 
-    def test_restore_api_error_raises_operation_error(self) -> None:
+    def test_resume_api_error_raises_operation_error(self) -> None:
         """Test that API errors raise OperationError."""
         # Arrange
         mock_client = Mock()
@@ -270,16 +323,26 @@ class TestSessionServiceRestore:
         service = SessionService(mock_client)
 
         # Act & Assert
-        with pytest.raises(OperationError, match="Session restoration failed"):
-            service.restore("session-001")
+        with pytest.raises(OperationError, match="Session resume failed"):
+            service.resume("session-001")
 
-    def test_restore_missing_context_raises_operation_error(self) -> None:
-        """Test that missing context raises OperationError."""
+    def test_resume_empty_session_id_raises_validation_error(self) -> None:
+        """Test that empty session_id raises ValidationError."""
         # Arrange
         mock_client = Mock()
-        mock_client.call.return_value = {}
         service = SessionService(mock_client)
 
         # Act & Assert
-        with pytest.raises(OperationError, match="API did not return session context"):
-            service.restore("session-001")
+        with pytest.raises(ValidationError, match="Session ID cannot be empty"):
+            service.resume("")
+
+    def test_resume_missing_result_raises_operation_error(self) -> None:
+        """Test that missing result raises OperationError."""
+        # Arrange
+        mock_client = Mock()
+        mock_client.call.return_value = None
+        service = SessionService(mock_client)
+
+        # Act & Assert
+        with pytest.raises(OperationError, match="API did not return resume result"):
+            service.resume("session-001")

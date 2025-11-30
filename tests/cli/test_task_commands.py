@@ -764,12 +764,12 @@ class TestJSONRPCCompliance:
         assert call_args.kwargs["priority"] == "high"
 
     def test_service_layer_wraps_params_correctly(self) -> None:
-        """Verify service layer properly wraps parameters in 'params' object."""
+        """Verify service layer properly wraps parameters in task_definition object."""
         from agentcore_cli.services.task import TaskService
 
         # Create a mock client
         mock_client = Mock()
-        mock_client.call.return_value = {"task_id": "task-001"}
+        mock_client.call.return_value = {"execution_id": "task-001"}
 
         # Create service with mock client
         service = TaskService(mock_client)
@@ -791,17 +791,23 @@ class TestJSONRPCCompliance:
         # Verify method name
         assert call_args.args[0] == "task.create"
 
-        # Verify params structure (should be a dict, not flat)
+        # Verify params structure (uses task_definition nested structure)
         params = call_args.args[1]
         assert isinstance(params, dict)
-        assert "description" in params
-        assert params["description"] == "Test task"
-        assert "agent_id" in params
-        assert params["agent_id"] == "agent-001"
-        assert "priority" in params
-        assert params["priority"] == "high"
-        assert "parameters" in params
-        assert params["parameters"] == {"key": "value"}
+        assert "task_definition" in params
+        assert "auto_assign" in params
+        assert params["auto_assign"] is True
+
+        # Check task_definition structure
+        task_def = params["task_definition"]
+        assert task_def["description"] == "Test task"
+        assert task_def["title"] == "Test task"
+        assert task_def["priority"] == "high"
+        assert task_def["parameters"] == {"key": "value"}
+
+        # Check preferred_agent instead of agent_id
+        assert "preferred_agent" in params
+        assert params["preferred_agent"] == "agent-001"
 
         # This dict will be wrapped in "params" by the JsonRpcClient
         # The client is responsible for creating the full JSON-RPC request

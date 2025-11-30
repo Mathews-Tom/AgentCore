@@ -63,6 +63,7 @@ class TestSessionCreateCommand:
         # Verify service was called correctly
         mock_session_service.create.assert_called_once_with(
             name="analysis-session",
+            description=None,
             context=None)
 
     def test_create_with_context(
@@ -97,6 +98,7 @@ class TestSessionCreateCommand:
         # Verify service was called correctly
         mock_session_service.create.assert_called_once_with(
             name="test-session",
+            description=None,
             context={"user": "alice", "project": "foo"})
 
     def test_create_json_output(
@@ -594,15 +596,15 @@ class TestSessionDeleteCommand:
         assert "Session deleted successfully" in result.output
         assert "session-001" in result.output
 
-        # Verify service was called correctly
+        # Verify service was called correctly (uses hard_delete, not force)
         mock_session_service.delete.assert_called_once_with(
             "session-001",
-            force=False)
+            hard_delete=False)
 
-    def test_delete_with_force(
+    def test_delete_with_hard(
         self, runner: CliRunner, mock_session_service: Mock
     ) -> None:
-        """Test session deletion with force flag."""
+        """Test session deletion with hard flag."""
         # Mock service response
         mock_session_service.delete.return_value = True
 
@@ -616,16 +618,16 @@ class TestSessionDeleteCommand:
                     "session",
                     "delete",
                     "session-001",
-                    "--force",
+                    "--hard",
                 ])
 
         # Verify exit code
         assert result.exit_code == 0
 
-        # Verify service was called with force=True
+        # Verify service was called with hard_delete=True
         mock_session_service.delete.assert_called_once_with(
             "session-001",
-            force=True)
+            hard_delete=True)
 
     def test_delete_json_output(
         self, runner: CliRunner, mock_session_service: Mock
@@ -710,17 +712,18 @@ class TestSessionDeleteCommand:
         assert "Failed to delete session" in result.output
 
 
-class TestSessionRestoreCommand:
-    """Test suite for session restore command."""
+class TestSessionResumeCommand:
+    """Test suite for session resume command."""
 
-    def test_restore_success(
+    def test_resume_success(
         self, runner: CliRunner, mock_session_service: Mock
     ) -> None:
-        """Test successful session restoration."""
+        """Test successful session resume."""
         # Mock service response
-        mock_session_service.restore.return_value = {
-            "user": "alice",
-            "project": "foo",
+        mock_session_service.resume.return_value = {
+            "success": True,
+            "session_id": "session-001",
+            "message": "Session resumed successfully",
         }
 
         # Patch the container to return mock service
@@ -731,7 +734,7 @@ class TestSessionRestoreCommand:
                 app,
                 [
                     "session",
-                    "restore",
+                    "resume",
                     "session-001",
                 ])
 
@@ -739,20 +742,23 @@ class TestSessionRestoreCommand:
         assert result.exit_code == 0
 
         # Verify output
-        assert "Session restored successfully" in result.output
+        assert "Session resumed successfully" in result.output
         assert "session-001" in result.output
-        assert "Restored Context" in result.output
 
         # Verify service was called correctly
-        mock_session_service.restore.assert_called_once_with("session-001")
+        mock_session_service.resume.assert_called_once_with("session-001")
 
-    def test_restore_json_output(
+    def test_resume_json_output(
         self, runner: CliRunner, mock_session_service: Mock
     ) -> None:
-        """Test session restoration with JSON output."""
+        """Test session resume with JSON output."""
         # Mock service response
-        context_data = {"user": "alice", "project": "foo"}
-        mock_session_service.restore.return_value = context_data
+        result_data = {
+            "success": True,
+            "session_id": "session-001",
+            "message": "Session resumed",
+        }
+        mock_session_service.resume.return_value = result_data
 
         # Patch the container to return mock service
         with patch(
@@ -762,7 +768,7 @@ class TestSessionRestoreCommand:
                 app,
                 [
                     "session",
-                    "restore",
+                    "resume",
                     "session-001",
                     "--json",
                 ])
@@ -773,41 +779,15 @@ class TestSessionRestoreCommand:
         # Verify output is valid JSON
         import json
         output = json.loads(result.output)
+        assert output["success"] is True
         assert output["session_id"] == "session-001"
-        assert output["context"]["user"] == "alice"
 
-    def test_restore_empty_context(
+    def test_resume_not_found(
         self, runner: CliRunner, mock_session_service: Mock
     ) -> None:
-        """Test session restoration with empty context."""
-        # Mock service response
-        mock_session_service.restore.return_value = {}
-
-        # Patch the container to return mock service
-        with patch(
-            "agentcore_cli.commands.session.get_session_service",
-            return_value=mock_session_service):
-            result = runner.invoke(
-                app,
-                [
-                    "session",
-                    "restore",
-                    "session-001",
-                ])
-
-        # Verify exit code
-        assert result.exit_code == 0
-
-        # Verify output
-        assert "Session restored successfully" in result.output
-        assert "No context data in session" in result.output
-
-    def test_restore_not_found(
-        self, runner: CliRunner, mock_session_service: Mock
-    ) -> None:
-        """Test session restoration for non-existent session."""
+        """Test session resume for non-existent session."""
         # Mock service to raise not found error
-        mock_session_service.restore.side_effect = SessionNotFoundError(
+        mock_session_service.resume.side_effect = SessionNotFoundError(
             "Session 'session-999' not found"
         )
 
@@ -819,7 +799,7 @@ class TestSessionRestoreCommand:
                 app,
                 [
                     "session",
-                    "restore",
+                    "resume",
                     "session-999",
                 ])
 
@@ -830,12 +810,12 @@ class TestSessionRestoreCommand:
         assert "Session not found" in result.output
         assert "session-999" in result.output
 
-    def test_restore_validation_error(
+    def test_resume_validation_error(
         self, runner: CliRunner, mock_session_service: Mock
     ) -> None:
-        """Test session restoration with validation error."""
+        """Test session resume with validation error."""
         # Mock service to raise validation error
-        mock_session_service.restore.side_effect = ValidationError(
+        mock_session_service.resume.side_effect = ValidationError(
             "Session ID cannot be empty"
         )
 
@@ -847,7 +827,7 @@ class TestSessionRestoreCommand:
                 app,
                 [
                     "session",
-                    "restore",
+                    "resume",
                     "",
                 ])
 

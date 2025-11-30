@@ -29,7 +29,7 @@ class TestTaskServiceCreate:
         """Test successful task creation."""
         # Arrange
         mock_client = Mock()
-        mock_client.call.return_value = {"task_id": "task-001"}
+        mock_client.call.return_value = {"execution_id": "task-001", "task_id": "t-001"}
         service = TaskService(mock_client)
 
         # Act
@@ -39,13 +39,21 @@ class TestTaskServiceCreate:
         assert task_id == "task-001"
         mock_client.call.assert_called_once_with(
             "task.create",
-            {"description": "Analyze code", "priority": "normal"})
+            {
+                "task_definition": {
+                    "task_type": "cli.task",
+                    "title": "Analyze code",
+                    "description": "Analyze code",
+                    "priority": "normal",
+                },
+                "auto_assign": True,
+            })
 
     def test_create_with_all_parameters(self) -> None:
         """Test creation with all optional parameters."""
         # Arrange
         mock_client = Mock()
-        mock_client.call.return_value = {"task_id": "task-002"}
+        mock_client.call.return_value = {"execution_id": "task-002"}
         service = TaskService(mock_client)
 
         # Act
@@ -60,10 +68,15 @@ class TestTaskServiceCreate:
         mock_client.call.assert_called_once_with(
             "task.create",
             {
-                "description": "Analyze code",
-                "priority": "high",
-                "agent_id": "agent-001",
-                "parameters": {"repo": "foo/bar"},
+                "task_definition": {
+                    "task_type": "cli.task",
+                    "title": "Analyze code",
+                    "description": "Analyze code",
+                    "priority": "high",
+                    "parameters": {"repo": "foo/bar"},
+                },
+                "auto_assign": True,
+                "preferred_agent": "agent-001",
             })
 
     def test_create_empty_description_raises_validation_error(self) -> None:
@@ -98,19 +111,19 @@ class TestTaskServiceCreate:
             service.create("Analyze code")
 
     def test_create_missing_task_id_raises_operation_error(self) -> None:
-        """Test that missing task_id raises OperationError."""
+        """Test that missing execution_id raises OperationError."""
         # Arrange
         mock_client = Mock()
         mock_client.call.return_value = {}
         service = TaskService(mock_client)
 
         # Act & Assert
-        with pytest.raises(OperationError, match="API did not return task_id"):
+        with pytest.raises(OperationError, match="API did not return execution_id"):
             service.create("Analyze code")
 
 
 class TestTaskServiceListTasks:
-    """Test TaskService.list() method."""
+    """Test TaskService.list_tasks() method."""
 
     def test_list_success(self) -> None:
         """Test successful task listing."""
@@ -130,7 +143,7 @@ class TestTaskServiceListTasks:
         # Assert
         assert len(tasks) == 2
         mock_client.call.assert_called_once_with(
-            "task.list",
+            "task.query",
             {"limit": 100, "offset": 0})
 
     def test_list_with_status_filter(self) -> None:
@@ -145,7 +158,7 @@ class TestTaskServiceListTasks:
 
         # Assert
         mock_client.call.assert_called_once_with(
-            "task.list",
+            "task.query",
             {"limit": 10, "offset": 5, "status": "running"})
 
     def test_list_invalid_limit_raises_validation_error(self) -> None:
@@ -210,7 +223,7 @@ class TestTaskServiceGet:
         assert task["task_id"] == "task-001"
         mock_client.call.assert_called_once_with(
             "task.get",
-            {"task_id": "task-001"})
+            {"execution_id": "task-001"})
 
     def test_get_empty_id_raises_validation_error(self) -> None:
         """Test that empty task_id raises ValidationError."""
@@ -273,21 +286,23 @@ class TestTaskServiceCancel:
         assert success is True
         mock_client.call.assert_called_once_with(
             "task.cancel",
-            {"task_id": "task-001", "force": False})
+            {"execution_id": "task-001"})
 
     def test_cancel_with_force(self) -> None:
-        """Test cancellation with force flag."""
+        """Test cancellation with force flag (force is ignored in API)."""
         # Arrange
         mock_client = Mock()
         mock_client.call.return_value = {"success": True}
         service = TaskService(mock_client)
 
         # Act
-        service.cancel("task-001", force=True)
+        success = service.cancel("task-001", force=True)
 
-        # Assert
-        call_args = mock_client.call.call_args[0]
-        assert call_args[1]["force"] is True
+        # Assert - force is ignored, params are the same
+        assert success is True
+        mock_client.call.assert_called_once_with(
+            "task.cancel",
+            {"execution_id": "task-001"})
 
     def test_cancel_not_found_raises_task_not_found_error(self) -> None:
         """Test that 'not found' error raises TaskNotFoundError."""
