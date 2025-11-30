@@ -84,6 +84,7 @@ class TestRunner:
         self.results_dir = Path(".test-results")
         self.results: list[TestResult] = []
         self.docker_available = self._check_docker()
+        self.api_available = self._check_api()
         self.start_time = datetime.now()
 
     def _check_docker(self) -> bool:
@@ -97,6 +98,17 @@ class TestRunner:
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
+
+    def _check_api(self) -> bool:
+        """Check if AgentCore API is running at localhost:8001"""
+        try:
+            import urllib.request
+            import json as json_module
+            with urllib.request.urlopen("http://localhost:8001/api/v1/health", timeout=2) as resp:
+                data = json_module.loads(resp.read().decode())
+                return data.get("status") == "healthy"
+        except Exception:
             return False
 
     def _setup_results_dir(self):
@@ -218,10 +230,12 @@ class TestRunner:
     def _create_header(self) -> Panel:
         """Create header panel"""
         docker_status = "✓ Available" if self.docker_available else "⚠ Not running"
+        api_status = "✓ Available (E2E tests will run)" if self.api_available else "⚠ Not running (E2E tests will skip)"
         text = Text()
         text.append("🧪 Full Test Suite ", style="bold cyan")
         text.append("(Modular)\n", style="bold cyan")
         text.append(f"Docker: {docker_status}\n", style="yellow" if not self.docker_available else "green")
+        text.append(f"API: {api_status}\n", style="yellow" if not self.api_available else "green")
         text.append(f"Sections: {len(self.SECTIONS)}", style="blue")
 
         return Panel(text, box=box.DOUBLE, border_style="cyan")

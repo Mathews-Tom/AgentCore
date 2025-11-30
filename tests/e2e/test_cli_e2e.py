@@ -34,11 +34,26 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import urllib.request
+import urllib.error
+
+
+def _check_api_available() -> bool:
+    """Check if the API server is running and healthy."""
+    try:
+        with urllib.request.urlopen("http://localhost:8001/api/v1/health", timeout=2) as resp:
+            data = json.loads(resp.read().decode())
+            return data.get("status") == "healthy"
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, OSError):
+        return False
 
 
 # Mark all tests in this module as requiring live API server
-# Skip by default - run manually with: pytest tests/e2e/test_cli_e2e.py -v
-pytestmark = pytest.mark.skip(reason="E2E tests require live API server at http://localhost:8001 - run manually with docker-compose up")
+# Conditionally skip if API is not available
+pytestmark = pytest.mark.skipif(
+    not _check_api_available(),
+    reason="E2E tests require live API server at http://localhost:8001 - start with docker-compose up"
+)
 
 
 # Constants
@@ -350,12 +365,12 @@ class TestTaskLifecycle:
             "--description", "Generate text based on prompt",
             "--parameters", json.dumps({"prompt": "test"}))
 
-        assert "id" in task_result or "task_id" in task_result
-        task_id = task_result.get("id") or task_result.get("task_id")
+        assert "id" in task_result or "task_id" in task_result or "execution_id" in task_result
+        task_id = task_result.get("task_id") or task_result.get("execution_id") or task_result.get("id")
         cleanup_tasks.append(task_id)
 
-        # Get task status
-        status_result = run_cli_json("task", "status", task_id)
+        # Get task info (CLI uses 'info' not 'status')
+        status_result = run_cli_json("task", "info", task_id)
 
         assert "status" in status_result or "state" in status_result
 
@@ -378,7 +393,7 @@ class TestTaskLifecycle:
         task_result = run_cli_json(
             "task", "create",
             "--description", "Test task for listing")
-        task_id = task_result.get("id") or task_result.get("task_id")
+        task_id = task_result.get("task_id") or task_result.get("execution_id") or task_result.get("id")
         cleanup_tasks.append(task_id)
 
         # List tasks
@@ -392,8 +407,8 @@ class TestTaskLifecycle:
         else:
             tasks = []
 
-        # Our task should be in the list
-        task_ids = [t.get("id") or t.get("task_id") for t in tasks]
+        # Our task should be in the list (API returns execution_id as primary key)
+        task_ids = [t.get("execution_id") or t.get("id") or t.get("task_id") for t in tasks]
         assert task_id in task_ids, f"Task {task_id} not found in list"
 
     def test_task_cancel(
@@ -420,8 +435,8 @@ class TestTaskLifecycle:
         cancel_result = run_cli("task", "cancel", task_id)
         assert cancel_result.returncode == 0
 
-        # Verify status is cancelled
-        status_result = run_cli_json("task", "status", task_id)
+        # Verify status is cancelled (CLI uses 'info' not 'status')
+        status_result = run_cli_json("task", "info", task_id)
         status = status_result.get("status") or status_result.get("state")
 
         # Status might be "cancelled", "canceled", or "failed" depending on API
