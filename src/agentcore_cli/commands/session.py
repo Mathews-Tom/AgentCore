@@ -369,6 +369,63 @@ def delete(
 
 
 @app.command()
+def pause(
+    session_id: Annotated[str, typer.Argument(help="Session identifier")],
+    json_output: Annotated[
+        bool,
+        typer.Option(
+            "--json",
+            "-j",
+            help="Output in JSON format",
+        ),
+    ] = False,
+) -> None:
+    """Pause an active session.
+
+    This command pauses a session that is currently active,
+    allowing it to be resumed later.
+
+    Examples:
+        # Pause a session
+        agentcore session pause session-001
+
+        # Get JSON output
+        agentcore session pause session-001 --json
+    """
+    try:
+        # Get service from DI container
+        service = get_session_service()
+
+        # Call service method
+        result_data = service.pause(session_id)
+
+        # Format output
+        if json_output:
+            print(json.dumps(result_data, indent=2))
+        else:
+            console.print(f"[green]✓[/green] Session paused successfully")
+            console.print(f"[bold]Session ID:[/bold] {session_id}")
+            if result_data.get("message"):
+                console.print(f"[dim]{result_data['message']}[/dim]")
+
+    except ValidationError as e:
+        console.print(f"[red]Validation error:[/red] {e.message}")
+        raise typer.Exit(2)
+    except SessionNotFoundError as e:
+        console.print(f"[red]Session not found:[/red] {e.message}")
+        raise typer.Exit(1)
+    except OperationError as e:
+        console.print(f"[red]Operation failed:[/red] {e.message}")
+        raise typer.Exit(1)
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Unexpected error:[/red] {str(e)}")
+        raise typer.Exit(1)
+
+
+@app.command()
 def resume(
     session_id: Annotated[str, typer.Argument(help="Session identifier")],
     json_output: Annotated[

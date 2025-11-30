@@ -255,6 +255,44 @@ class SessionService:
         success = result.get("success", False)
         return bool(success)
 
+    def pause(self, session_id: str) -> dict[str, Any]:
+        """Pause an active session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Pause result with session_id and success status
+
+        Raises:
+            ValidationError: If session_id is empty
+            SessionNotFoundError: If session does not exist
+            OperationError: If pause fails
+
+        Example:
+            >>> result = service.pause("session-001")
+            >>> print(result["success"])
+            True
+        """
+        # Validation
+        if not session_id or not session_id.strip():
+            raise ValidationError("Session ID cannot be empty")
+
+        # Call JSON-RPC method - API uses session.pause
+        try:
+            result = self.client.call("session.pause", {"session_id": session_id.strip()})
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "not found" in error_msg:
+                raise SessionNotFoundError(f"Session '{session_id}' not found")
+            raise OperationError(f"Session pause failed: {str(e)}")
+
+        # Validate result - API returns {success, session_id, message}
+        if not result or not isinstance(result, dict):
+            raise OperationError("API did not return pause result")
+
+        return dict(result)
+
     def resume(self, session_id: str) -> dict[str, Any]:
         """Resume a paused or suspended session.
 
