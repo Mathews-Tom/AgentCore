@@ -39,6 +39,7 @@ from agentcore.a2a_protocol.services import (  # noqa: F401
     security_jsonrpc,
     session_jsonrpc,
     task_jsonrpc,
+    workflow_jsonrpc,
 )
 
 # Import reasoning JSON-RPC methods
