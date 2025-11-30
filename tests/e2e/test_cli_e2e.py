@@ -450,24 +450,24 @@ class TestSessionFlow:
     NOTE: Session tests may have API compatibility issues as well.
     """
 
-    @pytest.mark.xfail(reason="Session API compatibility not verified")
-    def test_session_save_and_list(
+    @pytest.mark.xfail(reason="Session database schema not migrated (session_snapshots table)")
+    def test_session_create_and_list(
         self,
         api_health_check: None,
         test_id: str,
         cleanup_sessions: list[str]) -> None:
-        """Test saving and listing sessions."""
+        """Test creating and listing sessions."""
         session_name = f"test-session-{test_id}"
 
-        # Save session
-        save_result = run_cli_json(
-            "session", "save",
+        # Create session
+        create_result = run_cli_json(
+            "session", "create",
             "--name", session_name,
             "--description", "E2E test session",
-            "--metadata", json.dumps({"test": "data"}))
+            "--context", json.dumps({"test": "data"}))
 
-        assert "id" in save_result or "session_id" in save_result
-        session_id = save_result.get("id") or save_result.get("session_id")
+        assert "id" in create_result or "session_id" in create_result
+        session_id = create_result.get("id") or create_result.get("session_id")
         cleanup_sessions.append(session_id)
 
         # List sessions
@@ -484,7 +484,7 @@ class TestSessionFlow:
         assert any(s.get("name") == session_name for s in sessions), \
             f"Session {session_name} not found"
 
-    @pytest.mark.xfail(reason="Session API compatibility not verified")
+    @pytest.mark.xfail(reason="Session database schema not migrated (session_snapshots table)")
     def test_session_info(
         self,
         api_health_check: None,
@@ -493,22 +493,22 @@ class TestSessionFlow:
         """Test getting session information."""
         session_name = f"test-info-{test_id}"
 
-        # Save session
-        save_result = run_cli_json(
-            "session", "save",
+        # Create session
+        create_result = run_cli_json(
+            "session", "create",
             "--name", session_name,
             "--description", "Session info test",
-            "--metadata", json.dumps({"key": "value"}))
-        session_id = save_result.get("id") or save_result.get("session_id")
+            "--context", json.dumps({"key": "value"}))
+        session_id = create_result.get("id") or create_result.get("session_id")
         cleanup_sessions.append(session_id)
 
         # Get session info
         info_result = run_cli_json("session", "info", session_id)
 
         assert info_result.get("name") == session_name
-        assert "metadata" in info_result or "description" in info_result
+        assert "context" in info_result or "description" in info_result
 
-    @pytest.mark.xfail(reason="Session API compatibility not verified")
+    @pytest.mark.xfail(reason="Session database schema not migrated (session_snapshots table)")
     def test_session_resume_and_delete(
         self,
         api_health_check: None,
@@ -516,20 +516,20 @@ class TestSessionFlow:
         """Test resuming and deleting sessions (no cleanup needed)."""
         session_name = f"test-resume-{test_id}"
 
-        # Save session
-        save_result = run_cli_json(
-            "session", "save",
+        # Create session
+        create_result = run_cli_json(
+            "session", "create",
             "--name", session_name,
             "--description", "Resume test",
-            "--metadata", json.dumps({"state": "active"}))
-        session_id = save_result.get("id") or save_result.get("session_id")
+            "--context", json.dumps({"state": "active"}))
+        session_id = create_result.get("id") or create_result.get("session_id")
 
-        # Resume session
+        # Resume session (makes sense after pausing, but tests the command)
         resume_result = run_cli_json("session", "resume", session_id)
-        assert "metadata" in resume_result or "name" in resume_result
+        assert "success" in resume_result or "session_id" in resume_result
 
-        # Delete session
-        delete_result = run_cli("session", "delete", session_id, "--yes")
+        # Delete session (hard delete for cleanup)
+        delete_result = run_cli("session", "delete", session_id, "--hard")
         assert delete_result.returncode == 0
 
         # Verify it's gone
