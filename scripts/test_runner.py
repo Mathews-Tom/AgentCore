@@ -7,6 +7,8 @@ Runs test suite in isolated sections with beautiful progress tracking.
 import subprocess
 import sys
 import re
+import signal
+import time
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
@@ -86,6 +88,8 @@ class TestRunner:
         self.docker_available = self._check_docker()
         self.api_available = self._check_api()
         self.start_time = datetime.now()
+        self._api_process: Optional[subprocess.Popen] = None
+        self._api_started_by_runner = False
 
     def _check_docker(self) -> bool:
         """Check if Docker is available"""
@@ -110,6 +114,69 @@ class TestRunner:
                 return data.get("status") == "healthy"
         except Exception:
             return False
+
+    def _start_api_server(self) -> bool:
+        """Start the API server for E2E tests if not already running"""
+        if self._check_api():
+            return True  # Already running
+
+        self.console.print("  [yellow]Starting API server for E2E tests...[/yellow]")
+
+        try:
+            # Start uvicorn in background
+            self._api_process = subprocess.Popen(
+                [
+                    "uv", "run", "uvicorn",
+                    "agentcore.a2a_protocol.main:app",
+                    "--host", "0.0.0.0",
+                    "--port", "8001",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True,  # Detach from parent process group
+            )
+
+            # Wait for API to become healthy (max 30 seconds)
+            for i in range(30):
+                time.sleep(1)
+                if self._check_api():
+                    self._api_started_by_runner = True
+                    self.api_available = True
+                    self.console.print("  [green]✓ API server started successfully[/green]")
+                    return True
+
+                # Check if process died
+                if self._api_process.poll() is not None:
+                    stderr = self._api_process.stderr.read().decode() if self._api_process.stderr else ""
+                    self.console.print(f"  [red]✗ API server failed to start: {stderr[:200]}[/red]")
+                    return False
+
+            self.console.print("  [red]✗ API server startup timed out after 30s[/red]")
+            self._stop_api_server()
+            return False
+
+        except Exception as e:
+            self.console.print(f"  [red]✗ Failed to start API server: {e}[/red]")
+            return False
+
+    def _stop_api_server(self):
+        """Stop the API server if we started it"""
+        if self._api_process and self._api_started_by_runner:
+            self.console.print("  [yellow]Stopping API server...[/yellow]")
+            try:
+                # Kill the entire process group
+                import os
+                os.killpg(os.getpgid(self._api_process.pid), signal.SIGTERM)
+                self._api_process.wait(timeout=5)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                # Force kill if graceful shutdown failed
+                try:
+                    os.killpg(os.getpgid(self._api_process.pid), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            self._api_process = None
+            self._api_started_by_runner = False
+            self.console.print("  [green]✓ API server stopped[/green]")
 
     def _setup_results_dir(self):
         """Setup results directory"""
@@ -149,6 +216,35 @@ class TestRunner:
             result.status = "skipped"
             result.output = f"Directory not found: {section.path}"
             return result
+
+        # For E2E tests, ensure API server is running
+        api_started_for_e2e = False
+        if section.name == "e2e":
+            if not self._start_api_server():
+                # Count tests that would be skipped
+                try:
+                    count_cmd = ["uv", "run", "pytest", section.path, "--collect-only", "-q"]
+                    count_result = subprocess.run(
+                        count_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        timeout=30,
+                    )
+                    # Parse "X tests collected" or count lines
+                    test_count_match = re.search(r"(\d+) tests? collected", count_result.stdout)
+                    if test_count_match:
+                        result.skipped = int(test_count_match.group(1))
+                    else:
+                        # Count test lines (each line with :: is a test)
+                        result.skipped = len([l for l in count_result.stdout.split("\n") if "::" in l])
+                except Exception:
+                    result.skipped = 0  # Unknown count
+
+                result.status = "skipped"
+                result.output = "E2E tests skipped: API server not available and could not be started"
+                return result
+            api_started_for_e2e = self._api_started_by_runner
 
         # Build pytest command
         cmd = ["uv", "run", "pytest", section.path, "--tb=short", "-v"]
@@ -224,13 +320,17 @@ class TestRunner:
             result.status = "failed"
             result.output = f"Error running tests: {e}"
             output_file.write_text(result.output)
+        finally:
+            # Stop API server if we started it for E2E tests
+            if api_started_for_e2e:
+                self._stop_api_server()
 
         return result
 
     def _create_header(self) -> Panel:
         """Create header panel"""
         docker_status = "✓ Available" if self.docker_available else "⚠ Not running"
-        api_status = "✓ Available (E2E tests will run)" if self.api_available else "⚠ Not running (E2E tests will skip)"
+        api_status = "✓ Running" if self.api_available else "⚠ Not running (will auto-start for E2E)"
         text = Text()
         text.append("🧪 Full Test Suite ", style="bold cyan")
         text.append("(Modular)\n", style="bold cyan")
@@ -405,8 +505,15 @@ class TestRunner:
                         f"[green]{result.passed}[/green] passed)"
                     )
                 elif result.status == "skipped":
+                    skip_info = f"[yellow]{result.skipped}[/yellow] skipped" if result.skipped > 0 else "skipped"
                     self.console.print(
-                        f"  [yellow]⊘[/yellow] {section.description} [dim](skipped)[/dim]"
+                        f"  [yellow]⊘[/yellow] {section.description} ({skip_info})"
+                    )
+                elif result.status == "flaky":
+                    self.console.print(
+                        f"  [yellow]⚠[/yellow] {section.description} "
+                        f"([yellow]{result.failed}[/yellow] flaky, "
+                        f"[green]{result.passed}[/green] passed)"
                     )
 
         # Display summary
