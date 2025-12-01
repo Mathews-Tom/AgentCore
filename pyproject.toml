@@ -1,6 +1,6 @@
 [project]
 name = "agentcore-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Open-source orchestration framework for agentic AI systems with multi-agent coordination, tool integration, and workflow management"
 authors = [
     {name = "AgentCore Team", email = "team@agentcore.ai"}
