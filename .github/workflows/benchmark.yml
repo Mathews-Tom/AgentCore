@@ -1,24 +1,19 @@
 name: LLM Performance Benchmarks
 
-# DISABLED: LLM benchmarks with external API calls disabled to prevent flaky CI
-# To run manually, use workflow_dispatch from GitHub Actions UI
-#
-# on:
-#   schedule:
-#     - cron: '0 0 * * 0'
-#   workflow_dispatch:
-#     inputs:
-#       skip_load_tests:
-#         description: 'Skip expensive load tests'
-#         required: false
-#         default: 'false'
-#       include_profiling:
-#         description: 'Include resource profiling'
-#         required: false
-#         default: 'true'
-
 on:
-  workflow_dispatch:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      skip_load_tests:
+        description: 'Skip expensive load tests'
+        required: false
+        default: 'false'
+      include_profiling:
+        description: 'Include resource profiling'
+        required: false
+        default: 'true'
 
 jobs:
   benchmark:

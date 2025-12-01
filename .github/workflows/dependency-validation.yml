@@ -1,25 +1,20 @@
 name: Dependency Validation
 
-# DISABLED: Integration tests and external API validations disabled to prevent flaky CI
-# To run manually, use workflow_dispatch from GitHub Actions UI
-#
-# on:
-#   push:
-#     branches: [main, develop]
-#     paths:
-#       - 'pyproject.toml'
-#       - 'uv.lock'
-#       - '.github/workflows/dependency-validation.yml'
-#   pull_request:
-#     branches: [main, develop]
-#     paths:
-#       - 'pyproject.toml'
-#       - 'uv.lock'
-#   schedule:
-#     - cron: '0 2 * * *'
-#   workflow_dispatch:
-
 on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/dependency-validation.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+  schedule:
+    # Run nightly for security checks
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:

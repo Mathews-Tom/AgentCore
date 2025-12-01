@@ -1,33 +1,19 @@
 name: Integration Layer Load Testing
 
-# DISABLED: E2E/Load tests disabled from automatic runs to prevent flaky CI
-# To run manually, uncomment workflow_dispatch and trigger from GitHub Actions UI
-#
-# on:
-#   push:
-#     branches: [main, develop, 'feature/int-*']
-#     paths:
-#       - 'src/agentcore/integration/**'
-#       - 'tests/load/integration_**'
-#   pull_request:
-#     branches: [main, develop]
-#     paths:
-#       - 'src/agentcore/integration/**'
-#       - 'tests/load/integration_**'
-#   schedule:
-#     - cron: '0 2 * * *'
-#   workflow_dispatch:
-#     inputs:
-#       users:
-#         description: 'Number of concurrent users'
-#         required: false
-#         default: '1000'
-#       duration:
-#         description: 'Test duration (e.g., 2m, 5m)'
-#         required: false
-#         default: '2m'
-
 on:
+  push:
+    branches: [main, develop, 'feature/int-*']
+    paths:
+      - 'src/agentcore/integration/**'
+      - 'tests/load/integration_**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/agentcore/integration/**'
+      - 'tests/load/integration_**'
+  # Disabled schedule until integration layer is implemented
+  # schedule:
+  #   - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       users:
