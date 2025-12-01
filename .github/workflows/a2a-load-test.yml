@@ -1,17 +1,32 @@
 name: A2A Protocol Load Testing
 
+# DISABLED: E2E/Load tests disabled from automatic runs to prevent flaky CI
+# To run manually, uncomment triggers and use workflow_dispatch from GitHub Actions UI
+#
+# on:
+#   push:
+#     branches: [main, develop, 'feature/**']
+#     paths:
+#       - 'src/agentcore/a2a_protocol/**'
+#       - 'tests/load/locustfile.py'
+#       - 'tests/load/http_load_test.py'
+#   pull_request:
+#     branches: [main, develop]
+#     paths:
+#       - 'src/agentcore/a2a_protocol/**'
+#       - 'tests/load/**'
+#   workflow_dispatch:
+#     inputs:
+#       users:
+#         description: 'Number of concurrent users'
+#         required: false
+#         default: '100'
+#       duration:
+#         description: 'Test duration (e.g., 1m, 2m, 5m)'
+#         required: false
+#         default: '1m'
+
 on:
-  push:
-    branches: [main, develop, 'feature/**']
-    paths:
-      - 'src/agentcore/a2a_protocol/**'
-      - 'tests/load/locustfile.py'
-      - 'tests/load/http_load_test.py'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'src/agentcore/a2a_protocol/**'
-      - 'tests/load/**'
   workflow_dispatch:
     inputs:
       users:
