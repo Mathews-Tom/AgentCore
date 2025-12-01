@@ -1,12 +1,12 @@
 [project]
-name = "agentcore"
+name = "agentcore-sdk"
 version = "0.1.0"
-description = "Open-source orchestration framework for agentic AI systems built on Google's A2A protocol"
+description = "Open-source orchestration framework for agentic AI systems with multi-agent coordination, tool integration, and workflow management"
 authors = [
     {name = "AgentCore Team", email = "team@agentcore.ai"}
 ]
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "AGPL-3.0"}
 requires-python = ">=3.12"
 keywords = [
     "ai",
@@ -28,7 +28,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
@@ -92,11 +92,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/agentcore/agentcore"
-Documentation = "https://docs.agentcore.ai"
-Repository = "https://github.com/agentcore/agentcore"
-Issues = "https://github.com/agentcore/agentcore/issues"
-Changelog = "https://github.com/agentcore/agentcore/blob/main/docs/cli/CHANGELOG.md"
+Homepage = "https://github.com/Mathews-Tom/AgentCore"
+Documentation = "https://github.com/Mathews-Tom/AgentCore#readme"
+Repository = "https://github.com/Mathews-Tom/AgentCore"
+Issues = "https://github.com/Mathews-Tom/AgentCore/issues"
+Changelog = "https://github.com/Mathews-Tom/AgentCore/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
