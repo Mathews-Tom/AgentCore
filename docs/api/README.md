@@ -5,8 +5,8 @@ Complete documentation for AgentCore API Gateway including guides, examples, and
 ## Quick Links
 
 - **[Getting Started](getting-started.md)** - 10-minute quick start guide
-- **[Interactive API Docs](http://localhost:8080/docs)** - Swagger UI for testing endpoints
-- **[API Reference](http://localhost:8080/redoc)** - Complete API reference documentation
+- **[Interactive API Docs](http://localhost:8001/docs)** - Swagger UI for testing endpoints
+- **[API Reference](http://localhost:8001/redoc)** - Complete API reference documentation
 
 ## Documentation Structure
 
@@ -30,9 +30,9 @@ Ready-to-use client examples in multiple languages:
 
 ### API Reference
 
-- **[OpenAPI Specification](http://localhost:8080/openapi.json)** - Machine-readable API spec
-- **[Swagger UI](http://localhost:8080/docs)** - Interactive API explorer
-- **[ReDoc](http://localhost:8080/redoc)** - Alternative documentation viewer
+- **[OpenAPI Specification](http://localhost:8001/openapi.json)** - Machine-readable API spec
+- **[Swagger UI](http://localhost:8001/docs)** - Interactive API explorer
+- **[ReDoc](http://localhost:8001/redoc)** - Alternative documentation viewer
 
 ## Features
 
@@ -96,20 +96,20 @@ Ready-to-use client examples in multiple languages:
 
 ```bash
 # Authenticate
-curl -X POST "http://localhost:8080/auth/token" \
+curl -X POST "http://localhost:8001/auth/token" \
   -H "Content-Type: application/json" \
   -d '{"grant_type":"password","username":"user","password":"user123"}'
 
 # Save the access_token from response
 
 # Make authenticated request
-curl -X GET "http://localhost:8080/auth/me" \
+curl -X GET "http://localhost:8001/auth/me" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### 2. Explore Interactive Docs
 
-Visit http://localhost:8080/docs to:
+Visit http://localhost:8001/docs to:
 - Browse all available endpoints
 - Test API calls directly from browser
 - View request/response examples
@@ -275,9 +275,9 @@ def api_call():
 ### Resources
 
 - **Documentation:** https://docs.agentcore.ai
-- **API Reference:** http://localhost:8080/redoc
-- **Interactive Docs:** http://localhost:8080/docs
-- **OpenAPI Spec:** http://localhost:8080/openapi.json
+- **API Reference:** http://localhost:8001/redoc
+- **Interactive Docs:** http://localhost:8001/docs
+- **OpenAPI Spec:** http://localhost:8001/openapi.json
 
 ### Contact
 
@@ -296,7 +296,7 @@ Found an issue or want to contribute?
 
 ## License
 
-AgentCore is licensed under Apache 2.0. See [LICENSE](../../LICENSE) for details.
+AgentCore is licensed under AGPL-3.0. See [LICENSE](../../LICENSE) for details.
 
 ## Changelog
 

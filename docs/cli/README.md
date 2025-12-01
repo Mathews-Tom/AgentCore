@@ -586,7 +586,7 @@ We welcome contributions! See our [Contributing Guide](../../CONTRIBUTING.md) fo
 
 ## License
 
-MIT License - see [LICENSE](../../LICENSE) for details.
+AGPL-3.0 License - see [LICENSE](../../LICENSE) for details.
 
 ---
 
